@@ -665,18 +665,7 @@ def plot_index_map(
         ec = [_r_colors(r)[1] for r in uni_poly["r"]]
         uni_poly.plot(ax=ax, color=fc, edgecolor=ec, linewidth=0.3)
 
-    # Discrete legend (patch-based, always shown)
-    legend_handles = [
-        mpatches.Patch(facecolor=fc, edgecolor=ec, linewidth=0.5, label=lbl)
-        for fc, ec, lbl in _R_LEGEND
-    ] + [
-        mpatches.Patch(facecolor="#E8E8E8", edgecolor="#CCCCCC", linewidth=0.5,
-                       label="No reliable signal"),
-        mpatches.Patch(facecolor="#F8F8F8", edgecolor="#EBEBEB", linewidth=0.5,
-                       label="Not calculated"),
-    ]
-    ax.legend(handles=legend_handles, loc="upper left", fontsize=4.5,
-              framealpha=0.92, edgecolor="#ccc", borderpad=0.6)
+    # Legend moved to HTML — keeping map PNG clean for inline zoom
 
     # Bidirectional countries: diagonal 50/50 split
     # upper-right = positive r (flood/blue), lower-left = negative r (drought/brown)
@@ -742,16 +731,6 @@ def plot_index_map(
             ax.add_patch(mpatches.Circle((cx, cy), _DOT_R, facecolor=face,
                                           edgecolor=edge, linewidth=0.5, zorder=5))
 
-    label = ("Total association"
-             if kind == "total"
-             else "Unique to this index (other climate modes held constant)")
-    index_label = INDEX_LABELS.get(index, index.upper())
-    ax.set_title(
-        f"{index_label} — {label}\n"
-        f"ERA5 1981–{end_year} · max significant r with trimester rainfall "
-        f"(lag sweep 0–6mo, p<0.05; split diagonal = both signs across seasons)",
-        fontsize=10,
-    )
     ax.set_xlim(MAP_XLIM)
     ax.set_ylim(MAP_YLIM)
     ax.set_aspect("equal")
@@ -895,12 +874,7 @@ def enso_composite_maps(
             ax.add_patch(mpatches.Circle((cx, cy), _DOT_R, facecolor=face, edgecolor=edge,
                                          linewidth=0.5, zorder=5))
 
-        ax.set_title(
-            f"ENSO Composite — {label}\n"
-            f"ERA5 mean rainfall anomaly in headline trimester (SDs from climatology; "
-            f"Niño3.4 ≥±0.5 concurrent with trimester; 1981–{end_year})",
-            fontsize=10,
-        )
+        # Title in HTML
         ax.set_xlim(MAP_XLIM)
         ax.set_ylim(MAP_YLIM)
         ax.set_aspect("equal")
@@ -1047,15 +1021,7 @@ def plot_dominant_index_map(
         mpatches.Patch(facecolor="#F8F8F8", edgecolor="#EBEBEB",
                        linewidth=0.5, label="Not calculated"),
     ]
-    ax.legend(handles=handles, loc="upper left", fontsize=7,
-              framealpha=0.92, edgecolor="#ccc", borderpad=0.6)
-
-    ax.set_title(
-        f"Dominant climate mode — strongest significant total correlation with trimester rainfall\n"
-        f"ERA5 1981–{end_year} · upper-right = dominant index · lower-left = second index "
-        f"(different mode, non-overlapping trimester)",
-        fontsize=10,
-    )
+    # Legend and title in HTML
     ax.set_xlim(MAP_XLIM)
     ax.set_ylim(MAP_YLIM)
     ax.set_aspect("equal")
@@ -1129,14 +1095,30 @@ def generate_html_report(cfg: dict) -> None:
           <img class="ts-img" src="maps/ts_total_{name}.png" alt="{label} time series">
           <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
         </div>
-        <p><strong>Total association</strong> — pairwise r between {label} and trimester rainfall. Includes signal shared with other climate modes.</p>
+        <div class="map-legend">
+          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_{name}.png" alt="{label} time series">
           <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
         </div>
-        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+        <div class="map-legend">
+          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
     </div>
   </section>""")
@@ -1180,6 +1162,8 @@ def generate_html_report(cfg: dict) -> None:
     .map-with-ts .map-zoom {{ flex: 1; min-width: 0; }}
     .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
     .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
+    .map-legend {{ display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }}
+    .sw {{ display: inline-block; width: 1em; height: 1em; border: 1px solid; vertical-align: middle; margin-right: 0.25em; border-radius: 2px; }}
     .map-item p {{ font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }}
     .map-item p strong {{ color: #222; }}
     section {{ margin-bottom: 2rem; }}
@@ -1230,9 +1214,19 @@ def generate_html_report(cfg: dict) -> None:
   <hr>
   <section>
     <h2>Dominant Climate Mode</h2>
-    <p class="enso-note">Each country colored by whichever index has the strongest significant total correlation with its trimester rainfall. Gray = no reliable signal in any mode.</p>
+    <p class="enso-note">Each country colored by whichever index has the strongest significant total correlation (|r|≥0.30) with its trimester rainfall. Split diagonal = second-strongest index on a non-overlapping trimester.</p>
     <div class="map-item" style="max-width:100%">
       <div class="map-zoom"><img src="maps/map_dominant_index.png" alt="Dominant climate mode map"></div>
+      <div class="map-legend">
+        <span><span class="sw" style="background:#E41A1C;border-color:#B01010"></span>Niño3.4 (ENSO)</span>
+        <span><span class="sw" style="background:#FF7F00;border-color:#CC6600"></span>IOD</span>
+        <span><span class="sw" style="background:#4DAF4A;border-color:#2E8C2B"></span>TNA</span>
+        <span><span class="sw" style="background:#984EA3;border-color:#6B3070"></span>TSA</span>
+        <span><span class="sw" style="background:#377EB8;border-color:#1F5A8A"></span>AMM</span>
+        <span><span class="sw" style="background:#A65628;border-color:#7A3D18"></span>PDO</span>
+        <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+        <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+      </div>
     </div>
   </section>
 
