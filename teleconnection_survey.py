@@ -1091,6 +1091,7 @@ def generate_html_report(cfg: dict) -> None:
     <h2>{label}</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of {label} with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_{name}.png" alt="{label} time series">
           <div class="map-col">
@@ -1108,6 +1109,7 @@ def generate_html_report(cfg: dict) -> None:
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of {label} with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_{name}.png" alt="{label} time series">
           <div class="map-col">
@@ -1166,6 +1168,7 @@ def generate_html_report(cfg: dict) -> None:
     .map-col {{ flex: 1; min-width: 0; display: flex; flex-direction: column; }}
     .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
     .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
+    .map-title {{ font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }}
     .map-legend {{ display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }}
     .sw {{ display: inline-block; width: 1em; height: 1em; border: 1px solid; vertical-align: middle; margin-right: 0.25em; border-radius: 2px; }}
     .map-item p {{ font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }}
@@ -1269,7 +1272,7 @@ def generate_html_report(cfg: dict) -> None:
         e.preventDefault();
         const r = container.getBoundingClientRect();
         const mx = e.clientX - r.left, my = e.clientY - r.top;
-        const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+        const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
         const imgX = (mx - ox) / scale, imgY = (my - oy) / scale;
         scale = Math.min(Math.max(scale * factor, 1), 12);
         ox = mx - imgX * scale;

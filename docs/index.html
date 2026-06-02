@@ -37,6 +37,7 @@
     .map-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .map-zoom { overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }
     .map-zoom img { width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }
+    .map-title { font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }
     .map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }
     .sw { display: inline-block; width: 1em; height: 1em; border: 1px solid; vertical-align: middle; margin-right: 0.25em; border-radius: 2px; }
     .map-item p { font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }
@@ -81,6 +82,7 @@
     <h2>Niño3.4 (ENSO)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_nino34.png" alt="Niño3.4 (ENSO) time series">
           <div class="map-col">
@@ -98,6 +100,7 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_nino34.png" alt="Niño3.4 (ENSO) time series">
           <div class="map-col">
@@ -120,6 +123,7 @@
     <h2>IOD (Indian Ocean Dipole)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
           <div class="map-col">
@@ -137,6 +141,7 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
           <div class="map-col">
@@ -159,6 +164,7 @@
     <h2>TNA (Tropical N. Atlantic)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_tna.png" alt="TNA (Tropical N. Atlantic) time series">
           <div class="map-col">
@@ -176,6 +182,7 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_tna.png" alt="TNA (Tropical N. Atlantic) time series">
           <div class="map-col">
@@ -198,6 +205,7 @@
     <h2>TSA (Tropical S. Atlantic)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
           <div class="map-col">
@@ -215,6 +223,7 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
           <div class="map-col">
@@ -237,6 +246,7 @@
     <h2>AMM (Atlantic Meridional Mode)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
           <div class="map-col">
@@ -254,6 +264,7 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
           <div class="map-col">
@@ -276,6 +287,7 @@
     <h2>PDO (Pacific Decadal Oscillation)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
+        <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
           <div class="map-col">
@@ -293,6 +305,7 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
+        <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
           <div class="map-col">
@@ -374,7 +387,7 @@
         e.preventDefault();
         const r = container.getBoundingClientRect();
         const mx = e.clientX - r.left, my = e.clientY - r.top;
-        const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+        const factor = e.deltaY < 0 ? 1.08 : 1 / 1.08;
         const imgX = (mx - ox) / scale, imgY = (my - oy) / scale;
         scale = Math.min(Math.max(scale * factor, 1), 12);
         ox = mx - imgX * scale;
