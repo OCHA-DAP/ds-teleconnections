@@ -26,15 +26,10 @@
       margin-bottom: 1rem;
     }
     @media (max-width: 900px) { .map-pair { grid-template-columns: 1fr; } }
-    .map-item {
-      background: white;
-      border: 1px solid #dde3ec;
-      border-radius: 4px;
-      padding: 0.6rem;
-    }
+    .map-item { padding: 0.2rem 0; }
     .map-with-ts { display: flex; align-items: flex-start; gap: 0; }
-    .map-with-ts .ts-img { flex: 0 0 22%; max-width: 22%; height: auto; display: block; }
-    .map-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .map-col { flex: 1; min-width: 0; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; }
+    .ts-col { flex: 0 0 22%; max-width: 22%; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; margin-right: 0.4rem; }
     .map-zoom { overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }
     .map-zoom img { width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }
     .map-title { font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }
@@ -82,10 +77,10 @@
     <h2>Niño3.4 (ENSO)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_nino34.png" alt="Niño3.4 (ENSO) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_nino34.png" alt="Niño3.4 (ENSO) total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -100,10 +95,10 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_nino34.png" alt="Niño3.4 (ENSO) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -123,10 +118,10 @@
     <h2>IOD (Indian Ocean Dipole)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -141,10 +136,10 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -164,10 +159,10 @@
     <h2>TNA (Tropical N. Atlantic)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_tna.png" alt="TNA (Tropical N. Atlantic) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -182,10 +177,10 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_tna.png" alt="TNA (Tropical N. Atlantic) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -205,10 +200,10 @@
     <h2>TSA (Tropical S. Atlantic)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -223,10 +218,10 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -246,10 +241,10 @@
     <h2>AMM (Atlantic Meridional Mode)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -264,10 +259,10 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -287,10 +282,10 @@
     <h2>PDO (Pacific Decadal Oscillation)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -305,10 +300,10 @@
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>

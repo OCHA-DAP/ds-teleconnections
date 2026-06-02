@@ -642,12 +642,15 @@ def plot_index_map(
     fig_h = map_w * _MAP_DY / _MAP_DX
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Time series panel (saved separately) ---
-    if indices is not None and index in indices.columns:
+    # --- Time series panel (saved separately, shared across total/partial) ---
+    ts_path = out_dir / f"ts_{index}.png"
+    if not ts_path.exists() and indices is not None and index in indices.columns:
+        index_label_ts = INDEX_LABELS.get(index, index.upper())
         fig_ts, ax_ts = plt.subplots(figsize=(ts_w, fig_h))
-        fig_ts.subplots_adjust(left=0.12, right=0.88, top=0.92, bottom=0.14)
+        fig_ts.subplots_adjust(left=0.14, right=0.86, top=0.85, bottom=0.14)
+        ax_ts.set_title(f"{index_label_ts}\nHistorical values", fontsize=10, pad=6)
         _draw_ts_panel(ax_ts, indices[index], index)
-        fig_ts.savefig(out_dir / f"ts_{kind}_{index}.png", dpi=200, bbox_inches="tight")
+        fig_ts.savefig(ts_path, dpi=200, bbox_inches="tight")
         plt.close(fig_ts)
 
     # --- Choropleth map ---
@@ -1091,10 +1094,10 @@ def generate_html_report(cfg: dict) -> None:
     <h2>{label}</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <p class="map-title">Correlation of {label} with total seasonal rainfall — total association</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_total_{name}.png" alt="{label} time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of {label} with total seasonal rainfall — total association</p>
             <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -1109,10 +1112,10 @@ def generate_html_report(cfg: dict) -> None:
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <p class="map-title">Correlation of {label} with total seasonal rainfall — unique signal</p>
         <div class="map-with-ts">
-          <img class="ts-img" src="maps/ts_partial_{name}.png" alt="{label} time series">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
           <div class="map-col">
+            <p class="map-title">Correlation of {label} with total seasonal rainfall — unique signal</p>
             <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
@@ -1157,15 +1160,10 @@ def generate_html_report(cfg: dict) -> None:
       margin-bottom: 1rem;
     }}
     @media (max-width: 900px) {{ .map-pair {{ grid-template-columns: 1fr; }} }}
-    .map-item {{
-      background: white;
-      border: 1px solid #dde3ec;
-      border-radius: 4px;
-      padding: 0.6rem;
-    }}
+    .map-item {{ padding: 0.2rem 0; }}
     .map-with-ts {{ display: flex; align-items: flex-start; gap: 0; }}
-    .map-with-ts .ts-img {{ flex: 0 0 22%; max-width: 22%; height: auto; display: block; }}
-    .map-col {{ flex: 1; min-width: 0; display: flex; flex-direction: column; }}
+    .map-col {{ flex: 1; min-width: 0; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; }}
+    .ts-col {{ flex: 0 0 22%; max-width: 22%; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; margin-right: 0.4rem; }}
     .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
     .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
     .map-title {{ font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }}
