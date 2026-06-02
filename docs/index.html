@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>OCHA Teleconnection Survey</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 1rem 1.5rem;
+      background: #f8f9fa;
+      color: #1a1a1a;
+      line-height: 1.5;
+    }
+    h1 { font-size: 1.5rem; border-bottom: 3px solid #005a9c; padding-bottom: 0.5rem; margin-bottom: 0.25rem; }
+    h2 { font-size: 1.05rem; color: #005a9c; margin-top: 2rem; margin-bottom: 0.5rem; }
+    .meta { font-size: 0.8rem; color: #666; margin-bottom: 0.5rem; }
+    .note { font-size: 0.82rem; color: #444; background: #e8f0fa; border-left: 3px solid #005a9c; padding: 0.5rem 0.75rem; margin-bottom: 1.5rem; }
+    .map-pair {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    @media (max-width: 900px) { .map-pair { grid-template-columns: 1fr; } }
+    .map-item {
+      background: white;
+      border: 1px solid #dde3ec;
+      border-radius: 4px;
+      padding: 0.6rem;
+    }
+    .map-item img { width: 100%; height: auto; display: block; border-radius: 2px; }
+    .map-item p { font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }
+    .map-item p strong { color: #222; }
+    section { margin-bottom: 2rem; }
+    .enso-note { font-size: 0.82rem; color: #444; margin-bottom: 0.5rem; }
+    hr { border: none; border-top: 1px solid #dde3ec; margin: 2rem 0; }
+    .view-toggle {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; gap: 0.5rem; align-items: center;
+      background: #f8f9fa; padding: 0.5rem 0; margin-bottom: 1rem;
+      border-bottom: 1px solid #dde3ec;
+    }
+    .view-toggle span { font-size: 0.82rem; color: #555; margin-right: 0.25rem; }
+    .toggle-btn {
+      padding: 0.3rem 0.85rem; border: 1px solid #005a9c;
+      background: white; color: #005a9c; border-radius: 4px;
+      cursor: pointer; font-size: 0.82rem; transition: background 0.15s;
+    }
+    .toggle-btn.active { background: #005a9c; color: white; }
+    .toggle-btn:hover:not(.active) { background: #e8f0fa; }
+  </style>
+</head>
+<body>
+  <h1>OCHA Teleconnection Survey</h1>
+  <p class="meta">ERA5 1981–2025 &nbsp;·&nbsp; Pearson r, lag sweep 0–6 months &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal = both signs across seasons</p>
+  <div class="view-toggle">
+    <span>View:</span>
+    <button class="toggle-btn" data-show="total">Total association</button>
+    <button class="toggle-btn active" data-show="partial">Unique signal</button>
+  </div>
+  <div class="note">
+    Each map shows the <strong>strongest significant correlation</strong> between a climate index and trimester rainfall across all countries.
+    <strong>Total</strong> maps show the raw pairwise association (including signal shared with other modes).
+    <strong>Unique signal</strong> maps show the partial correlation, holding other modes constant —
+    shrinkage from Total to Unique indicates that modes share variance, not that the signal is absent.
+    Trimester labels follow the start-of-season convention (DJF 2024 = Dec 2024 – Feb 2025).
+  </div>
+
+  <section>
+    <h2>ENSO Composites — El Niño &amp; La Niña</h2>
+    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each country's headline trimester during El Niño and La Niña years. Classified by DJF Niño3.4 ≥ ±0.5 °C. The two maps are independent — ENSO impacts are asymmetric.</p>
+    <div class="map-pair">
+      <div class="map-item">
+        <img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly">
+        <p><strong>El Niño composite</strong> — mean anomaly in El Niño years (red = drier than normal, blue = wetter).</p>
+      </div>
+      <div class="map-item">
+        <img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly">
+        <p><strong>La Niña composite</strong> — mean anomaly in La Niña years. Roughly opposite to El Niño in ENSO-sensitive regions, but magnitude and pattern differ.</p>
+      </div>
+    </div>
+  </section>
+
+  <hr>
+
+  <section>
+    <h2>Niño3.4 (ENSO)</h2>
+    <div class="map-pair">
+      <div class="map-item" data-kind="total">
+        <img src="maps/map_total_nino34.png" alt="Niño3.4 (ENSO) total correlation">
+        <p><strong>Total association</strong> — pairwise r between Niño3.4 (ENSO) and trimester rainfall. Includes signal shared with other climate modes.</p>
+      </div>
+      <div class="map-item" data-kind="partial">
+        <img src="maps/map_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation">
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h2>DMI (Indian Ocean Dipole)</h2>
+    <div class="map-pair">
+      <div class="map-item" data-kind="total">
+        <img src="maps/map_total_dmi.png" alt="DMI (Indian Ocean Dipole) total correlation">
+        <p><strong>Total association</strong> — pairwise r between DMI (Indian Ocean Dipole) and trimester rainfall. Includes signal shared with other climate modes.</p>
+      </div>
+      <div class="map-item" data-kind="partial">
+        <img src="maps/map_partial_dmi.png" alt="DMI (Indian Ocean Dipole) partial correlation">
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h2>TNA (Tropical N. Atlantic)</h2>
+    <div class="map-pair">
+      <div class="map-item" data-kind="total">
+        <img src="maps/map_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation">
+        <p><strong>Total association</strong> — pairwise r between TNA (Tropical N. Atlantic) and trimester rainfall. Includes signal shared with other climate modes.</p>
+      </div>
+      <div class="map-item" data-kind="partial">
+        <img src="maps/map_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation">
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h2>TSA (Tropical S. Atlantic)</h2>
+    <div class="map-pair">
+      <div class="map-item" data-kind="total">
+        <img src="maps/map_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation">
+        <p><strong>Total association</strong> — pairwise r between TSA (Tropical S. Atlantic) and trimester rainfall. Includes signal shared with other climate modes.</p>
+      </div>
+      <div class="map-item" data-kind="partial">
+        <img src="maps/map_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation">
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h2>AMM (Atlantic Meridional Mode)</h2>
+    <div class="map-pair">
+      <div class="map-item" data-kind="total">
+        <img src="maps/map_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation">
+        <p><strong>Total association</strong> — pairwise r between AMM (Atlantic Meridional Mode) and trimester rainfall. Includes signal shared with other climate modes.</p>
+      </div>
+      <div class="map-item" data-kind="partial">
+        <img src="maps/map_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation">
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+      </div>
+    </div>
+  </section>
+  <section>
+    <h2>PDO (Pacific Decadal Oscillation)</h2>
+    <div class="map-pair">
+      <div class="map-item" data-kind="total">
+        <img src="maps/map_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation">
+        <p><strong>Total association</strong> — pairwise r between PDO (Pacific Decadal Oscillation) and trimester rainfall. Includes signal shared with other climate modes.</p>
+      </div>
+      <div class="map-item" data-kind="partial">
+        <img src="maps/map_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation">
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
+      </div>
+    </div>
+  </section>
+  <hr>
+  <section>
+    <h2>Dominant Climate Mode</h2>
+    <p class="enso-note">Each country colored by whichever index has the strongest significant total correlation with its trimester rainfall. Gray = no reliable signal in any mode.</p>
+    <div class="map-item" style="max-width:100%">
+      <img src="maps/map_dominant_index.png" alt="Dominant climate mode map" style="width:100%;height:auto">
+    </div>
+  </section>
+
+  <script>
+    function applyView(show) {
+      document.querySelectorAll('.map-pair').forEach(pair => {
+        pair.style.gridTemplateColumns = '1fr';
+        pair.querySelectorAll('[data-kind]').forEach(item => {
+          item.style.display = (item.dataset.kind === show) ? '' : 'none';
+        });
+      });
+    }
+    const btns = document.querySelectorAll('.toggle-btn');
+    btns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        btns.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        applyView(btn.dataset.show);
+      });
+    });
+    // Apply default on load
+    applyView('partial');
+  </script>
+</body>
+</html>
