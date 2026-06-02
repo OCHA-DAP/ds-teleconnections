@@ -344,13 +344,17 @@ def load_admin0_gdf(cfg: dict) -> gpd.GeoDataFrame:
         gdf.loc[mask, "iso3"] = gdf.loc[mask, "NAME"].map(_REMAP).fillna("-99")
     # Drop any remaining unrecognized entries (Kosovo, N. Cyprus, etc.)
     gdf = gdf[gdf["iso3"] != "-99"]
-    # Morocco's NE 110m polygon extends south into Western Sahara territory — clip it.
+    # Morocco's NE 110m polygon touches Western Sahara along a shared border that
+    # extends well south of Morocco proper — clip MAR to the latitude of ESH's
+    # northern boundary so only recognised Morocco is shown.
     mar = gdf["iso3"] == "MAR"
     esh = gdf["iso3"] == "ESH"
     if mar.any() and esh.any():
-        esh_union = gdf.loc[esh, "geometry"].union_all()
+        from shapely.geometry import box as _shapely_box
+        esh_north = gdf.loc[esh, "geometry"].union_all().bounds[3]
+        clip = _shapely_box(-30, esh_north, 20, 90)
         gdf.loc[mar, "geometry"] = gdf.loc[mar, "geometry"].apply(
-            lambda g: g.difference(esh_union)
+            lambda g: g.intersection(clip)
         )
     # Dissolve duplicate iso3 rows (e.g. Somalia + remapped Somaliland → single SOM polygon)
     gdf = gdf[["iso3", "geometry"]].dissolve(by="iso3").reset_index()
