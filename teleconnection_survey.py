@@ -84,7 +84,7 @@ INDEX_SOURCES = {
 
 INDEX_LABELS = {
     "nino34": "Niño3.4 (ENSO)",
-    "dmi":    "DMI (Indian Ocean Dipole)",
+    "dmi":    "IOD (Indian Ocean Dipole)",
     "tna":    "TNA (Tropical N. Atlantic)",
     "tsa":    "TSA (Tropical S. Atlantic)",
     "amm":    "AMM (Atlantic Meridional Mode)",
