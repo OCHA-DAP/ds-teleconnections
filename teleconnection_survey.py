@@ -1128,7 +1128,7 @@ def generate_html_report(cfg: dict) -> None:
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>OCHA Teleconnection Survey</title>
+  <title>ERA5 Precipitation Teleconnection Analysis</title>
   <style>
     *, *::before, *::after {{ box-sizing: border-box; }}
     body {{
@@ -1186,7 +1186,7 @@ def generate_html_report(cfg: dict) -> None:
   </style>
 </head>
 <body>
-  <h1>OCHA Teleconnection Survey</h1>
+  <h1>ERA5 Precipitation Teleconnection Analysis</h1>
   <p class="meta">ERA5 1981–{end_year} &nbsp;·&nbsp; Pearson r, lag sweep 0–6 months &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal = both signs across seasons</p>
   <div class="view-toggle">
     <span>View:</span>
