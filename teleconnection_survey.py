@@ -344,6 +344,14 @@ def load_admin0_gdf(cfg: dict) -> gpd.GeoDataFrame:
         gdf.loc[mask, "iso3"] = gdf.loc[mask, "NAME"].map(_REMAP).fillna("-99")
     # Drop any remaining unrecognized entries (Kosovo, N. Cyprus, etc.)
     gdf = gdf[gdf["iso3"] != "-99"]
+    # Morocco's NE 110m polygon extends south into Western Sahara territory — clip it.
+    mar = gdf["iso3"] == "MAR"
+    esh = gdf["iso3"] == "ESH"
+    if mar.any() and esh.any():
+        esh_union = gdf.loc[esh, "geometry"].union_all()
+        gdf.loc[mar, "geometry"] = gdf.loc[mar, "geometry"].apply(
+            lambda g: g.difference(esh_union)
+        )
     # Dissolve duplicate iso3 rows (e.g. Somalia + remapped Somaliland → single SOM polygon)
     gdf = gdf[["iso3", "geometry"]].dissolve(by="iso3").reset_index()
     return gdf
@@ -1047,6 +1055,49 @@ def plot_dominant_index_map(
 
 
 # --------------------------------------------------------------------------- #
+# Index correlation matrix
+# --------------------------------------------------------------------------- #
+def plot_index_corr_matrix(indices: pd.DataFrame, out_dir: Path, end_year: int = 2025) -> None:
+    """Heatmap of Pearson r between all climate indices over the analysis period."""
+    cols = [c for c in INDEX_SOURCES if c in indices.columns]
+    corr = indices.loc[:str(end_year), cols].corr()
+    labels = [INDEX_LABELS[c] for c in cols]
+    n = len(cols)
+
+    fig, ax = plt.subplots(figsize=(6.5, 5.5))
+    cmap = plt.cm.RdBu_r
+    norm = plt.Normalize(vmin=-1, vmax=1)
+
+    for i in range(n):
+        for j in range(n):
+            r = corr.iloc[i, j]
+            ax.add_patch(mpatches.Rectangle(
+                (j, n - 1 - i), 1, 1,
+                facecolor=cmap(norm(r)), edgecolor="white", linewidth=1,
+            ))
+            ax.text(j + 0.5, n - 0.5 - i, f"{r:.2f}",
+                    ha="center", va="center", fontsize=9,
+                    color="white" if abs(r) > 0.55 else "#333")
+
+    ax.set_xlim(0, n); ax.set_ylim(0, n)
+    ax.set_xticks([i + 0.5 for i in range(n)])
+    ax.set_yticks([i + 0.5 for i in range(n)])
+    ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=8)
+    ax.set_yticklabels(labels[::-1], fontsize=8)
+    ax.set_aspect("equal")
+
+    sm = plt.cm.ScalarMappable(cmap=cmap, norm=norm)
+    sm.set_array([])
+    plt.colorbar(sm, ax=ax, shrink=0.75, label="Pearson r")
+
+    ax.set_title(f"Index collinearity (Pearson r, 1981–{end_year})", fontsize=11)
+    fig.tight_layout()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / "index_corr_matrix.png", dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
 # HTML report
 # --------------------------------------------------------------------------- #
 def generate_html_report(cfg: dict) -> None:
@@ -1164,6 +1215,15 @@ def generate_html_report(cfg: dict) -> None:
 {"".join(index_sections)}
   <hr>
   <section>
+    <h2>Index Collinearity</h2>
+    <p class="enso-note">Pearson r between climate indices over the full analysis period (1981–{end_year}). High collinearity (e.g. AMM–TNA r≈0.81) means total vs unique signal may diverge substantially for those modes — shrinkage in the unique-signal map reflects shared variance, not absent signal.</p>
+    <div class="map-item" style="max-width:640px">
+      <img src="maps/index_corr_matrix.png" alt="Index collinearity matrix" style="width:100%;height:auto">
+    </div>
+  </section>
+
+  <hr>
+  <section>
     <h2>Dominant Climate Mode</h2>
     <p class="enso-note">Each country colored by whichever index has the strongest significant total correlation with its trimester rainfall. Gray = no reliable signal in any mode.</p>
     <div class="map-item" style="max-width:100%">
@@ -1245,7 +1305,7 @@ def main(cfg: dict = CONFIG) -> None:
 
     analyzed_isos: set[str] = set(rain.columns.get_level_values("iso3").unique())
 
-    for kind, disp in (("total", disp_total), ("partial", disp_partial)):
+    for kind, disp in (("total", disp_total), ("partial", disp_partial_all)):
         for name in INDEX_SOURCES:
             plot_index_map(disp, gdf, name, cfg["out_dir"],
                            kind=kind, end_year=cfg["end_year"], indices=indices,
@@ -1254,6 +1314,7 @@ def main(cfg: dict = CONFIG) -> None:
     enso_composite_maps(rain, indices, gdf, cfg, rainy=rainy, analyzed_isos=analyzed_isos)
     plot_dominant_index_map(disp_total, gdf, cfg["out_dir"], end_year=cfg["end_year"],
                             analyzed_isos=analyzed_isos)
+    plot_index_corr_matrix(indices, cfg["out_dir"], end_year=cfg["end_year"])
     generate_html_report(cfg)
 
     print(f"done. total={len(total)} partial={len(partial)} "
