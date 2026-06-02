@@ -633,8 +633,8 @@ def plot_index_map(
     g_poly = g[~is_dot]
     g_dot  = g[is_dot]
 
-    ts_w  = 5.0
-    map_w = 17.0
+    ts_w  = 5.5
+    map_w = 22.0
     fig_h = map_w * _MAP_DY / _MAP_DX
     fig = plt.figure(figsize=(ts_w + map_w, fig_h))
     gs  = fig.add_gridspec(1, 2, width_ratios=[ts_w, map_w], wspace=0.06,
@@ -857,7 +857,7 @@ def enso_composite_maps(
         g_poly = g[~is_dot]
         g_dot = g[is_dot]
 
-        map_w = 19.0
+        map_w = 24.0
         fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
 
         _plot_base_layer(ax, g_poly, analyzed_isos or set())
@@ -955,7 +955,7 @@ def plot_dominant_index_map(
     g_poly = g[~is_dot]
     g_dot  = g[is_dot]
 
-    map_w = 16.0
+    map_w = 24.0
     fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
 
     _plot_base_layer(ax, g_poly, analyzed_isos or set())
@@ -1140,9 +1140,8 @@ def generate_html_report(cfg: dict) -> None:
     *, *::before, *::after {{ box-sizing: border-box; }}
     body {{
       font-family: system-ui, -apple-system, sans-serif;
-      max-width: 1400px;
-      margin: 0 auto;
-      padding: 1rem 1.5rem;
+      margin: 0;
+      padding: 0.75rem 1rem;
       background: #f8f9fa;
       color: #1a1a1a;
       line-height: 1.5;
