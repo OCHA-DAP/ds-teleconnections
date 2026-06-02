@@ -34,7 +34,7 @@
     }
     .map-with-ts { display: flex; align-items: flex-start; gap: 0; }
     .map-with-ts .ts-img { flex: 0 0 22%; max-width: 22%; height: auto; display: block; }
-    .map-with-ts .map-zoom { flex: 1; min-width: 0; }
+    .map-col { flex: 1; min-width: 0; display: flex; flex-direction: column; }
     .map-zoom { overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }
     .map-zoom img { width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }
     .map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }
@@ -83,30 +83,34 @@
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_nino34.png" alt="Niño3.4 (ENSO) time series">
-          <div class="map-zoom"><img src="maps/map_total_nino34.png" alt="Niño3.4 (ENSO) total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_nino34.png" alt="Niño3.4 (ENSO) total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_nino34.png" alt="Niño3.4 (ENSO) time series">
-          <div class="map-zoom"><img src="maps/map_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
@@ -118,30 +122,34 @@
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
-          <div class="map-zoom"><img src="maps/map_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
-          <div class="map-zoom"><img src="maps/map_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
@@ -153,30 +161,34 @@
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_tna.png" alt="TNA (Tropical N. Atlantic) time series">
-          <div class="map-zoom"><img src="maps/map_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_tna.png" alt="TNA (Tropical N. Atlantic) time series">
-          <div class="map-zoom"><img src="maps/map_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
@@ -188,30 +200,34 @@
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
-          <div class="map-zoom"><img src="maps/map_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
-          <div class="map-zoom"><img src="maps/map_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
@@ -223,30 +239,34 @@
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
-          <div class="map-zoom"><img src="maps/map_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
-          <div class="map-zoom"><img src="maps/map_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
@@ -258,30 +278,34 @@
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
-          <div class="map-zoom"><img src="maps/map_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
-          <div class="map-zoom"><img src="maps/map_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>

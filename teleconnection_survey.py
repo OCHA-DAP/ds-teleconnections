@@ -169,7 +169,7 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     s = series.dropna()
     if s.empty:
         ax.text(0.5, 0.5, "No data", ha="center", va="center",
-                transform=ax.transAxes, fontsize=7, color="#888")
+                transform=ax.transAxes, fontsize=10, color="#888")
         return
 
     today  = pd.Timestamp.today().normalize()
@@ -197,9 +197,9 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
 
     # Threshold labels on right margin
     ax.text(1.01,  thresh, f"+{thresh}", transform=ax.get_yaxis_transform(),
-            fontsize=7, va="center", color=_TS_STRONG_WARM)
+            fontsize=10, va="center", color=_TS_STRONG_WARM)
     ax.text(1.01, -thresh, f"−{thresh}", transform=ax.get_yaxis_transform(),
-            fontsize=7, va="center", color=_TS_STRONG_COOL)
+            fontsize=10, va="center", color=_TS_STRONG_COOL)
 
     # Current value marker + label
     cur_val  = recent.iloc[-1]
@@ -208,16 +208,16 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
                 color=_ts_color(cur_val, thresh), edgecolors="#333", linewidths=0.5)
     ax.annotate(f" {cur_val:+.2f}",
                 xy=(cur_date, cur_val), xytext=(3, 0),
-                textcoords="offset points", fontsize=8,
+                textcoords="offset points", fontsize=11,
                 color=_ts_color(cur_val, thresh), fontweight="bold", va="center")
 
     # X-axis: one label per year, angled; extend right edge to today
     years = sorted({d.year for d in recent.index} | {today.year})
     ax.set_xticks([pd.Timestamp(y, 7, 1) for y in years])
-    ax.set_xticklabels([str(y) for y in years], rotation=60, ha="right", fontsize=7)
+    ax.set_xticklabels([str(y) for y in years], rotation=60, ha="right", fontsize=10)
 
-    ax.tick_params(axis="y", labelsize=7)
-    ax.set_ylabel("Index value", fontsize=7, labelpad=2)
+    ax.tick_params(axis="y", labelsize=10)
+    ax.set_ylabel("Index value", fontsize=10, labelpad=2)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.set_xlim(cutoff, today)
@@ -226,7 +226,7 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     latest = recent.dropna().index[-1] if recent.dropna().size else None
     if latest is not None:
         ax.text(0.98, 0.97, f"Latest: {latest.strftime('%b %Y')}",
-                transform=ax.transAxes, fontsize=7, color="#666",
+                transform=ax.transAxes, fontsize=10, color="#666",
                 ha="right", va="top")
 
 
@@ -1093,30 +1093,34 @@ def generate_html_report(cfg: dict) -> None:
       <div class="map-item" data-kind="total">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_total_{name}.png" alt="{label} time series">
-          <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
       </div>
       <div class="map-item" data-kind="partial">
         <div class="map-with-ts">
           <img class="ts-img" src="maps/ts_partial_{name}.png" alt="{label} time series">
-          <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
-        </div>
-        <div class="map-legend">
-          <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-          <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-          <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-          <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-          <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-          <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+          <div class="map-col">
+            <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
@@ -1159,7 +1163,7 @@ def generate_html_report(cfg: dict) -> None:
     }}
     .map-with-ts {{ display: flex; align-items: flex-start; gap: 0; }}
     .map-with-ts .ts-img {{ flex: 0 0 22%; max-width: 22%; height: auto; display: block; }}
-    .map-with-ts .map-zoom {{ flex: 1; min-width: 0; }}
+    .map-col {{ flex: 1; min-width: 0; display: flex; flex-direction: column; }}
     .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
     .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
     .map-legend {{ display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }}
