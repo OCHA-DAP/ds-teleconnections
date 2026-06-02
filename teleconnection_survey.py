@@ -637,14 +637,14 @@ def plot_index_map(
     g_poly = g[~is_dot]
     g_dot  = g[is_dot]
 
-    ts_w  = 5.0
-    map_w = 17.0
+    ts_w  = 6.5
+    map_w = 15.0
     fig_h = map_w * _MAP_DY / _MAP_DX
     out_dir.mkdir(parents=True, exist_ok=True)
 
     # --- Time series panel (saved separately, shared across total/partial) ---
     ts_path = out_dir / f"ts_{index}.png"
-    if not ts_path.exists() and indices is not None and index in indices.columns:
+    if indices is not None and index in indices.columns:
         index_label_ts = INDEX_LABELS.get(index, index.upper())
         fig_ts, ax_ts = plt.subplots(figsize=(ts_w, fig_h))
         fig_ts.subplots_adjust(left=0.14, right=0.86, top=0.85, bottom=0.14)
@@ -1163,7 +1163,7 @@ def generate_html_report(cfg: dict) -> None:
     .map-item {{ padding: 0.2rem 0; }}
     .map-with-ts {{ display: flex; align-items: flex-start; gap: 0; }}
     .map-col {{ flex: 1; min-width: 0; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; }}
-    .ts-col {{ flex: 0 0 22%; max-width: 22%; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; margin-right: 0.4rem; }}
+    .ts-col {{ flex: 0 0 30%; max-width: 30%; display: flex; flex-direction: column; background: white; border: 1px solid #dde3ec; border-radius: 4px; padding: 0.5rem; margin-right: 0.4rem; }}
     .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
     .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
     .map-title {{ font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }}
