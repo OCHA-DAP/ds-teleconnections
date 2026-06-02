@@ -633,8 +633,8 @@ def plot_index_map(
     g_poly = g[~is_dot]
     g_dot  = g[is_dot]
 
-    ts_w  = 5.5
-    map_w = 22.0
+    ts_w  = 5.0
+    map_w = 17.0
     fig_h = map_w * _MAP_DY / _MAP_DX
     fig = plt.figure(figsize=(ts_w + map_w, fig_h))
     gs  = fig.add_gridspec(1, 2, width_ratios=[ts_w, map_w], wspace=0.06,
@@ -857,7 +857,7 @@ def enso_composite_maps(
         g_poly = g[~is_dot]
         g_dot = g[is_dot]
 
-        map_w = 24.0
+        map_w = 19.0
         fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
 
         _plot_base_layer(ax, g_poly, analyzed_isos or set())
@@ -955,7 +955,7 @@ def plot_dominant_index_map(
     g_poly = g[~is_dot]
     g_dot  = g[is_dot]
 
-    map_w = 24.0
+    map_w = 19.0
     fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
 
     _plot_base_layer(ax, g_poly, analyzed_isos or set())
@@ -1120,11 +1120,11 @@ def generate_html_report(cfg: dict) -> None:
     <h2>{label}</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <img src="maps/map_total_{name}.png" alt="{label} total correlation">
+        <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
         <p><strong>Total association</strong> — pairwise r between {label} and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <img src="maps/map_partial_{name}.png" alt="{label} partial correlation">
+        <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -1163,7 +1163,8 @@ def generate_html_report(cfg: dict) -> None:
       border-radius: 4px;
       padding: 0.6rem;
     }}
-    .map-item img {{ width: 100%; height: auto; display: block; border-radius: 2px; cursor: zoom-in; }}
+    .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
+    .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
     .map-item p {{ font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }}
     .map-item p strong {{ color: #222; }}
     section {{ margin-bottom: 2rem; }}
@@ -1207,7 +1208,7 @@ def generate_html_report(cfg: dict) -> None:
     <h2>Index Collinearity</h2>
     <p class="enso-note">Pearson r between climate indices over the full analysis period (1981–{end_year}). High collinearity (e.g. AMM–TNA r≈0.81) means total vs unique signal may diverge substantially for those modes — shrinkage in the unique-signal map reflects shared variance, not absent signal.</p>
     <div class="map-item" style="max-width:640px">
-      <img src="maps/index_corr_matrix.png" alt="Index collinearity matrix" style="width:100%;height:auto">
+      <div class="map-zoom"><img src="maps/index_corr_matrix.png" alt="Index collinearity matrix"></div>
     </div>
   </section>
 
@@ -1216,7 +1217,7 @@ def generate_html_report(cfg: dict) -> None:
     <h2>Dominant Climate Mode</h2>
     <p class="enso-note">Each country colored by whichever index has the strongest significant total correlation with its trimester rainfall. Gray = no reliable signal in any mode.</p>
     <div class="map-item" style="max-width:100%">
-      <img src="maps/map_dominant_index.png" alt="Dominant climate mode map" style="width:100%;height:auto">
+      <div class="map-zoom"><img src="maps/map_dominant_index.png" alt="Dominant climate mode map"></div>
     </div>
   </section>
 
@@ -1226,63 +1227,63 @@ def generate_html_report(cfg: dict) -> None:
     <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each country's headline trimester when Niño3.4 ≥ ±0.5 concurrent with that trimester. The two maps are independent — ENSO impacts are asymmetric.</p>
     <div class="map-pair">
       <div class="map-item">
-        <img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly">
+        <div class="map-zoom"><img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly"></div>
         <p><strong>El Niño composite</strong> — mean anomaly when Niño3.4 ≥ +0.5 (brown = drier than normal, blue = wetter).</p>
       </div>
       <div class="map-item">
-        <img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly">
+        <div class="map-zoom"><img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly"></div>
         <p><strong>La Niña composite</strong> — mean anomaly when Niño3.4 ≤ −0.5. Roughly opposite to El Niño in ENSO-sensitive regions, but magnitude and pattern differ.</p>
       </div>
     </div>
   </section>
 
   <script>
-    // Click-to-zoom lightbox: scroll to zoom, drag to pan, click backdrop or Esc to close
-    function initZoom() {{
-      document.querySelectorAll('.map-item img').forEach(img => {{
-        img.style.cursor = 'zoom-in';
-        img.addEventListener('click', () => {{
-          const overlay = document.createElement('div');
-          overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9000;overflow:hidden;';
-          const inner = document.createElement('div');
-          inner.style.cssText = 'width:100%;height:100%;overflow:hidden;position:relative;';
-          const z = document.createElement('img');
-          z.src = img.src;
-          z.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:auto;cursor:grab;transform-origin:0 0;user-select:none;';
-          let scale=1, ox=0, oy=0, dragging=false, sx, sy;
-          const apply = () => {{ z.style.transform = `translate(${{ox}}px,${{oy}}px) scale(${{scale}})`; }};
-          inner.addEventListener('wheel', e => {{
-            e.preventDefault();
-            const r = inner.getBoundingClientRect();
-            const mx = e.clientX - r.left, my = e.clientY - r.top;
-            const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
-            ox = mx - (mx - ox) * factor;
-            oy = my - (my - oy) * factor;
-            scale = Math.min(Math.max(scale * factor, 0.3), 10);
-            apply();
-          }}, {{passive:false}});
-          z.addEventListener('mousedown', e => {{
-            dragging=true; sx=e.clientX-ox; sy=e.clientY-oy; z.style.cursor='grabbing'; e.preventDefault();
-          }});
-          window.addEventListener('mousemove', e => {{ if(!dragging) return; ox=e.clientX-sx; oy=e.clientY-sy; apply(); }});
-          window.addEventListener('mouseup', () => {{ dragging=false; z.style.cursor='grab'; }});
-          // Close on backdrop click (not on the image itself)
-          overlay.addEventListener('click', e => {{ if(e.target===overlay||e.target===inner) overlay.remove(); }});
-          document.addEventListener('keydown', function esc(e) {{ if(e.key==='Escape'){{overlay.remove(); document.removeEventListener('keydown',esc);}} }});
-          const btn = document.createElement('button');
-          btn.textContent = '✕  close';
-          btn.style.cssText = 'position:absolute;top:.75rem;right:.75rem;z-index:1;background:rgba(255,255,255,0.9);border:none;border-radius:4px;padding:.3rem .7rem;cursor:pointer;font-size:.85rem;';
-          btn.addEventListener('click', () => overlay.remove());
-          inner.appendChild(z); overlay.appendChild(inner); overlay.appendChild(btn);
-          document.body.appendChild(overlay);
-          // Fit image to window on open
-          const iw = img.naturalWidth || z.width;
-          const fit = Math.min(window.innerWidth/iw, window.innerHeight/(iw*(92/280)), 1);
-          scale=fit; ox=0; oy=0; apply();
-        }});
+    // Inline scroll-to-zoom on every .map-zoom container.
+    // Scroll: zoom centred on cursor. Drag: pan when zoomed in. Double-click: reset.
+    document.querySelectorAll('.map-zoom').forEach(container => {{
+      const img = container.querySelector('img');
+      let scale = 1, ox = 0, oy = 0, dragging = false, sx, sy;
+      const apply = () => {{
+        img.style.transform = `translate(${{ox}}px,${{oy}}px) scale(${{scale}})`;
+      }};
+      const clamp = () => {{
+        const cw = container.clientWidth, ch = container.clientHeight;
+        const iw = img.offsetWidth * scale, ih = img.offsetHeight * scale;
+        ox = Math.min(0, Math.max(ox, cw - iw));
+        oy = Math.min(0, Math.max(oy, ch - ih));
+      }};
+      container.addEventListener('wheel', e => {{
+        e.preventDefault();
+        const r = container.getBoundingClientRect();
+        const mx = e.clientX - r.left, my = e.clientY - r.top;
+        const factor = e.deltaY < 0 ? 1.2 : 1 / 1.2;
+        const imgX = (mx - ox) / scale, imgY = (my - oy) / scale;
+        scale = Math.min(Math.max(scale * factor, 1), 12);
+        ox = mx - imgX * scale;
+        oy = my - imgY * scale;
+        clamp();
+        apply();
+        img.style.cursor = scale > 1 ? 'grab' : 'default';
+      }}, {{passive: false}});
+      img.addEventListener('mousedown', e => {{
+        if (scale === 1) return;
+        dragging = true; sx = e.clientX - ox; sy = e.clientY - oy;
+        img.style.cursor = 'grabbing'; e.preventDefault();
       }});
-    }}
-    initZoom();
+      window.addEventListener('mousemove', e => {{
+        if (!dragging) return;
+        ox = e.clientX - sx; oy = e.clientY - sy;
+        clamp(); apply();
+      }});
+      window.addEventListener('mouseup', () => {{
+        dragging = false;
+        img.style.cursor = scale > 1 ? 'grab' : 'default';
+      }});
+      container.addEventListener('dblclick', () => {{
+        scale = 1; ox = 0; oy = 0; apply();
+        img.style.cursor = 'default';
+      }});
+    }});
 
     function applyView(show) {{
       document.querySelectorAll('.map-pair').forEach(pair => {{
