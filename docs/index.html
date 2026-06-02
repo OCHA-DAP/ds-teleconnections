@@ -31,7 +31,7 @@
       border-radius: 4px;
       padding: 0.6rem;
     }
-    .map-item img { width: 100%; height: auto; display: block; border-radius: 2px; }
+    .map-item img { width: 100%; height: auto; display: block; border-radius: 2px; cursor: zoom-in; }
     .map-item p { font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }
     .map-item p strong { color: #222; }
     section { margin-bottom: 2rem; }
@@ -183,6 +183,53 @@
   </section>
 
   <script>
+    // Click-to-zoom lightbox: scroll to zoom, drag to pan, click backdrop or Esc to close
+    function initZoom() {
+      document.querySelectorAll('.map-item img').forEach(img => {
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => {
+          const overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9000;overflow:hidden;';
+          const inner = document.createElement('div');
+          inner.style.cssText = 'width:100%;height:100%;overflow:hidden;position:relative;';
+          const z = document.createElement('img');
+          z.src = img.src;
+          z.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:auto;cursor:grab;transform-origin:0 0;user-select:none;';
+          let scale=1, ox=0, oy=0, dragging=false, sx, sy;
+          const apply = () => { z.style.transform = `translate(${ox}px,${oy}px) scale(${scale})`; };
+          inner.addEventListener('wheel', e => {
+            e.preventDefault();
+            const r = inner.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+            ox = mx - (mx - ox) * factor;
+            oy = my - (my - oy) * factor;
+            scale = Math.min(Math.max(scale * factor, 0.3), 10);
+            apply();
+          }, {passive:false});
+          z.addEventListener('mousedown', e => {
+            dragging=true; sx=e.clientX-ox; sy=e.clientY-oy; z.style.cursor='grabbing'; e.preventDefault();
+          });
+          window.addEventListener('mousemove', e => { if(!dragging) return; ox=e.clientX-sx; oy=e.clientY-sy; apply(); });
+          window.addEventListener('mouseup', () => { dragging=false; z.style.cursor='grab'; });
+          // Close on backdrop click (not on the image itself)
+          overlay.addEventListener('click', e => { if(e.target===overlay||e.target===inner) overlay.remove(); });
+          document.addEventListener('keydown', function esc(e) { if(e.key==='Escape'){overlay.remove(); document.removeEventListener('keydown',esc);} });
+          const btn = document.createElement('button');
+          btn.textContent = '✕  close';
+          btn.style.cssText = 'position:absolute;top:.75rem;right:.75rem;z-index:1;background:rgba(255,255,255,0.9);border:none;border-radius:4px;padding:.3rem .7rem;cursor:pointer;font-size:.85rem;';
+          btn.addEventListener('click', () => overlay.remove());
+          inner.appendChild(z); overlay.appendChild(inner); overlay.appendChild(btn);
+          document.body.appendChild(overlay);
+          // Fit image to window on open
+          const iw = img.naturalWidth || z.width;
+          const fit = Math.min(window.innerWidth/iw, window.innerHeight/(iw*(92/280)), 1);
+          scale=fit; ox=0; oy=0; apply();
+        });
+      });
+    }
+    initZoom();
+
     function applyView(show) {
       document.querySelectorAll('.map-pair').forEach(pair => {
         pair.style.gridTemplateColumns = '1fr';

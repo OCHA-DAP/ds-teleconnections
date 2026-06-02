@@ -197,27 +197,27 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
 
     # Threshold labels on right margin
     ax.text(1.01,  thresh, f"+{thresh}", transform=ax.get_yaxis_transform(),
-            fontsize=5, va="center", color=_TS_STRONG_WARM)
+            fontsize=7, va="center", color=_TS_STRONG_WARM)
     ax.text(1.01, -thresh, f"−{thresh}", transform=ax.get_yaxis_transform(),
-            fontsize=5, va="center", color=_TS_STRONG_COOL)
+            fontsize=7, va="center", color=_TS_STRONG_COOL)
 
     # Current value marker + label
     cur_val  = recent.iloc[-1]
     cur_date = recent.index[-1]
-    ax.scatter([cur_date], [cur_val], s=22, zorder=5,
+    ax.scatter([cur_date], [cur_val], s=30, zorder=5,
                 color=_ts_color(cur_val, thresh), edgecolors="#333", linewidths=0.5)
     ax.annotate(f" {cur_val:+.2f}",
                 xy=(cur_date, cur_val), xytext=(3, 0),
-                textcoords="offset points", fontsize=5.5,
+                textcoords="offset points", fontsize=8,
                 color=_ts_color(cur_val, thresh), fontweight="bold", va="center")
 
     # X-axis: one label per year, angled; extend right edge to today
     years = sorted({d.year for d in recent.index} | {today.year})
     ax.set_xticks([pd.Timestamp(y, 7, 1) for y in years])
-    ax.set_xticklabels([str(y) for y in years], rotation=60, ha="right", fontsize=5)
+    ax.set_xticklabels([str(y) for y in years], rotation=60, ha="right", fontsize=7)
 
-    ax.tick_params(axis="y", labelsize=5.5)
-    ax.set_ylabel("Index value", fontsize=5.5, labelpad=2)
+    ax.tick_params(axis="y", labelsize=7)
+    ax.set_ylabel("Index value", fontsize=7, labelpad=2)
     ax.spines["top"].set_visible(False)
     ax.spines["right"].set_visible(False)
     ax.set_xlim(cutoff, today)
@@ -226,7 +226,7 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     latest = recent.dropna().index[-1] if recent.dropna().size else None
     if latest is not None:
         ax.text(0.98, 0.97, f"Latest: {latest.strftime('%b %Y')}",
-                transform=ax.transAxes, fontsize=5, color="#666",
+                transform=ax.transAxes, fontsize=7, color="#666",
                 ha="right", va="top")
 
 
@@ -692,19 +692,19 @@ def plot_index_map(
             rp = upper.representative_point()
             ax.annotate(f"{row['tri_pos']}\nL{int(row['lag_pos'])}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=4.5, color="black")
+                        fontsize=6.5, color="black")
         if not lower.is_empty:
             rp = lower.representative_point()
             ax.annotate(f"{row['tri_neg']}\nL{int(row['lag_neg'])}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=4.5, color="black")
+                        fontsize=6.5, color="black")
 
     # Unidirectional annotations
     for _, row in uni_poly.iterrows():
         c = row.geometry.representative_point()
         ax.annotate(f"{row['trimester']}\nL{int(row['lag'])}",
                     (c.x, c.y), ha="center", va="center",
-                    fontsize=4.5, color="black")
+                    fontsize=6.5, color="black")
 
     # Dot countries
     for _, row in g_dot.iterrows():
@@ -722,14 +722,14 @@ def plot_index_map(
                                          linewidth=0.5, zorder=5))
             ax.annotate(f"{row['tri_pos']}/L{int(row['lag_pos'])}",
                         (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                        fontsize=3.5, color="#222", zorder=6)
+                        fontsize=5.5, color="#222", zorder=6)
         else:
             r_val = row.get("r", np.nan)
             if pd.notna(r_val):
                 face, edge = _r_colors(r_val)
                 ax.annotate(f"{row['trimester']}/L{int(row['lag'])}",
                             (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                            fontsize=3.5, color="#222", zorder=6)
+                            fontsize=5.5, color="#222", zorder=6)
             elif (analyzed_isos and row["iso3"] in analyzed_isos):
                 face, edge = "#E8E8E8", "#CCCCCC"
             else:
@@ -870,7 +870,7 @@ def enso_composite_maps(
             for _, row in has_poly.iterrows():
                 c = row.geometry.representative_point()
                 ax.annotate(row["trimester"], (c.x, c.y),
-                            ha="center", va="center", fontsize=4.5, color="black")
+                            ha="center", va="center", fontsize=6.5, color="black")
 
         # Dot countries
         for _, row in g_dot.iterrows():
@@ -882,7 +882,7 @@ def enso_composite_maps(
                 face = enso_cmap(enso_norm(anom_val))
                 edge = "#666"
                 ax.annotate(row["trimester"], (cx, cy + _DOT_R * 1.4),
-                            ha="center", va="bottom", fontsize=3.5, color="#222", zorder=6)
+                            ha="center", va="bottom", fontsize=5.5, color="#222", zorder=6)
             elif analyzed_isos and row["iso3"] in analyzed_isos:
                 face, edge = "#E8E8E8", "#CCCCCC"
             else:
@@ -972,7 +972,7 @@ def plot_dominant_index_map(
             c = row.geometry.representative_point()
             ax.annotate(f"{row['trimester1']}\nL{row['lag1']}",
                         (c.x, c.y), ha="center", va="center",
-                        fontsize=4.5, color="white", fontweight="bold")
+                        fontsize=6.5, color="white", fontweight="bold")
 
     # Two-index countries: diagonal split
     for _, row in has_two.iterrows():
@@ -992,12 +992,12 @@ def plot_dominant_index_map(
             rp = upper.representative_point()
             ax.annotate(f"{row['trimester1']}\nL{row['lag1']}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=4.5, color="white", fontweight="bold")
+                        fontsize=6.5, color="white", fontweight="bold")
         if not lower.is_empty:
             rp = lower.representative_point()
             ax.annotate(f"{row['trimester2']}\nL{row['lag2']}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=4.5, color="white", fontweight="bold")
+                        fontsize=6.5, color="white", fontweight="bold")
 
     # Dot countries
     for _, row in g_dot.iterrows():
@@ -1022,14 +1022,14 @@ def plot_dominant_index_map(
                                          linewidth=0.5, zorder=5))
             ax.annotate(f"{row['trimester1']}/L{row['lag1']}",
                         (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                        fontsize=3.5, color="#222", zorder=6)
+                        fontsize=5.5, color="#222", zorder=6)
         else:
             face = INDEX_COLORS.get(row["index1"], "#cccccc")
             ax.add_patch(mpatches.Circle((cx, cy), _DOT_R, facecolor=face,
                                           edgecolor="#333", linewidth=0.5, zorder=5))
             ax.annotate(f"{row['trimester1']}/L{row['lag1']}",
                         (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                        fontsize=3.5, color="#222", zorder=6)
+                        fontsize=5.5, color="#222", zorder=6)
 
     # Legend
     handles = [
@@ -1163,7 +1163,7 @@ def generate_html_report(cfg: dict) -> None:
       border-radius: 4px;
       padding: 0.6rem;
     }}
-    .map-item img {{ width: 100%; height: auto; display: block; border-radius: 2px; }}
+    .map-item img {{ width: 100%; height: auto; display: block; border-radius: 2px; cursor: zoom-in; }}
     .map-item p {{ font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }}
     .map-item p strong {{ color: #222; }}
     section {{ margin-bottom: 2rem; }}
@@ -1237,6 +1237,53 @@ def generate_html_report(cfg: dict) -> None:
   </section>
 
   <script>
+    // Click-to-zoom lightbox: scroll to zoom, drag to pan, click backdrop or Esc to close
+    function initZoom() {{
+      document.querySelectorAll('.map-item img').forEach(img => {{
+        img.style.cursor = 'zoom-in';
+        img.addEventListener('click', () => {{
+          const overlay = document.createElement('div');
+          overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.88);z-index:9000;overflow:hidden;';
+          const inner = document.createElement('div');
+          inner.style.cssText = 'width:100%;height:100%;overflow:hidden;position:relative;';
+          const z = document.createElement('img');
+          z.src = img.src;
+          z.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:auto;cursor:grab;transform-origin:0 0;user-select:none;';
+          let scale=1, ox=0, oy=0, dragging=false, sx, sy;
+          const apply = () => {{ z.style.transform = `translate(${{ox}}px,${{oy}}px) scale(${{scale}})`; }};
+          inner.addEventListener('wheel', e => {{
+            e.preventDefault();
+            const r = inner.getBoundingClientRect();
+            const mx = e.clientX - r.left, my = e.clientY - r.top;
+            const factor = e.deltaY < 0 ? 1.15 : 1/1.15;
+            ox = mx - (mx - ox) * factor;
+            oy = my - (my - oy) * factor;
+            scale = Math.min(Math.max(scale * factor, 0.3), 10);
+            apply();
+          }}, {{passive:false}});
+          z.addEventListener('mousedown', e => {{
+            dragging=true; sx=e.clientX-ox; sy=e.clientY-oy; z.style.cursor='grabbing'; e.preventDefault();
+          }});
+          window.addEventListener('mousemove', e => {{ if(!dragging) return; ox=e.clientX-sx; oy=e.clientY-sy; apply(); }});
+          window.addEventListener('mouseup', () => {{ dragging=false; z.style.cursor='grab'; }});
+          // Close on backdrop click (not on the image itself)
+          overlay.addEventListener('click', e => {{ if(e.target===overlay||e.target===inner) overlay.remove(); }});
+          document.addEventListener('keydown', function esc(e) {{ if(e.key==='Escape'){{overlay.remove(); document.removeEventListener('keydown',esc);}} }});
+          const btn = document.createElement('button');
+          btn.textContent = '✕  close';
+          btn.style.cssText = 'position:absolute;top:.75rem;right:.75rem;z-index:1;background:rgba(255,255,255,0.9);border:none;border-radius:4px;padding:.3rem .7rem;cursor:pointer;font-size:.85rem;';
+          btn.addEventListener('click', () => overlay.remove());
+          inner.appendChild(z); overlay.appendChild(inner); overlay.appendChild(btn);
+          document.body.appendChild(overlay);
+          // Fit image to window on open
+          const iw = img.naturalWidth || z.width;
+          const fit = Math.min(window.innerWidth/iw, window.innerHeight/(iw*(92/280)), 1);
+          scale=fit; ox=0; oy=0; apply();
+        }});
+      }});
+    }}
+    initZoom();
+
     function applyView(show) {{
       document.querySelectorAll('.map-pair').forEach(pair => {{
         pair.style.gridTemplateColumns = '1fr';
