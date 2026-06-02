@@ -8,7 +8,8 @@
     *, *::before, *::after { box-sizing: border-box; }
     body {
       font-family: system-ui, -apple-system, sans-serif;
-      margin: 0;
+      max-width: 1400px;
+      margin: 0 auto;
       padding: 0.75rem 1rem;
       background: #f8f9fa;
       color: #1a1a1a;
@@ -31,6 +32,9 @@
       border-radius: 4px;
       padding: 0.6rem;
     }
+    .map-with-ts { display: flex; align-items: flex-start; gap: 0; }
+    .map-with-ts .ts-img { flex: 0 0 22%; max-width: 22%; height: auto; display: block; }
+    .map-with-ts .map-zoom { flex: 1; min-width: 0; }
     .map-zoom { overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }
     .map-zoom img { width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }
     .map-item p { font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }
@@ -75,11 +79,17 @@
     <h2>Niño3.4 (ENSO)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_nino34.png" alt="Niño3.4 (ENSO) total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_nino34.png" alt="Niño3.4 (ENSO) time series">
+          <div class="map-zoom"><img src="maps/map_total_nino34.png" alt="Niño3.4 (ENSO) total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between Niño3.4 (ENSO) and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_nino34.png" alt="Niño3.4 (ENSO) time series">
+          <div class="map-zoom"><img src="maps/map_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -88,11 +98,17 @@
     <h2>IOD (Indian Ocean Dipole)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
+          <div class="map-zoom"><img src="maps/map_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between IOD (Indian Ocean Dipole) and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_dmi.png" alt="IOD (Indian Ocean Dipole) time series">
+          <div class="map-zoom"><img src="maps/map_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -101,11 +117,17 @@
     <h2>TNA (Tropical N. Atlantic)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_tna.png" alt="TNA (Tropical N. Atlantic) time series">
+          <div class="map-zoom"><img src="maps/map_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between TNA (Tropical N. Atlantic) and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_tna.png" alt="TNA (Tropical N. Atlantic) time series">
+          <div class="map-zoom"><img src="maps/map_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -114,11 +136,17 @@
     <h2>TSA (Tropical S. Atlantic)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
+          <div class="map-zoom"><img src="maps/map_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between TSA (Tropical S. Atlantic) and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_tsa.png" alt="TSA (Tropical S. Atlantic) time series">
+          <div class="map-zoom"><img src="maps/map_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -127,11 +155,17 @@
     <h2>AMM (Atlantic Meridional Mode)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
+          <div class="map-zoom"><img src="maps/map_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between AMM (Atlantic Meridional Mode) and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_amm.png" alt="AMM (Atlantic Meridional Mode) time series">
+          <div class="map-zoom"><img src="maps/map_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -140,11 +174,17 @@
     <h2>PDO (Pacific Decadal Oscillation)</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
+          <div class="map-zoom"><img src="maps/map_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between PDO (Pacific Decadal Oscillation) and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) time series">
+          <div class="map-zoom"><img src="maps/map_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>

@@ -625,7 +625,11 @@ def plot_index_map(
     indices: pd.DataFrame | None = None,
     analyzed_isos: set[str] | None = None,
 ) -> None:
-    """kind: 'total' (pairwise r) or 'partial' (other modes held constant)."""
+    """kind: 'total' (pairwise r) or 'partial' (other modes held constant).
+
+    Saves two PNGs: ts_{kind}_{index}.png (time series panel) and
+    map_{kind}_{index}.png (choropleth only), so the HTML can make only
+    the map zoomable while the TS panel stays static beside it."""
     sub = disp[disp["index"] == index]
     g = gdf.merge(sub, on="iso3", how="left")
 
@@ -636,17 +640,18 @@ def plot_index_map(
     ts_w  = 5.0
     map_w = 17.0
     fig_h = map_w * _MAP_DY / _MAP_DX
-    fig = plt.figure(figsize=(ts_w + map_w, fig_h))
-    gs  = fig.add_gridspec(1, 2, width_ratios=[ts_w, map_w], wspace=0.06,
-                            left=0.04, right=0.97, top=0.88, bottom=0.10)
-    ax_ts = fig.add_subplot(gs[0])
-    ax    = fig.add_subplot(gs[1])
+    out_dir.mkdir(parents=True, exist_ok=True)
 
+    # --- Time series panel (saved separately) ---
     if indices is not None and index in indices.columns:
+        fig_ts, ax_ts = plt.subplots(figsize=(ts_w, fig_h))
+        fig_ts.subplots_adjust(left=0.12, right=0.88, top=0.92, bottom=0.14)
         _draw_ts_panel(ax_ts, indices[index], index)
-    else:
-        ax_ts.axis("off")
+        fig_ts.savefig(out_dir / f"ts_{kind}_{index}.png", dpi=200, bbox_inches="tight")
+        plt.close(fig_ts)
 
+    # --- Choropleth map ---
+    fig, ax = plt.subplots(figsize=(map_w, fig_h))
     _plot_base_layer(ax, g_poly, analyzed_isos or set())
 
     has_sig  = g_poly["r"].notna()
@@ -670,7 +675,7 @@ def plot_index_map(
         mpatches.Patch(facecolor="#F8F8F8", edgecolor="#EBEBEB", linewidth=0.5,
                        label="Not calculated"),
     ]
-    ax.legend(handles=legend_handles, loc="upper left", fontsize=6.5,
+    ax.legend(handles=legend_handles, loc="upper left", fontsize=4.5,
               framealpha=0.92, edgecolor="#ccc", borderpad=0.6)
 
     # Bidirectional countries: diagonal 50/50 split
@@ -692,19 +697,19 @@ def plot_index_map(
             rp = upper.representative_point()
             ax.annotate(f"{row['tri_pos']}\nL{int(row['lag_pos'])}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=6.5, color="black")
+                        fontsize=4.5, color="black")
         if not lower.is_empty:
             rp = lower.representative_point()
             ax.annotate(f"{row['tri_neg']}\nL{int(row['lag_neg'])}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=6.5, color="black")
+                        fontsize=4.5, color="black")
 
     # Unidirectional annotations
     for _, row in uni_poly.iterrows():
         c = row.geometry.representative_point()
         ax.annotate(f"{row['trimester']}\nL{int(row['lag'])}",
                     (c.x, c.y), ha="center", va="center",
-                    fontsize=6.5, color="black")
+                    fontsize=4.5, color="black")
 
     # Dot countries
     for _, row in g_dot.iterrows():
@@ -722,14 +727,14 @@ def plot_index_map(
                                          linewidth=0.5, zorder=5))
             ax.annotate(f"{row['tri_pos']}/L{int(row['lag_pos'])}",
                         (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                        fontsize=5.5, color="#222", zorder=6)
+                        fontsize=3.5, color="#222", zorder=6)
         else:
             r_val = row.get("r", np.nan)
             if pd.notna(r_val):
                 face, edge = _r_colors(r_val)
                 ax.annotate(f"{row['trimester']}/L{int(row['lag'])}",
                             (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                            fontsize=5.5, color="#222", zorder=6)
+                            fontsize=3.5, color="#222", zorder=6)
             elif (analyzed_isos and row["iso3"] in analyzed_isos):
                 face, edge = "#E8E8E8", "#CCCCCC"
             else:
@@ -870,7 +875,7 @@ def enso_composite_maps(
             for _, row in has_poly.iterrows():
                 c = row.geometry.representative_point()
                 ax.annotate(row["trimester"], (c.x, c.y),
-                            ha="center", va="center", fontsize=6.5, color="black")
+                            ha="center", va="center", fontsize=4.5, color="black")
 
         # Dot countries
         for _, row in g_dot.iterrows():
@@ -882,7 +887,7 @@ def enso_composite_maps(
                 face = enso_cmap(enso_norm(anom_val))
                 edge = "#666"
                 ax.annotate(row["trimester"], (cx, cy + _DOT_R * 1.4),
-                            ha="center", va="bottom", fontsize=5.5, color="#222", zorder=6)
+                            ha="center", va="bottom", fontsize=3.5, color="#222", zorder=6)
             elif analyzed_isos and row["iso3"] in analyzed_isos:
                 face, edge = "#E8E8E8", "#CCCCCC"
             else:
@@ -972,7 +977,7 @@ def plot_dominant_index_map(
             c = row.geometry.representative_point()
             ax.annotate(f"{row['trimester1']}\nL{row['lag1']}",
                         (c.x, c.y), ha="center", va="center",
-                        fontsize=6.5, color="white", fontweight="bold")
+                        fontsize=4.5, color="white", fontweight="bold")
 
     # Two-index countries: diagonal split
     for _, row in has_two.iterrows():
@@ -992,12 +997,12 @@ def plot_dominant_index_map(
             rp = upper.representative_point()
             ax.annotate(f"{row['trimester1']}\nL{row['lag1']}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=6.5, color="white", fontweight="bold")
+                        fontsize=4.5, color="white", fontweight="bold")
         if not lower.is_empty:
             rp = lower.representative_point()
             ax.annotate(f"{row['trimester2']}\nL{row['lag2']}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=6.5, color="white", fontweight="bold")
+                        fontsize=4.5, color="white", fontweight="bold")
 
     # Dot countries
     for _, row in g_dot.iterrows():
@@ -1022,14 +1027,14 @@ def plot_dominant_index_map(
                                          linewidth=0.5, zorder=5))
             ax.annotate(f"{row['trimester1']}/L{row['lag1']}",
                         (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                        fontsize=5.5, color="#222", zorder=6)
+                        fontsize=3.5, color="#222", zorder=6)
         else:
             face = INDEX_COLORS.get(row["index1"], "#cccccc")
             ax.add_patch(mpatches.Circle((cx, cy), _DOT_R, facecolor=face,
                                           edgecolor="#333", linewidth=0.5, zorder=5))
             ax.annotate(f"{row['trimester1']}/L{row['lag1']}",
                         (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
-                        fontsize=5.5, color="#222", zorder=6)
+                        fontsize=3.5, color="#222", zorder=6)
 
     # Legend
     handles = [
@@ -1120,11 +1125,17 @@ def generate_html_report(cfg: dict) -> None:
     <h2>{label}</h2>
     <div class="map-pair">
       <div class="map-item" data-kind="total">
-        <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_total_{name}.png" alt="{label} time series">
+          <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
+        </div>
         <p><strong>Total association</strong> — pairwise r between {label} and trimester rainfall. Includes signal shared with other climate modes.</p>
       </div>
       <div class="map-item" data-kind="partial">
-        <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
+        <div class="map-with-ts">
+          <img class="ts-img" src="maps/ts_partial_{name}.png" alt="{label} time series">
+          <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
+        </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance (not absent signal).</p>
       </div>
     </div>
@@ -1140,7 +1151,8 @@ def generate_html_report(cfg: dict) -> None:
     *, *::before, *::after {{ box-sizing: border-box; }}
     body {{
       font-family: system-ui, -apple-system, sans-serif;
-      margin: 0;
+      max-width: 1400px;
+      margin: 0 auto;
       padding: 0.75rem 1rem;
       background: #f8f9fa;
       color: #1a1a1a;
@@ -1163,6 +1175,9 @@ def generate_html_report(cfg: dict) -> None:
       border-radius: 4px;
       padding: 0.6rem;
     }}
+    .map-with-ts {{ display: flex; align-items: flex-start; gap: 0; }}
+    .map-with-ts .ts-img {{ flex: 0 0 22%; max-width: 22%; height: auto; display: block; }}
+    .map-with-ts .map-zoom {{ flex: 1; min-width: 0; }}
     .map-zoom {{ overflow: hidden; position: relative; line-height: 0; border-radius: 2px; }}
     .map-zoom img {{ width: 100%; height: auto; display: block; transform-origin: 0 0; cursor: default; }}
     .map-item p {{ font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }}
