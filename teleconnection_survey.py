@@ -634,7 +634,7 @@ def plot_index_map(
     g_dot  = g[is_dot]
 
     ts_w  = 5.0
-    map_w = 14.0
+    map_w = 17.0
     fig_h = map_w * _MAP_DY / _MAP_DX
     fig = plt.figure(figsize=(ts_w + map_w, fig_h))
     gs  = fig.add_gridspec(1, 2, width_ratios=[ts_w, map_w], wspace=0.06,
@@ -670,7 +670,7 @@ def plot_index_map(
         mpatches.Patch(facecolor="#F8F8F8", edgecolor="#EBEBEB", linewidth=0.5,
                        label="Not calculated"),
     ]
-    ax.legend(handles=legend_handles, loc="lower left", fontsize=6.5,
+    ax.legend(handles=legend_handles, loc="upper left", fontsize=6.5,
               framealpha=0.92, edgecolor="#ccc", borderpad=0.6)
 
     # Bidirectional countries: diagonal 50/50 split
@@ -720,10 +720,16 @@ def plot_index_map(
             ax.add_patch(mpatches.Wedge((cx, cy), _DOT_R,  90, 270,
                                          facecolor=col_neg, edgecolor="#555",
                                          linewidth=0.5, zorder=5))
+            ax.annotate(f"{row['tri_pos']}/L{int(row['lag_pos'])}",
+                        (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
+                        fontsize=3.5, color="#222", zorder=6)
         else:
             r_val = row.get("r", np.nan)
             if pd.notna(r_val):
                 face, edge = _r_colors(r_val)
+                ax.annotate(f"{row['trimester']}/L{int(row['lag'])}",
+                            (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
+                            fontsize=3.5, color="#222", zorder=6)
             elif (analyzed_isos and row["iso3"] in analyzed_isos):
                 face, edge = "#E8E8E8", "#CCCCCC"
             else:
@@ -762,19 +768,21 @@ def enso_composite_maps(
     analyzed_isos: set[str] | None = None,
 ) -> None:
     """Two maps: mean rainfall anomaly (SDs) in El Niño / La Niña years vs
-    climatology. Classification by DJF Niño3.4 ≥ ±0.5. Each country shows its
-    headline trimester (the strongest signal, restricted to rainy seasons if
-    rainy is provided)."""
-    nino_djf = _index_trimester_mean(
-        indices["nino34"], end_month=2, lag=0, year_offset=TRIMESTER_YEAR_OFFSET["DJF"]
-    )
-    nino_djf = nino_djf[
-        (nino_djf.index >= cfg["start_year"]) & (nino_djf.index <= cfg["end_year"])
-    ].dropna()
-
-    enso_class = pd.Series("Neutral", index=nino_djf.index, dtype=str)
-    enso_class[nino_djf >= 0.5] = "ElNino"
-    enso_class[nino_djf <= -0.5] = "LaNina"
+    climatology. Each country is classified by the Niño3.4 value concurrent
+    with its own headline trimester (not a single DJF year label), so MAM
+    in decay years and JAS in developing years are correctly identified."""
+    # Per-trimester concurrent Niño3.4 classification
+    enso_classes: dict[str, pd.Series] = {}
+    for tri, end_m in TRIMESTERS.items():
+        offset = TRIMESTER_YEAR_OFFSET[tri]
+        nino = _index_trimester_mean(indices["nino34"], end_month=end_m, lag=0,
+                                     year_offset=offset)
+        nino = nino[(nino.index >= cfg["start_year"]) &
+                    (nino.index <= cfg["end_year"])].dropna()
+        ec = pd.Series("Neutral", index=nino.index, dtype=str)
+        ec[nino >= 0.5]  = "ElNino"
+        ec[nino <= -0.5] = "LaNina"
+        enso_classes[tri] = ec
 
     isos = rain.columns.get_level_values("iso3").unique()
     composite_rows = []
@@ -790,6 +798,7 @@ def enso_composite_maps(
             if (iso, tri) not in rain.columns:
                 continue
             y = rain[(iso, tri)].dropna()
+            enso_class = enso_classes[tri]
             common = y.index.intersection(enso_class.index)
             if len(common) < 5:
                 continue
@@ -825,9 +834,6 @@ def enso_composite_maps(
             composite_rows.append({**best_la, "phase": "LaNina"})  # type: ignore[arg-type]
 
     comp_df = pd.DataFrame(composite_rows)
-
-    n_el = int((enso_class == "ElNino").sum())
-    n_la = int((enso_class == "LaNina").sum())
     end_year = cfg["end_year"]
     out_dir: Path = cfg["out_dir"]
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -840,9 +846,9 @@ def enso_composite_maps(
     enso_norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
     enso_cmap = DROUGHT_FLOOD_CMAP
 
-    for phase, label, n_events, fname in [
-        ("ElNino", "El Niño", n_el, "enso_elnino.png"),
-        ("LaNina", "La Niña", n_la, "enso_lanina.png"),
+    for phase, label, fname in [
+        ("ElNino", "El Niño", "enso_elnino.png"),
+        ("LaNina", "La Niña", "enso_lanina.png"),
     ]:
         sub = comp_df[comp_df["phase"] == phase] if len(comp_df) else pd.DataFrame()
         g = gdf.merge(sub, on="iso3", how="left") if len(sub) else gdf.copy()
@@ -851,7 +857,7 @@ def enso_composite_maps(
         g_poly = g[~is_dot]
         g_dot = g[is_dot]
 
-        map_w = 16.0
+        map_w = 19.0
         fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
 
         _plot_base_layer(ax, g_poly, analyzed_isos or set())
@@ -875,6 +881,8 @@ def enso_composite_maps(
             if pd.notna(anom_val):
                 face = enso_cmap(enso_norm(anom_val))
                 edge = "#666"
+                ax.annotate(row["trimester"], (cx, cy + _DOT_R * 1.4),
+                            ha="center", va="bottom", fontsize=3.5, color="#222", zorder=6)
             elif analyzed_isos and row["iso3"] in analyzed_isos:
                 face, edge = "#E8E8E8", "#CCCCCC"
             else:
@@ -883,9 +891,9 @@ def enso_composite_maps(
                                          linewidth=0.5, zorder=5))
 
         ax.set_title(
-            f"ENSO Composite — {label} ({n_events} events, 1981–{end_year})\n"
-            f"ERA5 mean rainfall anomaly in headline trimester "
-            f"(SDs; DJF Niño3.4 ≥±0.5; gray = insufficient data)",
+            f"ENSO Composite — {label}\n"
+            f"ERA5 mean rainfall anomaly in headline trimester (SDs from climatology; "
+            f"Niño3.4 ≥±0.5 concurrent with trimester; 1981–{end_year})",
             fontsize=10,
         )
         ax.set_xlim(MAP_XLIM)
@@ -1012,10 +1020,16 @@ def plot_dominant_index_map(
             ax.add_patch(mpatches.Wedge((cx, cy), _DOT_R,  90, 270,
                                          facecolor=col2, edgecolor="#333",
                                          linewidth=0.5, zorder=5))
+            ax.annotate(f"{row['trimester1']}/L{row['lag1']}",
+                        (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
+                        fontsize=3.5, color="#222", zorder=6)
         else:
             face = INDEX_COLORS.get(row["index1"], "#cccccc")
             ax.add_patch(mpatches.Circle((cx, cy), _DOT_R, facecolor=face,
                                           edgecolor="#333", linewidth=0.5, zorder=5))
+            ax.annotate(f"{row['trimester1']}/L{row['lag1']}",
+                        (cx, cy + _DOT_R * 1.4), ha="center", va="bottom",
+                        fontsize=3.5, color="#222", zorder=6)
 
     # Legend
     handles = [
@@ -1028,7 +1042,7 @@ def plot_dominant_index_map(
         mpatches.Patch(facecolor="#F8F8F8", edgecolor="#EBEBEB",
                        linewidth=0.5, label="Not calculated"),
     ]
-    ax.legend(handles=handles, loc="lower left", fontsize=7,
+    ax.legend(handles=handles, loc="upper left", fontsize=7,
               framealpha=0.92, edgecolor="#ccc", borderpad=0.6)
 
     ax.set_title(
@@ -1188,22 +1202,6 @@ def generate_html_report(cfg: dict) -> None:
     Trimester labels follow the start-of-season convention (DJF 2024 = Dec 2024 – Feb 2025).
   </div>
 
-  <section>
-    <h2>ENSO Composites — El Niño &amp; La Niña</h2>
-    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each country's headline trimester during El Niño and La Niña years. Classified by DJF Niño3.4 ≥ ±0.5 °C. The two maps are independent — ENSO impacts are asymmetric.</p>
-    <div class="map-pair">
-      <div class="map-item">
-        <img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly">
-        <p><strong>El Niño composite</strong> — mean anomaly in El Niño years (red = drier than normal, blue = wetter).</p>
-      </div>
-      <div class="map-item">
-        <img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly">
-        <p><strong>La Niña composite</strong> — mean anomaly in La Niña years. Roughly opposite to El Niño in ENSO-sensitive regions, but magnitude and pattern differ.</p>
-      </div>
-    </div>
-  </section>
-
-  <hr>
 {"".join(index_sections)}
   <hr>
   <section>
@@ -1220,6 +1218,22 @@ def generate_html_report(cfg: dict) -> None:
     <p class="enso-note">Each country colored by whichever index has the strongest significant total correlation with its trimester rainfall. Gray = no reliable signal in any mode.</p>
     <div class="map-item" style="max-width:100%">
       <img src="maps/map_dominant_index.png" alt="Dominant climate mode map" style="width:100%;height:auto">
+    </div>
+  </section>
+
+  <hr>
+  <section>
+    <h2>ENSO Composites — El Niño &amp; La Niña</h2>
+    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each country's headline trimester when Niño3.4 ≥ ±0.5 concurrent with that trimester. The two maps are independent — ENSO impacts are asymmetric.</p>
+    <div class="map-pair">
+      <div class="map-item">
+        <img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly">
+        <p><strong>El Niño composite</strong> — mean anomaly when Niño3.4 ≥ +0.5 (brown = drier than normal, blue = wetter).</p>
+      </div>
+      <div class="map-item">
+        <img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly">
+        <p><strong>La Niña composite</strong> — mean anomaly when Niño3.4 ≤ −0.5. Roughly opposite to El Niño in ENSO-sensitive regions, but magnitude and pattern differ.</p>
+      </div>
     </div>
   </section>
 
