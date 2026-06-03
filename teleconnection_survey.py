@@ -145,14 +145,14 @@ _TS_WEAK_WARM    = "#F4A582"   # light salmon
 _TS_WEAK_COOL    = "#A6DBA0"   # light green
 _TS_STRONG_COOL  = "#1B7837"   # dark green
 
-# Categorical colors for the dominant-index map (ColorBrewer Set1)
+# Categorical colors for the dominant-index map (muted pastel variants)
 INDEX_COLORS = {
-    "nino34": "#E41A1C",
-    "dmi":    "#FF7F00",
-    "tna":    "#4DAF4A",
-    "tsa":    "#984EA3",
-    "amm":    "#377EB8",
-    "pdo":    "#A65628",
+    "nino34": "#F08080",
+    "dmi":    "#FFBB77",
+    "tna":    "#88CC88",
+    "tsa":    "#C49AC9",
+    "amm":    "#88AEDD",
+    "pdo":    "#C9956A",
 }
 
 def _ts_color(val: float, thresh: float) -> str:
@@ -954,7 +954,7 @@ def plot_dominant_index_map(
             c = row.geometry.representative_point()
             ax.annotate(f"{row['trimester1']}\nL{row['lag1']}",
                         (c.x, c.y), ha="center", va="center",
-                        fontsize=4.5, color="white", fontweight="bold")
+                        fontsize=4.5, color="#111", fontweight="bold")
 
     # Two-index countries: diagonal split
     for _, row in has_two.iterrows():
@@ -974,12 +974,12 @@ def plot_dominant_index_map(
             rp = upper.representative_point()
             ax.annotate(f"{row['trimester1']}\nL{row['lag1']}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=4.5, color="white", fontweight="bold")
+                        fontsize=4.5, color="#111", fontweight="bold")
         if not lower.is_empty:
             rp = lower.representative_point()
             ax.annotate(f"{row['trimester2']}\nL{row['lag2']}",
                         (rp.x, rp.y), ha="center", va="center",
-                        fontsize=4.5, color="white", fontweight="bold")
+                        fontsize=4.5, color="#111", fontweight="bold")
 
     # Dot countries
     for _, row in g_dot.iterrows():
