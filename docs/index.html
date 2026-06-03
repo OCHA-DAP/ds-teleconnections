@@ -363,6 +363,81 @@
     </div>
   </section>
 
+  <hr>
+  <section>
+    <h2>Methodology</h2>
+    <div class="note" style="font-size:0.82rem;line-height:1.6;">
+      <h3 style="font-size:0.95rem;margin:0 0 0.6rem;">Data</h3>
+      <p style="margin:0 0 0.6rem;">
+        Rainfall is drawn from ERA5 reanalysis (ECMWF), extracted as country-level area-weighted mean precipitation
+        for 153 countries at admin-0 level, covering 1981–2025. Units are mm/day; a trimester value is the
+        mean of the three constituent monthly means (not a sum). Climate mode indices are monthly anomaly series
+        downloaded from NOAA PSL: <strong>Niño3.4</strong> (ERSSTv5 SST anomaly in 5°N–5°S, 120–170°W),
+        <strong>IOD</strong> (Dipole Mode Index, HadISST), <strong>TNA</strong> (Tropical North Atlantic SST anomaly),
+        <strong>TSA</strong> (Tropical South Atlantic SST anomaly), <strong>AMM</strong> (Atlantic Meridional Mode),
+        and <strong>PDO</strong> (Pacific Decadal Oscillation, NOAA).
+      </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Seasonal aggregation</h3>
+      <p style="margin:0 0 0.6rem;">
+        Seasons are non-overlapping standard trimester windows: DJF (Dec–Feb), MAM (Mar–May), JAS (Jul–Sep),
+        OND (Oct–Dec). DJF is labeled by the December year (e.g. DJF 2024 = Dec 2024–Feb 2025).
+        Only trimesters representing a genuine rainy season are analyzed: a country–trimester pair is included
+        only if that trimester's climatological mean rainfall is at least 25% of the country's annual total
+        (climatolocial mean over the full period). This suppresses spurious correlations in dry seasons.
+      </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Correlation sweep (total association)</h3>
+      <p style="margin:0 0 0.6rem;">
+        For each country × trimester × index combination, Pearson r is computed across all lags from 0 to 6 months
+        (index leading rainfall). The lag with the highest |r| is retained as the "best lag" for that combination.
+        Only the rainy-season trimester with the strongest best-lag correlation is shown per country–index pair.
+        Significance is assessed at p &lt; 0.05 (two-tailed). Results below |r| = 0.3 are treated as no reliable
+        signal and shown in gray; |r| ≥ 0.45 is shown in a darker shade. The best-lag values are
+        <em>frozen</em> after the total pass and reused in the partial pass below.
+      </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Partial correlation (unique signal)</h3>
+      <p style="margin:0 0 0.6rem;">
+        The unique-signal maps show partial correlations: the correlation between an index and rainfall after
+        removing the linear influence of all other indices. This is implemented via the residuals method —
+        for a given country, trimester, and target index, both the rainfall series and the target index series
+        are separately regressed on all other indices (at their own frozen best lags), and the Pearson r of
+        the residuals is taken as the partial correlation. PDO is included as a control variable but not
+        used as a target index in partial regressions, since its global footprint is harder to separate from
+        ENSO at interannual timescales. Best lags are identical to those from the total pass.
+      </p>
+      <p style="margin:0 0 0.6rem;">
+        When an index is significant in the unique-signal view but not in the total view, this is a
+        <em>suppressor variable</em> effect — the index has real predictive value that is masked in the raw
+        correlation because it partially cancels shared variance from another index. These are shown in the
+        unique-signal maps. The reverse — total significant, unique not — simply means the signal is largely
+        shared with other modes.
+      </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">ENSO composites</h3>
+      <p style="margin:0 0 0.6rem;">
+        El Niño and La Niña composites are computed per-country using the concurrent trimester's Niño3.4
+        value (not a single annual classification). For each country, the trimester with the strongest
+        correlation to Niño3.4 is used as the headline season. Years in which the concurrent Niño3.4 mean
+        ≥ +0.5 are composited as El Niño; years ≤ −0.5 as La Niña. Anomalies are expressed in standard
+        deviations from the full-period climatological mean for that country–trimester. The two maps are
+        independent — ENSO teleconnections are asymmetric and the La Niña composite is not simply the
+        mirror image of El Niño.
+      </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Caveats</h3>
+      <ul style="margin:0;padding-left:1.2rem;">
+        <li>Pearson r assumes a linear, stationary relationship. Teleconnections can be non-linear and
+            non-stationary; correlations over 1981–2025 may not represent future conditions.</li>
+        <li>ERA5 reanalysis is model-dependent. In data-sparse regions the precipitation field is more
+            influenced by the model background than by observations.</li>
+        <li>Multiple-testing is not corrected for (no FDR/Bonferroni). With ~600 country–trimester combinations
+            per index, some false positives are expected at p &lt; 0.05.</li>
+        <li>Partial correlations do not partition the total explained variance cleanly when predictors are
+            collinear (e.g. AMM and TNA share r ≈ 0.81). Unique-signal maps should be read as indicating
+            whether an index contributes <em>beyond</em> the others, not as a clean attribution.</li>
+        <li>Coverage is limited to countries where ERA5 admin-0 extracts are available (153 countries).
+            Small island states are shown as dots rather than choropleth polygons.</li>
+      </ul>
+    </div>
+  </section>
+
   <script>
     // Inline scroll-to-zoom on every .map-zoom container.
     // Scroll: zoom centred on cursor. Drag: pan when zoomed in. Double-click: reset.
