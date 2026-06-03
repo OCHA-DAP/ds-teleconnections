@@ -718,12 +718,12 @@ def plot_index_map(
                 ax=ax, color=col_neg, edgecolor="none")
         gpd.GeoDataFrame(geometry=[geom], crs="EPSG:4326").plot(
             ax=ax, facecolor="none", edgecolor="#555", linewidth=0.4)
-        if not upper.is_empty:
+        if not upper.is_empty and abs(row["r_pos"]) >= _R_MIN:
             rp = upper.representative_point()
             ax.annotate(f"{row['tri_pos']}\nL{int(row['lag_pos'])}",
                         (rp.x, rp.y), ha="center", va="center",
                         fontsize=4.5, color="black")
-        if not lower.is_empty:
+        if not lower.is_empty and abs(row["r_neg"]) >= _R_MIN:
             rp = lower.representative_point()
             ax.annotate(f"{row['tri_neg']}\nL{int(row['lag_neg'])}",
                         (rp.x, rp.y), ha="center", va="center",
@@ -731,6 +731,8 @@ def plot_index_map(
 
     # Unidirectional annotations
     for _, row in uni_poly.iterrows():
+        if abs(row["r"]) < _R_MIN:
+            continue
         c = row.geometry.representative_point()
         ax.annotate(f"{row['trimester']}\nL{int(row['lag'])}",
                     (c.x, c.y), ha="center", va="center",
