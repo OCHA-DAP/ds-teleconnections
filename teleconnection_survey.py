@@ -2,8 +2,8 @@
 Global teleconnection survey: max-correlation maps per climate index.
 
 For each country x index:
-  - 4 trimesters (DJF, MAM, JAS, OND), labeled at window-start month
-    (DJF 2024-25 = 2024, MAM/JAS/OND labeled by their own year)
+  - 12 rolling trimesters (NDJ, DJF, JFM, … OND), year-labeled by first month
+    (DJF/NDJ label by December/November year; all others by their own year)
   - sweep lags 0-6 months (index leads rainfall)
   - per trimester, keep lag with max |r|  (this freezes a best-lag per index/tri)
   - filter to p < 0.05
@@ -68,10 +68,23 @@ CONFIG = {
     "partial_exclude": ["pdo"],
 }
 
-# Trimesters: name -> end month (rainfall window is 3 months ending here).
-# Year label convention: DJF uses December's year (start of the winter).
-TRIMESTERS = {"DJF": 2, "MAM": 5, "JAS": 9, "OND": 12}
-TRIMESTER_YEAR_OFFSET = {"DJF": -1, "MAM": 0, "JAS": 0, "OND": 0}
+# All 12 rolling 3-month windows: name -> end month.
+# Year label by the first month of the window:
+#   NDJ (Nov-Dec-Jan): first=Nov, end=Jan → offset -1 (Jan_year - 1 = Nov_year)
+#   DJF (Dec-Jan-Feb): first=Dec, end=Feb → offset -1
+#   All others: first and end month in same calendar year → offset 0
+TRIMESTERS = {
+    "NDJ": 1, "DJF": 2, "JFM": 3, "FMA": 4,
+    "MAM": 5, "AMJ": 6, "MJJ": 7, "JJA": 8,
+    "JAS": 9, "ASO": 10, "SON": 11, "OND": 12,
+}
+TRIMESTER_YEAR_OFFSET = {
+    "NDJ": -1, "DJF": -1,
+    "JFM": 0, "FMA": 0, "MAM": 0, "AMJ": 0,
+    "MJJ": 0, "JJA": 0, "JAS": 0, "ASO": 0, "SON": 0, "OND": 0,
+}
+# Non-overlapping canonical set — used only for annual-total normalisation
+_ANNUAL_TRIMESTERS = ("DJF", "MAM", "JAS", "OND")
 
 INDEX_SOURCES = {
     "nino34": "https://psl.noaa.gov/data/correlation/nina34.anom.data",
@@ -353,9 +366,17 @@ def load_admin0_gdf(cfg: dict) -> gpd.GeoDataFrame:
 # Rainfall -> country trimester series (ERA5 from DB)
 # --------------------------------------------------------------------------- #
 _TRIMESTER_MONTHS = {
-    "DJF": [12, 1, 2],
-    "MAM": [3, 4, 5],
-    "JAS": [7, 8, 9],
+    "NDJ": [11, 12,  1],
+    "DJF": [12,  1,  2],
+    "JFM": [ 1,  2,  3],
+    "FMA": [ 2,  3,  4],
+    "MAM": [ 3,  4,  5],
+    "AMJ": [ 4,  5,  6],
+    "MJJ": [ 5,  6,  7],
+    "JJA": [ 6,  7,  8],
+    "JAS": [ 7,  8,  9],
+    "ASO": [ 8,  9, 10],
+    "SON": [ 9, 10, 11],
     "OND": [10, 11, 12],
 }
 
@@ -545,22 +566,25 @@ def partial_pass(
 # Reduce to per-country display record (per index)
 # --------------------------------------------------------------------------- #
 def rainy_trimesters(rain: pd.DataFrame) -> set[tuple[str, str]]:
-    """Return {(iso3, trimester)} where the trimester accounts for ≥25% of
-    the country's annual rainfall total.
+    """Return {(iso3, trimester)} where the trimester mean is ≥25% of the
+    country's annual mean.
 
-    All 4 trimesters are 3 months each, so the annual total is proportional
-    to the sum of the 4 trimester climatological means. The ≥25% threshold
-    keeps trimesters at or above the uniform-distribution baseline — roughly
-    the two wettest seasons per country.
+    Annual mean is computed from the 4 non-overlapping canonical trimesters
+    (DJF+MAM+JAS+OND), which together cover each month exactly once. Summing
+    all 12 rolling windows would triple-count every month.
     """
     clim = rain.mean()  # Series: MultiIndex (iso3, trimester) → mean mm/day
     rainy: set[tuple[str, str]] = set()
     for iso in clim.index.get_level_values("iso3").unique():
-        means = {tri: clim.get((iso, tri), np.nan) for tri in TRIMESTERS}
-        annual = sum(v for v in means.values() if pd.notna(v))
+        annual = sum(
+            clim.get((iso, t), np.nan)
+            for t in _ANNUAL_TRIMESTERS
+            if pd.notna(clim.get((iso, t), np.nan))
+        )
         if annual <= 0:
             continue
-        for tri, v in means.items():
+        for tri in TRIMESTERS:
+            v = clim.get((iso, tri), np.nan)
             if pd.notna(v) and v / annual >= 0.25:
                 rainy.add((iso, tri))
     return rainy
@@ -568,27 +592,36 @@ def rainy_trimesters(rain: pd.DataFrame) -> set[tuple[str, str]]:
 
 def reduce_for_display(df: pd.DataFrame, alpha: float) -> pd.DataFrame:
     """For each iso3 x index: keep significant trimester-best corrs, then decide
-    single vs bidirectional. Returns one row per iso3 x index for mapping."""
+    single vs bidirectional. Returns one row per iso3 x index for mapping.
+
+    Bidirectional requires a non-overlapping positive+negative pair — with 12
+    rolling windows an overlapping pair (e.g. JFM+ and FMA−) would be spurious.
+    """
     sig = df[df["p"] < alpha].copy()
     out = []
     for (iso, name), g in sig.groupby(["iso3", "index"]):
-        pos = g[g["r"] > 0]
-        neg = g[g["r"] < 0]
-        rec = {"iso3": iso, "index": name,
-               "bidirectional": (len(pos) > 0 and len(neg) > 0)}
-        if rec["bidirectional"]:
-            bp = pos.loc[pos["r"].idxmax()]
-            bn = neg.loc[neg["r"].idxmin()]
+        best = g.loc[g["r"].abs().idxmax()]
+        best_months = set(_TRIMESTER_MONTHS[best["trimester"]])
+        # Opposite-sign candidates that share no months with the best trimester
+        opp = g[
+            (g["r"] * best["r"] < 0) &
+            g["trimester"].apply(
+                lambda t: not bool(best_months & set(_TRIMESTER_MONTHS[t]))
+            )
+        ]
+        is_bi = len(opp) > 0
+        rec = {"iso3": iso, "index": name, "bidirectional": is_bi}
+        if is_bi:
+            other = opp.loc[opp["r"].abs().idxmax()]
+            bp = best if best["r"] > 0 else other
+            bn = other if best["r"] > 0 else best
             rec.update(
                 r_pos=bp["r"], tri_pos=bp["trimester"], lag_pos=int(bp["lag"]),
                 r_neg=bn["r"], tri_neg=bn["trimester"], lag_neg=int(bn["lag"]),
-                r=bp["r"] if abs(bp["r"]) >= abs(bn["r"]) else bn["r"],
+                r=best["r"], trimester=best["trimester"], lag=int(best["lag"]),
             )
-            top = bp if abs(bp["r"]) >= abs(bn["r"]) else bn
-            rec.update(trimester=top["trimester"], lag=int(top["lag"]))
         else:
-            top = g.loc[g["r"].abs().idxmax()]
-            rec.update(r=top["r"], trimester=top["trimester"], lag=int(top["lag"]),
+            rec.update(r=best["r"], trimester=best["trimester"], lag=int(best["lag"]),
                        r_pos=np.nan, r_neg=np.nan)
         out.append(rec)
     return pd.DataFrame(out)
@@ -911,8 +944,7 @@ def _build_dominant_two(disp_total: pd.DataFrame) -> pd.DataFrame:
         for _, cand in ranked.iloc[1:].iterrows():
             if cand["index"] == first["index"]:
                 continue
-            if (not (months1 & set(_TRIMESTER_MONTHS[cand["trimester"]])) and
-                    cand["r"] * first["r"] < 0):
+            if not (months1 & set(_TRIMESTER_MONTHS[cand["trimester"]])):
                 rec.update(
                     index2=cand["index"],  r2=cand["r"],
                     trimester2=cand["trimester"], lag2=int(cand["lag"]),
@@ -1220,7 +1252,7 @@ def generate_html_report(cfg: dict) -> None:
   <hr>
   <section>
     <h2>Dominant Climate Mode</h2>
-    <p class="enso-note">Each country colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}). Split diagonal = second-strongest index, shown only when it acts on a non-overlapping trimester <em>and</em> has the opposite correlation sign (e.g. dominant index drives wet in one season, second index drives dry in another).</p>
+    <p class="enso-note">Each country colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester.</p>
     <div class="map-item" style="max-width:100%">
       <div class="map-zoom"><img src="maps/map_dominant_index.png" alt="Dominant climate mode map"></div>
       <div class="map-legend">
@@ -1268,13 +1300,18 @@ def generate_html_report(cfg: dict) -> None:
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Seasonal aggregation</h3>
       <p style="margin:0 0 0.6rem;">
-        All four standard trimester windows are assessed for every country: DJF (Dec–Feb), MAM (Mar–May),
-        JAS (Jul–Sep), OND (Oct–Dec). DJF is labeled by the December year (e.g. DJF 2024 = Dec 2024–Feb 2025).
-        Multiple trimesters can qualify as rainy for the same country (e.g. a bimodal-rainfall country may
-        qualify in both MAM and OND). A country–trimester pair is included only if that trimester's
-        climatological mean rainfall is at least 25% of the country's annual total, averaged over the full
-        period. This suppresses spurious correlations in dry seasons. The non-overlapping constraint described
-        below applies only to display logic, not to which trimesters are analyzed.
+        All 12 rolling 3-month windows are assessed for every country: NDJ, DJF, JFM, FMA, MAM, AMJ, MJJ,
+        JJA, JAS, ASO, SON, OND. Using rolling windows rather than four fixed seasons avoids misaligning
+        the analysis window with the actual rainy season (e.g. a country whose rains peak Oct–Dec is better
+        captured by OND than by JAS or DJF). Year labels use the first month of the window: NDJ and DJF are
+        labeled by November and December respectively (e.g. DJF 2024 = Dec 2024–Feb 2025); all others by
+        the year of their first month.
+      </p>
+      <p style="margin:0 0 0.6rem;">
+        A country–trimester pair is included only if that trimester's climatological mean rainfall is at
+        least 25% of the country's annual mean, suppressing correlations in dry seasons. Annual mean is
+        computed from the four non-overlapping canonical trimesters (DJF + MAM + JAS + OND), which together
+        cover each calendar month exactly once. Multiple rolling windows can qualify for the same country.
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Correlation sweep (total association)</h3>
       <p style="margin:0 0 0.6rem;">
@@ -1287,9 +1324,9 @@ def generate_html_report(cfg: dict) -> None:
       <p style="margin:0 0 0.6rem;">
         On each per-index map, a country is shown in a single color if all its significant correlations for that
         index have the same sign. It is shown as a split diagonal if it has significant correlations in
-        <em>both</em> directions (e.g. ENSO drives wet conditions in one trimester and dry in another) —
-        the second trimester is shown only when it is on a non-overlapping seasonal window and has the
-        opposite sign to the strongest trimester.
+        <em>both</em> directions across non-overlapping trimesters (e.g. ENSO drives wet conditions in one
+        season and dry in another). With 12 rolling windows, the non-overlapping check is required to avoid
+        pairing near-identical windows (e.g. JFM and FMA) as spuriously "bidirectional".
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Partial correlation (unique signal)</h3>
       <p style="margin:0 0 0.6rem;">
