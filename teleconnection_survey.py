@@ -4,7 +4,7 @@ Global teleconnection survey: max-correlation maps per climate index.
 For each country x index:
   - 12 rolling trimesters (NDJ, DJF, JFM, … OND), year-labeled by first month
     (DJF/NDJ label by December/November year; all others by their own year)
-  - sweep lags 0-6 months (index leads rainfall)
+  - sweep lags up to a max (3 or 6 months, in-app toggle; index leads rainfall)
   - per trimester, keep lag with max |r|  (this freezes a best-lag per index/tri)
   - filter to p < 0.05
   - if significant corrs exist in both signs -> hatch (bidirectional)
@@ -67,6 +67,12 @@ CONFIG = {
     "alpha": 0.05,
     "partial_exclude": ["pdo"],
 }
+
+# Lag-cap variants generated for the in-app toggle. Tag -> max lag (months).
+# Default view is the tighter 3-month cap (index leads rainfall by at most one
+# full non-overlapping season); 6-month is available for the long-lag view.
+LAG_CAPS = {"l3": 3, "l6": 6}
+DEFAULT_LAG_TAG = "l3"
 
 # All 12 rolling 3-month windows: name -> end month.
 # Year label by the first month of the window:
@@ -460,10 +466,16 @@ class CorrResult:
     n: int
 
 
-def sweep(rain: pd.DataFrame, indices: pd.DataFrame, cfg: dict) -> pd.DataFrame:
+def sweep(rain: pd.DataFrame, indices: pd.DataFrame, cfg: dict,
+          max_lag: int | None = None) -> pd.DataFrame:
     """TOTAL pass. For every iso3 x trimester x index, sweep lags and keep the
     lag with max |r|. The chosen lag per (iso3, trimester, index) is the frozen
-    best-lag reused by the PARTIAL pass, so both passes are strictly comparable."""
+    best-lag reused by the PARTIAL pass, so both passes are strictly comparable.
+
+    max_lag overrides cfg['max_lag_months'] when given (used for the lag-cap
+    toggle variants)."""
+    if max_lag is None:
+        max_lag = cfg["max_lag_months"]
     rows: list[CorrResult] = []
     isos = rain.columns.get_level_values("iso3").unique()
     for iso in isos:
@@ -476,7 +488,7 @@ def sweep(rain: pd.DataFrame, indices: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             offset = TRIMESTER_YEAR_OFFSET[tri]
             for name in indices.columns:
                 best = None
-                for lag in range(cfg["max_lag_months"] + 1):
+                for lag in range(max_lag + 1):
                     x = _index_trimester_mean(indices[name], end_m, lag, year_offset=offset)
                     j = y.index.intersection(x.index)
                     if len(j) < cfg["min_years"]:
@@ -657,12 +669,14 @@ def plot_index_map(
     end_year: int = 2025,
     indices: pd.DataFrame | None = None,
     analyzed_isos: set[str] | None = None,
+    lag_tag: str = "l6",
 ) -> None:
     """kind: 'total' (pairwise r) or 'partial' (other modes held constant).
+    lag_tag: which max-lag variant this is ('l3'/'l6'), used in the filename.
 
-    Saves two PNGs: ts_{kind}_{index}.png (time series panel) and
-    map_{kind}_{index}.png (choropleth only), so the HTML can make only
-    the map zoomable while the TS panel stays static beside it."""
+    Saves ts_{index}.png (time series panel, lag/kind-independent, generated
+    once) and map_{lag_tag}_{kind}_{index}.png (choropleth only), so the HTML
+    can make only the map zoomable while the TS panel stays static beside it."""
     sub = disp[disp["index"] == index]
     g = gdf.merge(sub, on="iso3", how="left")
 
@@ -675,9 +689,9 @@ def plot_index_map(
     fig_h = map_w * _MAP_DY / _MAP_DX
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    # --- Time series panel (saved separately, shared across total/partial) ---
+    # --- Time series panel (lag/kind-independent; generate once) ---
     ts_path = out_dir / f"ts_{index}.png"
-    if indices is not None and index in indices.columns:
+    if not ts_path.exists() and indices is not None and index in indices.columns:
         index_label_ts = INDEX_LABELS.get(index, index.upper())
         fig_ts, ax_ts = plt.subplots(figsize=(ts_w, fig_h))
         fig_ts.subplots_adjust(left=0.14, right=0.86, top=0.85, bottom=0.14)
@@ -774,7 +788,7 @@ def plot_index_map(
     ax.set_aspect("equal")
     ax.set_axis_off()
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_dir / f"map_{kind}_{index}.png", dpi=200, bbox_inches="tight")
+    fig.savefig(out_dir / f"map_{lag_tag}_{kind}_{index}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -962,6 +976,7 @@ def plot_dominant_index_map(
     out_dir: Path,
     end_year: int = 2025,
     analyzed_isos: set[str] | None = None,
+    lag_tag: str = "l6",
 ) -> None:
     """Each country: dominant index (upper-right, color) + optional second index
     on a non-overlapping trimester (lower-left diagonal, different color)."""
@@ -1065,7 +1080,7 @@ def plot_dominant_index_map(
     ax.set_aspect("equal")
     ax.set_axis_off()
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_dir / "map_dominant_index.png", dpi=200, bbox_inches="tight")
+    fig.savefig(out_dir / f"map_dominant_{lag_tag}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -1121,51 +1136,77 @@ def generate_html_report(cfg: dict) -> None:
     docs_dir.mkdir(parents=True, exist_ok=True)
     end_year = cfg["end_year"]
 
+    corr_legend = """<div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>"""
+
+    _kind_meta = {
+        "total":   ("total association",
+                    "<strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. "
+                    "Split diagonal = significant in both directions across non-overlapping seasons."),
+        "partial": ("unique signal",
+                    "<strong>Unique signal</strong> — partial r, other climate modes held constant. "
+                    "Shrinkage vs Total = shared variance, not absent signal."),
+    }
+    _lag_label = {"l3": "0–3 mo lag", "l6": "0–6 mo lag"}
+
+    def _map_item(name, label, kind, lag_tag):
+        kind_title, caption = _kind_meta[kind]
+        return f"""
+      <div class="map-item" data-kind="{kind}" data-lag="{lag_tag}">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of {label} with total seasonal rainfall — {kind_title} ({_lag_label[lag_tag]})</p>
+            <div class="map-zoom"><img src="maps/map_{lag_tag}_{kind}_{name}.png" alt="{label} {kind} correlation {lag_tag}"></div>
+            {corr_legend}
+          </div>
+        </div>
+        <p>{caption}</p>
+      </div>"""
+
     index_sections = []
     for name in INDEX_SOURCES:
         label = INDEX_LABELS.get(name, name.upper())
+        items = "".join(
+            _map_item(name, label, kind, lag_tag)
+            for lag_tag in LAG_CAPS
+            for kind in ("total", "partial")
+        )
         index_sections.append(f"""
   <section>
     <h2>{label}</h2>
-    <div class="map-pair">
-      <div class="map-item" data-kind="total">
-        <div class="map-with-ts">
-          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
-          <div class="map-col">
-            <p class="map-title">Correlation of {label} with total seasonal rainfall — total association</p>
-            <div class="map-zoom"><img src="maps/map_total_{name}.png" alt="{label} total correlation"></div>
-            <div class="map-legend">
-              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
-            </div>
-          </div>
-        </div>
-        <p><strong>Total association</strong> — pairwise Pearson r, lag sweep 0–6 months, p&lt;0.05. Split diagonal = significant in both directions across seasons.</p>
-      </div>
-      <div class="map-item" data-kind="partial">
-        <div class="map-with-ts">
-          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
-          <div class="map-col">
-            <p class="map-title">Correlation of {label} with total seasonal rainfall — unique signal</p>
-            <div class="map-zoom"><img src="maps/map_partial_{name}.png" alt="{label} partial correlation"></div>
-            <div class="map-legend">
-              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
-              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
-              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-              <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
-            </div>
-          </div>
-        </div>
-        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
-      </div>
+    <div class="map-pair">{items}
     </div>
   </section>""")
+
+    # Dominant-mode map legend, derived from the actual INDEX_COLORS so swatches match.
+    def _edge(hex_c):  # slightly darker border
+        h = hex_c.lstrip("#")
+        rgb = tuple(int(h[i:i+2], 16) for i in (0, 2, 4))
+        return "#" + "".join(f"{int(c*0.7):02X}" for c in rgb)
+    dom_swatches = "".join(
+        f'<span><span class="sw" style="background:{INDEX_COLORS[n]};'
+        f'border-color:{_edge(INDEX_COLORS[n])}"></span>{INDEX_LABELS[n]}</span>'
+        for n in INDEX_SOURCES
+    )
+    dominant_legend = f"""<div class="map-legend">
+        {dom_swatches}
+        <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+        <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+      </div>"""
+    dominant_items = "".join(
+        f"""<div class="map-item" data-lag="{lag_tag}" style="max-width:100%">
+      <div class="map-zoom"><img src="maps/map_dominant_{lag_tag}.png" alt="Dominant climate mode map {lag_tag}"></div>
+      {dominant_legend}
+    </div>"""
+        for lag_tag in LAG_CAPS
+    )
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -1227,18 +1268,24 @@ def generate_html_report(cfg: dict) -> None:
 </head>
 <body>
   <h1>ERA5 Precipitation Teleconnection Analysis</h1>
-  <p class="meta">ERA5 1981–{end_year} &nbsp;·&nbsp; Pearson r, lag sweep 0–6 months &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal = both signs across seasons</p>
+  <p class="meta">ERA5 1981–{end_year} &nbsp;·&nbsp; Pearson r &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal = both signs across seasons</p>
   <div class="view-toggle">
     <span>View:</span>
-    <button class="toggle-btn" data-show="total">Total association</button>
-    <button class="toggle-btn active" data-show="partial">Unique signal</button>
+    <button class="toggle-btn" data-group="view" data-show="total">Total association</button>
+    <button class="toggle-btn active" data-group="view" data-show="partial">Unique signal</button>
+    <span style="margin-left:1.25rem;">Max lag:</span>
+    <button class="toggle-btn active" data-group="lag" data-show="l3">3 months</button>
+    <button class="toggle-btn" data-group="lag" data-show="l6">6 months</button>
   </div>
   <div class="note">
     Each map shows the <strong>strongest significant correlation</strong> between a climate index and trimester rainfall across all countries.
     <strong>Total</strong> maps show the raw pairwise association (including signal shared with other modes).
     <strong>Unique signal</strong> maps show the partial correlation, holding other modes constant —
     shrinkage from Total to Unique indicates that modes share variance, not that the signal is absent.
-    Trimester labels follow the start-of-season convention (DJF 2024 = Dec 2024 – Feb 2025).
+    The <strong>Max lag</strong> toggle limits how far the index may lead rainfall: 3 months keeps the
+    index within one preceding non-overlapping season (cleaner, forecast-relevant); 6 months also admits
+    longer prior-season relationships. Trimester labels follow the start-of-season convention
+    (DJF 2024 = Dec 2024 – Feb 2025).
   </div>
 
 {"".join(index_sections)}
@@ -1254,20 +1301,8 @@ def generate_html_report(cfg: dict) -> None:
   <hr>
   <section>
     <h2>Dominant Climate Mode</h2>
-    <p class="enso-note">Each country colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester.</p>
-    <div class="map-item" style="max-width:100%">
-      <div class="map-zoom"><img src="maps/map_dominant_index.png" alt="Dominant climate mode map"></div>
-      <div class="map-legend">
-        <span><span class="sw" style="background:#E41A1C;border-color:#B01010"></span>Niño3.4 (ENSO)</span>
-        <span><span class="sw" style="background:#FF7F00;border-color:#CC6600"></span>IOD</span>
-        <span><span class="sw" style="background:#4DAF4A;border-color:#2E8C2B"></span>TNA</span>
-        <span><span class="sw" style="background:#984EA3;border-color:#6B3070"></span>TSA</span>
-        <span><span class="sw" style="background:#377EB8;border-color:#1F5A8A"></span>AMM</span>
-        <span><span class="sw" style="background:#A65628;border-color:#7A3D18"></span>PDO</span>
-        <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
-        <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
-      </div>
-    </div>
+    <p class="enso-note">Each country colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester. Respects the Max lag toggle above.</p>
+    {dominant_items}
   </section>
 
   <hr>
@@ -1317,11 +1352,16 @@ def generate_html_report(cfg: dict) -> None:
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Correlation sweep (total association)</h3>
       <p style="margin:0 0 0.6rem;">
-        For each country × trimester × index combination, Pearson r is computed across all lags from 0 to 6 months
-        (index leading rainfall). The lag with the highest |r| is retained as the "best lag" for that combination.
-        Significance is assessed at p &lt; 0.05 (two-tailed). Results below |r| = {_R_MIN} are treated as no reliable
-        signal and shown in gray; |r| ≥ {_R_STRONG} is shown in a darker shade. The best-lag values are
-        <em>frozen</em> after the total pass and reused in the partial pass below.
+        For each country × trimester × index combination, Pearson r is computed across all lags up to the
+        selected maximum (index leading rainfall). The lag with the highest |r| is retained as the "best lag"
+        for that combination. The <strong>Max lag</strong> toggle controls this cap: <em>3 months</em> (default)
+        restricts the index to at most one preceding non-overlapping season, which keeps the relationship within
+        the same evolving event and is the more forecast-relevant view; <em>6 months</em> additionally admits
+        prior-season relationships (e.g. a previous winter's ENSO state predicting the following monsoon), which
+        can have the opposite sign to the concurrent signal. Significance is assessed at p &lt; 0.05 (two-tailed).
+        Results below |r| = {_R_MIN} are treated as no reliable signal and shown in gray; |r| ≥ {_R_STRONG} is
+        shown in a darker shade. The best-lag values are <em>frozen</em> after the total pass and reused in the
+        partial pass below.
       </p>
       <p style="margin:0 0 0.6rem;">
         On each per-index map, a country is shown in a single color if all its significant correlations for that
@@ -1422,24 +1462,30 @@ def generate_html_report(cfg: dict) -> None:
       }});
     }});
 
-    function applyView(show) {{
-      document.querySelectorAll('.map-pair').forEach(pair => {{
-        pair.style.gridTemplateColumns = '1fr';
-        pair.querySelectorAll('[data-kind]').forEach(item => {{
-          item.style.display = (item.dataset.kind === show) ? '' : 'none';
-        }});
+    let curView = 'partial', curLag = '{DEFAULT_LAG_TAG}';
+    function applyView() {{
+      document.querySelectorAll('.map-pair').forEach(p => {{
+        p.style.gridTemplateColumns = '1fr';
+      }});
+      document.querySelectorAll('[data-kind], [data-lag]').forEach(item => {{
+        const okKind = !item.dataset.kind || item.dataset.kind === curView;
+        const okLag  = !item.dataset.lag  || item.dataset.lag  === curLag;
+        item.style.display = (okKind && okLag) ? '' : 'none';
       }});
     }}
-    const btns = document.querySelectorAll('.toggle-btn');
-    btns.forEach(btn => {{
+    document.querySelectorAll('.toggle-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
-        btns.forEach(b => b.classList.remove('active'));
+        const group = btn.dataset.group;
+        document.querySelectorAll('.toggle-btn[data-group="' + group + '"]')
+          .forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        applyView(btn.dataset.show);
+        if (group === 'view') curView = btn.dataset.show;
+        else curLag = btn.dataset.show;
+        applyView();
       }});
     }});
     // Apply default on load
-    applyView('partial');
+    applyView();
   </script>
 </body>
 </html>"""
@@ -1465,50 +1511,57 @@ def main(cfg: dict = CONFIG) -> None:
 
     rainy = rainy_trimesters(rain)
     print(f"Rainy (iso3, trimester) pairs: {len(rainy)} of {rain.columns.nunique()} total")
-
-    total = sweep(rain, indices, cfg)
-    total.to_parquet(cfg["parquet_dir"] / "corr_total.parquet")
-
-    partial = partial_pass(rain, indices, total, cfg)
-    partial.to_parquet(cfg["parquet_dir"] / "corr_partial.parquet")
-
     rainy_df = pd.DataFrame(list(rainy), columns=["iso3", "trimester"])
-
-    total_rainy = total.merge(rainy_df, on=["iso3", "trimester"])
-    disp_total  = reduce_for_display(total_rainy, cfg["alpha"])
-    disp_total.to_parquet(cfg["parquet_dir"] / "corr_display_total.parquet")
-
-    # Partial: restrict to rainy seasons, then drop suppressor-only signals
-    # (sig partial but not total — "unique fraction of a non-existent total"
-    # is not interpretable for a survey product)
-    total_sig_keys = set(zip(disp_total["iso3"], disp_total["index"]))
-    partial_rainy  = partial.merge(rainy_df, on=["iso3", "trimester"])
-    disp_partial_all = reduce_for_display(partial_rainy, cfg["alpha"])
-    partial_sig_keys = set(zip(disp_partial_all["iso3"], disp_partial_all["index"]))
-    n_suppressor = len(partial_sig_keys - total_sig_keys)
-    print(f"Suppressor-only partial signals excluded (sig partial, not total): {n_suppressor}")
-
-    disp_partial = disp_partial_all[
-        disp_partial_all.apply(lambda r: (r["iso3"], r["index"]) in total_sig_keys, axis=1)
-    ].reset_index(drop=True)
-    disp_partial.to_parquet(cfg["parquet_dir"] / "corr_display_partial.parquet")
 
     analyzed_isos: set[str] = set(rain.columns.get_level_values("iso3").unique())
 
-    for kind, disp in (("total", disp_total), ("partial", disp_partial_all)):
-        for name in INDEX_SOURCES:
-            plot_index_map(disp, gdf, name, cfg["out_dir"],
-                           kind=kind, end_year=cfg["end_year"], indices=indices,
-                           analyzed_isos=analyzed_isos)
+    # Regenerate TS panels fresh each run (they are lag/kind-independent)
+    for _ts in cfg["out_dir"].glob("ts_*.png"):
+        _ts.unlink()
 
+    # One full analysis+map pass per lag-cap variant (toggle in the app)
+    for lag_tag, max_lag in LAG_CAPS.items():
+        total = sweep(rain, indices, cfg, max_lag=max_lag)
+        total.to_parquet(cfg["parquet_dir"] / f"corr_total_{lag_tag}.parquet")
+
+        partial = partial_pass(rain, indices, total, cfg)
+        partial.to_parquet(cfg["parquet_dir"] / f"corr_partial_{lag_tag}.parquet")
+
+        total_rainy = total.merge(rainy_df, on=["iso3", "trimester"])
+        disp_total  = reduce_for_display(total_rainy, cfg["alpha"])
+        disp_total.to_parquet(cfg["parquet_dir"] / f"corr_display_total_{lag_tag}.parquet")
+
+        # Partial: restrict to rainy seasons, then drop suppressor-only signals
+        # (sig partial but not total — "unique fraction of a non-existent total"
+        # is not interpretable for a survey product)
+        total_sig_keys = set(zip(disp_total["iso3"], disp_total["index"]))
+        partial_rainy  = partial.merge(rainy_df, on=["iso3", "trimester"])
+        disp_partial_all = reduce_for_display(partial_rainy, cfg["alpha"])
+        partial_sig_keys = set(zip(disp_partial_all["iso3"], disp_partial_all["index"]))
+        n_suppressor = len(partial_sig_keys - total_sig_keys)
+        print(f"[{lag_tag}] max_lag={max_lag}; suppressor-only partial signals "
+              f"excluded: {n_suppressor}")
+
+        disp_partial = disp_partial_all[
+            disp_partial_all.apply(lambda r: (r["iso3"], r["index"]) in total_sig_keys, axis=1)
+        ].reset_index(drop=True)
+        disp_partial.to_parquet(cfg["parquet_dir"] / f"corr_display_partial_{lag_tag}.parquet")
+
+        for kind, disp in (("total", disp_total), ("partial", disp_partial_all)):
+            for name in INDEX_SOURCES:
+                plot_index_map(disp, gdf, name, cfg["out_dir"],
+                               kind=kind, end_year=cfg["end_year"], indices=indices,
+                               analyzed_isos=analyzed_isos, lag_tag=lag_tag)
+
+        plot_dominant_index_map(disp_total, gdf, cfg["out_dir"], end_year=cfg["end_year"],
+                                analyzed_isos=analyzed_isos, lag_tag=lag_tag)
+
+    # Lag-independent panels
     enso_composite_maps(rain, indices, gdf, cfg, rainy=rainy, analyzed_isos=analyzed_isos)
-    plot_dominant_index_map(disp_total, gdf, cfg["out_dir"], end_year=cfg["end_year"],
-                            analyzed_isos=analyzed_isos)
     plot_index_corr_matrix(indices, cfg["out_dir"], end_year=cfg["end_year"])
     generate_html_report(cfg)
 
-    print(f"done. total={len(total)} partial={len(partial)} "
-          f"trimester-best corrs across {n_countries} countries.")
+    print(f"done across {n_countries} countries; lag caps {list(LAG_CAPS.values())}.")
 
 
 if __name__ == "__main__":
