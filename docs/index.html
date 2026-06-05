@@ -642,9 +642,10 @@
         removing the linear influence of all other indices. This is implemented via the residuals method —
         for a given country, trimester, and target index, both the rainfall series and the target index series
         are separately regressed on all other indices (at their own frozen best lags), and the Pearson r of
-        the residuals is taken as the partial correlation. PDO is included as a control variable but not
-        used as a target index in partial regressions, since its global footprint is harder to separate from
-        ENSO at interannual timescales. Best lags are identical to those from the total pass.
+        the residuals is taken as the partial correlation. PDO still has its own unique signal computed, but
+        it is excluded from the control set — i.e. it is never regressed out of the other modes — because as a
+        low-frequency mode strongly collinear with ENSO, controlling for it would absorb genuine ENSO signal.
+        Best lags are identical to those from the total pass.
       </p>
       <p style="margin:0 0 0.6rem;">
         When an index is significant in the unique-signal view but not in the total view, this is a
