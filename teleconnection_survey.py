@@ -1331,7 +1331,7 @@ def generate_html_report(cfg: dict) -> None:
       <a href="https://www.pmel.noaa.gov/elnino/impacts-of-el-nino" target="_blank" rel="noopener">NOAA PMEL</a>,
       via climate.gov.
     </p>
-    <div class="map-pair" style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;max-width:540px;margin:0 auto;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;max-width:540px;margin:0 auto;">
       <div class="map-item">
         <img src="maps/enso_impacts_elnino_climategov.jpg" style="width:100%;height:auto;display:block;border-radius:2px;" alt="Typical global El Niño impacts for winter and summer">
         <p><strong>El Niño</strong> — typical global impacts for winter (top) and summer (bottom). Credit: climate.gov.</p>
