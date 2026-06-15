@@ -1294,7 +1294,7 @@ def generate_html_report(cfg: dict) -> None:
     <h2>Index Collinearity</h2>
     <p class="enso-note">Pearson r between climate indices over the full analysis period (1981–{end_year}). High collinearity (e.g. AMM–TNA r≈0.81) means total vs unique signal may diverge substantially for those modes — shrinkage in the unique-signal map reflects shared variance, not absent signal.</p>
     <div class="map-item" style="max-width:640px">
-      <div class="map-zoom"><img src="maps/index_corr_matrix.png" alt="Index collinearity matrix"></div>
+      <img src="maps/index_corr_matrix.png" style="width:100%;height:auto;display:block;border-radius:2px;" alt="Index collinearity matrix">
     </div>
   </section>
 
@@ -1425,13 +1425,13 @@ def generate_html_report(cfg: dict) -> None:
       <a href="https://www.pmel.noaa.gov/elnino/impacts-of-el-nino" target="_blank" rel="noopener">NOAA PMEL</a>,
       via climate.gov.
     </p>
-    <div class="map-pair">
+    <div class="map-pair" style="max-width:760px;margin-left:auto;margin-right:auto;">
       <div class="map-item">
-        <div class="map-zoom"><img src="maps/enso_impacts_elnino_climategov.jpg" alt="Typical global El Niño impacts for winter and summer"></div>
+        <img src="maps/enso_impacts_elnino_climategov.jpg" style="width:100%;height:auto;display:block;border-radius:2px;" alt="Typical global El Niño impacts for winter and summer">
         <p><strong>El Niño</strong> — typical global impacts for winter (top) and summer (bottom). Credit: climate.gov.</p>
       </div>
       <div class="map-item">
-        <div class="map-zoom"><img src="maps/enso_impacts_lanina_climategov.jpg" alt="Typical global La Niña impacts for winter and summer"></div>
+        <img src="maps/enso_impacts_lanina_climategov.jpg" style="width:100%;height:auto;display:block;border-radius:2px;" alt="Typical global La Niña impacts for winter and summer">
         <p><strong>La Niña</strong> — typical global impacts for winter (top) and summer (bottom). Credit: climate.gov.</p>
       </div>
     </div>
