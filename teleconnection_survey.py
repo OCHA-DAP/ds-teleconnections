@@ -1186,8 +1186,8 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
 
     def _label(x, y, text):
         ax.annotate(text, (x, y), ha="center", va="center", fontsize=5.0,
-                    color="#1a1a1a", zorder=7,
-                    path_effects=[pe.withStroke(linewidth=1.3, foreground="white")])
+                    color="black", zorder=7,
+                    path_effects=[pe.withStroke(linewidth=0.5, foreground="white")])
 
     # Unidirectional season labels
     for _, row in pd.concat([wet_poly, dry_poly]).iterrows():
