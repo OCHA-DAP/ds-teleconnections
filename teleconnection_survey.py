@@ -1471,7 +1471,7 @@ def generate_html_report(cfg: dict) -> None:
 
   <hr>
   <section>
-    <h2>ENSO</h2>
+    <h2>ENSO Impacts — Literature Review</h2>
     <p class="enso-note">
       The generalized NOAA and IRI impact maps above are built from a few canonical global studies and miss
       several real teleconnections — most notably summer rainfall over <strong>highland Yemen and the
