@@ -1163,11 +1163,23 @@ _LIT_SEASON = {
 _LIT_BI_SEASON = {"ETH": ("OND", "JJAS"), "YEM": ("DJF", "JJA")}  # (wet, dry)
 
 
-def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
-    """Choropleth of documented El Niño rainfall impacts, in the same visual
-    style as the correlation maps, annotated with each signal's season.
-    Saved as maps/lit_enso_elnino.png."""
-    documented = _LIT_WET | _LIT_DRY | _LIT_BI
+_BLUE, _BLUE_E = "#71B3E5", "#4A90C8"   # wetter
+_BROWN, _BROWN_E = "#C8844A", "#A06030"  # drier
+
+
+def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
+                             phase: str = "elnino") -> None:
+    """Choropleth of documented ENSO rainfall impacts, in the same visual style
+    as the correlation maps, annotated with each signal's season. ``phase`` is
+    'elnino' or 'lanina'; the La Niña map is the typical (approximate) opposite,
+    since ENSO is asymmetric. Saved as maps/lit_enso_{phase}.png."""
+    # For El Niño: _LIT_WET → blue (wetter), _LIT_DRY → brown (drier).
+    # For La Niña: swap (typical opposite response).
+    if phase == "elnino":
+        wet_fill, dry_fill = (_BLUE, _BLUE_E), (_BROWN, _BROWN_E)
+    else:
+        wet_fill, dry_fill = (_BROWN, _BROWN_E), (_BLUE, _BLUE_E)
+
     is_dot = gdf.geometry.apply(_is_dot_country)
     g_poly, g_dot = gdf[~is_dot], gdf[is_dot]
 
@@ -1180,9 +1192,9 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
     wet_poly = g_poly[g_poly["iso3"].isin(_LIT_WET)]
     dry_poly = g_poly[g_poly["iso3"].isin(_LIT_DRY)]
     if len(wet_poly):
-        wet_poly.plot(ax=ax, color="#71B3E5", edgecolor="#4A90C8", linewidth=0.3)
+        wet_poly.plot(ax=ax, color=wet_fill[0], edgecolor=wet_fill[1], linewidth=0.3)
     if len(dry_poly):
-        dry_poly.plot(ax=ax, color="#C8844A", edgecolor="#A06030", linewidth=0.3)
+        dry_poly.plot(ax=ax, color=dry_fill[0], edgecolor=dry_fill[1], linewidth=0.3)
 
     def _label(x, y, text):
         ax.annotate(text, (x, y), ha="center", va="center", fontsize=5.0,
@@ -1197,16 +1209,17 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
         p = row.geometry.representative_point()
         _label(p.x, p.y, season)
 
-    # Bidirectional: diagonal split + a season label in each half
+    # Bidirectional: diagonal split (upper half = the country's "wet season"
+    # under El Niño) + a season label in each half. Colors follow the phase.
     for _, row in g_poly[g_poly["iso3"].isin(_LIT_BI)].iterrows():
         geom = row.geometry
         upper, lower = _diagonal_halves(geom)
         if not upper.is_empty:
             gpd.GeoDataFrame(geometry=[upper], crs="EPSG:4326").plot(
-                ax=ax, color="#71B3E5", edgecolor="none")
+                ax=ax, color=wet_fill[0], edgecolor="none")
         if not lower.is_empty:
             gpd.GeoDataFrame(geometry=[lower], crs="EPSG:4326").plot(
-                ax=ax, color="#C8844A", edgecolor="none")
+                ax=ax, color=dry_fill[0], edgecolor="none")
         gpd.GeoDataFrame(geometry=[geom], crs="EPSG:4326").plot(
             ax=ax, facecolor="none", edgecolor="#555", linewidth=0.4)
         wet_s, dry_s = _LIT_BI_SEASON.get(row["iso3"], ("", ""))
@@ -1220,9 +1233,9 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
     for _, row in g_dot.iterrows():
         iso = row["iso3"]
         if iso in _LIT_WET:
-            face, edge = "#71B3E5", "#4A90C8"
+            face, edge = wet_fill
         elif iso in _LIT_DRY:
-            face, edge = "#C8844A", "#A06030"
+            face, edge = dry_fill
         else:
             continue
         cx, cy = _dot_center(row.geometry)
@@ -1236,7 +1249,7 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
     ax.set_aspect("equal")
     ax.set_axis_off()
     out_dir.mkdir(parents=True, exist_ok=True)
-    fig.savefig(out_dir / "lit_enso_elnino.png", dpi=200, bbox_inches="tight")
+    fig.savefig(out_dir / f"lit_enso_{phase}.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
 
 
@@ -1458,23 +1471,33 @@ def generate_html_report(cfg: dict) -> None:
 
   <hr>
   <section>
-    <h2>El Niño</h2>
+    <h2>ENSO</h2>
     <p class="enso-note">
       The generalized NOAA and IRI impact maps above are built from a few canonical global studies and miss
       several real teleconnections — most notably summer rainfall over <strong>highland Yemen and the
-      southwestern Arabian Peninsula</strong>. The map and table below are a curated, citation-backed catalogue
+      southwestern Arabian Peninsula</strong>. The maps and table below are a curated, citation-backed catalogue
       of documented ENSO–seasonal-rainfall links across humanitarian-priority regions, drawn from peer-reviewed
       literature supplemented by authoritative operational sources (NOAA, IRI, ICPAC/IGAD). Rows tagged
       <span style="background:#7B3A1A;color:#fff;font-size:0.62rem;padding:0.05rem 0.3rem;border-radius:3px;">gap vs NOAA/IRI</span>
       are well-supported in the literature yet absent or under-represented on the standard maps. The final
       column reports what <strong>this study's own ERA5 analysis</strong> found, as an independent check.
     </p>
-    <div class="map-zoom" style="max-width:980px;margin:0 auto;"><img src="maps/lit_enso_elnino.png" alt="Documented El Niño rainfall impacts across humanitarian-priority regions"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.1rem;font-size:0.72rem;color:#444;margin:0.4rem 0 0.2rem;"><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#C8844A;border:1px solid #A06030;"></span>El&nbsp;Niño drier</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#71B3E5;border:1px solid #4A90C8;"></span>El&nbsp;Niño wetter</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:linear-gradient(135deg,#71B3E5 50%,#C8844A 50%);border:1px solid #777;"></span>Opposing signals by season (e.g. Ethiopia, Yemen)</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#F4F4F4;border:1px solid #C8C8C8;"></span>Not in this catalogue</span></div>
-    <p class="enso-note" style="margin:0.3rem auto 0.9rem;max-width:980px;font-size:0.73rem;color:#666;">
-      Map shows the dominant documented <strong>El&nbsp;Niño</strong> rainfall response in each country's main
-      humanitarian rainy season; La&nbsp;Niña is typically (not always) the opposite. Ethiopia and Yemen are split
-      because their seasons respond in opposite directions. See the table for season, sources and evidence strength.
+    <div style="display:flex;gap:0.5rem;margin:0.2rem 0 0.6rem;">
+      <button class="toggle-btn ensoph-btn active" data-phase="elnino">El Niño</button>
+      <button class="toggle-btn ensoph-btn" data-phase="lanina">La Niña</button>
+    </div>
+    <div class="ensoph" data-phase="elnino">
+      <div class="map-zoom" style="max-width:1140px;margin:0 auto;"><img src="maps/lit_enso_elnino.png" alt="Documented El Niño rainfall impacts across humanitarian-priority regions"></div>
+      <p class="enso-note" style="margin:0.3rem auto 0;max-width:1140px;font-size:0.73rem;color:#666;">Showing <strong>El&nbsp;Niño</strong> — dominant documented rainfall response in each country's main humanitarian rainy season.</p>
+    </div>
+    <div class="ensoph" data-phase="lanina" style="display:none;">
+      <div class="map-zoom" style="max-width:1140px;margin:0 auto;"><img src="maps/lit_enso_lanina.png" alt="Typical La Niña rainfall impacts across humanitarian-priority regions"></div>
+      <p class="enso-note" style="margin:0.3rem auto 0;max-width:1140px;font-size:0.73rem;color:#666;">Showing <strong>La&nbsp;Niña</strong> — the typical (approximate) opposite of El&nbsp;Niño; ENSO is asymmetric, so the real La&nbsp;Niña pattern can differ in magnitude.</p>
+    </div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.1rem;font-size:0.72rem;color:#444;margin:0.5rem 0 0.2rem;"><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#C8844A;border:1px solid #A06030;"></span>drier</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#71B3E5;border:1px solid #4A90C8;"></span>wetter</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:linear-gradient(135deg,#71B3E5 50%,#C8844A 50%);border:1px solid #777;"></span>Opposing signals by season (e.g. Ethiopia, Yemen)</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#F4F4F4;border:1px solid #C8C8C8;"></span>Not in this catalogue</span></div>
+    <p class="enso-note" style="margin:0.2rem auto 0.9rem;max-width:1140px;font-size:0.73rem;color:#666;">
+      Ethiopia and Yemen are split because their seasons respond in opposite directions; 3-month season codes
+      (e.g. OND, JJAS, DJF) label each signal. See the table below for sources and evidence strength.
     </p>
 <div style="overflow-x:auto;"><table style="border-collapse:collapse;width:100%;font-size:0.78rem;line-height:1.4;min-width:760px;"><thead><tr><th style="text-align:left;padding:0.35rem 0.5rem;border-bottom:2px solid #c4cdda;font-weight:600;color:#1a1a1a;background:#eef2f7;">Region / area</th><th style="text-align:left;padding:0.35rem 0.5rem;border-bottom:2px solid #c4cdda;font-weight:600;color:#1a1a1a;background:#eef2f7;">Season</th><th style="text-align:left;padding:0.35rem 0.5rem;border-bottom:2px solid #c4cdda;font-weight:600;color:#1a1a1a;background:#eef2f7;">El&nbsp;Niño</th><th style="text-align:left;padding:0.35rem 0.5rem;border-bottom:2px solid #c4cdda;font-weight:600;color:#1a1a1a;background:#eef2f7;">La&nbsp;Niña</th><th style="text-align:left;padding:0.35rem 0.5rem;border-bottom:2px solid #c4cdda;font-weight:600;color:#1a1a1a;background:#eef2f7;">Evidence &amp; source</th><th style="text-align:left;padding:0.35rem 0.5rem;border-bottom:2px solid #c4cdda;font-weight:600;color:#1a1a1a;background:#eef2f7;">This study (ERA5)</th></tr></thead><tbody><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Horn of Africa</span><br><span style="color:#222;">Kenya, S. Somalia, SE Ethiopia</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">OND “short rains”</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Robust, widely replicated<br><a href="https://agupubs.onlinelibrary.wiley.com/doi/full/10.1029/2020JD033121" target="_blank" rel="noopener" style="color:#2563b8;">Park et&nbsp;al. 2020 (JGR-A)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — SOM OND r=+0.65, KEN +0.58, ETH +0.59</td></tr><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Horn of Africa</span><br><span style="color:#222;">Ethiopia / Sudan / S. Sudan highlands</span> <span style="background:#7B3A1A;color:#fff;font-size:0.62rem;padding:0.05rem 0.3rem;border-radius:3px;white-space:nowrap;">gap vs NOAA/IRI</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">JJAS (kiremt / Blue Nile)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Robust<br><a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140" target="_blank" rel="noopener" style="color:#2563b8;">Dai &amp; Wigley 2000 (GRL)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — ETH JAS r=−0.63, SSD −0.59, SDN −0.40</td></tr><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Horn of Africa</span><br><span style="color:#222;">East Africa</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">MAM “long rains”</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#E8E8E8;text-align:center;color:#555;">weak / none</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#E8E8E8;text-align:center;color:#555;">weak / none</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Long rains only weakly tied to ENSO<br><a href="https://link.springer.com/article/10.1007/s00382-018-4239-7" target="_blank" rel="noopener" style="color:#2563b8;">Wainwright et&nbsp;al. 2018 (Clim&nbsp;Dyn)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — little MAM ENSO signal in the Horn</td></tr><tr style="background:#ffffff;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Sahel &amp; W. Africa</span><br><span style="color:#222;">Senegal, Mali, Niger, Chad, N. Nigeria</span> <span style="background:#7B3A1A;color:#fff;font-size:0.62rem;padding:0.05rem 0.3rem;border-radius:3px;white-space:nowrap;">gap vs NOAA/IRI</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">JJAS monsoon</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Direction robust; mechanism contested<br><a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140" target="_blank" rel="noopener" style="color:#2563b8;">Dai &amp; Wigley 2000 (GRL)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — SEN JJA −0.49, MLI JAS −0.41, TCD −0.43</td></tr><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Middle East / Arabia</span><br><span style="color:#222;">SW Arabia / highland Yemen</span> <span style="background:#7B3A1A;color:#fff;font-size:0.62rem;padding:0.05rem 0.3rem;border-radius:3px;white-space:nowrap;">gap vs NOAA/IRI</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">JJA summer rains</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier (drought)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Single robust modelling+obs study; <strong>direct</strong> Pacific teleconnection<br><a href="https://www.nature.com/articles/s41612-017-0003-7" target="_blank" rel="noopener" style="color:#2563b8;">Atif et&nbsp;al. 2017 (npj&nbsp;Clim&nbsp;Atmos&nbsp;Sci)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — YEM JAS r=−0.59 (summer); winter NDJ +0.53</td></tr><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Middle East / Arabia</span><br><span style="color:#222;">Iraq, Iran, Levant, N. Arabia</span> <span style="background:#7B3A1A;color:#fff;font-size:0.62rem;padding:0.05rem 0.3rem;border-radius:3px;white-space:nowrap;">gap vs NOAA/IRI</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">SON–DJF autumn–winter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Multiple studies; autumn phase-transition evidence<br><a href="https://www.researchgate.net/publication/337134434_The_Impact_of_ENSO_Phase_Transition_on_the_Atmospheric_Circulation_Precipitation_and_Temperature_in_the_Middle_East_Autumn" target="_blank" rel="noopener" style="color:#2563b8;">Middle East autumn–ENSO study 2019</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — IRQ SON +0.63, IRN OND +0.59, SAU MAM +0.51</td></tr><tr style="background:#ffffff;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">South Asia</span><br><span style="color:#222;">India (all-India monsoon)</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">JJAS</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Robust historically but <strong>non-stationary</strong> (weakened since ~1980s)<br><a href="https://www.ncbi.nlm.nih.gov/pmc/articles/PMC8605027/" target="_blank" rel="noopener" style="color:#2563b8;">Indian-monsoon non-stationarity reviews</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Weak in ERA5 — all-India JJAS not significant (consistent with the documented weakening)</td></tr><tr style="background:#ffffff;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">South Asia</span><br><span style="color:#222;">Pakistan, Afghanistan</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">OND &amp; MAM (winter–spring)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Established<br><a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140" target="_blank" rel="noopener" style="color:#2563b8;">Dai &amp; Wigley 2000 (GRL)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — PAK OND +0.55, MAM +0.54; AFG AMJ +0.59</td></tr><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Central America</span><br><span style="color:#222;">Guatemala, Honduras, El&nbsp;Salvador, Nicaragua (Dry Corridor)</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">JJA–SON (incl. canícula)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier (drought)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Canonical<br><a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140" target="_blank" rel="noopener" style="color:#2563b8;">Dai &amp; Wigley 2000 (GRL)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — GTM ASO −0.61, HND −0.60, NIC −0.61</td></tr><tr style="background:#ffffff;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">Southern Africa</span><br><span style="color:#222;">Zimbabwe, Zambia, Malawi, Mozambique, S.&nbsp;Africa, Botswana</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">DJF austral summer</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier (drought)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Robust, widely replicated<br><a href="https://journals.ametsoc.org/view/journals/bams/82/4/1520-0477_2001_082_0619_ppaawe_2_3_co_2.xml" target="_blank" rel="noopener" style="color:#2563b8;">Mason &amp; Goddard 2001 (BAMS)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees — ZWE DJF −0.68, ZAF NDJ −0.62, MOZ JFM −0.50</td></tr><tr style="background:#f7f9fc;"><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;"><span style="color:#5a6b85;">SE Asia / Maritime Continent</span><br><span style="color:#222;">Indonesia, Philippines, Vietnam, Thailand</span></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">JJA–SON dry season</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#C8844A;border-right:1px solid #A06030;text-align:center;color:#3a1a06;">drier (drought)</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;background:#71B3E5;border-right:1px solid #4A90C8;text-align:center;color:#08306b;">wetter</td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Very robust (drought &amp; fire risk)<br><a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140" target="_blank" rel="noopener" style="color:#2563b8;">Dai &amp; Wigley 2000 (GRL)</a></td><td style="padding:0.35rem 0.5rem;border-bottom:1px solid #e3e8ef;vertical-align:top;">Agrees strongly — IDN ASO −0.87, PHL FMA −0.86, THA −0.81</td></tr></tbody></table></div>
     <p class="enso-note" style="margin-top:0.7rem;font-size:0.74rem;color:#666;">
@@ -1645,6 +1668,7 @@ def generate_html_report(cfg: dict) -> None:
     document.querySelectorAll('.toggle-btn').forEach(btn => {{
       btn.addEventListener('click', () => {{
         const group = btn.dataset.group;
+        if (!group) return;  // phase toggle (.ensoph-btn) handled separately
         document.querySelectorAll('.toggle-btn[data-group="' + group + '"]')
           .forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
@@ -1655,6 +1679,17 @@ def generate_html_report(cfg: dict) -> None:
     }});
     // Apply default on load
     applyView();
+
+    // ENSO phase toggle (El Niño / La Niña) for the documented-impacts maps
+    document.querySelectorAll('.ensoph-btn').forEach(btn => {{
+      btn.addEventListener('click', () => {{
+        const phase = btn.dataset.phase;
+        document.querySelectorAll('.ensoph-btn').forEach(b => b.classList.toggle('active', b === btn));
+        document.querySelectorAll('.ensoph').forEach(d => {{
+          d.style.display = (d.dataset.phase === phase) ? '' : 'none';
+        }});
+      }});
+    }});
   </script>
 </body>
 </html>"""
@@ -1728,7 +1763,8 @@ def main(cfg: dict = CONFIG) -> None:
     # Lag-independent panels
     enso_composite_maps(rain, indices, gdf, cfg, rainy=rainy, analyzed_isos=analyzed_isos)
     plot_index_corr_matrix(indices, cfg["out_dir"], end_year=cfg["end_year"])
-    plot_literature_enso_map(gdf, cfg["out_dir"])
+    plot_literature_enso_map(gdf, cfg["out_dir"], phase="elnino")
+    plot_literature_enso_map(gdf, cfg["out_dir"], phase="lanina")
     generate_html_report(cfg)
 
     print(f"done across {n_countries} countries; lag caps {list(LAG_CAPS.values())}.")
