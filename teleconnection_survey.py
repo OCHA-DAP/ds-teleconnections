@@ -35,6 +35,7 @@ import geopandas as gpd
 from scipy import stats
 import matplotlib.pyplot as plt
 import matplotlib.patches as mpatches
+import matplotlib.patheffects as pe
 from matplotlib.colors import TwoSlopeNorm, LinearSegmentedColormap
 import ocha_stratus as stratus
 
@@ -1131,8 +1132,8 @@ def plot_index_corr_matrix(indices: pd.DataFrame, out_dir: Path, end_year: int =
 # Documented-impacts (literature) map
 # --------------------------------------------------------------------------- #
 # Dominant documented El Niño rainfall response per country in its main
-# humanitarian rainy season (see the "Documented ENSO Impacts in the Literature"
-# section of the report for the per-link sources). Curated from peer-reviewed +
+# humanitarian rainy season (see the "El Niño" literature section of the report
+# for the per-link sources). Curated from peer-reviewed +
 # operational literature, cross-checked against this study's ERA5 results.
 _LIT_WET = {"KEN", "SOM", "SAU", "OMN", "ARE", "IRQ", "IRN", "SYR", "PAK", "AFG"}
 _LIT_DRY = {
@@ -1143,17 +1144,38 @@ _LIT_DRY = {
 }
 _LIT_BI = {"ETH", "YEM"}  # diagonal split: wetter season (blue) / drier season (brown)
 
+# Documented headline season per country (3-month code). Bidirectional countries
+# carry a (wet-season, dry-season) pair, matching the diagonal split.
+_LIT_SEASON = {
+    "KEN": "OND", "SOM": "OND",
+    "DJI": "JJAS", "ERI": "JJAS", "SDN": "JJAS", "SSD": "JJAS",
+    "SEN": "JJAS", "MLI": "JJAS", "NER": "JJAS", "TCD": "JJAS", "BFA": "JJAS",
+    "NGA": "JJAS", "MRT": "JJAS", "GMB": "JJAS", "GNB": "JJAS", "GIN": "JJAS",
+    "SAU": "MAM", "OMN": "MAM", "ARE": "MAM",
+    "IRQ": "SON", "IRN": "SON", "SYR": "SON",
+    "IND": "JJAS", "NPL": "JJAS", "PAK": "OND", "AFG": "OND",
+    "GTM": "JAS", "HND": "JAS", "SLV": "JAS", "NIC": "JAS", "CRI": "JAS", "PAN": "JAS",
+    "ZWE": "DJF", "ZMB": "DJF", "MWI": "DJF", "MOZ": "DJF", "ZAF": "DJF",
+    "BWA": "DJF", "NAM": "DJF", "LSO": "DJF", "AGO": "DJF",
+    "IDN": "JAS", "PHL": "JAS", "VNM": "JAS", "THA": "JAS", "KHM": "JAS",
+    "LAO": "JAS", "MMR": "JAS", "MYS": "JAS",
+}
+_LIT_BI_SEASON = {"ETH": ("OND", "JJAS"), "YEM": ("DJF", "JJA")}  # (wet, dry)
+
 
 def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
     """Choropleth of documented El Niño rainfall impacts, in the same visual
-    style as the correlation maps. Saved as maps/lit_enso_elnino.png."""
+    style as the correlation maps, annotated with each signal's season.
+    Saved as maps/lit_enso_elnino.png."""
     documented = _LIT_WET | _LIT_DRY | _LIT_BI
     is_dot = gdf.geometry.apply(_is_dot_country)
     g_poly, g_dot = gdf[~is_dot], gdf[is_dot]
 
     map_w = 15.0
     fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
-    _plot_base_layer(ax, g_poly, documented)
+
+    # Faint outline of every country for geographic context.
+    g_poly.plot(ax=ax, color="#F4F4F4", edgecolor="#C8C8C8", linewidth=0.35)
 
     wet_poly = g_poly[g_poly["iso3"].isin(_LIT_WET)]
     dry_poly = g_poly[g_poly["iso3"].isin(_LIT_DRY)]
@@ -1162,7 +1184,20 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
     if len(dry_poly):
         dry_poly.plot(ax=ax, color="#C8844A", edgecolor="#A06030", linewidth=0.3)
 
-    # Bidirectional: diagonal split (upper-right = wetter/blue, lower-left = drier/brown)
+    def _label(x, y, text):
+        ax.annotate(text, (x, y), ha="center", va="center", fontsize=5.0,
+                    color="#1a1a1a", zorder=7,
+                    path_effects=[pe.withStroke(linewidth=1.3, foreground="white")])
+
+    # Unidirectional season labels
+    for _, row in pd.concat([wet_poly, dry_poly]).iterrows():
+        season = _LIT_SEASON.get(row["iso3"])
+        if not season:
+            continue
+        p = row.geometry.representative_point()
+        _label(p.x, p.y, season)
+
+    # Bidirectional: diagonal split + a season label in each half
     for _, row in g_poly[g_poly["iso3"].isin(_LIT_BI)].iterrows():
         geom = row.geometry
         upper, lower = _diagonal_halves(geom)
@@ -1174,6 +1209,13 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path) -> None:
                 ax=ax, color="#C8844A", edgecolor="none")
         gpd.GeoDataFrame(geometry=[geom], crs="EPSG:4326").plot(
             ax=ax, facecolor="none", edgecolor="#555", linewidth=0.4)
+        wet_s, dry_s = _LIT_BI_SEASON.get(row["iso3"], ("", ""))
+        if not upper.is_empty and wet_s:
+            rp = upper.representative_point()
+            _label(rp.x, rp.y, wet_s)
+        if not lower.is_empty and dry_s:
+            rp = lower.representative_point()
+            _label(rp.x, rp.y, dry_s)
 
     for _, row in g_dot.iterrows():
         iso = row["iso3"]
@@ -1416,7 +1458,7 @@ def generate_html_report(cfg: dict) -> None:
 
   <hr>
   <section>
-    <h2>Documented ENSO Impacts in the Literature</h2>
+    <h2>El Niño</h2>
     <p class="enso-note">
       The generalized NOAA and IRI impact maps above are built from a few canonical global studies and miss
       several real teleconnections — most notably summer rainfall over <strong>highland Yemen and the
@@ -1428,7 +1470,7 @@ def generate_html_report(cfg: dict) -> None:
       column reports what <strong>this study's own ERA5 analysis</strong> found, as an independent check.
     </p>
     <div class="map-zoom" style="max-width:980px;margin:0 auto;"><img src="maps/lit_enso_elnino.png" alt="Documented El Niño rainfall impacts across humanitarian-priority regions"></div>
-    <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.1rem;font-size:0.72rem;color:#444;margin:0.4rem 0 0.2rem;"><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#C8844A;border:1px solid #A06030;"></span>El&nbsp;Niño drier</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#71B3E5;border:1px solid #4A90C8;"></span>El&nbsp;Niño wetter</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:linear-gradient(135deg,#71B3E5 50%,#C8844A 50%);border:1px solid #777;"></span>Opposing signals by season (e.g. Ethiopia, Yemen)</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#E8E8E8;border:1px solid #CCCCCC;"></span>Not in this catalogue</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.1rem;font-size:0.72rem;color:#444;margin:0.4rem 0 0.2rem;"><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#C8844A;border:1px solid #A06030;"></span>El&nbsp;Niño drier</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#71B3E5;border:1px solid #4A90C8;"></span>El&nbsp;Niño wetter</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:linear-gradient(135deg,#71B3E5 50%,#C8844A 50%);border:1px solid #777;"></span>Opposing signals by season (e.g. Ethiopia, Yemen)</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#F4F4F4;border:1px solid #C8C8C8;"></span>Not in this catalogue</span></div>
     <p class="enso-note" style="margin:0.3rem auto 0.9rem;max-width:980px;font-size:0.73rem;color:#666;">
       Map shows the dominant documented <strong>El&nbsp;Niño</strong> rainfall response in each country's main
       humanitarian rainy season; La&nbsp;Niña is typically (not always) the opposite. Ethiopia and Yemen are split
