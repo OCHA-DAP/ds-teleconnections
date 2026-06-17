@@ -1223,6 +1223,56 @@ _BROWN, _BROWN_E = "#D29A6C", "#B17E50"  # drier
 _GREY_NE, _GREY_NE_E = "#DBDBDB", "#BDBDBD"    # monitored, no documented link
 _GREY_NS, _GREY_NS_E = "#FCFCFC", "#DCDCDC"    # not monitored (near-white)
 
+# Per-country evidence strength -> map shade (robust dark, single-study pale)
+_LIT_EVIDENCE = {
+    "AFG": "moderate", "AGO": "robust", "ARE": "moderate", "ARG":
+    "robust", "ATG": "moderate", "BDI": "moderate", "BEN": "single-study",
+    "BES": "moderate", "BFA": "moderate", "BHS": "moderate", "BLZ":
+    "robust", "BOL": "robust", "BRA": "robust", "BRB": "moderate", "BTN":
+    "moderate", "BWA": "robust", "CHL": "robust", "CHN": "robust", "CIV":
+    "moderate", "CMR": "moderate", "COD": "moderate", "COG": "moderate",
+    "COL": "robust", "CPV": "moderate", "CRI": "robust", "CUB": "robust",
+    "CYM": "single-study", "DJI": "robust", "DMA": "single-study", "DOM":
+    "robust", "DZA": "moderate", "ECU": "robust", "EGY": "moderate",
+    "ERI": "robust", "ETH": "robust", "FJI": "robust", "FSM": "robust",
+    "GAB": "moderate", "GHA": "moderate", "GIN": "moderate", "GLP":
+    "single-study", "GMB": "moderate", "GNB": "moderate", "GNQ":
+    "single-study", "GRD": "single-study", "GTM": "robust", "GUF":
+    "single-study", "GUY": "moderate", "HND": "robust", "HTI": "robust",
+    "IDN": "robust", "IND": "moderate", "IRN": "moderate", "IRQ":
+    "moderate", "JAM": "robust", "KAZ": "robust", "KEN": "robust", "KGZ":
+    "robust", "KHM": "robust", "KIR": "robust", "KNA": "single-study",
+    "KWT": "moderate", "LAO": "robust", "LBN": "moderate", "LBY":
+    "single-study", "LCA": "single-study", "LSO": "robust", "MAR":
+    "moderate", "MDG": "moderate", "MDV": "moderate", "MEX": "robust",
+    "MHL": "robust", "MLI": "moderate", "MMR": "robust", "MOZ": "robust",
+    "MRT": "moderate", "MTQ": "single-study", "MWI": "robust", "MYS":
+    "robust", "NAM": "robust", "NER": "moderate", "NGA": "moderate",
+    "NIC": "robust", "OMN": "moderate", "PAK": "moderate", "PAN":
+    "robust", "PER": "robust", "PHL": "robust", "PNG": "robust", "PRI":
+    "robust", "PRY": "robust", "PSE": "single-study", "QAT":
+    "single-study", "RWA": "moderate", "SAU": "moderate", "SDN": "robust",
+    "SEN": "moderate", "SLB": "robust", "SLV": "robust", "SOM": "robust",
+    "SSD": "robust", "SUR": "moderate", "SWZ": "robust", "SYC":
+    "single-study", "SYR": "moderate", "TCA": "single-study", "TCD":
+    "moderate", "TGO": "single-study", "THA": "robust", "TLS": "robust",
+    "TON": "robust", "TTO": "moderate", "TUN": "moderate", "TUR":
+    "robust", "TZA": "robust", "UGA": "robust", "URY": "robust", "UZB":
+    "moderate", "VCT": "single-study", "VEN": "moderate", "VGB":
+    "single-study", "VIR": "moderate", "VNM": "robust", "VUT": "robust",
+    "YEM": "single-study", "ZAF": "robust", "ZMB": "robust", "ZWE":
+    "robust"
+}
+_RAMP = {
+    # (direction, evidence) -> (fill, edge).  direction 'wet' = El Nino wetter.
+    ("wet", "robust"):       ("#4F97CE", "#2F73AE"),
+    ("wet", "moderate"):     ("#86BCE8", "#5E9FD2"),
+    ("wet", "single-study"): ("#BBD9F2", "#8FBEE6"),
+    ("dry", "robust"):       ("#B5793F", "#8E5C28"),
+    ("dry", "moderate"):     ("#D29A6C", "#B17E50"),
+    ("dry", "single-study"): ("#E8C9A9", "#C9A57E"),
+}
+
 
 def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
                              phase: str = "elnino") -> None:
@@ -1230,12 +1280,13 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
     as the correlation maps, annotated with each signal's season. ``phase`` is
     'elnino' or 'lanina'; the La Niña map is the typical (approximate) opposite,
     since ENSO is asymmetric. Saved as maps/lit_enso_{phase}.png."""
-    # For El Niño: _LIT_WET → blue (wetter), _LIT_DRY → brown (drier).
-    # For La Niña: swap (typical opposite response).
-    if phase == "elnino":
-        wet_fill, dry_fill = (_BLUE, _BLUE_E), (_BROWN, _BROWN_E)
-    else:
-        wet_fill, dry_fill = (_BROWN, _BROWN_E), (_BLUE, _BLUE_E)
+    flip = phase == "lanina"
+
+    def _fill(direction, iso):
+        """(face, edge) by direction ('wet'/'dry'), country evidence, and phase."""
+        eff = ("dry" if direction == "wet" else "wet") if flip else direction
+        ev = _LIT_EVIDENCE.get(iso, "moderate")
+        return _RAMP.get((eff, ev), _RAMP[(eff, "moderate")])
 
     is_dot = gdf.geometry.apply(_is_dot_country)
     g_poly, g_dot = gdf[~is_dot], gdf[is_dot]
@@ -1255,10 +1306,14 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
 
     wet_poly = g_poly[g_poly["iso3"].isin(_LIT_WET)]
     dry_poly = g_poly[g_poly["iso3"].isin(_LIT_DRY)]
-    if len(wet_poly):
-        wet_poly.plot(ax=ax, color=wet_fill[0], edgecolor=wet_fill[1], linewidth=0.3)
-    if len(dry_poly):
-        dry_poly.plot(ax=ax, color=dry_fill[0], edgecolor=dry_fill[1], linewidth=0.3)
+    # Shade by evidence strength (robust = strong, single-study = pale)
+    for direction, sub in (("wet", wet_poly), ("dry", dry_poly)):
+        for ev in ("robust", "moderate", "single-study"):
+            part = sub[sub["iso3"].map(lambda i: _LIT_EVIDENCE.get(i, "moderate")) == ev]
+            if len(part):
+                eff = ("dry" if direction == "wet" else "wet") if flip else direction
+                face, edge = _RAMP.get((eff, ev), _RAMP[(eff, "moderate")])
+                part.plot(ax=ax, color=face, edgecolor=edge, linewidth=0.3)
 
     def _label(x, y, text):
         ax.annotate(text, (x, y), ha="center", va="center", fontsize=5.0,
@@ -1279,10 +1334,10 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
         upper, lower = _diagonal_halves(geom)
         if not upper.is_empty:
             gpd.GeoDataFrame(geometry=[upper], crs="EPSG:4326").plot(
-                ax=ax, color=wet_fill[0], edgecolor="none")
+                ax=ax, color=_fill("wet", row["iso3"])[0], edgecolor="none")
         if not lower.is_empty:
             gpd.GeoDataFrame(geometry=[lower], crs="EPSG:4326").plot(
-                ax=ax, color=dry_fill[0], edgecolor="none")
+                ax=ax, color=_fill("dry", row["iso3"])[0], edgecolor="none")
         gpd.GeoDataFrame(geometry=[geom], crs="EPSG:4326").plot(
             ax=ax, facecolor="none", edgecolor="#555", linewidth=0.4)
         wet_s, dry_s = _LIT_BI_SEASON.get(row["iso3"], ("", ""))
@@ -1296,9 +1351,9 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
     for _, row in g_dot.iterrows():
         iso = row["iso3"]
         if iso in _LIT_WET:
-            face, edge = wet_fill
+            face, edge = _fill("wet", iso)
         elif iso in _LIT_DRY:
-            face, edge = dry_fill
+            face, edge = _fill("dry", iso)
         else:
             continue
         cx, cy = _dot_center(row.geometry)
@@ -1562,7 +1617,7 @@ def generate_html_report(cfg: dict) -> None:
       <div class="map-zoom" style="max-width:1140px;margin:0 auto;"><img src="maps/lit_enso_lanina.png" alt="Typical La Niña rainfall impacts across humanitarian-priority regions"></div>
       <p class="enso-note" style="margin:0.3rem auto 0;max-width:1140px;font-size:0.73rem;color:#666;">Showing <strong>La&nbsp;Niña</strong> — the typical (approximate) opposite of El&nbsp;Niño; ENSO is asymmetric, so the real La&nbsp;Niña pattern can differ in magnitude.</p>
     </div>
-    <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.1rem;font-size:0.72rem;color:#444;margin:0.5rem 0 0.2rem;"><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#D29A6C;border:1px solid #B17E50;"></span>drier</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#86BCE8;border:1px solid #5E9FD2;"></span>wetter</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:linear-gradient(135deg,#86BCE8 50%,#D29A6C 50%);border:1px solid #777;"></span>Opposing signals by season (e.g. Ethiopia, Yemen)</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#DBDBDB;border:1px solid #BDBDBD;"></span>Monitored — no documented link</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#FCFCFC;border:1px solid #DCDCDC;"></span>Not monitored (not researched)</span></div>
+    <div style="display:flex;flex-wrap:wrap;gap:0.4rem 1.1rem;font-size:0.72rem;color:#444;margin:0.5rem 0 0.2rem;align-items:center;"><span style="margin-right:0.35em;"><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0;background:#E8C9A9;border:1px solid #C9A57E;"></span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0;background:#D29A6C;border:1px solid #B17E50;"></span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0;background:#B5793F;border:1px solid #8E5C28;"></span></span><span style="margin-left:-0.2em;">drier</span><span style="margin-right:0.35em;"><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0;background:#BBD9F2;border:1px solid #8FBEE6;"></span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0;background:#86BCE8;border:1px solid #5E9FD2;"></span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0;background:#4F97CE;border:1px solid #2F73AE;"></span></span><span style="margin-left:-0.2em;">wetter</span><span style="color:#777;">— shade = evidence: <span style="color:#aaa;">pale</span> single-study &rarr; <span style="color:#333;">dark</span> robust</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:linear-gradient(135deg,#86BCE8 50%,#D29A6C 50%);border:1px solid #777;"></span>Opposing signals by season (split)</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#DBDBDB;border:1px solid #BDBDBD;"></span>Monitored — no documented link</span><span><span style="display:inline-block;width:0.9em;height:0.9em;border-radius:2px;vertical-align:middle;margin-right:0.3em;background:#FCFCFC;border:1px solid #DCDCDC;"></span>Not monitored (not researched)</span></div>
     <p class="enso-note" style="margin:0.2rem auto 0.9rem;max-width:1140px;font-size:0.73rem;color:#666;">
       Countries whose seasons respond in opposite directions (e.g. Ethiopia, Yemen, Brazil, Peru, China) are
       split; 3-month season codes (e.g. OND, JJAS, DJF) label each signal. <strong>Grey</strong> = monitored but
