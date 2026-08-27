@@ -24,6 +24,7 @@ Data: ERA5 monthly country-level precip from team DB via ocha-stratus.
 from __future__ import annotations
 import io
 import json
+import re
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -73,6 +74,23 @@ CONFIG = {
 # full non-overlapping season); 6-month is available for the long-lag view.
 LAG_CAPS = {"l3": 3, "l6": 6}
 DEFAULT_LAG_TAG = "l3"
+
+# Spatial-resolution variants generated for the in-app toggle. The country pass
+# uses DB-side ERA5 admin-0 raster stats; the pixel pass runs the identical
+# method on every ERA5 land cell in the map viewport, read from the ERA5 monthly
+# COGs on blob. Tag -> label.
+RES_VARIANTS = {"adm0": "Country (ADM0)", "px": "Pixel (0.25°)"}
+DEFAULT_RES_TAG = "adm0"
+
+# Pixel pass: source COGs, filters and render settings.
+PIXEL_BLOB_PREFIX = "era5/monthly/processed/"
+_PIXEL_DATE_RE = re.compile(r"\d{4}-\d{2}-\d{2}")
+PIXEL_DOWNLOAD_WORKERS = 8
+PIXEL_CHUNK = 40_000          # cells per batched-linear-algebra block
+PIXEL_MIN_TRI_MM_DAY = 0.25   # hyper-arid cut for the pixel pass (see docstring)
+PIXEL_DOMINANT_MARGIN = 0.10  # |r| gap the top mode must beat the runner-up by
+PIXEL_MAP_W = 15.0            # inches; matches the country maps
+PIXEL_MAP_DPI = 150           # ~2x the native 0.25 deg grid across the viewport
 
 # All 12 rolling 3-month windows: name -> end month.
 # Year label by the first month of the window:
@@ -637,6 +655,663 @@ def reduce_for_display(df: pd.DataFrame, alpha: float) -> pd.DataFrame:
                        r_pos=np.nan, r_neg=np.nan)
         out.append(rec)
     return pd.DataFrame(out)
+
+
+# --------------------------------------------------------------------------- #
+# PIXEL-LEVEL PASS (native 0.25 deg ERA5 grid)
+#
+# Same method as the country pass, run on every land grid cell in the map
+# viewport instead of on country polygons:
+#   monthly ERA5 precip COGs -> 12 rolling trimester means per cell
+#   -> lag sweep (total r) -> partial r holding the other modes constant
+#   -> rainy-season + significance filter -> RGB raster maps.
+#
+# Everything is vectorised over cells: a single (n_years, n_cells) matrix per
+# trimester, so the whole grid is one Pearson/regression call per (index, lag)
+# rather than a Python loop over ~413k cells.
+# --------------------------------------------------------------------------- #
+def _tri_month_pairs(tri: str, season_year: int) -> list[tuple[int, int]]:
+    """The three (calendar_year, month) pairs making up `tri` of `season_year`.
+
+    Mirrors the country pass exactly: NDJ/DJF wrap, so their Jan/Feb months
+    belong to the following calendar year; every other window sits inside one.
+    """
+    months = _TRIMESTER_MONTHS[tri]
+    wrapping = 1 in months and 12 in months
+    return [
+        (season_year + (0 if (not wrapping or m > 6) else 1), m)
+        for m in months
+    ]
+
+
+def pixel_monthly_era5(cfg: dict) -> tuple[np.ndarray, list[tuple[int, int]],
+                                           np.ndarray, np.ndarray]:
+    """Monthly ERA5 precip (mm/day) for the map viewport, as a disk-backed array.
+
+    Downloads `era5/monthly/processed/*.tif` COGs from the team raster blob
+    container once, subsets each to MAP_XLIM/MAP_YLIM, and caches the stack to
+    cache/era5_pixel/monthly.npy so re-runs are free.
+
+    Returns (stack, ym, x, y) where stack is a read-only memmap of shape
+    (n_months, ny, nx), ym is the matching list of (year, month), and x/y are
+    the cell-centre coordinates (y descending, as in the source COG).
+    """
+    cache_dir: Path = cfg["cache_dir"] / "era5_pixel"
+    cache_dir.mkdir(parents=True, exist_ok=True)
+    arr_path, meta_path = cache_dir / "monthly.npy", cache_dir / "meta.json"
+
+    want = [(yr, m)
+            for yr in range(cfg["start_year"], cfg["end_year"] + 1)
+            for m in range(1, 13)]
+
+    if arr_path.exists() and meta_path.exists():
+        meta = json.loads(meta_path.read_text())
+        if meta["ym"] and [tuple(t) for t in meta["ym"]] == want[:len(meta["ym"])]:
+            stack = np.load(arr_path, mmap_mode="r")
+            print(f"ERA5 pixel cache: {stack.shape[0]} months, "
+                  f"grid {stack.shape[1]}x{stack.shape[2]}")
+            return (stack, [tuple(t) for t in meta["ym"]],
+                    np.asarray(meta["x"]), np.asarray(meta["y"]))
+
+    from concurrent.futures import ThreadPoolExecutor
+
+    container = stratus.get_container_client("raster", stage="prod")
+    available = {
+        _PIXEL_DATE_RE.search(b.name).group(0): b.name
+        for b in container.list_blobs(name_starts_with=PIXEL_BLOB_PREFIX)
+        if _PIXEL_DATE_RE.search(b.name)
+    }
+
+    # Grid window, read once from the first available COG
+    probe = stratus.open_blob_cog(next(iter(available.values())),
+                                  container_name="raster",
+                                  container_client=container)
+    xs, ys = probe.x.values, probe.y.values
+    xsel = np.where((xs >= MAP_XLIM[0] - 1e-6) & (xs <= MAP_XLIM[1] + 1e-6))[0]
+    ysel = np.where((ys >= MAP_YLIM[0] - 1e-6) & (ys <= MAP_YLIM[1] + 1e-6))[0]
+    x0, x1, y0, y1 = xsel[0], xsel[-1], ysel[0], ysel[-1]
+    x, y = xs[x0:x1 + 1], ys[y0:y1 + 1]
+
+    ym = [(yr, m) for (yr, m) in want if f"{yr}-{m:02d}-01" in available]
+    missing = len(want) - len(ym)
+    if missing:
+        print(f"  {missing} month(s) have no ERA5 COG on blob and are skipped")
+
+    stack = np.lib.format.open_memmap(
+        arr_path, mode="w+", dtype="float32", shape=(len(ym), len(y), len(x))
+    )
+
+    def _fetch(job):
+        i, (yr, m) = job
+        da = stratus.open_blob_cog(available[f"{yr}-{m:02d}-01"],
+                                   container_name="raster",
+                                   container_client=container)
+        stack[i] = da.isel(band=0, y=slice(y0, y1 + 1),
+                           x=slice(x0, x1 + 1)).values.astype("float32")
+        return i
+
+    print(f"Downloading {len(ym)} ERA5 monthly COGs "
+          f"({len(y)}x{len(x)} cells each)...")
+    with ThreadPoolExecutor(PIXEL_DOWNLOAD_WORKERS) as ex:
+        for done, _ in enumerate(ex.map(_fetch, enumerate(ym)), start=1):
+            if done % 60 == 0:
+                print(f"  {done}/{len(ym)}")
+    stack.flush()
+    del stack
+
+    meta_path.write_text(json.dumps(
+        {"ym": ym, "x": x.tolist(), "y": y.tolist()}
+    ))
+    return np.load(arr_path, mmap_mode="r"), ym, x, y
+
+
+@dataclass
+class PixelData:
+    """Trimester rainfall on the ERA5 land grid, plus the masks the maps need.
+
+    All analysis arrays are indexed by *land cell* (length n_cells), not by full
+    grid position — ocean is ~2/3 of the viewport and carries no rainfall
+    signal worth mapping.  `scatter()` puts a per-cell vector back on the grid.
+    """
+    x: np.ndarray                       # (nx,) cell-centre longitudes
+    y: np.ndarray                       # (ny,) cell-centre latitudes, descending
+    shape: tuple[int, int]              # (ny, nx)
+    flat_idx: np.ndarray                # (n_cells,) flat position of each land cell
+    tri_years: dict[str, np.ndarray]    # trimester -> season years with full data
+    tri_clim: dict[str, np.ndarray]     # trimester -> climatological mean mm/day
+    rainy: dict[str, np.ndarray]        # trimester -> analysable-season mask
+    analyzed: np.ndarray                # (n_cells,) any analysable season at all
+    _stack: np.ndarray                  # (n_months, ny, nx) memmap
+    _mpos: dict[tuple[int, int], int]   # (year, month) -> month index in _stack
+
+    @property
+    def n_cells(self) -> int:
+        return len(self.flat_idx)
+
+    def trimester(self, tri: str) -> np.ndarray:
+        """(n_years, n_cells) float32 mean mm/day for `tri`, read from the memmap."""
+        years = self.tri_years[tri]
+        out = np.empty((len(years), self.n_cells), dtype="float32")
+        for k, season_year in enumerate(years):
+            pos = [self._mpos[p] for p in _tri_month_pairs(tri, int(season_year))]
+            out[k] = self._stack[pos].mean(axis=0).reshape(-1)[self.flat_idx]
+        return out
+
+    def scatter(self, vals: np.ndarray, fill=np.nan) -> np.ndarray:
+        """Place a per-cell vector back on the (ny, nx) grid."""
+        grid = np.full(self.shape[0] * self.shape[1], fill, dtype=vals.dtype)
+        grid[self.flat_idx] = vals
+        return grid.reshape(self.shape)
+
+
+def pixel_land_mask(gdf: gpd.GeoDataFrame, x: np.ndarray, y: np.ndarray) -> np.ndarray:
+    """Rasterise the admin-0 layer onto the ERA5 grid -> (ny, nx) bool land mask."""
+    from rasterio.features import rasterize
+    from rasterio.transform import from_origin
+
+    res = float(abs(x[1] - x[0]))
+    transform = from_origin(x[0] - res / 2, y[0] + res / 2, res, res)
+    return rasterize(
+        ((geom, 1) for geom in gdf.geometry if geom is not None),
+        out_shape=(len(y), len(x)),
+        transform=transform,
+        fill=0,
+        all_touched=True,
+        dtype="uint8",
+    ).astype(bool)
+
+
+def pixel_trimester_rainfall_era5(cfg: dict, gdf: gpd.GeoDataFrame) -> PixelData:
+    """Build the pixel-level equivalent of `country_trimester_rainfall_era5`.
+
+    Applies two per-cell season filters, both needed at this resolution:
+      - rainy season: trimester climatology >= 25% of the annual total (same
+        rule as the country pass);
+      - wet enough: trimester climatology >= PIXEL_MIN_TRI_MM_DAY, which drops
+        hyper-arid cells (Sahara, Rub' al Khali, Taklamakan) where correlations
+        against near-zero rainfall are numerically strong but meaningless.
+    """
+    stack, ym, x, y = pixel_monthly_era5(cfg)
+    land = pixel_land_mask(gdf, x, y)
+    flat_idx = np.flatnonzero(land.reshape(-1))
+    mpos = {p: i for i, p in enumerate(ym)}
+    print(f"Pixel grid: {land.shape[0]}x{land.shape[1]} cells, "
+          f"{len(flat_idx)} on land")
+    # Cached so the report can quote the real count even on a --skip-px run.
+    (cfg["cache_dir"] / "era5_pixel" / "cells.json").write_text(
+        json.dumps({"n_cells": int(len(flat_idx)),
+                    "shape": [int(v) for v in land.shape]})
+    )
+
+    tri_years = {}
+    for tri in TRIMESTERS:
+        tri_years[tri] = np.array([
+            sy for sy in range(cfg["start_year"], cfg["end_year"] + 1)
+            if all(p in mpos for p in _tri_month_pairs(tri, sy))
+        ])
+
+    px = PixelData(x=x, y=y, shape=land.shape, flat_idx=flat_idx,
+                   tri_years=tri_years, tri_clim={}, rainy={},
+                   analyzed=np.zeros(len(flat_idx), dtype=bool),
+                   _stack=stack, _mpos=mpos)
+
+    for tri in TRIMESTERS:
+        px.tri_clim[tri] = px.trimester(tri).mean(axis=0)
+
+    annual = np.zeros(px.n_cells, dtype="float64")
+    for tri in _ANNUAL_TRIMESTERS:
+        annual += px.tri_clim[tri]
+    with np.errstate(invalid="ignore", divide="ignore"):
+        for tri in TRIMESTERS:
+            clim = px.tri_clim[tri]
+            px.rainy[tri] = (
+                (annual > 0)
+                & (clim / annual >= 0.25)
+                & (clim >= PIXEL_MIN_TRI_MM_DAY)
+                & (len(px.tri_years[tri]) >= cfg["min_years"])
+            )
+            px.analyzed |= px.rainy[tri]
+
+    n_pairs = sum(int(m.sum()) for m in px.rainy.values())
+    print(f"Analysable (cell, trimester) pairs: {n_pairs}; "
+          f"{int(px.analyzed.sum())} of {px.n_cells} land cells have >=1")
+    return px
+
+
+# --------------------------------------------------------------------------- #
+# Vectorised correlation helpers
+# --------------------------------------------------------------------------- #
+def _centered(Y: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Column-centre Y (n, m) and return (Yc, column L2 norms)."""
+    Yc = Y - Y.mean(axis=0)
+    return Yc, np.sqrt((Yc ** 2).sum(axis=0))
+
+
+def _pearson_p(r: np.ndarray, n: np.ndarray | int, k: int = 0) -> np.ndarray:
+    """Two-tailed p for Pearson/partial r with `k` controlled variables."""
+    dof = np.asarray(n, dtype="float64") - k - 2
+    with np.errstate(invalid="ignore", divide="ignore"):
+        t = r * np.sqrt(dof / np.clip(1 - r ** 2, 1e-12, None))
+        p = 2 * stats.t.sf(np.abs(t), dof)
+    return np.where(np.isfinite(r) & (dof > 0), p, np.nan)
+
+
+def _index_lag_series(indices: pd.DataFrame, name: str, tri: str, lag: int) -> pd.Series:
+    """Index `name` as a year-indexed series for trimester `tri` at `lag` months."""
+    return _index_trimester_mean(
+        indices[name], TRIMESTERS[tri], lag, year_offset=TRIMESTER_YEAR_OFFSET[tri]
+    ).dropna()
+
+
+def pixel_sweep(px: PixelData, indices: pd.DataFrame, cfg: dict,
+                max_lag: int) -> dict[str, dict[str, np.ndarray]]:
+    """TOTAL pass on the grid: per (trimester, index) keep the lag with max |r|.
+
+    Vectorised over cells — one Pearson call per (index, lag) covering the whole
+    grid. Returns res[trimester] = {r, p, lag, n}, each (n_indices, n_cells).
+    """
+    cols = list(indices.columns)
+    res: dict[str, dict[str, np.ndarray]] = {}
+
+    for tri in TRIMESTERS:
+        Y = px.trimester(tri)
+        yrs = px.tri_years[tri]
+        y_ok = Y.std(axis=0) > 0
+
+        r_best = np.full((len(cols), px.n_cells), np.nan, dtype="float32")
+        lag_best = np.full((len(cols), px.n_cells), -1, dtype="int8")
+        n_best = np.zeros((len(cols), px.n_cells), dtype="int16")
+        cache: dict[bytes, tuple[np.ndarray, np.ndarray]] = {}
+
+        for j, name in enumerate(cols):
+            for lag in range(max_lag + 1):
+                xs = _index_lag_series(indices, name, tri, lag)
+                common = np.intersect1d(yrs, xs.index.values)
+                if len(common) < cfg["min_years"]:
+                    continue
+                rowsel = np.isin(yrs, common)
+                key = rowsel.tobytes()
+                if key not in cache:
+                    cache[key] = _centered(Y[rowsel])
+                Yc, sy = cache[key]
+                xc = xs.loc[common].values.astype("float64")
+                xc -= xc.mean()
+                sx = np.sqrt((xc ** 2).sum())
+                with np.errstate(invalid="ignore", divide="ignore"):
+                    r = (xc @ Yc) / (sx * sy)
+                upd = (
+                    y_ok & np.isfinite(r)
+                    & (np.isnan(r_best[j]) | (np.abs(r) > np.abs(r_best[j])))
+                )
+                r_best[j, upd] = r[upd]
+                lag_best[j, upd] = lag
+                n_best[j, upd] = len(common)
+
+        res[tri] = {
+            "r": r_best, "lag": lag_best, "n": n_best,
+            "p": _pearson_p(r_best, n_best).astype("float32"),
+        }
+    return res
+
+
+def _partial_vs_last(V: np.ndarray) -> np.ndarray:
+    """Partial correlation of each leading column of V with its last column,
+    each controlling for all the other columns.
+
+    V: (c, n, q) -> (c, q-1). Uses the precision-matrix identity
+    r_ij|rest = -P_ij / sqrt(P_ii P_jj), which is algebraically identical to the
+    residual regression used by the country pass but batched over cells.
+    """
+    c, n, q = V.shape
+    Vc = V - V.mean(axis=1, keepdims=True)
+    sd = np.sqrt((Vc ** 2).sum(axis=1))
+    ok = sd > 0
+    Vs = Vc / np.where(ok, sd, 1.0)[:, None, :]
+    C = np.einsum("cni,cnj->cij", Vs, Vs)          # unit diagonal -> correlation
+    C[:, np.arange(q), np.arange(q)] += 1e-9       # guard exact collinearity
+    P = np.linalg.inv(C)
+    d = np.sqrt(np.abs(np.diagonal(P, axis1=1, axis2=2)))
+    with np.errstate(invalid="ignore", divide="ignore"):
+        r = -P[:, :-1, -1] / (d[:, :-1] * d[:, -1:])
+    r = np.clip(r, -1.0, 1.0)
+    r[~(ok[:, :-1] & ok[:, -1:])] = np.nan
+    return r
+
+
+def pixel_partial_pass(px: PixelData, indices: pd.DataFrame, cfg: dict,
+                       total: dict[str, dict[str, np.ndarray]],
+                       max_lag: int) -> dict[str, dict[str, np.ndarray]]:
+    """PARTIAL pass on the grid, off the frozen best-lags from `pixel_sweep`.
+
+    For each trimester every index enters at its own per-cell best lag, then each
+    index's partial r vs rainfall is computed holding the others constant.
+    cfg['partial_exclude'] indices are kept out of the control set but still get
+    their own partial, exactly as in the country pass — which means one model per
+    excluded index plus one shared model for everything else.
+    """
+    cols = list(indices.columns)
+    exclude = set(cfg.get("partial_exclude", []))
+    base = [j for j, c in enumerate(cols) if c not in exclude]
+    if not base:
+        base = list(range(len(cols)))
+
+    # target index -> the model it is estimated in (its controls + itself)
+    models: dict[tuple[int, ...], list[int]] = {tuple(base): list(base)}
+    for j, c in enumerate(cols):
+        if c in exclude:
+            models.setdefault(tuple(sorted(base + [j])), []).append(j)
+
+    res: dict[str, dict[str, np.ndarray]] = {}
+    for tri in TRIMESTERS:
+        yrs = px.tri_years[tri]
+        # One year set per trimester: seasons where every index is available at
+        # every candidate lag, so the frozen per-cell lag mix is always aligned.
+        common = yrs
+        series: dict[tuple[int, int], pd.Series] = {}
+        for j, name in enumerate(cols):
+            for lag in range(max_lag + 1):
+                s = _index_lag_series(indices, name, tri, lag)
+                series[(j, lag)] = s
+                common = np.intersect1d(common, s.index.values)
+        if len(common) < cfg["min_years"]:
+            nan = np.full((len(cols), px.n_cells), np.nan, dtype="float32")
+            res[tri] = {"r": nan, "p": nan.copy(),
+                        "lag": total[tri]["lag"].copy(),
+                        "n": np.zeros((len(cols), px.n_cells), dtype="int16")}
+            continue
+
+        rowsel = np.isin(yrs, common)
+        Yt = px.trimester(tri)[rowsel].T.astype("float32")      # (n_cells, n_yrs)
+        X = np.stack([
+            np.stack([series[(j, lag)].loc[common].values for lag in range(max_lag + 1)])
+            for j in range(len(cols))
+        ]).astype("float32")                                    # (n_idx, n_lags, n_yrs)
+
+        lag_best = np.clip(total[tri]["lag"], 0, max_lag).astype("int64")
+        r_out = np.full((len(cols), px.n_cells), np.nan, dtype="float32")
+        p_out = np.full((len(cols), px.n_cells), np.nan, dtype="float32")
+        n_ctrl = np.zeros(len(cols), dtype="int64")
+
+        for start in range(0, px.n_cells, PIXEL_CHUNK):
+            sl = slice(start, min(start + PIXEL_CHUNK, px.n_cells))
+            c = sl.stop - sl.start
+            M = np.empty((c, len(common), len(cols)), dtype="float32")
+            for j in range(len(cols)):
+                M[:, :, j] = X[j][lag_best[j, sl]]
+            for model, targets in models.items():
+                V = np.concatenate(
+                    [M[:, :, list(model)], Yt[sl][:, :, None]], axis=2
+                ).astype("float64")
+                rp = _partial_vs_last(V)                        # (c, len(model))
+                for t in targets:
+                    r_out[t, sl] = rp[:, list(model).index(t)]
+                    n_ctrl[t] = len(model) - 1
+
+        for j in range(len(cols)):
+            p_out[j] = _pearson_p(r_out[j], len(common), k=int(n_ctrl[j]))
+
+        res[tri] = {
+            "r": r_out, "p": p_out,
+            "lag": total[tri]["lag"].copy(),
+            "n": np.full((len(cols), px.n_cells), len(common), dtype="int16"),
+        }
+    return res
+
+
+# --------------------------------------------------------------------------- #
+# Reduce to per-cell display record (per index)
+# --------------------------------------------------------------------------- #
+_TRI_ORDER = list(TRIMESTERS)
+_TRI_OVERLAP = np.array([
+    [bool(set(_TRIMESTER_MONTHS[a]) & set(_TRIMESTER_MONTHS[b])) for b in _TRI_ORDER]
+    for a in _TRI_ORDER
+])
+
+
+def pixel_reduce_for_display(res: dict[str, dict[str, np.ndarray]], px: PixelData,
+                             cols: list[str], alpha: float) -> dict[str, dict[str, np.ndarray]]:
+    """Per (cell, index): strongest significant trimester, plus the bidirectional
+    test. Same rules as `reduce_for_display`, vectorised over cells — including
+    the requirement that an opposite-sign season share no month with the best one.
+    """
+    cell = np.arange(px.n_cells)
+    rainy = np.stack([px.rainy[t] for t in _TRI_ORDER])            # (12, n_cells)
+    out: dict[str, dict[str, np.ndarray]] = {}
+
+    for j, name in enumerate(cols):
+        R = np.stack([res[t]["r"][j] for t in _TRI_ORDER]).astype("float64")
+        P = np.stack([res[t]["p"][j] for t in _TRI_ORDER]).astype("float64")
+        L = np.stack([res[t]["lag"][j] for t in _TRI_ORDER])
+        sig = rainy & np.isfinite(R) & (P < alpha)
+
+        score = np.where(sig, np.abs(R), -1.0)
+        bt = score.argmax(axis=0)
+        has = score.max(axis=0) > 0
+        r_best = np.where(has, R[bt, cell], np.nan)
+        lag_best = L[bt, cell]
+
+        # opposite sign AND no shared month with the best trimester
+        opp = (sig.T & (R.T * r_best[:, None] < 0) & ~_TRI_OVERLAP[bt])
+        is_bi = opp.any(axis=1) & has
+        oscore = np.where(opp, np.abs(R.T), -1.0)
+        ot = oscore.argmax(axis=1)
+        r_other = np.where(is_bi, R.T[cell, ot], np.nan)
+        lag_other = L.T[cell, ot]
+        best_is_pos = r_best > 0
+
+        out[name] = {
+            "r": r_best,
+            "lag": np.where(has, lag_best, -1),
+            "tri": np.where(has, bt, -1),
+            "bidirectional": is_bi,
+            "r_pos": np.where(best_is_pos, r_best, r_other),
+            "r_neg": np.where(best_is_pos, r_other, r_best),
+            "lag_pos": np.where(best_is_pos, lag_best, lag_other),
+            "lag_neg": np.where(best_is_pos, lag_other, lag_best),
+        }
+    return out
+
+
+# --------------------------------------------------------------------------- #
+# Pixel map rendering
+# --------------------------------------------------------------------------- #
+_PX_OCEAN    = "#FFFFFF"   # no land -> not part of the analysis
+_PX_ARID     = "#F4F1EA"   # land, but no season passes the wet-enough filter
+_PX_NOSIG    = "#E8E8E8"   # land with an analysed season, no significant signal
+_PX_TIED     = "#CBD1D9"   # dominant-mode map: modes within noise of each other
+_PX_OUTLINE  = "#9AA3B0"   # country boundaries drawn over the raster
+
+
+def _hex_to_rgb(h: str) -> tuple[int, int, int]:
+    h = h.lstrip("#")
+    return tuple(int(h[i:i + 2], 16) for i in (0, 2, 4))  # type: ignore[return-value]
+
+
+def _pixel_extent(px: PixelData) -> tuple[float, float, float, float]:
+    """imshow extent covering full cell edges (y descending -> origin='upper')."""
+    half = float(abs(px.x[1] - px.x[0])) / 2
+    return (float(px.x[0]) - half, float(px.x[-1]) + half,
+            float(px.y[-1]) - half, float(px.y[0]) + half)
+
+
+def _pixel_base_rgb(px: PixelData) -> np.ndarray:
+    """(ny, nx, 3) uint8 base: ocean / arid land / analysed-but-no-signal."""
+    img = np.empty((*px.shape, 3), dtype="uint8")
+    img[:] = _hex_to_rgb(_PX_OCEAN)
+    for mask, color in ((np.ones(px.n_cells, bool), _PX_ARID),
+                        (px.analyzed, _PX_NOSIG)):
+        sel = px.scatter(mask.astype("uint8"), fill=0).astype(bool)
+        img[sel] = _hex_to_rgb(color)
+    return img
+
+
+def _paint_r_bins(img: np.ndarray, px: PixelData, r: np.ndarray) -> None:
+    """Colour cells by the discrete |r| bins used on the country maps."""
+    bins = [
+        (r >= _R_STRONG, "#0D40B0"),
+        ((r >= _R_MIN) & (r < _R_STRONG), "#71B3E5"),
+        ((r <= -_R_MIN) & (r > -_R_STRONG), "#C8844A"),
+        (r <= -_R_STRONG, "#7B3A1A"),
+    ]
+    for mask, color in bins:
+        m = np.where(np.isfinite(r), mask, False)
+        if not m.any():
+            continue
+        sel = px.scatter(m.astype("uint8"), fill=0).astype(bool)
+        img[sel] = _hex_to_rgb(color)
+
+
+def _finish_pixel_ax(ax, px: PixelData, gdf: gpd.GeoDataFrame) -> None:
+    gdf.boundary.plot(ax=ax, color=_PX_OUTLINE, linewidth=0.3, zorder=4)
+    ax.set_xlim(MAP_XLIM)
+    ax.set_ylim(MAP_YLIM)
+    ax.set_aspect("equal")
+    ax.set_axis_off()
+
+
+def _overlay_bidirectional(ax, px: PixelData, mask: np.ndarray) -> None:
+    """Hatch the regions that are significant in both directions across
+    non-overlapping seasons — the raster analogue of the split-diagonal fill."""
+    if not mask.any():
+        return
+    grid = px.scatter(mask.astype("float32"), fill=0.0)
+    xs = np.asarray(px.x, dtype="float64")
+    ys = np.asarray(px.y, dtype="float64")
+    # White hatch: the four correlation fills range from pale blue to dark brown,
+    # and white is the one stroke colour that reads on all of them.
+    with plt.rc_context({"hatch.linewidth": 0.6, "hatch.color": "#FFFFFF"}):
+        ax.contourf(xs, ys, grid, levels=[0.5, 1.5], colors="none",
+                    hatches=["////"], zorder=3)
+
+
+def plot_pixel_index_map(disp: dict[str, dict[str, np.ndarray]], px: PixelData,
+                         gdf: gpd.GeoDataFrame, index: str, out_dir: Path,
+                         kind: str = "total", lag_tag: str = "l6") -> None:
+    """Per-cell correlation map for one index, saved as map_px_{lag}_{kind}_{index}.png."""
+    d = disp[index]
+    img = _pixel_base_rgb(px)
+    _paint_r_bins(img, px, d["r"])
+
+    fig, ax = plt.subplots(figsize=(PIXEL_MAP_W, PIXEL_MAP_W * _MAP_DY / _MAP_DX))
+    ax.imshow(img, extent=_pixel_extent(px), origin="upper",
+              interpolation="nearest", zorder=1)
+    _overlay_bidirectional(ax, px, d["bidirectional"] & np.isfinite(d["r"]))
+    _finish_pixel_ax(ax, px, gdf)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / f"map_px_{lag_tag}_{kind}_{index}.png",
+                dpi=PIXEL_MAP_DPI, bbox_inches="tight")
+    plt.close(fig)
+
+
+def plot_pixel_dominant_map(disp_total: dict[str, dict[str, np.ndarray]],
+                            px: PixelData, gdf: gpd.GeoDataFrame,
+                            cols: list[str], out_dir: Path,
+                            lag_tag: str = "l6") -> None:
+    """Each cell coloured by the index with the strongest significant total r.
+
+    Two departures from the country version, both forced by the resolution:
+      - only the top mode is shown; the runner-up shown as a split diagonal on
+        the country map is not legible in a single 0.25 deg cell;
+      - the top mode must beat the runner-up by PIXEL_DOMINANT_MARGIN in |r|,
+        otherwise the cell is drawn as "no single dominant mode". Country means
+        average enough grid cells to stabilise the arg-max; a single cell does
+        not, and without the margin the map is confetti wherever two collinear
+        modes are within noise of each other — which is most of the world.
+    """
+    R = np.stack([np.abs(disp_total[c]["r"]) for c in cols])
+    R = np.where(np.isfinite(R) & (R >= _R_MIN), R, -1.0)
+    top = R.argmax(axis=0)
+    srt = np.sort(R, axis=0)
+    has = srt[-1] > 0
+    # gap to the runner-up; infinite when only one mode is significant at all
+    gap = np.where(srt[-2] > 0, srt[-1] - srt[-2], np.inf)
+    clear = has & (gap >= PIXEL_DOMINANT_MARGIN)
+
+    img = _pixel_base_rgb(px)
+    sel = px.scatter((has & ~clear).astype("uint8"), fill=0).astype(bool)
+    img[sel] = _hex_to_rgb(_PX_TIED)
+    for j, name in enumerate(cols):
+        m = clear & (top == j)
+        if not m.any():
+            continue
+        sel = px.scatter(m.astype("uint8"), fill=0).astype(bool)
+        img[sel] = _hex_to_rgb(INDEX_COLORS.get(name, "#CCCCCC"))
+
+    fig, ax = plt.subplots(figsize=(PIXEL_MAP_W, PIXEL_MAP_W * _MAP_DY / _MAP_DX))
+    ax.imshow(img, extent=_pixel_extent(px), origin="upper",
+              interpolation="nearest", zorder=1)
+    _finish_pixel_ax(ax, px, gdf)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig.savefig(out_dir / f"map_px_dominant_{lag_tag}.png",
+                dpi=PIXEL_MAP_DPI, bbox_inches="tight")
+    plt.close(fig)
+
+
+def pixel_enso_composite_maps(px: PixelData, indices: pd.DataFrame,
+                              gdf: gpd.GeoDataFrame, cfg: dict) -> None:
+    """Per-cell El Nino / La Nina composites, mirroring `enso_composite_maps`:
+    each cell is scored in its own headline season (the analysable trimester with
+    the largest ENSO response) and coloured by the mean standardised anomaly."""
+    classes = {}
+    for tri, end_m in TRIMESTERS.items():
+        nino = _index_trimester_mean(indices["nino34"], end_month=end_m, lag=0,
+                                     year_offset=TRIMESTER_YEAR_OFFSET[tri])
+        nino = nino[(nino.index >= cfg["start_year"]) &
+                    (nino.index <= cfg["end_year"])].dropna()
+        classes[tri] = nino
+
+    best_signal = np.zeros(px.n_cells)
+    best = {"ElNino": np.full(px.n_cells, np.nan),
+            "LaNina": np.full(px.n_cells, np.nan)}
+
+    for tri in TRIMESTERS:
+        yrs = px.tri_years[tri]
+        nino = classes[tri]
+        common = np.intersect1d(yrs, nino.index.values)
+        if len(common) < 5:
+            continue
+        vals = nino.loc[common].values
+        el, la = vals >= 0.5, vals <= -0.5
+        if el.sum() < 3 or la.sum() < 3:
+            continue
+        Y = px.trimester(tri)[np.isin(yrs, common)].astype("float64")
+        mean, std = Y.mean(axis=0), Y.std(axis=0, ddof=1)
+        with np.errstate(invalid="ignore", divide="ignore"):
+            z = (Y - mean) / std
+        el_anom, la_anom = z[el].mean(axis=0), z[la].mean(axis=0)
+        signal = np.maximum(np.abs(el_anom), np.abs(la_anom))
+        upd = (px.rainy[tri] & (std > 0) & np.isfinite(signal)
+               & (signal > best_signal))
+        best_signal[upd] = signal[upd]
+        best["ElNino"][upd] = el_anom[upd]
+        best["LaNina"][upd] = la_anom[upd]
+
+    finite = np.concatenate([v[np.isfinite(v)] for v in best.values()])
+    vmax = max(float(np.quantile(np.abs(finite), 0.95)), 0.5) if finite.size else 1.0
+    norm = TwoSlopeNorm(vmin=-vmax, vcenter=0, vmax=vmax)
+    out_dir: Path = cfg["out_dir"]
+    out_dir.mkdir(parents=True, exist_ok=True)
+
+    for phase, fname in (("ElNino", "enso_px_elnino.png"),
+                         ("LaNina", "enso_px_lanina.png")):
+        anom = best[phase]
+        img = _pixel_base_rgb(px).astype("float32") / 255.0
+        m = np.isfinite(anom)
+        if m.any():
+            rgba = DROUGHT_FLOOD_CMAP(norm(anom[m]))[:, :3]
+            sel = px.scatter(m.astype("uint8"), fill=0).astype(bool)
+            img[sel] = rgba
+        fig, ax = plt.subplots(figsize=(PIXEL_MAP_W,
+                                        PIXEL_MAP_W * _MAP_DY / _MAP_DX))
+        ax.imshow(img, extent=_pixel_extent(px), origin="upper",
+                  interpolation="nearest", zorder=1)
+        _finish_pixel_ax(ax, px, gdf)
+        sm = plt.cm.ScalarMappable(cmap=DROUGHT_FLOOD_CMAP, norm=norm)
+        fig.colorbar(sm, ax=ax, shrink=0.5,
+                     label="anomaly (SDs from mean)")
+        fig.savefig(out_dir / fname, dpi=PIXEL_MAP_DPI, bbox_inches="tight")
+        plt.close(fig)
+    print(f"Pixel ENSO composites written (colour scale +/-{vmax:.2f} SD)")
 
 
 # --------------------------------------------------------------------------- #
@@ -1410,36 +2085,72 @@ def generate_html_report(cfg: dict) -> None:
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
             </div>"""
 
+    # caption tail is resolution-specific: the country maps split a polygon
+    # diagonally for a both-signs country, the pixel maps hatch the cells.
+    _bidir_note = {
+        "adm0": " Split diagonal = significant in both directions across non-overlapping seasons.",
+        "px":   " Hatching = significant in both directions across non-overlapping seasons;"
+                " the fill shows the stronger of the two.",
+    }
     _kind_meta = {
         "total":   ("total association",
-                    "<strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. "
-                    "Split diagonal = significant in both directions across non-overlapping seasons."),
+                    "<strong>Total association</strong> — pairwise Pearson r, p&lt;0.05."),
         "partial": ("unique signal",
                     "<strong>Unique signal</strong> — partial r, other climate modes held constant. "
                     "Shrinkage vs Total = shared variance, not absent signal."),
     }
-    _lag_label = {"l3": "0–3 mo lag", "l6": "0–6 mo lag"}
+    # Pixel maps share the correlation bins but have their own base categories
+    # (ocean vs arid land vs analysed-no-signal) and use a hatch, not a split
+    # diagonal, to flag cells significant in both directions.
+    px_corr_legend = f"""<div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:{_PX_NOSIG};border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:{_PX_ARID};border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:{_PX_OCEAN};border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>"""
 
-    def _map_item(name, label, kind, lag_tag):
+    _lag_label = {"l3": "0–3 mo lag", "l6": "0–6 mo lag"}
+    _res_label = {"adm0": "country mean", "px": "0.25° grid cell"}
+    # Land-cell count of the pixel grid, read back from the cached run so the
+    # methodology text always quotes the number actually analysed even when the
+    # pixel pass was skipped this run.
+    _px_cells_hint = cfg.get("px_cells_hint")
+    if _px_cells_hint is None:
+        _cells_json = cfg["cache_dir"] / "era5_pixel" / "cells.json"
+        _px_cells_hint = (
+            f'{json.loads(_cells_json.read_text())["n_cells"]:,}'
+            if _cells_json.exists() else "all"
+        )
+
+    def _map_item(name, label, kind, lag_tag, res="adm0"):
         kind_title, caption = _kind_meta[kind]
+        img = (f"maps/map_{lag_tag}_{kind}_{name}.png" if res == "adm0"
+               else f"maps/map_px_{lag_tag}_{kind}_{name}.png")
+        legend = corr_legend if res == "adm0" else px_corr_legend
+        extra = _bidir_note[res] if kind == "total" else ""
         return f"""
-      <div class="map-item" data-kind="{kind}" data-lag="{lag_tag}">
+      <div class="map-item" data-kind="{kind}" data-lag="{lag_tag}" data-res="{res}">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of {label} with total seasonal rainfall — {kind_title} ({_lag_label[lag_tag]})</p>
-            <div class="map-zoom"><img src="maps/map_{lag_tag}_{kind}_{name}.png" alt="{label} {kind} correlation {lag_tag}"></div>
-            {corr_legend}
+            <p class="map-title">Correlation of {label} with total seasonal rainfall — {kind_title} ({_lag_label[lag_tag]}, {_res_label[res]})</p>
+            <div class="map-zoom"><img src="{img}" alt="{label} {kind} correlation {lag_tag} {res}"></div>
+            {legend}
           </div>
         </div>
-        <p>{caption}</p>
+        <p>{caption}{extra}</p>
       </div>"""
 
     index_sections = []
     for name in INDEX_SOURCES:
         label = INDEX_LABELS.get(name, name.upper())
         items = "".join(
-            _map_item(name, label, kind, lag_tag)
+            _map_item(name, label, kind, lag_tag, res)
+            for res in RES_VARIANTS
             for lag_tag in LAG_CAPS
             for kind in ("total", "partial")
         )
@@ -1465,10 +2176,27 @@ def generate_html_report(cfg: dict) -> None:
         <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
         <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
       </div>"""
+    px_dominant_legend = f"""<div class="map-legend">
+        {dom_swatches}
+        <span><span class="sw" style="background:{_PX_TIED};border-color:#AEB6C0"></span>No single dominant mode (top two within {PIXEL_DOMINANT_MARGIN:.2f} of each other)</span>
+        <span><span class="sw" style="background:{_PX_NOSIG};border-color:#CCCCCC"></span>No signal</span>
+        <span><span class="sw" style="background:{_PX_ARID};border-color:#DED8C9"></span>Arid — no wet season</span>
+        <span><span class="sw" style="background:{_PX_OCEAN};border-color:#D5D5D5"></span>Ocean / outside grid</span>
+      </div>"""
     dominant_items = "".join(
-        f"""<div class="map-item" data-lag="{lag_tag}" style="max-width:100%">
+        f"""<div class="map-item" data-lag="{lag_tag}" data-res="adm0" style="max-width:100%">
       <div class="map-zoom"><img src="maps/map_dominant_{lag_tag}.png" alt="Dominant climate mode map {lag_tag}"></div>
       {dominant_legend}
+    </div>"""
+        for lag_tag in LAG_CAPS
+    ) + "".join(
+        f"""<div class="map-item" data-lag="{lag_tag}" data-res="px" style="max-width:100%">
+      <div class="map-zoom"><img src="maps/map_px_dominant_{lag_tag}.png" alt="Dominant climate mode map, pixel {lag_tag}"></div>
+      {px_dominant_legend}
+      <p>Top mode only — the runner-up mode shown as a split diagonal on the country map is not legible at 0.25°. A cell is
+      coloured only where the leading mode's |r| exceeds the runner-up's by at least {PIXEL_DOMINANT_MARGIN:.2f}; a single
+      grid cell does not average enough area to make the arg-max over six collinear modes stable, so cells where the top two
+      are within noise of each other are left grey rather than assigned to an arbitrary winner.</p>
     </div>"""
         for lag_tag in LAG_CAPS
     )
@@ -1510,6 +2238,8 @@ def generate_html_report(cfg: dict) -> None:
     .map-title {{ font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }}
     .map-legend {{ display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }}
     .sw {{ display: inline-block; width: 1em; height: 1em; border: 1px solid; vertical-align: middle; margin-right: 0.25em; border-radius: 2px; }}
+    .hatch-sw {{ border-color: #999; background:
+      repeating-linear-gradient(45deg, #333 0 1px, transparent 1px 3px), #E8E8E8; }}
     .map-item p {{ font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }}
     .map-item p strong {{ color: #222; }}
     section {{ margin-bottom: 2rem; }}
@@ -1517,7 +2247,7 @@ def generate_html_report(cfg: dict) -> None:
     hr {{ border: none; border-top: 1px solid #dde3ec; margin: 2rem 0; }}
     .view-toggle {{
       position: sticky; top: 0; z-index: 100;
-      display: flex; gap: 0.5rem; align-items: center;
+      display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; align-items: center;
       background: #f8f9fa; padding: 0.5rem 0; margin-bottom: 1rem;
       border-bottom: 1px solid #dde3ec;
     }}
@@ -1537,9 +2267,12 @@ def generate_html_report(cfg: dict) -> None:
 </head>
 <body>
   <h1>ERA5 Precipitation Teleconnection Analysis</h1>
-  <p class="meta">ERA5 1981–{end_year} &nbsp;·&nbsp; Pearson r &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal = both signs across seasons</p>
+  <p class="meta">ERA5 1981–{end_year} &nbsp;·&nbsp; Pearson r &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal (country) / hatching (pixel) = both signs across seasons</p>
   <div class="view-toggle">
-    <span>View:</span>
+    <span>Resolution:</span>
+    <button class="toggle-btn active" data-group="res" data-show="adm0">Country (ADM0)</button>
+    <button class="toggle-btn" data-group="res" data-show="px">Pixel (0.25°)</button>
+    <span style="margin-left:1.25rem;">View:</span>
     <button class="toggle-btn" data-group="view" data-show="total">Total association</button>
     <button class="toggle-btn active" data-group="view" data-show="partial">Unique signal</button>
     <span style="margin-left:1.25rem;">Max lag:</span>
@@ -1555,6 +2288,11 @@ def generate_html_report(cfg: dict) -> None:
     index within one preceding non-overlapping season (cleaner, forecast-relevant); 6 months also admits
     longer prior-season relationships. Trimester labels follow the start-of-season convention
     (DJF 2024 = Dec 2024 – Feb 2025).
+    The <strong>Resolution</strong> toggle switches the unit of analysis: <em>Country</em> runs the method on
+    ERA5 admin-0 means (one series per country, 153 countries), <em>Pixel</em> runs the identical method
+    independently on every ERA5 land cell at 0.25° (~0.25° ≈ 28 km at the equator). The pixel maps expose
+    sub-national structure and gradients that a country mean averages away — but each cell is a single
+    ~45-year series with no spatial pooling, so read coherent regions rather than isolated cells.
   </div>
 
 {"".join(index_sections)}
@@ -1570,22 +2308,31 @@ def generate_html_report(cfg: dict) -> None:
   <hr>
   <section>
     <h2>Dominant Climate Mode</h2>
-    <p class="enso-note">Each country colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester. Respects the Max lag toggle above.</p>
+    <p class="enso-note" data-res="adm0">Each country colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester. Respects the Max lag toggle above.</p>
+    <p class="enso-note" data-res="px">Each 0.25° land cell colored by the index with the strongest significant total correlation (|r|≥{_R_MIN}), where that mode leads the runner-up by at least {PIXEL_DOMINANT_MARGIN:.2f}. Respects the Max lag toggle above.</p>
     {dominant_items}
   </section>
 
   <hr>
   <section>
     <h2>ENSO Composites — El Niño &amp; La Niña</h2>
-    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each country's headline trimester when Niño3.4 ≥ ±0.5 concurrent with that trimester. The two maps are independent — ENSO impacts are asymmetric.</p>
+    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each unit's headline trimester when Niño3.4 ≥ ±0.5 concurrent with that trimester. The two maps are independent — ENSO impacts are asymmetric. Respects the Resolution toggle above.</p>
     <div class="map-pair">
-      <div class="map-item">
+      <div class="map-item" data-res="adm0">
         <div class="map-zoom"><img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly"></div>
         <p><strong>El Niño composite</strong> — mean anomaly when Niño3.4 ≥ +0.5 (brown = drier than normal, blue = wetter).</p>
       </div>
-      <div class="map-item">
+      <div class="map-item" data-res="adm0">
         <div class="map-zoom"><img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly"></div>
         <p><strong>La Niña composite</strong> — mean anomaly when Niño3.4 ≤ −0.5. Roughly opposite to El Niño in ENSO-sensitive regions, but magnitude and pattern differ.</p>
+      </div>
+      <div class="map-item" data-res="px">
+        <div class="map-zoom"><img src="maps/enso_px_elnino.png" alt="El Niño composite rainfall anomaly, pixel"></div>
+        <p><strong>El Niño composite (0.25° grid)</strong> — mean anomaly when Niño3.4 ≥ +0.5 (brown = drier than normal, blue = wetter), scored per cell in its own headline season.</p>
+      </div>
+      <div class="map-item" data-res="px">
+        <div class="map-zoom"><img src="maps/enso_px_lanina.png" alt="La Niña composite rainfall anomaly, pixel"></div>
+        <p><strong>La Niña composite (0.25° grid)</strong> — mean anomaly when Niño3.4 ≤ −0.5.</p>
       </div>
     </div>
   </section>
@@ -1844,6 +2591,35 @@ def generate_html_report(cfg: dict) -> None:
         <strong>TSA</strong> (Tropical South Atlantic SST anomaly), <strong>AMM</strong> (Atlantic Meridional Mode),
         and <strong>PDO</strong> (Pacific Decadal Oscillation, NOAA).
       </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Spatial resolution (Country vs Pixel)</h3>
+      <p style="margin:0 0 0.6rem;">
+        The <strong>Resolution</strong> toggle selects the unit of analysis; the method below is identical in
+        both cases. <em>Country (ADM0)</em> uses the pre-computed ERA5 admin-0 raster statistics held in the
+        team database — one area-weighted mean series per country, 153 countries. <em>Pixel (0.25°)</em> reads
+        the source ERA5 monthly precipitation COGs directly and runs the whole pipeline independently on every
+        land grid cell in the map viewport (~{_px_cells_hint} cells at 0.25°, ≈28 km at the equator), with no
+        spatial smoothing or pooling between cells.
+      </p>
+      <p style="margin:0 0 0.6rem;">
+        The pixel view exists because a national mean can hide as much as it shows: countries spanning more
+        than one rainfall regime (Kenya, Ethiopia, Indonesia, Brazil) average opposing signals toward zero, and
+        a signal confined to one basin or one side of a mountain range disappears entirely. It carries two
+        costs. First, each cell is a single ~45-year series, so at p&nbsp;&lt;&nbsp;0.05 a few percent of cells
+        will pass by chance; because no field-significance or false-discovery correction is applied, isolated
+        coloured cells should be read as noise and only spatially coherent regions as signal. Second, an extra
+        filter is needed that the country pass does not require: a cell–season is analysed only if its
+        climatological mean exceeds {PIXEL_MIN_TRI_MM_DAY} mm/day, which removes hyper-arid cells (Sahara, Rub'&nbsp;al&nbsp;Khali,
+        Taklamakan interiors) where correlations against near-zero rainfall are numerically large but
+        meaningless. Those cells are drawn in the “arid — no wet season” shade. Ocean cells are not analysed.
+      </p>
+      <p style="margin:0 0 0.6rem;">
+        On the pixel maps, cells significant in both directions across non-overlapping seasons are
+        <strong>hatched</strong> rather than split diagonally, and the coloured fill shows the stronger of the
+        two. The pixel dominant-mode map shows the top mode only, and only where it leads the runner-up
+        by at least {PIXEL_DOMINANT_MARGIN:.2f} in |r| — one cell does not average enough area to make
+        the arg-max over six collinear modes stable, so near-ties are left grey rather than assigned a
+        winner.
+      </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Seasonal aggregation</h3>
       <p style="margin:0 0 0.6rem;">
         All 12 rolling 3-month windows are assessed for every country: NDJ, DJF, JFM, FMA, MAM, AMJ, MJJ,
@@ -2006,15 +2782,16 @@ def generate_html_report(cfg: dict) -> None:
       }});
     }});
 
-    let curView = 'partial', curLag = '{DEFAULT_LAG_TAG}';
+    const cur = {{ view: 'partial', lag: '{DEFAULT_LAG_TAG}', res: '{DEFAULT_RES_TAG}' }};
     function applyView() {{
       document.querySelectorAll('.map-pair').forEach(p => {{
         p.style.gridTemplateColumns = '1fr';
       }});
-      document.querySelectorAll('[data-kind], [data-lag]').forEach(item => {{
-        const okKind = !item.dataset.kind || item.dataset.kind === curView;
-        const okLag  = !item.dataset.lag  || item.dataset.lag  === curLag;
-        item.style.display = (okKind && okLag) ? '' : 'none';
+      document.querySelectorAll('[data-kind], [data-lag], [data-res]').forEach(item => {{
+        const ok = (!item.dataset.kind || item.dataset.kind === cur.view)
+                && (!item.dataset.lag  || item.dataset.lag  === cur.lag)
+                && (!item.dataset.res  || item.dataset.res  === cur.res);
+        item.style.display = ok ? '' : 'none';
       }});
     }}
     document.querySelectorAll('.toggle-btn').forEach(btn => {{
@@ -2024,8 +2801,7 @@ def generate_html_report(cfg: dict) -> None:
         document.querySelectorAll('.toggle-btn[data-group="' + group + '"]')
           .forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        if (group === 'view') curView = btn.dataset.show;
-        else curLag = btn.dataset.show;
+        cur[group] = btn.dataset.show;
         applyView();
       }});
     }});
@@ -2073,19 +2849,13 @@ def generate_html_report(cfg: dict) -> None:
 
 
 # --------------------------------------------------------------------------- #
-def main(cfg: dict = CONFIG) -> None:
-    indices = load_indices(cfg)
-    print_collinearity(indices)
-
+def run_country_pass(cfg: dict, indices: pd.DataFrame,
+                     gdf: gpd.GeoDataFrame) -> None:
+    """Country (ADM0) resolution: ERA5 admin-0 raster stats from the team DB."""
     rain = country_trimester_rainfall_era5(cfg)
     n_countries = rain.columns.get_level_values("iso3").nunique()
     print(f"Loaded ERA5 rainfall: {n_countries} countries, "
           f"years {rain.index.min()}–{rain.index.max()}")
-
-    gdf = load_admin0_gdf(cfg)
-
-    cfg["parquet_dir"].mkdir(parents=True, exist_ok=True)
-    cfg["out_dir"].mkdir(parents=True, exist_ok=True)
 
     rainy = rainy_trimesters(rain)
     print(f"Rainy (iso3, trimester) pairs: {len(rainy)} of {rain.columns.nunique()} total")
@@ -2134,15 +2904,88 @@ def main(cfg: dict = CONFIG) -> None:
         plot_dominant_index_map(disp_total, gdf, cfg["out_dir"], end_year=cfg["end_year"],
                                 analyzed_isos=analyzed_isos, lag_tag=lag_tag)
 
-    # Lag-independent panels
     enso_composite_maps(rain, indices, gdf, cfg, rainy=rainy, analyzed_isos=analyzed_isos)
+    print(f"country pass done across {n_countries} countries.")
+
+
+def run_pixel_pass(cfg: dict, indices: pd.DataFrame,
+                   gdf: gpd.GeoDataFrame) -> None:
+    """Pixel resolution: the same method on every ERA5 land cell (0.25 deg),
+    read from the ERA5 monthly COGs on blob."""
+    px = pixel_trimester_rainfall_era5(cfg, gdf)
+    cfg["px_cells_hint"] = f"{px.n_cells:,}"   # quoted in the methodology text
+    cols = list(indices.columns)
+
+    for lag_tag, max_lag in LAG_CAPS.items():
+        px_total = pixel_sweep(px, indices, cfg, max_lag=max_lag)
+        px_partial = pixel_partial_pass(px, indices, cfg, px_total, max_lag=max_lag)
+
+        px_disp = {
+            "total":   pixel_reduce_for_display(px_total, px, cols, cfg["alpha"]),
+            "partial": pixel_reduce_for_display(px_partial, px, cols, cfg["alpha"]),
+        }
+        n_sup = sum(
+            int((np.isfinite(px_disp["partial"][c]["r"])
+                 & ~np.isfinite(px_disp["total"][c]["r"])).sum())
+            for c in cols
+        )
+        n_sig = sum(int(np.isfinite(px_disp["total"][c]["r"]).sum()) for c in cols)
+        print(f"[px/{lag_tag}] max_lag={max_lag}; significant (cell, index) totals: "
+              f"{n_sig}; suppressor-only partials: {n_sup}")
+
+        np.savez_compressed(
+            cfg["parquet_dir"] / f"corr_px_display_{lag_tag}.npz",
+            x=px.x, y=px.y, flat_idx=px.flat_idx, cols=np.array(cols),
+            trimesters=np.array(list(TRIMESTERS)),
+            **{f"{kind}_{c}_{k}": v
+               for kind, d in px_disp.items() for c in cols
+               for k, v in d[c].items()},
+        )
+
+        for kind, disp in px_disp.items():
+            for name in INDEX_SOURCES:
+                plot_pixel_index_map(disp, px, gdf, name, cfg["out_dir"],
+                                     kind=kind, lag_tag=lag_tag)
+        plot_pixel_dominant_map(px_disp["total"], px, gdf, cols, cfg["out_dir"],
+                                lag_tag=lag_tag)
+
+    pixel_enso_composite_maps(px, indices, gdf, cfg)
+    print(f"pixel pass done across {px.n_cells} land cells.")
+
+
+def main(cfg: dict = CONFIG, skip: tuple[str, ...] = ()) -> None:
+    """Full run. `skip` may contain 'adm0' and/or 'px' to leave that resolution's
+    PNGs untouched — the two passes are independent, and the country pass needs
+    DB access while the pixel pass only needs blob."""
+    indices = load_indices(cfg)
+    print_collinearity(indices)
+    gdf = load_admin0_gdf(cfg)
+    cfg["parquet_dir"].mkdir(parents=True, exist_ok=True)
+    cfg["out_dir"].mkdir(parents=True, exist_ok=True)
+
+    if "adm0" not in skip:
+        # Regenerate TS panels fresh each run (they are lag/kind-independent)
+        for _ts in cfg["out_dir"].glob("ts_*.png"):
+            _ts.unlink()
+        run_country_pass(cfg, indices, gdf)
+    else:
+        print("skipping country (ADM0) pass")
+
+    if "px" not in skip:
+        run_pixel_pass(cfg, indices, gdf)
+    else:
+        print("skipping pixel pass")
+
+    # Resolution-independent panels
     plot_index_corr_matrix(indices, cfg["out_dir"], end_year=cfg["end_year"])
     plot_literature_enso_map(gdf, cfg["out_dir"], phase="elnino")
     plot_literature_enso_map(gdf, cfg["out_dir"], phase="lanina")
     generate_html_report(cfg)
-
-    print(f"done across {n_countries} countries; lag caps {list(LAG_CAPS.values())}.")
+    print(f"done; lag caps {list(LAG_CAPS.values())}, "
+          f"resolutions {[r for r in RES_VARIANTS if r not in skip]}.")
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    _skip = tuple(r for r in RES_VARIANTS if f"--skip-{r}" in sys.argv[1:])
+    main(skip=_skip)

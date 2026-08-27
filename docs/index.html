@@ -35,6 +35,8 @@
     .map-title { font-size: 0.88rem; font-weight: 600; color: #1a1a1a; margin: 0 0 0.4rem; }
     .map-legend { display: flex; flex-wrap: wrap; gap: 0.5rem 1rem; font-size: 0.72rem; color: #444; margin: 0.35rem 0 0.1rem; align-items: center; }
     .sw { display: inline-block; width: 1em; height: 1em; border: 1px solid; vertical-align: middle; margin-right: 0.25em; border-radius: 2px; }
+    .hatch-sw { border-color: #999; background:
+      repeating-linear-gradient(45deg, #333 0 1px, transparent 1px 3px), #E8E8E8; }
     .map-item p { font-size: 0.75rem; color: #555; margin: 0.4rem 0 0 0; }
     .map-item p strong { color: #222; }
     section { margin-bottom: 2rem; }
@@ -42,7 +44,7 @@
     hr { border: none; border-top: 1px solid #dde3ec; margin: 2rem 0; }
     .view-toggle {
       position: sticky; top: 0; z-index: 100;
-      display: flex; gap: 0.5rem; align-items: center;
+      display: flex; flex-wrap: wrap; gap: 0.4rem 0.5rem; align-items: center;
       background: #f8f9fa; padding: 0.5rem 0; margin-bottom: 1rem;
       border-bottom: 1px solid #dde3ec;
     }
@@ -62,9 +64,12 @@
 </head>
 <body>
   <h1>ERA5 Precipitation Teleconnection Analysis</h1>
-  <p class="meta">ERA5 1981–2025 &nbsp;·&nbsp; Pearson r &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal = both signs across seasons</p>
+  <p class="meta">ERA5 1981–2025 &nbsp;·&nbsp; Pearson r &nbsp;·&nbsp; p &lt; 0.05 &nbsp;·&nbsp; Gray = no reliable signal &nbsp;·&nbsp; Split diagonal (country) / hatching (pixel) = both signs across seasons</p>
   <div class="view-toggle">
-    <span>View:</span>
+    <span>Resolution:</span>
+    <button class="toggle-btn active" data-group="res" data-show="adm0">Country (ADM0)</button>
+    <button class="toggle-btn" data-group="res" data-show="px">Pixel (0.25°)</button>
+    <span style="margin-left:1.25rem;">View:</span>
     <button class="toggle-btn" data-group="view" data-show="total">Total association</button>
     <button class="toggle-btn active" data-group="view" data-show="partial">Unique signal</button>
     <span style="margin-left:1.25rem;">Max lag:</span>
@@ -80,18 +85,23 @@
     index within one preceding non-overlapping season (cleaner, forecast-relevant); 6 months also admits
     longer prior-season relationships. Trimester labels follow the start-of-season convention
     (DJF 2024 = Dec 2024 – Feb 2025).
+    The <strong>Resolution</strong> toggle switches the unit of analysis: <em>Country</em> runs the method on
+    ERA5 admin-0 means (one series per country, 153 countries), <em>Pixel</em> runs the identical method
+    independently on every ERA5 land cell at 0.25° (~0.25° ≈ 28 km at the equator). The pixel maps expose
+    sub-national structure and gradients that a country mean averages away — but each cell is a single
+    ~45-year series with no spatial pooling, so read coherent regions rather than isolated cells.
   </div>
 
 
   <section>
     <h2>Niño3.4 (ENSO)</h2>
     <div class="map-pair">
-      <div class="map-item" data-kind="total" data-lag="l3">
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_total_nino34.png" alt="Niño3.4 (ENSO) total correlation l3"></div>
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_total_nino34.png" alt="Niño3.4 (ENSO) total correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -104,12 +114,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l3">
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation l3"></div>
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -122,12 +132,12 @@
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
-      <div class="map-item" data-kind="total" data-lag="l6">
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_total_nino34.png" alt="Niño3.4 (ENSO) total correlation l6"></div>
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_total_nino34.png" alt="Niño3.4 (ENSO) total correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -140,12 +150,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l6">
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation l6"></div>
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -153,6 +163,86 @@
               <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_total_nino34.png" alt="Niño3.4 (ENSO) total correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — total association (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_total_nino34.png" alt="Niño3.4 (ENSO) total correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_nino34.png" alt="Niño3.4 (ENSO) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of Niño3.4 (ENSO) with total seasonal rainfall — unique signal (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_partial_nino34.png" alt="Niño3.4 (ENSO) partial correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
             </div>
           </div>
         </div>
@@ -163,12 +253,12 @@
   <section>
     <h2>IOD (Indian Ocean Dipole)</h2>
     <div class="map-pair">
-      <div class="map-item" data-kind="total" data-lag="l3">
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation l3"></div>
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -181,12 +271,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l3">
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation l3"></div>
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -199,12 +289,12 @@
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
-      <div class="map-item" data-kind="total" data-lag="l6">
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation l6"></div>
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -217,12 +307,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l6">
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation l6"></div>
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -230,6 +320,86 @@
               <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — total association (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_total_dmi.png" alt="IOD (Indian Ocean Dipole) total correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_dmi.png" alt="IOD (Indian Ocean Dipole) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of IOD (Indian Ocean Dipole) with total seasonal rainfall — unique signal (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_partial_dmi.png" alt="IOD (Indian Ocean Dipole) partial correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
             </div>
           </div>
         </div>
@@ -240,12 +410,12 @@
   <section>
     <h2>TNA (Tropical N. Atlantic)</h2>
     <div class="map-pair">
-      <div class="map-item" data-kind="total" data-lag="l3">
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation l3"></div>
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -258,12 +428,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l3">
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation l3"></div>
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -276,12 +446,12 @@
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
-      <div class="map-item" data-kind="total" data-lag="l6">
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation l6"></div>
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -294,12 +464,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l6">
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation l6"></div>
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -307,6 +477,86 @@
               <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — total association (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_total_tna.png" alt="TNA (Tropical N. Atlantic) total correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tna.png" alt="TNA (Tropical N. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TNA (Tropical N. Atlantic) with total seasonal rainfall — unique signal (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_partial_tna.png" alt="TNA (Tropical N. Atlantic) partial correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
             </div>
           </div>
         </div>
@@ -317,12 +567,12 @@
   <section>
     <h2>TSA (Tropical S. Atlantic)</h2>
     <div class="map-pair">
-      <div class="map-item" data-kind="total" data-lag="l3">
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation l3"></div>
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -335,12 +585,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l3">
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation l3"></div>
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -353,12 +603,12 @@
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
-      <div class="map-item" data-kind="total" data-lag="l6">
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation l6"></div>
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -371,12 +621,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l6">
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation l6"></div>
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -384,6 +634,86 @@
               <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — total association (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_total_tsa.png" alt="TSA (Tropical S. Atlantic) total correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_tsa.png" alt="TSA (Tropical S. Atlantic) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of TSA (Tropical S. Atlantic) with total seasonal rainfall — unique signal (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_partial_tsa.png" alt="TSA (Tropical S. Atlantic) partial correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
             </div>
           </div>
         </div>
@@ -394,12 +724,12 @@
   <section>
     <h2>AMM (Atlantic Meridional Mode)</h2>
     <div class="map-pair">
-      <div class="map-item" data-kind="total" data-lag="l3">
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation l3"></div>
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -412,12 +742,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l3">
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation l3"></div>
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -430,12 +760,12 @@
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
-      <div class="map-item" data-kind="total" data-lag="l6">
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation l6"></div>
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -448,12 +778,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l6">
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation l6"></div>
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -461,6 +791,86 @@
               <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — total association (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_total_amm.png" alt="AMM (Atlantic Meridional Mode) total correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_amm.png" alt="AMM (Atlantic Meridional Mode) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of AMM (Atlantic Meridional Mode) with total seasonal rainfall — unique signal (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_partial_amm.png" alt="AMM (Atlantic Meridional Mode) partial correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
             </div>
           </div>
         </div>
@@ -471,12 +881,12 @@
   <section>
     <h2>PDO (Pacific Decadal Oscillation)</h2>
     <div class="map-pair">
-      <div class="map-item" data-kind="total" data-lag="l3">
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation l3"></div>
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -489,12 +899,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l3">
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal (0–3 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l3_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation l3"></div>
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal (0–3 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l3_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation l3 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -507,12 +917,12 @@
         </div>
         <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
       </div>
-      <div class="map-item" data-kind="total" data-lag="l6">
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation l6"></div>
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -525,12 +935,12 @@
         </div>
         <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Split diagonal = significant in both directions across non-overlapping seasons.</p>
       </div>
-      <div class="map-item" data-kind="partial" data-lag="l6">
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="adm0">
         <div class="map-with-ts">
           <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
           <div class="map-col">
-            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal (0–6 mo lag)</p>
-            <div class="map-zoom"><img src="maps/map_l6_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation l6"></div>
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal (0–6 mo lag, country mean)</p>
+            <div class="map-zoom"><img src="maps/map_l6_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation l6 adm0"></div>
             <div class="map-legend">
               <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
               <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
@@ -538,6 +948,86 @@
               <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l3" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal (0–3 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l3_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation l3 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Unique signal</strong> — partial r, other climate modes held constant. Shrinkage vs Total = shared variance, not absent signal.</p>
+      </div>
+      <div class="map-item" data-kind="total" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — total association (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_total_pdo.png" alt="PDO (Pacific Decadal Oscillation) total correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+            </div>
+          </div>
+        </div>
+        <p><strong>Total association</strong> — pairwise Pearson r, p&lt;0.05. Hatching = significant in both directions across non-overlapping seasons; the fill shows the stronger of the two.</p>
+      </div>
+      <div class="map-item" data-kind="partial" data-lag="l6" data-res="px">
+        <div class="map-with-ts">
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_pdo.png" alt="PDO (Pacific Decadal Oscillation) historical values"></div>
+          <div class="map-col">
+            <p class="map-title">Correlation of PDO (Pacific Decadal Oscillation) with total seasonal rainfall — unique signal (0–6 mo lag, 0.25° grid cell)</p>
+            <div class="map-zoom"><img src="maps/map_px_l6_partial_pdo.png" alt="PDO (Pacific Decadal Oscillation) partial correlation l6 px"></div>
+            <div class="map-legend">
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
+              <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+              <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+              <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
             </div>
           </div>
         </div>
@@ -557,36 +1047,71 @@
   <hr>
   <section>
     <h2>Dominant Climate Mode</h2>
-    <p class="enso-note">Each country colored by the index with the strongest significant total correlation (|r|≥0.3). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester. Respects the Max lag toggle above.</p>
-    <div class="map-item" data-lag="l3" style="max-width:100%">
+    <p class="enso-note" data-res="adm0">Each country colored by the index with the strongest significant total correlation (|r|≥0.3). Split diagonal = second-strongest index (different mode), shown only when it acts on a non-overlapping trimester. Respects the Max lag toggle above.</p>
+    <p class="enso-note" data-res="px">Each 0.25° land cell colored by the index with the strongest significant total correlation (|r|≥0.3), where that mode leads the runner-up by at least 0.10. Respects the Max lag toggle above.</p>
+    <div class="map-item" data-lag="l3" data-res="adm0" style="max-width:100%">
       <div class="map-zoom"><img src="maps/map_dominant_l3.png" alt="Dominant climate mode map l3"></div>
       <div class="map-legend">
         <span><span class="sw" style="background:#F08080;border-color:#A85959"></span>Niño3.4 (ENSO)</span><span><span class="sw" style="background:#FFBB77;border-color:#B28253"></span>IOD (Indian Ocean Dipole)</span><span><span class="sw" style="background:#88CC88;border-color:#5F8E5F"></span>TNA (Tropical N. Atlantic)</span><span><span class="sw" style="background:#C49AC9;border-color:#896B8C"></span>TSA (Tropical S. Atlantic)</span><span><span class="sw" style="background:#88AEDD;border-color:#5F799A"></span>AMM (Atlantic Meridional Mode)</span><span><span class="sw" style="background:#C9956A;border-color:#8C684A"></span>PDO (Pacific Decadal Oscillation)</span>
         <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
         <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
       </div>
-    </div><div class="map-item" data-lag="l6" style="max-width:100%">
+    </div><div class="map-item" data-lag="l6" data-res="adm0" style="max-width:100%">
       <div class="map-zoom"><img src="maps/map_dominant_l6.png" alt="Dominant climate mode map l6"></div>
       <div class="map-legend">
         <span><span class="sw" style="background:#F08080;border-color:#A85959"></span>Niño3.4 (ENSO)</span><span><span class="sw" style="background:#FFBB77;border-color:#B28253"></span>IOD (Indian Ocean Dipole)</span><span><span class="sw" style="background:#88CC88;border-color:#5F8E5F"></span>TNA (Tropical N. Atlantic)</span><span><span class="sw" style="background:#C49AC9;border-color:#896B8C"></span>TSA (Tropical S. Atlantic)</span><span><span class="sw" style="background:#88AEDD;border-color:#5F799A"></span>AMM (Atlantic Meridional Mode)</span><span><span class="sw" style="background:#C9956A;border-color:#8C684A"></span>PDO (Pacific Decadal Oscillation)</span>
         <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
         <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
       </div>
+    </div><div class="map-item" data-lag="l3" data-res="px" style="max-width:100%">
+      <div class="map-zoom"><img src="maps/map_px_dominant_l3.png" alt="Dominant climate mode map, pixel l3"></div>
+      <div class="map-legend">
+        <span><span class="sw" style="background:#F08080;border-color:#A85959"></span>Niño3.4 (ENSO)</span><span><span class="sw" style="background:#FFBB77;border-color:#B28253"></span>IOD (Indian Ocean Dipole)</span><span><span class="sw" style="background:#88CC88;border-color:#5F8E5F"></span>TNA (Tropical N. Atlantic)</span><span><span class="sw" style="background:#C49AC9;border-color:#896B8C"></span>TSA (Tropical S. Atlantic)</span><span><span class="sw" style="background:#88AEDD;border-color:#5F799A"></span>AMM (Atlantic Meridional Mode)</span><span><span class="sw" style="background:#C9956A;border-color:#8C684A"></span>PDO (Pacific Decadal Oscillation)</span>
+        <span><span class="sw" style="background:#CBD1D9;border-color:#AEB6C0"></span>No single dominant mode (top two within 0.10 of each other)</span>
+        <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+        <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+        <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+      </div>
+      <p>Top mode only — the runner-up mode shown as a split diagonal on the country map is not legible at 0.25°. A cell is
+      coloured only where the leading mode's |r| exceeds the runner-up's by at least 0.10; a single
+      grid cell does not average enough area to make the arg-max over six collinear modes stable, so cells where the top two
+      are within noise of each other are left grey rather than assigned to an arbitrary winner.</p>
+    </div><div class="map-item" data-lag="l6" data-res="px" style="max-width:100%">
+      <div class="map-zoom"><img src="maps/map_px_dominant_l6.png" alt="Dominant climate mode map, pixel l6"></div>
+      <div class="map-legend">
+        <span><span class="sw" style="background:#F08080;border-color:#A85959"></span>Niño3.4 (ENSO)</span><span><span class="sw" style="background:#FFBB77;border-color:#B28253"></span>IOD (Indian Ocean Dipole)</span><span><span class="sw" style="background:#88CC88;border-color:#5F8E5F"></span>TNA (Tropical N. Atlantic)</span><span><span class="sw" style="background:#C49AC9;border-color:#896B8C"></span>TSA (Tropical S. Atlantic)</span><span><span class="sw" style="background:#88AEDD;border-color:#5F799A"></span>AMM (Atlantic Meridional Mode)</span><span><span class="sw" style="background:#C9956A;border-color:#8C684A"></span>PDO (Pacific Decadal Oscillation)</span>
+        <span><span class="sw" style="background:#CBD1D9;border-color:#AEB6C0"></span>No single dominant mode (top two within 0.10 of each other)</span>
+        <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
+        <span><span class="sw" style="background:#F4F1EA;border-color:#DED8C9"></span>Arid — no wet season</span>
+        <span><span class="sw" style="background:#FFFFFF;border-color:#D5D5D5"></span>Ocean / outside grid</span>
+      </div>
+      <p>Top mode only — the runner-up mode shown as a split diagonal on the country map is not legible at 0.25°. A cell is
+      coloured only where the leading mode's |r| exceeds the runner-up's by at least 0.10; a single
+      grid cell does not average enough area to make the arg-max over six collinear modes stable, so cells where the top two
+      are within noise of each other are left grey rather than assigned to an arbitrary winner.</p>
     </div>
   </section>
 
   <hr>
   <section>
     <h2>ENSO Composites — El Niño &amp; La Niña</h2>
-    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each country's headline trimester when Niño3.4 ≥ ±0.5 concurrent with that trimester. The two maps are independent — ENSO impacts are asymmetric.</p>
+    <p class="enso-note">Mean rainfall anomaly (standard deviations from climatology) in each unit's headline trimester when Niño3.4 ≥ ±0.5 concurrent with that trimester. The two maps are independent — ENSO impacts are asymmetric. Respects the Resolution toggle above.</p>
     <div class="map-pair">
-      <div class="map-item">
+      <div class="map-item" data-res="adm0">
         <div class="map-zoom"><img src="maps/enso_elnino.png" alt="El Niño composite rainfall anomaly"></div>
         <p><strong>El Niño composite</strong> — mean anomaly when Niño3.4 ≥ +0.5 (brown = drier than normal, blue = wetter).</p>
       </div>
-      <div class="map-item">
+      <div class="map-item" data-res="adm0">
         <div class="map-zoom"><img src="maps/enso_lanina.png" alt="La Niña composite rainfall anomaly"></div>
         <p><strong>La Niña composite</strong> — mean anomaly when Niño3.4 ≤ −0.5. Roughly opposite to El Niño in ENSO-sensitive regions, but magnitude and pattern differ.</p>
+      </div>
+      <div class="map-item" data-res="px">
+        <div class="map-zoom"><img src="maps/enso_px_elnino.png" alt="El Niño composite rainfall anomaly, pixel"></div>
+        <p><strong>El Niño composite (0.25° grid)</strong> — mean anomaly when Niño3.4 ≥ +0.5 (brown = drier than normal, blue = wetter), scored per cell in its own headline season.</p>
+      </div>
+      <div class="map-item" data-res="px">
+        <div class="map-zoom"><img src="maps/enso_px_lanina.png" alt="La Niña composite rainfall anomaly, pixel"></div>
+        <p><strong>La Niña composite (0.25° grid)</strong> — mean anomaly when Niño3.4 ≤ −0.5.</p>
       </div>
     </div>
   </section>
@@ -845,6 +1370,35 @@
         <strong>TSA</strong> (Tropical South Atlantic SST anomaly), <strong>AMM</strong> (Atlantic Meridional Mode),
         and <strong>PDO</strong> (Pacific Decadal Oscillation, NOAA).
       </p>
+      <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Spatial resolution (Country vs Pixel)</h3>
+      <p style="margin:0 0 0.6rem;">
+        The <strong>Resolution</strong> toggle selects the unit of analysis; the method below is identical in
+        both cases. <em>Country (ADM0)</em> uses the pre-computed ERA5 admin-0 raster statistics held in the
+        team database — one area-weighted mean series per country, 153 countries. <em>Pixel (0.25°)</em> reads
+        the source ERA5 monthly precipitation COGs directly and runs the whole pipeline independently on every
+        land grid cell in the map viewport (~163,453 cells at 0.25°, ≈28 km at the equator), with no
+        spatial smoothing or pooling between cells.
+      </p>
+      <p style="margin:0 0 0.6rem;">
+        The pixel view exists because a national mean can hide as much as it shows: countries spanning more
+        than one rainfall regime (Kenya, Ethiopia, Indonesia, Brazil) average opposing signals toward zero, and
+        a signal confined to one basin or one side of a mountain range disappears entirely. It carries two
+        costs. First, each cell is a single ~45-year series, so at p&nbsp;&lt;&nbsp;0.05 a few percent of cells
+        will pass by chance; because no field-significance or false-discovery correction is applied, isolated
+        coloured cells should be read as noise and only spatially coherent regions as signal. Second, an extra
+        filter is needed that the country pass does not require: a cell–season is analysed only if its
+        climatological mean exceeds 0.25 mm/day, which removes hyper-arid cells (Sahara, Rub'&nbsp;al&nbsp;Khali,
+        Taklamakan interiors) where correlations against near-zero rainfall are numerically large but
+        meaningless. Those cells are drawn in the “arid — no wet season” shade. Ocean cells are not analysed.
+      </p>
+      <p style="margin:0 0 0.6rem;">
+        On the pixel maps, cells significant in both directions across non-overlapping seasons are
+        <strong>hatched</strong> rather than split diagonally, and the coloured fill shows the stronger of the
+        two. The pixel dominant-mode map shows the top mode only, and only where it leads the runner-up
+        by at least 0.10 in |r| — one cell does not average enough area to make
+        the arg-max over six collinear modes stable, so near-ties are left grey rather than assigned a
+        winner.
+      </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Seasonal aggregation</h3>
       <p style="margin:0 0 0.6rem;">
         All 12 rolling 3-month windows are assessed for every country: NDJ, DJF, JFM, FMA, MAM, AMJ, MJJ,
@@ -1007,15 +1561,16 @@
       });
     });
 
-    let curView = 'partial', curLag = 'l3';
+    const cur = { view: 'partial', lag: 'l3', res: 'adm0' };
     function applyView() {
       document.querySelectorAll('.map-pair').forEach(p => {
         p.style.gridTemplateColumns = '1fr';
       });
-      document.querySelectorAll('[data-kind], [data-lag]').forEach(item => {
-        const okKind = !item.dataset.kind || item.dataset.kind === curView;
-        const okLag  = !item.dataset.lag  || item.dataset.lag  === curLag;
-        item.style.display = (okKind && okLag) ? '' : 'none';
+      document.querySelectorAll('[data-kind], [data-lag], [data-res]').forEach(item => {
+        const ok = (!item.dataset.kind || item.dataset.kind === cur.view)
+                && (!item.dataset.lag  || item.dataset.lag  === cur.lag)
+                && (!item.dataset.res  || item.dataset.res  === cur.res);
+        item.style.display = ok ? '' : 'none';
       });
     }
     document.querySelectorAll('.toggle-btn').forEach(btn => {
@@ -1025,8 +1580,7 @@
         document.querySelectorAll('.toggle-btn[data-group="' + group + '"]')
           .forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        if (group === 'view') curView = btn.dataset.show;
-        else curLag = btn.dataset.show;
+        cur[group] = btn.dataset.show;
         applyView();
       });
     });
