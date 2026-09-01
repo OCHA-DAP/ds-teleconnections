@@ -154,7 +154,7 @@ _DOT_R = 0.0035 * _MAP_DX             # ≈ 0.98° — same formula as ds-seas5-
 
 
 # Discrete 2-bin correlation colors (matching ds-seas5-skill palette)
-_R_STRONG  = 0.45   # |r| threshold for dark vs light bin
+_R_STRONG  = 0.50   # |r| threshold for dark vs light bin (Cohen 'large'; matches the seas5-skill app's r_high)
 _R_MIN     = 0.30   # |r| below this → gray (effectively unshown)
 _R_LEGEND  = [
     ("#0D40B0", "#092E88", f"Positive, strong (r ≥ {_R_STRONG})"),
@@ -2077,10 +2077,10 @@ def generate_html_report(cfg: dict) -> None:
     end_year = cfg["end_year"]
 
     corr_legend = """<div class="map-legend">
-              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.5)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.5)</span>
               <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.5)</span>
               <span><span class="sw" style="background:#E8E8E8;border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:#F8F8F8;border-color:#EBEBEB"></span>Not calculated</span>
             </div>"""
@@ -2103,10 +2103,10 @@ def generate_html_report(cfg: dict) -> None:
     # (ocean vs arid land vs analysed-no-signal) and use a hatch, not a split
     # diagonal, to flag cells significant in both directions.
     px_corr_legend = f"""<div class="map-legend">
-              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.45)</span>
-              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.45)</span>
+              <span><span class="sw" style="background:#0D40B0;border-color:#092E88"></span>Positive strong (r≥0.5)</span>
+              <span><span class="sw" style="background:#71B3E5;border-color:#4A90C8"></span>Positive moderate (0.30–0.5)</span>
               <span><span class="sw" style="background:#C8844A;border-color:#A06030"></span>Negative moderate</span>
-              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.45)</span>
+              <span><span class="sw" style="background:#7B3A1A;border-color:#5A2A0A"></span>Negative strong (r≤−0.5)</span>
               <span><span class="sw hatch-sw"></span>Both signs across seasons</span>
               <span><span class="sw" style="background:{_PX_NOSIG};border-color:#CCCCCC"></span>No signal</span>
               <span><span class="sw" style="background:{_PX_ARID};border-color:#DED8C9"></span>Arid — no wet season</span>

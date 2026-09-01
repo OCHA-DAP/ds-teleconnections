@@ -86,7 +86,7 @@ All **12 rolling 3-month windows** are assessed per country (NDJ, DJF, JFM, FMA,
 A country–trimester pair is analysed only if that trimester's climatological mean rainfall is ≥ 25% of the country's annual mean. The annual mean is computed from the four **non-overlapping canonical** trimesters (DJF + MAM + JAS + OND), which cover each calendar month exactly once (summing all 12 rolling windows would triple-count).
 
 ### Correlation sweep
-For each country × trimester × index, Pearson *r* is computed across lags up to the selected maximum (the index leads rainfall). The lag with the highest |*r*| is the "best lag" for that combination. Significance is p < 0.05 (two-tailed). |*r*| < 0.30 → no reliable signal (gray); |*r*| ≥ 0.45 → strong (darker shade).
+For each country × trimester × index, Pearson *r* is computed across lags up to the selected maximum (the index leads rainfall). The lag with the highest |*r*| is the "best lag" for that combination. Significance is p < 0.05 (two-tailed). |*r*| < 0.30 → no reliable signal (gray); |*r*| ≥ 0.5 → strong (darker shade; Cohen's 'large', aligned with the seas5-skill app's high-skill threshold).
 
 ### Lag cap (3 vs 6 months) — in-app toggle
 - **3 months (default):** the index may lead rainfall by at most one preceding non-overlapping season. Keeps the relationship within the same evolving event; the more forecast-relevant view.
