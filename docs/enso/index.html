@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENSO country deep dives</title>
+<meta name="description" content="Per-country reviews of the ENSO–rainfall evidence: literature grade, ERA5 pixel correlations, and drought odds.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--b5:#269777;--b6:#1e795f;--b7:#18614c;--b05:#e9f5f1;--b1:#d4eae4;--n9:#1f2324;--n8:#3f4748;--n7:#5e6a6b;--n05:#f5f7f7;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--n05);color:var(--n9);font-family:'Roboto',system-ui,-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;line-height:1.55;font-size:15px}
+.wrap{max-width:1000px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(31,35,36,.06);padding:14px 44px 48px}
+.home-link{display:inline-block;margin:0 0 18px;padding:6px 12px;font:500 13px/1 'Roboto',system-ui,sans-serif;color:var(--b6);background:var(--b05);border:1px solid var(--b1);border-radius:4px;text-decoration:none}
+.home-link:hover{background:var(--b1)}
+h1{font-family:'Merriweather',Georgia,serif;font-size:30px;line-height:1.2;margin:6px 0 6px}
+h2{font-family:'Merriweather',Georgia,serif;font-size:20px;margin:36px 0 10px;padding-top:8px;border-top:1px solid #e2e7e7}
+h3{font-size:15px;margin:22px 0 6px}
+p{margin:0 0 12px;max-width:78ch}
+.eyebrow{font-size:11px;letter-spacing:.15em;text-transform:uppercase;font-weight:700;color:var(--n7);margin:0}
+.meta{color:var(--n7);font-size:13px;margin-bottom:22px}
+.verdict{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0 8px}
+.card{border:1px solid #e2e7e7;border-radius:6px;padding:14px 16px;background:#fff}
+.card .lbl{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:var(--n7);margin:0 0 6px}
+.card .big{font-size:20px;font-weight:700;margin:0 0 4px}
+.chip{display:inline-block;padding:2px 9px;border-radius:3px;font-size:12px;font-weight:600;color:#1a1a1a;margin-right:6px}
+.summary{background:var(--b05);border-left:5px solid var(--b5);padding:12px 16px;border-radius:4px;margin:16px 0 6px}
+.summary p{margin:0 0 8px}.summary p:last-child{margin:0}
+figure{margin:16px 0 22px}figure img{width:100%;height:auto;display:block;border:1px solid #eef1f1;border-radius:4px}
+figcaption{font-size:12.5px;color:var(--n7);margin-top:6px;max-width:90ch}
+table{border-collapse:collapse;font-size:13.5px;margin:8px 0 16px}
+th,td{padding:5px 10px;border-bottom:1px solid #e8ecf1;text-align:left;vertical-align:top}
+th{background:#eef2f7;font-weight:600}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+.hl{background:#fbf3ea}
+.refs li{margin:0 0 6px;font-size:14px}
+a{color:var(--b6)}
+.small{font-size:13px;color:var(--n7)}
+@media(max-width:640px){.wrap{padding:12px 18px 36px}.verdict{grid-template-columns:1fr}h1{font-size:24px}}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:16px}.k{display:flex;flex-direction:column;text-decoration:none;color:inherit;border:1px solid #e2e7e7;border-top:3px solid var(--b5);border-radius:6px;padding:16px 18px 12px;background:#fff}.k:hover{border-color:var(--b5);box-shadow:0 2px 12px rgba(31,35,36,.08)}.k h2{border:0;margin:0 0 6px;font-size:18px;padding:0}.k p{font-size:14px;flex:1}.k .foot{font-size:12px;color:var(--n7);margin-top:8px}</style>
+</head>
+<body>
+<div class="wrap">
+<a class="home-link" href="../">&larr; Teleconnections</a>
+
+<p class="eyebrow">Teleconnections</p><h1>ENSO country deep dives</h1>
+<p class="meta">Where the survey's one-line literature grade deserves a closer look: per country, why the catalogue says what it says, what the peer-reviewed literature actually supports, what ERA5 shows at country and pixel resolution, and what that means for drought.</p>
+<div class="grid">
+<a class="k" href="eri/"><h2>Eritrea</h2><p>Graded robust by inheritance from Ethiopia&#x27;s kiremt row. ERA5 supports the direction at moderate strength (JAS r ≈ −0.4), strongest along the Tigray border, weak in the northern highlands, and reversed on the Red Sea coast in winter. El Niño roughly doubles the odds of a driest-third kiremti.</p><div class="foot">catalogue <span class="chip" style="background:#9C6730;">robust</span> → reviewed <span class="chip" style="background:#D29A6C;">moderate</span></div></a>
+</div>
+<h2>How a deep dive is built</h2><p>Each page pairs a curated evidence review (why the survey catalogue graded the country as it did, and what the literature actually supports) with figures recomputed from the survey's own ERA5 0.25° grid and the NOAA Niño3.4 index: the seasonal cycle, pixel-level correlation maps, a season-by-season rainfall history coloured by ENSO phase, and El Niño composite and drought hit-rate maps. The drought framing is deliberate: a correlation coefficient understates an asymmetric response, so each page reports how often El Niño seasons fell in the driest third, against a 33% base rate.</p><p class="small">Add a country by dropping a <code>deep_dives/&lt;slug&gt;.toml</code> into the repo and running <code>uv run python enso_deep_dive.py</code>; see the <a href="https://github.com/OCHA-DAP/ds-teleconnections#country-deep-dives">README</a>.</p>
+
+</div>
+</body>
+</html>
