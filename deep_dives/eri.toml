@@ -1,0 +1,115 @@
+# Eritrea — ENSO deep dive. Narrative is curated here; figures and tables are
+# recomputed by enso_deep_dive.py from the cached ERA5 grid + Niño3.4.
+iso3 = "ERI"
+name = "Eritrea"
+subtitle = "Why the catalogue's 'robust' El Niño → drier grade deserves a closer look, and what it means for kiremti drought"
+headline_season = "JAS"          # the season the drought analysis is built on
+map_seasons = ["JAS", "OND", "DJF"]
+
+summary_html = '''
+<p><strong>Bottom line.</strong> The survey catalogue grades Eritrea <em>robust</em> for El Niño → drier JJAS rains. That grade was never earned by Eritrea-specific evidence: it was inherited from the regional row for the Ethiopian, Sudanese and South Sudanese highlands. The direction is right — Eritrea's kiremti rains are the northern tail of Ethiopia's kiremt system — but the Eritrea-specific literature is thin, and ERA5 shows a moderate signal (country JAS r ≈ −0.41) that is strong only along the Tigray border and fades to near nothing in the northern highlands around Anseba. The Red Sea coast responds the opposite way in its winter rains.</p>
+<p><strong>For drought.</strong> The correlation understates the drought relevance because the response is asymmetric. Of the nine El Niño kiremti seasons since 1981, five landed in the driest third (1991, 2004, 2009, 2015, 2023) and four in the driest fifth; 2023 was the driest season in the whole record. But three El Niño years (1982, 1987, 1997) were near normal or wet, and eight of the fifteen driest seasons were ENSO-neutral. El Niño roughly doubles the odds of a bad kiremti; it explains about a third of them.</p>
+<p><strong>Recommendation.</strong> Regrade to <em>moderate</em>, cite the Ethiopia/Eritrea-specific studies rather than a global composite, and mark the country bidirectional (JJAS drier inland, OND–DJF wetter on the coast), as Ethiopia and Yemen already are.</p>
+'''
+
+seasonal_cycle_html = '''
+<p>Eritrea is a summer-rain country in the aggregate: July–September carries about 58% of the annual total over the average cell, and the June–September kiremti nearly all of it. The winter rains that matter on the coast (October–February) are only 10–16% of the national mean, which is why the survey's 25% rainy-season filter drops them at country level.</p>
+'''
+
+corr_html = '''
+<p>At pixel level the summer signal is real but moderate and strongly graded from south to north. Along the Tigray border and in the south-east the correlation reaches −0.5 or below; across the central highlands it sits around −0.3; in the northern highlands around Anseba and the north-west it weakens to −0.15 to −0.25, below the survey's colour threshold. Only about one cell in eight clears the survey's “strong” bin. In the winter windows the coastal cells respond the opposite way, with OND correlations above +0.5 in every analysable cell.</p>
+<p>This is why the survey's pixel map looks mixed: in the default view (pixel, unique signal, 3-month lag) Eritrea shows a patchwork of moderate brown inland, blue on the coast, and blanks where no season passes the filters.</p>
+'''
+
+adm0_html = '''
+<p>Averaged to a national series the JAS signal is −0.41 (best at a one-month lead, i.e. June–August Niño3.4 against July–September rain), against −0.63 for Ethiopia and −0.59 for South Sudan. The concurrent JJA correlation misses significance and the partial correlation (other modes held constant) drops to −0.27. The strongest correlations in the table are the winter ones, and they are positive.</p>
+'''
+
+drought_html = '''
+<p>Drought is where the signal earns its keep. A Pearson r describes a symmetric linear relationship; the kiremti response to ENSO is not symmetric. La Niña years are reliably wet (only two of twelve in the driest third), while El Niño years split: five of nine were in the driest third and four in the driest fifth, but 1982, 1987 and 1997 were near normal or wet — 1997, the strongest event of the period, did not produce a highland drought. Neutral years supply most droughts in absolute terms, including the severe 1990, 2017 and 2021 seasons.</p>
+<p>Read as odds: an El Niño roughly doubles the chance of a driest-third kiremti (about 55% against a 33% base rate) and quadruples the chance of a driest-fifth one, but an El Niño forecast alone would have missed two thirds of the bad seasons. It is a useful readiness signal, not a trigger.</p>
+'''
+
+[[zones]]
+label = "Highlands & west (JAS ≥ 2 mm/day)"
+min_mm_day = 2.0
+[[zones]]
+label = "Drier margin (JAS 0.25–2 mm/day)"
+min_mm_day = 0.25
+max_mm_day = 2.0
+
+[catalogue]
+direction = "drier"
+season = "JJAS kiremti"
+evidence = "robust"
+source_html = '<a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140">Dai &amp; Wigley 2000 (GRL)</a>, inherited from the Ethiopia / Sudan highlands row'
+
+[assessment]
+direction = "drier inland; wetter on the coast"
+season = "JJAS inland · OND–DJF coast"
+evidence = "moderate"
+evidence_note = "Direction well supported by the Ethiopian kiremt literature; Eritrea-specific evidence is thin and the ERA5 amplitude is moderate, with a strong north–south gradient."
+one_line = "Graded robust by inheritance from Ethiopia's kiremt row. ERA5 supports the direction at moderate strength (JAS r ≈ −0.4), strongest along the Tigray border, weak in the northern highlands, and reversed on the Red Sea coast in winter. El Niño roughly doubles the odds of a driest-third kiremti."
+
+
+[[sections_before]]
+title = "Why the catalogue says “robust”"
+html = '''
+<p>The literature map was built region by region. Eritrea sat inside the Horn of Africa block with Djibouti, Sudan and South Sudan, and the whole block took the grade of one regional finding: “Ethiopia / Sudan / S. Sudan highlands — JJAS kiremt / Blue Nile — El Niño drier — Robust”, sourced to Dai &amp; Wigley (2000). That paper is a global 2.5° empirical-orthogonal-function composite of ENSO-related precipitation; it shows the Sahel-to-Ethiopia summer drying belt but says nothing specific about Eritrea.</p>
+<p>Two consequences follow. First, the per-country catalogue row for Eritrea carries a single global citation and a “gap vs NOAA/IRI” badge that both belong to the Ethiopian row. Second, the confidence shading on the map (dark brown = robust) tells a reader that the Eritrean link is as well replicated as Ethiopia's, which the evidence below does not support.</p>
+'''
+
+[[sections_before]]
+title = "What the literature actually supports"
+html = '''
+<p><strong>The regional mechanism is solid.</strong> Ethiopia's June–September kiremt rains are among the best-documented ENSO teleconnections in Africa. Korecha &amp; Barnston (2007) find a strong negative correlation between kiremt rainfall and tropical Pacific SST and use Niño3.4 as the leading predictor; Gleixner et al. (2017) show the mechanism (warm Pacific SST → weaker Tropical Easterly Jet and East African low-level jet → subsidence over the highlands); Segele &amp; Lamb (2005) and Diro et al. (2011) replicate the sign across station networks. The Eritrean highlands and western lowlands receive their kiremti rains from the same monsoon flow, so a drying tendency under El Niño is physically expected.</p>
+<p><strong>Eritrea-specific evidence is thin.</strong> The one study that treats Eritrea directly is Seleshi &amp; Demarée (1995), which relates rainfall indices for the north-central Ethiopian and Eritrean highlands over 1900–1990 to the Southern Oscillation Index and finds main-season droughts more likely in warm-ENSO years. A later Eritrean-highlands study finds Indian Ocean SST, not the Pacific, to be the strongest predictor of July–August rainfall at Asmara and Mendefera. Nicholson's (2017) review of eastern African rainfall characterises the ENSO link to the summer rains of northern Ethiopia and Eritrea as much weaker than in the rest of the region.</p>
+<p><strong>The coast is a different climate.</strong> The Red Sea coastal plain and the eastern escarpment get their rain in winter (roughly October–February), from onshore flow over the Red Sea rather than the summer monsoon. The Horn's winter and short-rains season is wetter under El Niño, and ERA5 reproduces that here with correlations above +0.5, a signal the country-level survey cannot show because those months are a small share of the national total.</p>
+<p><strong>Operational record.</strong> The 2015 El Niño produced a widely reported Eritrean drought: FAO GIEWS recorded kiremti rainfall below the long-term average in most of Maekel, Gash Barka, Anseba and eastern Debub, and a UN rapid assessment in Anseba and Northern Red Sea found that about 90% of the areas that normally flood for spate irrigation did not. The 2023 El Niño coincided with the driest ERA5 kiremti in the 45-year record.</p>
+<p>Taken together: direction robust by regional analogy, amplitude and Eritrea-specific replication moderate. That is the definition of the catalogue's <em>moderate</em> grade.</p>
+'''
+
+
+
+
+
+[[sections_after]]
+title = "Recommendation for the survey"
+html = '''
+<ul>
+<li><strong>Regrade</strong> Eritrea's El Niño evidence from <em>robust</em> to <em>moderate</em> in <code>_LIT_EVIDENCE</code>, and replace the Dai &amp; Wigley citation on its catalogue row with Seleshi &amp; Demarée (1995) and Korecha &amp; Barnston (2007).</li>
+<li><strong>Mark bidirectional</strong> (JJAS drier inland, OND–DJF wetter on the coast), as Ethiopia and Yemen already are, so the map stops implying a single national response.</li>
+<li><strong>Keep the “gap vs NOAA/IRI” badge on the Ethiopian row only</strong>; it was never an Eritrea finding.</li>
+<li><strong>Add the drought framing</strong> to the “This study (ERA5)” column: El Niño doubles the odds of a driest-third kiremti (2015, 2023 most recently).</li>
+</ul>
+'''
+
+[[sections_after]]
+title = "Caveats"
+html = '''
+<ul>
+<li>ERA5 is a reanalysis; Eritrea is gauge-sparse, so the rainfall field leans on the model background. The spatial gradient is plausible (it follows the monsoon's northern limit) but should be checked against CHIRPS before it drives a decision.</li>
+<li>Nine El Niño seasons is a small sample; the hit-rate above has wide uncertainty and one more event could move it by ten points.</li>
+<li>The country boundary is Natural Earth 110m rasterised with “all touched”, so edge cells straddle Ethiopia and Sudan.</li>
+<li>No field-significance correction is applied at pixel level; read coherent regions, not single cells.</li>
+</ul>
+'''
+
+[[references]]
+html = 'Korecha, D. &amp; Barnston, A. G. (2007). Predictability of June–September rainfall in Ethiopia. <em>Monthly Weather Review</em> 135, 628–650. <a href="https://journals.ametsoc.org/view/journals/mwre/135/2/mwr3304.1.xml">link</a>'
+[[references]]
+html = 'Gleixner, S., Keenlyside, N., Viste, E. &amp; Korecha, D. (2017). The El Niño effect on Ethiopian summer rainfall. <em>Climate Dynamics</em> 49, 1865–1883. <a href="https://link.springer.com/article/10.1007/s00382-016-3421-z">link</a>'
+[[references]]
+html = 'Segele, Z. T. &amp; Lamb, P. J. (2005). Characterization and variability of Kiremt rainy season over Ethiopia. <em>Meteorology and Atmospheric Physics</em> 89, 153–180.'
+[[references]]
+html = 'Diro, G. T., Grimes, D. I. F. &amp; Black, E. (2011). Teleconnections between Ethiopian summer rainfall and sea surface temperature. <em>Climate Dynamics</em> 37, 103–119.'
+[[references]]
+html = 'Seleshi, Y. &amp; Demarée, G. R. (1995). Rainfall variability in the Ethiopian and Eritrean highlands and its links with the Southern Oscillation Index. <em>Journal of Biogeography</em> 22, 945–952.'
+[[references]]
+html = 'Indian Ocean sea surface temperature and Eritrean highlands rainfall. <em>Physics and Chemistry of the Earth</em> (2004). <a href="https://www.sciencedirect.com/science/article/abs/pii/S147470650400169X">link</a>'
+[[references]]
+html = 'Nicholson, S. E. (2017). Climate and climatic variability of rainfall over eastern Africa. <em>Reviews of Geophysics</em> 55, 590–635. <a href="https://agupubs.onlinelibrary.wiley.com/doi/full/10.1002/2016rg000544">link</a>'
+[[references]]
+html = 'Dai, A. &amp; Wigley, T. M. L. (2000). Global patterns of ENSO-induced precipitation. <em>Geophysical Research Letters</em> 27, 1283–1286. <a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140">link</a>'
+[[references]]
+html = 'FAO GIEWS Country Brief: Eritrea, 14 September 2015. <a href="https://reliefweb.int/report/eritrea/giews-country-brief-eritrea-14-september-2015">link</a>; UN rapid assessment of drought-affected areas of Anseba and Northern Red Sea zones. <a href="https://reliefweb.int/report/eritrea/rapid-assessment-mission-regarding-drought-affected-areas-anseba-and-northern-red-sea">link</a>'
