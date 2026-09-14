@@ -182,7 +182,7 @@ def fig_seasonal_cycle(c: Country, grid: Grid, headline: list[int], out: Path, n
             z = [c.sub[[grid.mpos[(y, m)] for y in grid.years if (y, m) in grid.mpos]][:, zm].mean()
                  for m in range(1, 13)]
             ax.plot(range(12), z, color=col, lw=2, marker="o", ms=4, label=label)
-        ax.legend(frameon=False, fontsize=8.5, loc="upper left")
+        ax.legend(frameon=False, fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3)
     ax.set_xticks(range(12)); ax.set_xticklabels(MONTH_NAMES)
     ax.set_ylabel("mm / day", fontsize=9, color=C_MUTED)
     ax.set_title(f"{name}: ERA5 monthly rainfall climatology, 1981–{grid.years[-1]} "
@@ -213,11 +213,23 @@ def _pcolor(ax, c: Country, vals, cmap, vmin, vmax):
                          shading="flat", edgecolors="none")
 
 
+def _panel_size(c: Country, base: float = 4.6, floor: float = 2.4) -> tuple[float, float]:
+    """(width, height) in inches for one map panel, following the country's shape: tall narrow
+    countries get narrow panels, wide flat countries get short ones."""
+    ext = _extent(c)
+    aspect = (ext[3] - ext[2]) / max(ext[1] - ext[0], 1e-6)   # lat range / lon range
+    if aspect >= 1:
+        return float(np.clip(base / aspect, floor, base)), base
+    return base, float(np.clip(base * aspect, floor, base))
+
+
 def fig_corr_maps(c: Country, panels: list[dict], out: Path, name: str) -> None:
     n = len(panels)
-    fig, axes = plt.subplots(1, n, figsize=(4.6 * n + 1.2, 4.6), dpi=150)
+    w, h = _panel_size(c)
+    fig, axes = plt.subplots(1, n, figsize=(w * n + 1.4, h + 1.4), dpi=150)
     axes = np.atleast_1d(axes)
     ext = _extent(c)
+    fig.subplots_adjust(top=1 - 0.95 / (h + 1.4), bottom=0.45 / (h + 1.4), left=0.02, right=0.98, wspace=0.12)
     for ax, p in zip(axes, panels):
         r = np.where(p["analysable"], p["r"], np.nan)
         m = _pcolor(ax, c, np.where(c.mask, r, np.nan), DIVERGING, -0.7, 0.7)
@@ -225,23 +237,25 @@ def fig_corr_maps(c: Country, panels: list[dict], out: Path, name: str) -> None:
         na = c.mask & ~p["analysable"]
         _pcolor(ax, c, np.where(na, 0.0, np.nan), mcolors.ListedColormap(["#ececec"]), -1, 1)
         _draw_country(ax, c, ext)
-        ax.set_title(p["title"], fontsize=10, color=C_TEXT, loc="left")
+        ax.set_title(p["title"], fontsize=9.5, color=C_TEXT, loc="left")
         if p.get("note"):
-            ax.text(0.01, 0.01, p["note"], transform=ax.transAxes, fontsize=7.5, color=C_MUTED, va="bottom")
-    cb = fig.colorbar(m, ax=axes.tolist(), shrink=0.8, pad=0.02)
+            ax.set_xlabel(p["note"], fontsize=7.5, color=C_MUTED, loc="left")
+    cb = fig.colorbar(m, ax=axes.tolist(), shrink=0.7, pad=0.03)
     cb.set_label("Pearson r (Niño3.4 vs rainfall)", fontsize=9, color=C_MUTED)
     cb.ax.tick_params(labelsize=8, colors=C_MUTED)
     cb.set_ticks([-0.6, -0.3, 0, 0.3, 0.6])
     cb.ax.text(0.5, 1.03, "wetter under\nEl Niño", transform=cb.ax.transAxes, fontsize=7.5, color=C_MUTED, va="bottom", ha="center")
     cb.ax.text(0.5, -0.03, "drier under\nEl Niño", transform=cb.ax.transAxes, fontsize=7.5, color=C_MUTED, va="top", ha="center")
-    fig.suptitle(f"{name}: pixel-level Niño3.4 correlation (ERA5 0.25°, 1981–2025; grey = season too small to analyse)",
-                 fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.86)
+    fig.suptitle(f"{name}: pixel-level Niño3.4 correlation\n(ERA5 0.25°, 1981–2025; grey = season too small to analyse)",
+                 fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
 def fig_composite_maps(c: Country, comp: np.ndarray, hit: np.ndarray, analysable: np.ndarray,
                        season: str, n_en: int, out: Path, name: str) -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.6), dpi=150)
+    w, h = _panel_size(c)
+    fig, axes = plt.subplots(1, 2, figsize=(2 * w + 2.8, h + 1.3), dpi=150)
+    fig.subplots_adjust(top=1 - 1.0 / (h + 1.3), bottom=0.2 / (h + 1.3), left=0.02, right=0.98, wspace=0.35)
     ext = _extent(c)
     ok = c.mask & analysable
     m1 = _pcolor(axes[0], c, np.where(ok, comp, np.nan), DIVERGING, -1.2, 1.2)
@@ -257,9 +271,8 @@ def fig_composite_maps(c: Country, comp: np.ndarray, hit: np.ndarray, analysable
     axes[1].set_title(f"Share of El Niño years in the cell's\ndriest third of {season} seasons (chance = 33%)", fontsize=9.5, loc="left", color=C_TEXT)
     cb = fig.colorbar(m2, ax=axes[1], shrink=0.8, pad=0.02); cb.ax.tick_params(labelsize=8, colors=C_MUTED)
     cb.set_label("% of El Niño years", fontsize=9, color=C_MUTED)
-    fig.subplots_adjust(wspace=0.3)
-    fig.suptitle(f"{name}: what El Niño (concurrent Niño3.4 ≥ +{ENSO_THRESH}) did to the {season} season, per cell",
-                 fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.9)
+    fig.suptitle(f"{name}: what El Niño (concurrent Niño3.4 ≥ +{ENSO_THRESH})\ndid to the {season} season, per cell",
+                 fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
@@ -286,6 +299,34 @@ def fig_phase_history(df: pd.DataFrame, season: str, out: Path, name: str) -> No
     fig.tight_layout(); fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
+def fig_zone_history(zone_dfs: dict[str, pd.DataFrame], season: str, out: Path, name: str) -> None:
+    """One phase-history panel per zone, shared axes, so a north–south split is visible."""
+    n = len(zone_dfs)
+    fig, axes = plt.subplots(n, 1, figsize=(9.6, 2.35 * n + 0.6), dpi=150, sharex=True, sharey=True)
+    axes = np.atleast_1d(axes)
+    for ax, (label, df) in zip(axes, zone_dfs.items()):
+        col = df.phase.map({"El Niño": C_ELNINO, "Neutral": C_NEUTRAL, "La Niña": C_LANINA})
+        ax.bar(df.index, df.z, color=col, width=0.78)
+        t = df.rain.quantile(1 / 3)
+        ax.axhline((t - df.rain.mean()) / df.rain.std(), color="#7A4E22", lw=1, ls=(0, (4, 3)))
+        ax.axhline(0, color="#9aa3ad", lw=0.8)
+        for yr, row in df[df.phase == "El Niño"].iterrows():
+            ax.text(yr, row.z + (0.08 if row.z >= 0 else -0.08), str(yr), fontsize=6.5, color=C_ELNINO,
+                    ha="center", va="bottom" if row.z >= 0 else "top", rotation=90)
+        en = df[df.phase == "El Niño"]
+        r = np.corrcoef(df.rain, df.nino)[0, 1]
+        ax.set_title(f"{label} — r = {fmt_r(r)}; {int((en.pct <= 1 / 3).sum())} of {len(en)} El Niño seasons in the driest third",
+                     fontsize=9.5, color=C_TEXT, loc="left")
+        ax.set_ylabel("SD", fontsize=8.5, color=C_MUTED)
+        _style_ax(ax)
+    axes[0].legend(handles=[Patch(color=C_ELNINO, label="El Niño"), Patch(color=C_NEUTRAL, label="Neutral"),
+                            Patch(color=C_LANINA, label="La Niña")], frameon=False, fontsize=8, loc="upper right", ncol=3)
+    axes[-1].set_xlim(df.index[0] - 1, df.index[-1] + 1)
+    fig.suptitle(f"{name}: standardised {season} rainfall by zone and concurrent ENSO phase", fontsize=10,
+                 color=C_TEXT, x=0.01, ha="left")
+    fig.tight_layout(); fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+
+
 # --------------------------------------------------------------------------- #
 # Analysis for one country
 # --------------------------------------------------------------------------- #
@@ -307,15 +348,23 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
             return c.mask & (annual > 0) & (s / annual >= 0.25) & (s >= ts.PIXEL_MIN_TRI_MM_DAY), s
 
     ok_head, clim_head = analysable(hm)
+    # Zones: bounded by headline-season climatology (mm/day) and/or latitude (decimal degrees,
+    # south negative; a cell centred exactly on a bound goes to the zone south of it),
+    # intersected with the analysable headline-season cells.
+    lat2d = np.repeat(c.lat[:, None], len(c.lon), axis=1)
     zones = {}
     for z in spec.get("zones", []):
-        zm = ok_head & (clim_head >= z["min_mm_day"]) & (clim_head < z.get("max_mm_day", 1e9))
+        zm = ok_head & (clim_head >= z.get("min_mm_day", 0.0)) & (clim_head < z.get("max_mm_day", 1e9))
+        zm &= (lat2d > z.get("min_lat", -90.0)) & (lat2d <= z.get("max_lat", 90.0))
         zones[z["label"]] = zm
     fig_seasonal_cycle(c, grid, hm, out_dir / "seasonal_cycle.png", name, zones or None)
 
     # Correlation maps: headline + any extra seasons, best lag 0..3 (as in the survey)
     panels, summaries = [], []
-    for code in [head] + [s for s in spec.get("map_seasons", []) if s != head]:
+    map_seasons = list(spec.get("map_seasons", []))
+    if head not in map_seasons:
+        map_seasons.insert(0, head)
+    for code in map_seasons:
         months = season_months(code)
         R, yrs = season_stack(c, grid, months)
         r, k = best_lag_corr(R, yrs, indices, months, cfg.get("max_lag", 3))
@@ -335,8 +384,8 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
                     frac_mod_pos=float((v >= 0.3).mean()) if v.size else 0.0,
                     mean_share=float(np.nanmean(share)))
         summaries.append(summ)
-        panels.append(dict(r=r, analysable=ok, title=f"{code} rainfall vs Niño3.4 (best lag 0–{cfg.get('max_lag', 3)} mo)",
-                           note=f"{summ['n_cells']} of {summ['n_country']} cells have a {code} season"))
+        panels.append(dict(r=r, analysable=ok, title=f"{code} vs Niño3.4\n(best lag 0–{cfg.get('max_lag', 3)} mo)",
+                           note=f"{summ['n_cells']} of {summ['n_country']} cells\nhave a {code} season"))
     fig_corr_maps(c, panels, out_dir / "corr_maps.png", name)
 
     # Phase history on the area mean of the analysable headline-season cells
@@ -367,10 +416,22 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     pct = (R.argsort(0).argsort(0) + 1) / R.shape[0]
     hit = (pct[en_mask] <= 1 / 3).mean(0)
     fig_composite_maps(c, comp, hit, ok_head, head, int(en_mask.sum()), out_dir / "composite_maps.png", name)
-    zone_rows = []
+    zone_rows, zone_dfs = [], {}
     for label, zm in zones.items():
-        zone_rows.append(dict(zone=label, n_cells=int(zm.sum()), comp=float(np.nanmedian(comp[zm])) if zm.any() else np.nan,
-                              hit=float(np.nanmedian(hit[zm])) if zm.any() else np.nan))
+        if not zm.any():
+            zone_rows.append(dict(zone=label, n_cells=0, r=np.nan, comp=np.nan, hit=np.nan, hit_zone=np.nan))
+            continue
+        zdf = pd.DataFrame({"rain": R[:, zm].mean(1)}, index=yrs).join(n0.rename("nino")).dropna()
+        zdf["z"] = (zdf.rain - zdf.rain.mean()) / zdf.rain.std()
+        zdf["pct"] = zdf.rain.rank(pct=True)
+        zdf["phase"] = np.where(zdf.nino >= ENSO_THRESH, "El Niño", np.where(zdf.nino <= -ENSO_THRESH, "La Niña", "Neutral"))
+        zen = zdf[zdf.phase == "El Niño"]
+        zone_dfs[label] = zdf
+        zone_rows.append(dict(zone=label, n_cells=int(zm.sum()), r=float(np.corrcoef(zdf.rain, zdf.nino)[0, 1]),
+                              comp=float(np.nanmedian(comp[zm])), hit=float(np.nanmedian(hit[zm])),
+                              hit_zone=float((zen.pct <= 1 / 3).mean()) if len(zen) else np.nan))
+    if zone_dfs and spec.get("zone_history"):
+        fig_zone_history(zone_dfs, head, out_dir / "zone_history.png", name)
 
     # Country-level survey cross-check (optional: needs out/ parquet)
     adm0 = None
@@ -536,8 +597,8 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
                        f'<td class="num">{r.p:.3f}</td><td class="num">{fmt_r(r.r_partial)}</td></tr>')
         out.append('</tbody></table>')
         out.append('<p class="small">* Below the survey\'s rainy-season filter (trimester climatology under 25% of the annual '
-                   'mean), so the survey never shows these correlations at country level; they are listed here because the '
-                   'coastal winter signal is part of the story.</p>')
+                   'mean), so the survey never shows these correlations at country level; '
+                   + spec.get("adm0_filtered_note", "they are listed here for completeness.") + '</p>')
 
     # ---- Drought ----
     out.append(f'<h2>El Niño and {head} drought</h2>{spec.get("drought_html", "")}')
@@ -573,11 +634,19 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
                f'{fmt_r(a["comp_med"])} SD; {pct(a["comp_frac"])} of cells below −0.5 SD). Right: the share of El Niño years '
                f'that landed in the cell\'s own driest third (median {pct(a["hit_med"])}; chance is 33%).</figcaption></figure>')
     if a["zone_rows"]:
-        out.append('<table><thead><tr><th>Zone (by ' + head + ' climatology)</th><th class="num">Cells</th><th class="num">El Niño composite (median SD)</th>'
-                   '<th class="num">El Niño years in driest third (median)</th></tr></thead><tbody>')
+        out.append(f'<h3>By zone</h3>{spec.get("zones_html", "")}')
+        out.append('<table><thead><tr><th>Zone</th><th class="num">Cells</th><th class="num">Zone-mean r (concurrent)</th>'
+                   '<th class="num">El Niño composite (median SD)</th><th class="num">El Niño years in the zone\'s driest third</th>'
+                   '<th class="num">Per-cell median</th></tr></thead><tbody>')
         for z in a["zone_rows"]:
-            out.append(f'<tr><td>{html.escape(z["zone"])}</td><td class="num">{z["n_cells"]}</td><td class="num">{fmt_r(z["comp"])}</td><td class="num">{pct(z["hit"])}</td></tr>')
+            out.append(f'<tr><td>{html.escape(z["zone"])}</td><td class="num">{z["n_cells"]}</td><td class="num">{fmt_r(z["r"])}</td>'
+                       f'<td class="num">{fmt_r(z["comp"])}</td><td class="num">{pct(z["hit_zone"]) if not np.isnan(z["hit_zone"]) else "—"}</td>'
+                       f'<td class="num">{pct(z["hit"]) if not np.isnan(z["hit"]) else "—"}</td></tr>')
         out.append('</tbody></table>')
+        if spec.get("zone_history"):
+            out.append(f'<figure><img src="zone_history.png" alt="{head} rainfall history by zone and ENSO phase"><figcaption>'
+                       f'Standardised {head} rainfall for each zone\'s area mean, coloured by concurrent ENSO phase; dashed line is '
+                       f'the zone\'s own driest-third threshold. {spec.get("zone_history_caption", "")}</figcaption></figure>')
 
     for sec in spec.get("sections_after", []):
         out.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')

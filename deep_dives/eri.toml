@@ -5,6 +5,7 @@ name = "Eritrea"
 subtitle = "Why the catalogue's 'robust' El Niño → drier grade deserves a closer look, and what it means for kiremti drought"
 headline_season = "JAS"          # the season the drought analysis is built on
 map_seasons = ["JAS", "OND", "DJF"]
+adm0_filtered_note = "they are listed here because the coastal winter signal is part of the story."
 
 summary_html = '''
 <p><strong>Bottom line.</strong> The survey catalogue grades Eritrea <em>robust</em> for El Niño → drier JJAS rains. That grade was never earned by Eritrea-specific evidence: it was inherited from the regional row for the Ethiopian, Sudanese and South Sudanese highlands. The direction is right — Eritrea's kiremti rains are the northern tail of Ethiopia's kiremt system — but the Eritrea-specific literature is thin, and ERA5 shows a moderate signal (country JAS r ≈ −0.41) that is strong only along the Tigray border and fades to near nothing in the northern highlands around Anseba. The Red Sea coast responds the opposite way in its winter rains.</p>
