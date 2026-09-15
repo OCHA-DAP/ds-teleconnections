@@ -6,6 +6,7 @@ subtitle = "Right grade, wrong window: the El Niño signal is a late-season, sou
 headline_season = "JFM"          # the season the drought analysis is built on
 map_seasons = ["NDJ", "DJF", "JFM", "FMA"]   # chronological: the sign walks from blue to brown
 zone_history = true
+skill_seasons = ["JFM", "FMA"]
 zone_history_caption = "The three zones are latitude bands (north of 12.5°S, 12.5–14.5°S, south of 14.5°S), roughly the Northern, Central and Southern Regions. Note 2024: the wettest JFM on record in the north, the sixth-driest in the south."
 adm0_filtered_note = "they are listed here because the early-season (NDJ) and shoulder-season correlations carry the opposite sign and are part of the story."
 
@@ -33,6 +34,11 @@ drought_html = '''
 <p>The zone panels below resolve the apparent misses. 2024 was a genuine El Niño drought in the south (sixth-driest JFM of 45, with the February dry spell that led to the 23 March 2024 disaster declaration in 23 of 28 districts), masked by an exceptional wet season in the north. 2016 was dry in the centre and south and wetter than normal in the north; the 12 April 2016 national-disaster declaration cited dry spells in the Central and Southern Regions and floods in the Northern Region, exactly the ERA5 pattern. 1998 was dry in the centre, near normal in the south and wet in the north. 2010 scraped into the south's driest third and 2019 into the north's. Only 2003 was an El Niño season with no dry zone anywhere in Malawi. In the Southern Region alone, seven of ten El Niño JFM seasons were in the driest third (1983, 1987, 1992, 1995, 2010, 2016, 2024) and two in the wettest (2003, 2019); two of sixteen La Niña seasons were in the driest third.</p>
 <p>The early season runs the other way. Across the fifteen El Niño NDJ seasons since 1981 the national mean was wetter than normal in seven and in the driest third in two; in the north, nine of fifteen were in the wettest third. The January 2015 floods in the Shire valley, during a weak El Niño, fit that pattern, as does the very wet January–February 2024 in the north.</p>
 <p>Read as odds for the centre and south: El Niño roughly doubles the chance of a driest-third late season and makes a wet one unlikely; La Niña makes a dry late season rare. Nationally aggregated numbers understate both effects, and in a year like 2024 they hide the drought altogether.</p>
+'''
+
+skill_html = '''
+<p>The ENSO signal in the centre and south is robust; whether SEAS5 can deliver it ahead of the season is a different question, and for Malawi the answer is “only just”. For JFM the forecast issued one to four months ahead has median pixel skill of 0.2–0.35 in every zone, <em>low</em> by the app's bins, with fewer than half the cells reaching moderate; the north and south touch <em>moderate</em> only at the shortest leads. Skill jumps to <em>high</em> (0.65–0.9) once one or two months of the season have been observed, which is the in-season blend, not a forecast achievement.</p>
+<p>FMA, where the ENSO correlation is strongest, is also where SEAS5 does best before the season: the November issuance (3-month lead) reaches moderate skill in the centre and south with 78–90% of cells at moderate or better, and the February issuance is moderate in every zone with all central and southern cells qualifying. The practical reading for anticipatory action is that ENSO state is the readiness signal from September onward, the November SEAS5 issuance for FMA is the first forecast worth acting on for the centre and south, and the JFM forecast alone should not be a trigger at any pre-season lead. The north's weaker ENSO link and low pre-season skill argue for treating it separately, as the drought record already does.</p>
 '''
 
 zones_html = '''
@@ -89,6 +95,7 @@ html = '''
 <li><strong>Cite the Malawi studies</strong> — Jury &amp; Mwafulirwa (2002), Nicholson et al. (2014) — alongside Mason &amp; Goddard on the catalogue row.</li>
 <li><strong>Add the drought framing</strong> to the “This study (ERA5)” column: in the Southern Region, seven of ten El Niño JFM seasons were in the driest third (1992, 2016, 2024 most consequentially), and the national mean hides this whenever the north is wet.</li>
 <li><strong>For the seas5-skill ENSO slides and any Malawi trigger work</strong>, use JFM or FMA and a sub-national (ADM1 or pixel) view; a national DJF indicator has essentially no ENSO skill here.</li>
+<li><strong>Pair the ENSO readiness signal with the FMA forecast, not JFM.</strong> SEAS5 skill for JFM is <em>low</em> at every pre-season lead in every zone; for FMA the November issuance is <em>moderate</em> in the centre and south. Treat the north separately.</li>
 </ul>
 '''
 

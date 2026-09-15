@@ -133,7 +133,11 @@ TOML knobs worth knowing: `headline_season` drives the drought analysis; `map_se
 correlation-map panels in the order given (chronological reads best when the sign flips within a
 season, as in Malawi); `[[zones]]` split the country by headline-season climatology (`min_mm_day`,
 `max_mm_day`) and/or latitude (`min_lat`, `max_lat`; a cell centred on a bound goes south), and
-`zone_history = true` adds a per-zone phase-history figure. Top-level keys must sit above the first
+`zone_history = true` adds a per-zone phase-history figure. Each page also gets a SEAS5 skill-by-zone
+table (median pixel Pearson r per lead, binned low / moderate / high with the seas5-skill app's
+thresholds 0.30 / 0.50) read from the app's detrended skill cube, fetched once from the DEV blob into
+`cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill_seasons = ["JFM", "FMA"]` adds seasons beyond the
+headline, `skill = false` drops the section. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 
 ---

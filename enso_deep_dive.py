@@ -336,6 +336,90 @@ def fig_zone_history(zone_dfs: dict[str, pd.DataFrame], season: str, out: Path, 
 
 
 # --------------------------------------------------------------------------- #
+# SEAS5 forecast skill (from the seas5-skill app's detrended per-pixel skill cube)
+# --------------------------------------------------------------------------- #
+# Same thresholds, categories and colours as the app's skill map
+# (ds-seas5-skill/pipeline/export_skill_raster_site.py). Skill is the temporal Pearson r
+# between the detrended SEAS5 trimester forecast and detrended ERA5, per 0.4° pixel, for a
+# given issued month; the lead is the number of months from the issue month to the first
+# month of the trimester (negative = issued in-season, elapsed months observed).
+SKILL_CUBE = Path("cache/skill_stats_grid_detrended.nc")
+SKILL_BLOB = "ds-seas5-skill/processed/raster/skill_stats_grid_detrended.nc"
+SKILL_THRESH = {"r_mod": 0.30, "r_high": 0.50}
+SKILL_LEADS = [4, 3, 2, 1, 0, -1, -2]
+SKILL_CATS = {"negative": "#f3dad7", "low": "#bee0d6", "moderate": "#7dc1ad", "high": "#1e795f"}
+
+
+def skill_cat(r: float) -> str:
+    if r is None or np.isnan(r):
+        return "—"
+    if r < 0:
+        return "negative"
+    if r < SKILL_THRESH["r_mod"]:
+        return "low"
+    if r < SKILL_THRESH["r_high"]:
+        return "moderate"
+    return "high"
+
+
+def _ensure_skill_cube() -> Path | None:
+    if SKILL_CUBE.exists():
+        return SKILL_CUBE
+    try:
+        import ocha_stratus as stratus
+        print("  downloading the SEAS5 skill cube from the DEV blob (one-time)…", flush=True)
+        SKILL_CUBE.parent.mkdir(parents=True, exist_ok=True)
+        SKILL_CUBE.write_bytes(stratus.load_blob_data(SKILL_BLOB, stage="dev"))
+        return SKILL_CUBE
+    except Exception as e:  # noqa: BLE001
+        print(f"  (SEAS5 skill cube not available: {e})")
+        return None
+
+
+def seas5_skill_by_zone(c: Country, zones: dict[str, np.ndarray], head: str,
+                        leads: list[int] = SKILL_LEADS) -> list[dict] | None:
+    """Per-zone SEAS5 skill for the headline trimester at each lead.
+
+    The app's skill cube is on the SEAS5 0.4° grid; it is sampled at the deep dive's 0.25°
+    ERA5 cell centres (nearest neighbour) so the zone masks apply unchanged. Each row is one
+    zone (plus the whole analysable country); each lead gives the median pixel r, its
+    category, and the share of the zone's cells at moderate-or-better skill.
+    """
+    path = _ensure_skill_cube()
+    if path is None or head not in ts._TRIMESTER_MONTHS:
+        return None
+    import xarray as xr
+    ds = xr.open_dataset(path)
+    start = ts._TRIMESTER_MONTHS[head][0]
+    rows = []
+    for label, zm in zones.items():
+        if not zm.any():
+            continue
+        cells = {}
+        for lead in leads:
+            im = ((start - lead - 1) % 12) + 1
+            R = ds["pearson_r"].sel(issued_month=im, trimester=head)
+            R = R.sel(x=xr.DataArray(c.lon, dims="lon"), y=xr.DataArray(c.lat, dims="lat"), method="nearest").values
+            v = R[zm]
+            v = v[np.isfinite(v)]
+            med = float(np.median(v)) if v.size else float("nan")
+            cells[lead] = dict(r=med, cat=skill_cat(med),
+                               frac_mod=float((v >= SKILL_THRESH["r_mod"]).mean()) if v.size else float("nan"),
+                               frac_high=float((v >= SKILL_THRESH["r_high"]).mean()) if v.size else float("nan"))
+        rows.append(dict(zone=label, n_cells=int(zm.sum()), leads=cells))
+    ds.close()
+    return rows
+
+
+def lead_label(lead: int) -> str:
+    if lead > 0:
+        return f"{lead}-month lead"
+    if lead == 0:
+        return "same month"
+    return f"{-lead} mo into season"
+
+
+# --------------------------------------------------------------------------- #
 # Analysis for one country
 # --------------------------------------------------------------------------- #
 def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame, cfg: dict,
@@ -441,6 +525,15 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     if zone_dfs and spec.get("zone_history"):
         fig_zone_history(zone_dfs, head, out_dir / "zone_history.png", name)
 
+    # SEAS5 forecast skill for the headline trimester, per zone + whole country
+    skill_zones = dict(zones) | {"Whole country (all analysable cells)": ok_head}
+    skill_rows = {}
+    if spec.get("skill", True):
+        for code in spec.get("skill_seasons", [head]):
+            rows = seas5_skill_by_zone(c, skill_zones, code)
+            if rows:
+                skill_rows[code] = rows
+
     # Country-level survey cross-check (optional: needs out/ parquet)
     adm0 = None
     try:
@@ -463,7 +556,8 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     return dict(country=c, summaries=summaries, df=df, phase_rows=phase_rows, en=en, driest=driest,
                 r_area=r_area, r_area_lag1=r_area_lag1, comp_med=float(np.nanmedian(comp[ok_head])),
                 comp_frac=float((comp[ok_head] < -0.5).mean()), hit_med=float(np.nanmedian(hit[ok_head])),
-                zone_rows=zone_rows, adm0=adm0, n_cells=int(c.mask.sum()), n_head=int(ok_head.sum()))
+                zone_rows=zone_rows, skill_rows=skill_rows, adm0=adm0, n_cells=int(c.mask.sum()),
+                n_head=int(ok_head.sum()))
 
 
 # --------------------------------------------------------------------------- #
@@ -497,6 +591,7 @@ th{background:#eef2f7;font-weight:600}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .hl{background:#fbf3ea}
 .refs li{margin:0 0 6px;font-size:14px}
+table.skill{font-size:12.5px;width:100%}table.skill th,table.skill td{padding:5px 6px}table.skill .chip{font-size:11px;padding:1px 6px}table.skill .small{font-size:11px}
 a{color:var(--b6)}
 .small{font-size:13px;color:var(--n7)}
 @media(max-width:640px){.wrap{padding:12px 18px 36px}.verdict{grid-template-columns:1fr}h1{font-size:24px}}
@@ -656,6 +751,9 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
                        f'Standardised {head} rainfall for each zone\'s area mean, coloured by concurrent ENSO phase; dashed line is '
                        f'the zone\'s own driest-third threshold. {spec.get("zone_history_caption", "")}</figcaption></figure>')
 
+    if a.get("skill_rows"):
+        out.append(render_skill(spec, a, head))
+
     for sec in spec.get("sections_after", []):
         out.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
 
@@ -667,6 +765,49 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
     out.append(f'<p class="small">Generated by <code>enso_deep_dive.py</code> from <code>deep_dives/{spec["slug"]}.toml</code>. '
                f'Method and data as in the <a href="../../survey/">global survey</a>.</p>')
     out.append(FOOT)
+    return "\n".join(out)
+
+
+def skill_chip(cat: str) -> str:
+    if cat not in SKILL_CATS:
+        return "—"
+    fg = "#ffffff" if cat == "high" else "#1a1a1a"
+    return f'<span class="chip" style="background:{SKILL_CATS[cat]};color:{fg};margin:0">{cat}</span>'
+
+
+def render_skill(spec: dict, a: dict, head: str) -> str:
+    leads = SKILL_LEADS
+    seasons = list(a["skill_rows"])
+    out = [f'<h2>Can SEAS5 forecast the {" / ".join(seasons)} season? Skill by zone</h2>']
+    out.append('<p>A teleconnection is only useful for anticipatory action if the seasonal forecast can carry it. '
+               'This table reads the seas5-skill app\'s per-pixel skill cube — the temporal Pearson r between the '
+               'detrended ECMWF SEAS5 trimester forecast and detrended ERA5, per 0.4° pixel — sampled at this page\'s '
+               'cells and summarised per zone: the median pixel r at each lead, binned with the app\'s thresholds '
+               f'(<em>low</em> &lt; {SKILL_THRESH["r_mod"]:.2f} ≤ <em>moderate</em> &lt; {SKILL_THRESH["r_high"]:.2f} ≤ <em>high</em>), '
+               'and the share of the zone\'s cells at moderate-or-better skill. Lead is counted from the issue month to the '
+               'first month of the trimester; negative leads are issued in-season, with the elapsed months already observed.</p>')
+    out.append(spec.get("skill_html", ""))
+    for code, rows in a["skill_rows"].items():
+        if len(seasons) > 1:
+            out.append(f'<h3>{code}</h3>')
+        out.append('<div style="overflow-x:auto"><table class="skill"><thead><tr><th>Zone</th><th class="num">Cells</th>'
+                   + "".join(f'<th class="num">{html.escape(lead_label(l)).replace("-month lead", "-mo lead").replace(" into season", " in-season")}</th>' for l in leads)
+                   + '</tr></thead><tbody>')
+        for r in rows:
+            cells = []
+            for l in leads:
+                k = r["leads"].get(l)
+                if k is None or np.isnan(k["r"]):
+                    cells.append('<td class="num">—</td>')
+                    continue
+                cells.append(f'<td class="num" style="white-space:nowrap">{fmt_r(k["r"])}<br>{skill_chip(k["cat"])}'
+                             f'<br><span class="small">{pct(k["frac_mod"])} ≥ mod.</span></td>')
+            out.append(f'<tr><td>{html.escape(r["zone"])}</td><td class="num">{r["n_cells"]}</td>{"".join(cells)}</tr>')
+        out.append('</tbody></table></div>')
+    out.append('<p class="small">Each cell: median pixel r, its skill bin, and the share of the zone\'s cells at moderate-or-better skill. '
+               'Skill source: <code>skill_stats_grid_detrended.nc</code> (seas5-skill, DEV blob), the same cube '
+               'behind the app\'s pixel skill map. Median of pixel correlations, not the correlation of the zone mean, so '
+               'it is a conservative summary for a coherent zone.</p>')
     return "\n".join(out)
 
 
