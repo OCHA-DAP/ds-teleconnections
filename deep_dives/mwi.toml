@@ -6,7 +6,7 @@ subtitle = "Right grade, wrong window: the El Niño signal is a late-season, sou
 headline_season = "JFM"          # the season the drought analysis is built on
 map_seasons = ["NDJ", "DJF", "JFM", "FMA"]   # chronological: the sign walks from blue to brown
 zone_history = true
-skill_seasons = ["JFM", "FMA"]
+skill_issued_month = 9
 zone_history_caption = "The three zones are latitude bands (north of 12.5°S, 12.5–14.5°S, south of 14.5°S), roughly the Northern, Central and Southern Regions. Note 2024: the wettest JFM on record in the north, the sixth-driest in the south."
 adm0_filtered_note = "they are listed here because the early-season (NDJ) and shoulder-season correlations carry the opposite sign and are part of the story."
 
@@ -37,8 +37,8 @@ drought_html = '''
 '''
 
 skill_html = '''
-<p>The ENSO signal in the centre and south is robust; whether SEAS5 can deliver it ahead of the season is a different question, and for Malawi the answer is “only just”. For JFM the forecast issued one to four months ahead has median pixel skill of 0.2–0.35 in every zone, <em>low</em> by the app's bins, with fewer than half the cells reaching moderate; the north and south touch <em>moderate</em> only at the shortest leads. Skill jumps to <em>high</em> (0.65–0.9) once one or two months of the season have been observed, which is the in-season blend, not a forecast achievement.</p>
-<p>FMA, where the ENSO correlation is strongest, is also where SEAS5 does best before the season: the November issuance (3-month lead) reaches moderate skill in the centre and south with 78–90% of cells at moderate or better, and the February issuance is moderate in every zone with all central and southern cells qualifying. The practical reading for anticipatory action is that ENSO state is the readiness signal from September onward, the November SEAS5 issuance for FMA is the first forecast worth acting on for the centre and south, and the JFM forecast alone should not be a trigger at any pre-season lead. The north's weaker ENSO link and low pre-season skill argue for treating it separately, as the drought record already does.</p>
+<p>Read against the climatology, the September issuance is a weak instrument for Malawi's rains. The three windows that carry the season — NDJ, DJF and JFM — are all <em>low</em> skill in every zone (median pixel r 0.1–0.3, whole country 0.21–0.26), with one marginal exception: DJF in the Southern Region reaches <em>moderate</em> (0.33, 58% of cells). The Central Region is close to zero for OND through DJF. The in-season windows on the left (JAS, ASO) are high or moderate only because their months are already observed, and they are dry-season months anyway, so they are greyed out.</p>
+<p>The practical reading is that in September the ENSO state is the better signal for Malawi's centre and south, and the seasonal forecast adds little to it. Forecast-based action should wait for later issuances: from the same skill cube, the November issuance reaches moderate skill for FMA in the centre and south (median r 0.37–0.39, 78–90% of cells), which is also the window where the ENSO correlation peaks. The north's weaker ENSO link and low September skill argue for treating it separately, as the drought record already does.</p>
 '''
 
 zones_html = '''
@@ -95,7 +95,7 @@ html = '''
 <li><strong>Cite the Malawi studies</strong> — Jury &amp; Mwafulirwa (2002), Nicholson et al. (2014) — alongside Mason &amp; Goddard on the catalogue row.</li>
 <li><strong>Add the drought framing</strong> to the “This study (ERA5)” column: in the Southern Region, seven of ten El Niño JFM seasons were in the driest third (1992, 2016, 2024 most consequentially), and the national mean hides this whenever the north is wet.</li>
 <li><strong>For the seas5-skill ENSO slides and any Malawi trigger work</strong>, use JFM or FMA and a sub-national (ADM1 or pixel) view; a national DJF indicator has essentially no ENSO skill here.</li>
-<li><strong>Pair the ENSO readiness signal with the FMA forecast, not JFM.</strong> SEAS5 skill for JFM is <em>low</em> at every pre-season lead in every zone; for FMA the November issuance is <em>moderate</em> in the centre and south. Treat the north separately.</li>
+<li><strong>In September, lean on ENSO, not SEAS5.</strong> The September issuance has <em>low</em> skill for NDJ, DJF and JFM in every zone (south DJF marginally moderate); forecast-based action should wait for the November issuance, which reaches <em>moderate</em> skill for FMA in the centre and south. Treat the north separately.</li>
 </ul>
 '''
 
