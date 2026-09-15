@@ -174,16 +174,24 @@ def fig_seasonal_cycle(c: Country, grid: Grid, headline: list[int], out: Path, n
     for m in range(1, 13):
         pos = [grid.mpos[(y, m)] for y in grid.years if (y, m) in grid.mpos]
         clim[m - 1] = c.sub[pos][:, c.mask].mean()
+    # Rotate the month axis so the headline season sits in the middle of the chart
+    # (a Nov–Apr season is unreadable when the year starts in January).
+    mid = headline[len(headline) // 2] - 1
+    order = [(mid + 6 + k) % 12 for k in range(12)]        # 0-based month indices, left to right
     fig, ax = plt.subplots(figsize=(7.2, 3.0), dpi=150)
-    cols = ["#9C6730" if (m + 1) in headline else "#D8C3AC" for m in range(12)]
-    ax.bar(range(12), clim, color=cols, width=0.72)
+    cols = ["#9C6730" if (m + 1) in headline else "#D8C3AC" for m in order]
+    ax.bar(range(12), clim[order], color=cols, width=0.72)
     if zones:
         for (label, zm), col in zip(zones.items(), ["#1F5F96", "#5E9FD2", "#18614c"]):
-            z = [c.sub[[grid.mpos[(y, m)] for y in grid.years if (y, m) in grid.mpos]][:, zm].mean()
-                 for m in range(1, 13)]
-            ax.plot(range(12), z, color=col, lw=2, marker="o", ms=4, label=label)
+            z = np.array([c.sub[[grid.mpos[(y, m)] for y in grid.years if (y, m) in grid.mpos]][:, zm].mean()
+                          for m in range(1, 13)])
+            ax.plot(range(12), z[order], color=col, lw=2, marker="o", ms=4, label=label)
         ax.legend(frameon=False, fontsize=8.5, loc="upper center", bbox_to_anchor=(0.5, -0.14), ncol=3)
-    ax.set_xticks(range(12)); ax.set_xticklabels(MONTH_NAMES)
+    ax.set_xticks(range(12)); ax.set_xticklabels([MONTH_NAMES[m] for m in order])
+    if order[0] != 0:  # mark where the calendar year turns over
+        jan = order.index(0)
+        ax.axvline(jan - 0.5, color="#c9d0d0", lw=0.8, ls=(0, (3, 3)))
+        ax.text(jan - 0.55, clim.max() * 0.5, "1 Jan", fontsize=7.5, color=C_MUTED, rotation=90, ha="right", va="center")
     ax.set_ylabel("mm / day", fontsize=9, color=C_MUTED)
     ax.set_title(f"{name}: ERA5 monthly rainfall climatology, 1981–{grid.years[-1]} "
                  f"(dark bars = headline season)", fontsize=10, color=C_TEXT, loc="left")
