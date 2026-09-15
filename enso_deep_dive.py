@@ -433,8 +433,8 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
                          for m in range(1, 13)])
 
     n = len(rows)
-    fig, (ax, hx) = plt.subplots(2, 1, figsize=(9.6, 3.2 + 0.55 * n), dpi=150, sharex=True,
-                                 gridspec_kw=dict(height_ratios=[3.0, 0.55 * n + 0.3], hspace=0.08))
+    fig, (ax, hx) = plt.subplots(2, 1, figsize=(9.6, 6.4), dpi=150, sharex=True,
+                                 gridspec_kw=dict(height_ratios=[2.6, 2.6], hspace=0.1))
     # --- top: climatology
     clim_all = monthly(c.mask)
     ax.bar(range(9), clim_all[[m - 1 for m in months]], color="#D8C3AC", width=0.72, label="Whole country")
@@ -446,42 +446,52 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
     ax.text(xpos[im] + 0.08, ax.get_ylim()[1] * 0.97, f"issued\n1 {MONTH_NAMES[im - 1]}", fontsize=8, color=C_TEXT, va="top")
     ax.set_ylabel("mm / day", fontsize=9, color=C_MUTED)
     ax.legend(frameon=False, fontsize=8, loc="best", ncol=1)
-    ax.set_title(f"{name}: what the {MONTH_NAMES[im - 1]} SEAS5 issuance can see — skill by zone against the rainy season",
+    ax.set_title(f"{name}: skill of the {MONTH_NAMES[im - 1]} SEAS5 issuance by zone, against the rainy season",
                  fontsize=10, color=C_TEXT, loc="left")
     _style_ax(ax)
-    # --- bottom: heatmap, one row per zone, one column per trimester on its middle month
-    zone_annual = {lbl: z.sum() for lbl, z in zone_clim.items()}
-    zone_annual["__all__"] = clim_all.sum()
-    for i, row in enumerate(rows):
-        y = n - 1 - i
-        z = zone_clim.get(row["zone"], clim_all)
-        annual = z.sum()
-        for t in tris:
-            r = row["r"].get(t["code"], np.nan)
-            cat = skill_cat(r)
-            mid = ((t["start"]) % 12) + 1        # middle month of the trimester
-            x = xpos.get(mid)
-            if x is None or cat == "—":
+    # --- bottom: median pixel skill per zone as lines over the trimester middle months, on the
+    # app's low / moderate / high bands. Hollow markers = window is off-season for that zone.
+    zone_cols = dict(zip(zones.keys(), ["#1F5F96", "#5E9FD2", "#18614c", "#8a4f7d"]))
+    lo, hi = SKILL_THRESH["r_mod"], SKILL_THRESH["r_high"]
+    ymin, ymax = -0.15, 1.0
+    hx.axhspan(ymin, 0, color="#f3dad7", alpha=0.6, lw=0)
+    hx.axhspan(0, lo, color=SKILL_CATS["low"], alpha=0.35, lw=0)
+    hx.axhspan(lo, hi, color=SKILL_CATS["moderate"], alpha=0.35, lw=0)
+    hx.axhspan(hi, ymax, color=SKILL_CATS["high"], alpha=0.35, lw=0)
+    for yv, lbl in ((ymin + 0) / 2, "negative"), (lo / 2, "low"), ((lo + hi) / 2, "moderate"), ((hi + ymax) / 2, "high"):
+        hx.text(8.55, yv, lbl, fontsize=7.5, color=C_MUTED, ha="right", va="center", style="italic")
+    # already-observed windows sit left of the issuance
+    hx.axvspan(-0.6, xpos[im] - 0.5, color="#ffffff", alpha=0.55, lw=0)
+    hx.text(xpos[im] - 0.6, ymin + 0.04, "windows already\nunder way ", fontsize=7, color=C_MUTED, ha="right", va="bottom")
+    xs = [xpos.get(((t["start"]) % 12) + 1) for t in tris]
+    for row in rows:
+        lbl = row["zone"]
+        z = zone_clim.get(lbl, clim_all); annual = z.sum()
+        ys = [row["r"].get(t["code"], np.nan) for t in tris]
+        col = zone_cols.get(lbl, "#7A4E22")
+        is_all = lbl not in zone_cols
+        hx.plot(xs, ys, color=col, lw=2.2 if not is_all else 1.6, ls="-" if not is_all else (0, (4, 2)), zorder=3)
+        for t, x, yv in zip(tris, xs, ys):
+            if x is None or np.isnan(yv):
                 continue
             share = z[[((t["start"] - 1 + k) % 12) for k in range(3)]].sum() / annual if annual > 0 else 0
             on = share >= off_share
-            hx.add_patch(plt.Rectangle((x - 0.47, y - 0.42), 0.94, 0.84, facecolor=SKILL_CATS[cat] if on else "#efefef",
-                                       edgecolor="white", lw=1))
-            fg = "#ffffff" if (cat == "high" and on) else (C_TEXT if on else "#9aa3ad")
-            hx.text(x, y + 0.1, f"{r:+.2f}", ha="center", va="center", fontsize=8.5, color=fg, fontweight="bold")
-            hx.text(x, y - 0.22, f"{t['code']}" + (" ·in" if t["lead"] < 0 else ""), ha="center", va="center",
-                    fontsize=6.8, color=fg)
-    hx.set_ylim(-0.55, n - 0.45); hx.set_yticks(range(n))
-    short = [r["zone"].split(" (")[0] for r in rows][::-1]
-    hx.set_yticklabels(short, fontsize=8.5, color=C_TEXT)
-    hx.set_xlim(-0.6, 8.6); hx.set_xticks(range(9)); hx.set_xticklabels([MONTH_NAMES[m - 1] for m in months])
-    hx.axvline(xpos[im], color=C_TEXT, lw=1, ls=(0, (4, 3)), alpha=0.35)
-    hx.tick_params(colors=C_MUTED, labelsize=9, length=0)
-    for sp in hx.spines.values():
-        sp.set_visible(False)
-    hx.legend(handles=[Patch(color=SKILL_CATS[k], label=f"{k} skill") for k in ("low", "moderate", "high")]
-              + [Patch(facecolor="#efefef", label="grey = off-season window for that zone (<15% of annual rain)")],
-              frameon=False, fontsize=7.5, loc="upper center", bbox_to_anchor=(0.5, -0.22), ncol=4)
+            hx.plot([x], [yv], marker="o", ms=5.5, color=col, mfc=col if on else "white", mew=1.6, zorder=4)
+    hx.set_ylim(ymin, ymax); hx.set_yticks([0, lo, hi, 1.0])
+    hx.set_ylabel("median pixel r", fontsize=9, color=C_MUTED)
+    hx.set_xlim(-0.6, 8.6); hx.set_xticks(range(9))
+    code_at = {xpos.get(((t["start"]) % 12) + 1): t["code"] for t in tris}
+    hx.set_xticklabels([MONTH_NAMES[m - 1] + (f"\n{code_at[k]}" if k in code_at else "") for k, m in enumerate(months)])
+    hx.axvline(xpos[im], color=C_TEXT, lw=1, ls=(0, (4, 3)), alpha=0.6)
+    hx.tick_params(colors=C_MUTED, labelsize=8.5)
+    hx.yaxis.grid(False)
+    for sp in ("top", "right"):
+        hx.spines[sp].set_visible(False)
+    for sp in ("left", "bottom"):
+        hx.spines[sp].set_color("#c9d0d0")
+    hx.legend(handles=[plt.Line2D([], [], color="#7A4E22", ls=(0, (4, 2)), lw=1.6, label="Whole country"),
+                       plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = off-season window for that zone (<15% of annual rain)")],
+              frameon=False, fontsize=7.5, loc="upper center", bbox_to_anchor=(0.5, -0.3), ncol=2)
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
@@ -851,15 +861,16 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
                f'detrended ECMWF SEAS5 trimester forecast and detrended ERA5, per 0.4° pixel — for forecasts issued on '
                f'1 {mon}, sampled at this page\'s cells and summarised as the median pixel r per zone. Bins are the app\'s '
                f'(<em>low</em> &lt; {SKILL_THRESH["r_mod"]:.2f} ≤ <em>moderate</em> &lt; {SKILL_THRESH["r_high"]:.2f} ≤ <em>high</em>). '
-               f'Each column is one three-month window the issuance covers, drawn on its middle month under the rainy-season '
-               f'climatology, so the reader sees which part of the season each forecast window reaches. Windows marked '
-               f'“·in” had already started at issuance, with the elapsed months observed rather than forecast.</p>')
+               f'Each point is one three-month window the issuance covers, drawn on its middle month under the rainy-season '
+               f'climatology, so the reader sees which part of the season each forecast window reaches and how much skill it has there.</p>')
     out.append(spec.get("skill_html", ""))
     out.append(f'<figure><img src="skill_issued.png" alt="SEAS5 skill of the {mon} issuance by zone"><figcaption>Top: '
                f'monthly rainfall climatology, whole country (bars) and zones (lines), from two months before the issuance '
                f'to the end of the seven-month SEAS5 horizon. Bottom: median pixel skill of the {mon} issuance for each '
-               f'trimester, per zone and for the whole country; grey cells are windows holding under 15% of that zone\'s '
-               f'annual rain (the app\'s off-season mask).</figcaption></figure>')
+               f'three-month window, plotted on the window\'s middle month, one line per zone and a dashed line for the '
+               f'whole country, over the app\'s low / moderate / high bands. Hollow markers are windows holding under 15% '
+               f'of that zone\'s annual rain (the app\'s off-season mask); windows left of the dashed vertical had '
+               f'already started at issuance, so part of them is observed rather than forecast.</figcaption></figure>')
     # compact table of the same numbers, with the share of cells at moderate-or-better
     tris = sk["trimesters"]
     out.append('<div style="overflow-x:auto"><table class="skill"><thead><tr><th>Zone</th><th class="num">Cells</th>'
