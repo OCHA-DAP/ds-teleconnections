@@ -137,7 +137,8 @@ season, as in Malawi); `[[zones]]` split the country by headline-season climatol
 figure and table: for one issuance month (`skill_issued_month`, default one month before the headline
 season starts), the median pixel Pearson r per zone for every trimester that issuance covers, binned
 low / moderate / high with the seas5-skill app's thresholds 0.30 / 0.50 and drawn under the rainy-season
-climatology. Read from the app's detrended skill cube, fetched once from the DEV blob into
+climatology, plus the return period of that issuance's current forecast anomaly per zone (dry above / wet
+below the axis, with the app's 3- and 10-year alert bands) and an auto-written alert summary. Read from the app's detrended skill cube, fetched once from the DEV blob into
 `cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill = false` drops the section. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 

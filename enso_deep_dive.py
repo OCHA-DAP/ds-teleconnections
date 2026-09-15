@@ -396,21 +396,38 @@ def seas5_skill_issued(c: Country, zones: dict[str, np.ndarray], issued_month: i
         start = ((issued_month - 1 + lead) % 12) + 1
         if start in by_start:
             tris.append(dict(code=by_start[start], lead=lead, start=start))
+    def grid(var, code):
+        da = ds[var].sel(issued_month=issued_month, trimester=code)
+        return da.sel(x=xr.DataArray(c.lon, dims="lon"), y=xr.DataArray(c.lat, dims="lat"), method="nearest").values
+
+    # Vintage: the cube's current forecast for this issuance, labelled by the lead-0 window's season year
+    lead0 = [t for t in tris if t["lead"] == 0]
+    issued_year = None
+    if lead0:
+        yv = ds["current_forecast_year"].sel(issued_month=issued_month, trimester=lead0[0]["code"]).values
+        issued_year = int(yv) if np.isfinite(yv) else None
     rows = []
     for label, zm in zones.items():
         if not zm.any():
             continue
-        r_by, fm_by = {}, {}
+        r_by, fm_by, rp_by, pc_by = {}, {}, {}, {}
         for t in tris:
-            R = ds["pearson_r"].sel(issued_month=issued_month, trimester=t["code"])
-            R = R.sel(x=xr.DataArray(c.lon, dims="lon"), y=xr.DataArray(c.lat, dims="lat"), method="nearest").values
-            v = R[zm]
+            v = grid("pearson_r", t["code"])[zm]
             v = v[np.isfinite(v)]
             r_by[t["code"]] = float(np.median(v)) if v.size else float("nan")
             fm_by[t["code"]] = float((v >= SKILL_THRESH["r_mod"]).mean()) if v.size else float("nan")
-        rows.append(dict(zone=label, n_cells=int(zm.sum()), r=r_by, frac_mod=fm_by))
+            # signed return period of the current forecast: +dry RP if the forecast sits below its
+            # hindcast median, −wet RP otherwise (the app's forecast_rp / flood_rp, Weibull)
+            pc = grid("forecast_percentile", t["code"])[zm]
+            dry = grid("forecast_rp", t["code"])[zm]
+            wet = grid("flood_rp", t["code"])[zm]
+            ok = np.isfinite(pc) & np.isfinite(dry) & np.isfinite(wet)
+            signed = np.where(pc < 50, dry, -wet)[ok]
+            rp_by[t["code"]] = float(np.median(signed)) if signed.size else float("nan")
+            pc_by[t["code"]] = float(np.median(pc[ok])) if ok.any() else float("nan")
+        rows.append(dict(zone=label, n_cells=int(zm.sum()), r=r_by, frac_mod=fm_by, rp=rp_by, pct=pc_by))
     ds.close()
-    return dict(issued_month=issued_month, trimesters=tris, rows=rows)
+    return dict(issued_month=issued_month, issued_year=issued_year, trimesters=tris, rows=rows)
 
 
 def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill: dict, out: Path,
@@ -433,8 +450,8 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
                          for m in range(1, 13)])
 
     n = len(rows)
-    fig, (ax, hx) = plt.subplots(2, 1, figsize=(9.6, 6.4), dpi=150, sharex=True,
-                                 gridspec_kw=dict(height_ratios=[2.6, 2.6], hspace=0.1))
+    fig, (ax, hx, rx) = plt.subplots(3, 1, figsize=(9.6, 9.0), dpi=150, sharex=True,
+                                     gridspec_kw=dict(height_ratios=[2.4, 2.4, 2.4], hspace=0.12))
     # --- top: climatology
     clim_all = monthly(c.mask)
     ax.bar(range(9), clim_all[[m - 1 for m in months]], color="#D8C3AC", width=0.72, label="Whole country")
@@ -468,7 +485,7 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         lbl = row["zone"]
         z = zone_clim.get(lbl, clim_all); annual = z.sum()
         ys = [row["r"].get(t["code"], np.nan) for t in tris]
-        col = zone_cols.get(lbl, "#7A4E22")
+        col = zone_cols.get(lbl, "#3f4748")
         is_all = lbl not in zone_cols
         hx.plot(xs, ys, color=col, lw=2.2 if not is_all else 1.6, ls="-" if not is_all else (0, (4, 2)), zorder=3)
         for t, x, yv in zip(tris, xs, ys):
@@ -481,7 +498,8 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
     hx.set_ylabel("median pixel r", fontsize=9, color=C_MUTED)
     hx.set_xlim(-0.6, 8.6); hx.set_xticks(range(9))
     code_at = {xpos.get(((t["start"]) % 12) + 1): t["code"] for t in tris}
-    hx.set_xticklabels([MONTH_NAMES[m - 1] + (f"\n{code_at[k]}" if k in code_at else "") for k, m in enumerate(months)])
+    rx.set_xticks(range(9))
+    rx.set_xticklabels([MONTH_NAMES[m - 1] + (f"\n{code_at[k]}" if k in code_at else "") for k, m in enumerate(months)])
     hx.axvline(xpos[im], color=C_TEXT, lw=1, ls=(0, (4, 3)), alpha=0.6)
     hx.tick_params(colors=C_MUTED, labelsize=8.5)
     hx.yaxis.grid(False)
@@ -489,9 +507,57 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         hx.spines[sp].set_visible(False)
     for sp in ("left", "bottom"):
         hx.spines[sp].set_color("#c9d0d0")
-    hx.legend(handles=[plt.Line2D([], [], color="#7A4E22", ls=(0, (4, 2)), lw=1.6, label="Whole country"),
+    hx.legend(handles=[plt.Line2D([], [], color="#3f4748", ls=(0, (4, 2)), lw=1.6, label="Whole country"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = off-season window for that zone (<15% of annual rain)")],
-              frameon=False, fontsize=7.5, loc="upper center", bbox_to_anchor=(0.5, -0.3), ncol=2)
+              frameon=False, fontsize=7.5, loc="upper right", ncol=2)
+    hx.set_title("Skill of this issuance (median pixel r)", fontsize=9.5, color=C_TEXT, loc="left")
+
+    # --- third panel: the current forecast's return period, dry above the axis, wet below (log scale)
+    yr = skill.get("issued_year")
+    sev, vsev, rmax = 3.0, 10.0, 46.0
+    tr = lambda v: np.sign(v) * np.log10(max(abs(v), 1.0))          # signed log10
+    ylim = np.log10(rmax) * 1.05
+    rx.axhspan(np.log10(sev), np.log10(vsev), color="#E8CDB0", alpha=0.45, lw=0)
+    rx.axhspan(np.log10(vsev), ylim, color="#B17E50", alpha=0.35, lw=0)
+    rx.axhspan(-np.log10(vsev), -np.log10(sev), color="#BFD9EE", alpha=0.45, lw=0)
+    rx.axhspan(-ylim, -np.log10(vsev), color="#5E9FD2", alpha=0.35, lw=0)
+    rx.axhline(0, color="#9aa3ad", lw=0.8)
+    rx.text(8.55, (np.log10(sev) + np.log10(vsev)) / 2, "dry, severe (≥3 yr)", fontsize=7, color="#7A4E22", ha="right", va="center", style="italic")
+    rx.text(8.55, (np.log10(vsev) + ylim) / 2, "dry, very severe (≥10 yr)", fontsize=7, color="#7A4E22", ha="right", va="center", style="italic")
+    rx.text(8.55, -(np.log10(sev) + np.log10(vsev)) / 2, "wet, severe", fontsize=7, color="#1F5F96", ha="right", va="center", style="italic")
+    rx.text(8.55, -(np.log10(vsev) + ylim) / 2, "wet, very severe", fontsize=7, color="#1F5F96", ha="right", va="center", style="italic")
+    rx.axvspan(-0.6, xpos[im] - 0.5, color="#ffffff", alpha=0.55, lw=0)
+    for row in rows:
+        lbl = row["zone"]
+        z = zone_clim.get(lbl, clim_all); annual = z.sum()
+        col = zone_cols.get(lbl, "#3f4748"); is_all = lbl not in zone_cols
+        ys = [tr(row["rp"].get(t["code"], np.nan)) if np.isfinite(row["rp"].get(t["code"], np.nan)) else np.nan for t in tris]
+        rx.plot(xs, ys, color=col, lw=2.2 if not is_all else 1.6, ls="-" if not is_all else (0, (4, 2)), zorder=3)
+        for t, x, yv in zip(tris, xs, ys):
+            if x is None or np.isnan(yv):
+                continue
+            share = z[[((t["start"] - 1 + k) % 12) for k in range(3)]].sum() / annual if annual > 0 else 0
+            on = share >= off_share
+            skilled = row["r"].get(t["code"], np.nan) >= lo
+            rx.plot([x], [yv], marker="o", ms=5.5, color=col, mfc=col if skilled else "white", mew=1.6,
+                    alpha=1.0 if on else 0.35, zorder=4)
+    ticks = [1, 2, 3, 5, 10, 20, 45]
+    rx.set_yticks([-np.log10(v) for v in ticks[::-1] if v > 1] + [0] + [np.log10(v) for v in ticks if v > 1])
+    rx.set_yticklabels([f"{v}" for v in ticks[::-1] if v > 1] + ["1"] + [f"{v}" for v in ticks if v > 1])
+    rx.set_ylim(-ylim, ylim)
+    rx.set_ylabel("return period (yr)\nwet ◂   ▸ dry", fontsize=8.5, color=C_MUTED)
+    rx.axvline(xpos[im], color=C_TEXT, lw=1, ls=(0, (4, 3)), alpha=0.6)
+    rx.tick_params(colors=C_MUTED, labelsize=8.5)
+    for sp in ("top", "right"):
+        rx.spines[sp].set_visible(False)
+    for sp in ("left", "bottom"):
+        rx.spines[sp].set_color("#c9d0d0")
+    rx.set_title(f"What this issuance forecasts ({MONTH_NAMES[im - 1]} {yr if yr else ''}): return period of the forecast "
+                 f"anomaly, median pixel per zone", fontsize=9.5, color=C_TEXT, loc="left")
+    rx.legend(handles=[plt.Line2D([], [], color=C_MUTED, marker="o", ls="", mew=1.6, label="filled = zone skill ≥ moderate"),
+                       plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = low skill"),
+                       plt.Line2D([], [], color=C_MUTED, marker="o", ls="", alpha=0.35, label="faded = off-season for that zone")],
+              frameon=False, fontsize=7.5, loc="upper center", bbox_to_anchor=(0.5, -0.32), ncol=3)
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
@@ -851,10 +917,46 @@ def skill_chip(cat: str) -> str:
     return f'<span class="chip" style="background:{SKILL_CATS[cat]};color:{fg};margin:0">{cat}</span>'
 
 
+def forecast_summary(sk: dict) -> str:
+    """One auto-written paragraph on what the current issuance forecasts, zone by zone, with the
+    app's alert rule applied (|RP| ≥ 3 years at moderate-or-better skill)."""
+    im, yr = sk["issued_month"], sk.get("issued_year")
+    mon = MONTH_NAMES[im - 1]
+    parts, alerts, ceiling = [], [], False
+    for r in sk["rows"]:
+        hits = []
+        for t in sk["trimesters"]:
+            code = t["code"]
+            rp = r["rp"].get(code, np.nan)
+            if np.isnan(rp) or abs(rp) < 3 or t["lead"] < 0:
+                continue
+            skilled = r["r"].get(code, np.nan) >= SKILL_THRESH["r_mod"]
+            if abs(rp) >= 45:
+                ceiling = True
+            hits.append(f'{code} {"dry" if rp > 0 else "wet"} {abs(rp):.0f} yr ({skill_cat(r["r"].get(code, np.nan))} skill)')
+            if skilled:
+                alerts.append(f'{r["zone"].split(" (")[0]} {code}')
+        if hits:
+            parts.append(f'<strong>{html.escape(r["zone"].split(" (")[0])}:</strong> ' + ", ".join(hits))
+    if not parts:
+        body = (f'The {mon} {yr or ""} issuance has no window at or beyond the app\'s 3-year return-period threshold in any zone.')
+    else:
+        body = (f'<strong>What the {mon} {yr or ""} issuance forecasts.</strong> Windows at or beyond the app\'s 3-year '
+                f'return-period threshold, by zone (in-season windows excluded): ' + "; ".join(parts) + ". ")
+        body += ("Under the app\'s rule — an alert needs the return period <em>and</em> at least moderate skill — "
+                 + (f'this issuance would raise an alert for {", ".join(alerts)}.' if alerts else
+                    "none of these would raise an alert, because the skill behind them is low."))
+    if ceiling:
+        body += (" A return period at the ceiling (about 46 years) means the forecast is the most extreme of the 45-year "
+                 "hindcast for that window, not a calibrated 1-in-46 probability; read it as “beyond the record”.")
+    return f'<p>{body}</p>'
+
+
 def render_skill(spec: dict, a: dict, head: str) -> str:
     sk = a["skill"]
     im = sk["issued_month"]
     mon = MONTH_NAMES[im - 1]
+    yr = sk.get("issued_year")
     out = [f'<h2>Can SEAS5 forecast it? Skill of the {mon} issuance, by zone</h2>']
     out.append(f'<p>A teleconnection is only useful for anticipatory action if the seasonal forecast can carry it. '
                f'The figure reads the seas5-skill app\'s per-pixel skill cube — the temporal Pearson r between the '
@@ -864,13 +966,18 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
                f'Each point is one three-month window the issuance covers, drawn on its middle month under the rainy-season '
                f'climatology, so the reader sees which part of the season each forecast window reaches and how much skill it has there.</p>')
     out.append(spec.get("skill_html", ""))
+    out.append(forecast_summary(sk))
     out.append(f'<figure><img src="skill_issued.png" alt="SEAS5 skill of the {mon} issuance by zone"><figcaption>Top: '
                f'monthly rainfall climatology, whole country (bars) and zones (lines), from two months before the issuance '
                f'to the end of the seven-month SEAS5 horizon. Bottom: median pixel skill of the {mon} issuance for each '
                f'three-month window, plotted on the window\'s middle month, one line per zone and a dashed line for the '
                f'whole country, over the app\'s low / moderate / high bands. Hollow markers are windows holding under 15% '
                f'of that zone\'s annual rain (the app\'s off-season mask); windows left of the dashed vertical had '
-               f'already started at issuance, so part of them is observed rather than forecast.</figcaption></figure>')
+               f'already started at issuance, so part of them is observed rather than forecast. Third panel: the return period of '
+               f'the {mon} {yr if yr else ""} forecast anomaly in each window (Weibull rank of the forecast among its own hindcasts, '
+               f'the app\'s forecast_rp / flood_rp), median pixel per zone; dry seasons plot above the axis and wet below, '
+               f'with the app\'s severe (3-year) and very severe (10-year) alert bands. Filled markers mean the zone\'s skill '
+               f'there is at least moderate, the app\'s condition for raising an alert.</figcaption></figure>')
     # compact table of the same numbers, with the share of cells at moderate-or-better
     tris = sk["trimesters"]
     out.append('<div style="overflow-x:auto"><table class="skill"><thead><tr><th>Zone</th><th class="num">Cells</th>'
@@ -882,11 +989,15 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
             v = r["r"].get(t["code"], np.nan)
             if np.isnan(v):
                 cells.append('<td class="num">—</td>'); continue
+            rp = r["rp"].get(t["code"], np.nan)
+            rp_txt = "—" if np.isnan(rp) else (f"dry {rp:.1f} yr" if rp > 0 else f"wet {-rp:.1f} yr")
             cells.append(f'<td class="num" style="white-space:nowrap">{fmt_r(v)} {skill_chip(skill_cat(v))}'
-                         f'<br><span class="small">{pct(r["frac_mod"][t["code"]])} ≥ mod.</span></td>')
+                         f'<br><span class="small">{pct(r["frac_mod"][t["code"]])} ≥ mod. · {rp_txt}</span></td>')
         out.append(f'<tr><td>{html.escape(r["zone"])}</td><td class="num">{r["n_cells"]}</td>{"".join(cells)}</tr>')
     out.append('</tbody></table></div>')
-    out.append('<p class="small">Each cell: median pixel r, its bin, and the share of the zone\'s cells at moderate-or-better skill. '
+    yr = sk.get("issued_year")
+    out.append(f'<p class="small">Each cell: median pixel r, its bin, the share of the zone\'s cells at moderate-or-better skill, and the '
+               f'median return period of the {mon} {yr if yr else ""} forecast anomaly (dry = forecast below its hindcast median). '
                'Skill source: <code>skill_stats_grid_detrended.nc</code> (seas5-skill, DEV blob), the same cube behind '
                'the app\'s pixel skill map. Median of pixel correlations, not the correlation of the zone mean, so it is a '
                'conservative summary for a coherent zone.</p>')
