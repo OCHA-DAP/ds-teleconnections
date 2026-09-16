@@ -138,7 +138,9 @@ figure and table: for one issuance month (`skill_issued_month`, default one mont
 season starts), the median pixel Pearson r per zone for every trimester that issuance covers, binned
 low / moderate / high with the seas5-skill app's thresholds 0.30 / 0.50 and drawn under the rainy-season
 climatology, plus the return period of that issuance's current forecast anomaly per zone (dry above / wet
-below the axis, with the app's 3- and 10-year alert bands) and an auto-written alert summary. Read from the app's detrended skill cube, fetched once from the DEV blob into
+below the axis, with the app's 3- and 10-year alert bands) and an auto-written alert summary. `food_security = "fews"` adds a FEWS NET section (current situation and
+the latest round's projections on FEWS NET's own units, from the ds-fewsnet-mirror public site JSON and the
+dev-blob unit geometry, cached under `cache/fews_*`), with per-zone shares of area in Phase 3+. Read from the app's detrended skill cube, fetched once from the DEV blob into
 `cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill = false` drops the section. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 

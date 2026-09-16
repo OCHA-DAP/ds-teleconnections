@@ -234,10 +234,15 @@ def _panel_size(c: Country, base: float = 4.6, floor: float = 2.4) -> tuple[floa
 def fig_corr_maps(c: Country, panels: list[dict], out: Path, name: str) -> None:
     n = len(panels)
     w, h = _panel_size(c)
-    fig, axes = plt.subplots(1, n, figsize=(w * n + 1.4, h + 1.4), dpi=150)
-    axes = np.atleast_1d(axes)
+    ncols = 2 if (n >= 4 and w > 3.2) else n
+    nrows = int(np.ceil(n / ncols))
+    H = h * nrows + 1.4 + 0.5 * (nrows - 1)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(w * ncols + 1.4, H), dpi=150)
+    axes = np.atleast_1d(axes).ravel()
     ext = _extent(c)
-    fig.subplots_adjust(top=1 - 0.95 / (h + 1.4), bottom=0.45 / (h + 1.4), left=0.02, right=0.98, wspace=0.12)
+    fig.subplots_adjust(top=1 - 0.95 / H, bottom=0.45 / H, left=0.02, right=0.98, wspace=0.12, hspace=0.28)
+    for ax in axes[n:]:
+        ax.set_visible(False)
     for ax, p in zip(axes, panels):
         r = np.where(p["analysable"], p["r"], np.nan)
         m = _pcolor(ax, c, np.where(c.mask, r, np.nan), DIVERGING, -0.7, 0.7)
@@ -248,7 +253,7 @@ def fig_corr_maps(c: Country, panels: list[dict], out: Path, name: str) -> None:
         ax.set_title(p["title"], fontsize=9.5, color=C_TEXT, loc="left")
         if p.get("note"):
             ax.set_xlabel(p["note"], fontsize=7.5, color=C_MUTED, loc="left")
-    cb = fig.colorbar(m, ax=axes.tolist(), shrink=0.7, pad=0.03)
+    cb = fig.colorbar(m, ax=axes[:n].tolist(), shrink=0.7 if nrows == 1 else 0.5, pad=0.03)
     cb.set_label("Pearson r (Niño3.4 vs rainfall)", fontsize=9, color=C_MUTED)
     cb.ax.tick_params(labelsize=8, colors=C_MUTED)
     cb.set_ticks([-0.6, -0.3, 0, 0.3, 0.6])
@@ -562,6 +567,136 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
 
 
 # --------------------------------------------------------------------------- #
+# Food security context: FEWS NET IPC-compatible classification (ds-fewsnet-mirror)
+# --------------------------------------------------------------------------- #
+# Classification + unit registry from the mirror's public site JSON (regenerated daily from the
+# team's dev DB); unit geometry from the dev blob. Rules from the mirror's README: published
+# map = assistance false; phase null = not classified (never Phase 1); drop the admin0 FAOB
+# series; key every row on both the collection round and the projection window.
+FEWS_SITE = "https://ocha-dap.github.io/ds-fewsnet-mirror/data"
+FEWS_BLOB = "ds-fewsnet-mirror/processed/units/{iso3}.geojson"
+IPC_COLOURS = {1: "#CDFACD", 2: "#FAE61E", 3: "#E67800", 4: "#C80000", 5: "#640000"}
+IPC_LABELS = {1: "1 Minimal", 2: "2 Stressed", 3: "3 Crisis", 4: "4 Emergency", 5: "5 Famine"}
+
+
+def _fetch_json(url: str, cache: Path):
+    import requests
+    if cache.exists() and (pd.Timestamp.now() - pd.Timestamp(cache.stat().st_mtime, unit="s")) < pd.Timedelta(days=1):
+        return json.loads(cache.read_text())
+    r = requests.get(url, timeout=60); r.raise_for_status()
+    cache.parent.mkdir(parents=True, exist_ok=True); cache.write_text(r.text)
+    return r.json()
+
+
+def _window(start, end) -> str:
+    a, b = pd.Timestamp(start), pd.Timestamp(end)
+    return f"{a:%b %Y}" if (a.year, a.month) == (b.year, b.month) else f"{a:%b %Y}–{b:%b %Y}"
+
+
+def load_fews(iso3: str) -> dict | None:
+    """Latest FEWS NET picture for a country: current situation (latest round that carries a CS)
+    and the latest round's ML1 / ML2 projections, one phase per FNID, plus unit geometry."""
+    try:
+        cls = _fetch_json(f"{FEWS_SITE}/classification/{iso3}.json", Path(f"cache/fews_classification_{iso3}.json"))
+        units = _fetch_json(f"{FEWS_SITE}/units/{iso3}.json", Path(f"cache/fews_units_{iso3}.json"))
+    except Exception as e:  # noqa: BLE001
+        print(f"  (FEWS NET classification not available: {e})"); return None
+    geo_path = Path(f"cache/fews_units_{iso3}.geojson")
+    if not geo_path.exists():
+        try:
+            import ocha_stratus as stratus
+            raw = stratus.load_blob_data(FEWS_BLOB.format(iso3=iso3), stage="dev")
+            geo_path.write_bytes(raw if isinstance(raw, (bytes, bytearray)) else raw.read())
+        except Exception as e:  # noqa: BLE001
+            print(f"  (FEWS NET geometry not available: {e})"); return None
+    gdf = gpd.read_file(geo_path)
+    cols = cls["columns"]; U = cls["units"]; docs = cls["docs"]; st = cls["statuses"]
+    rows = pd.DataFrame([dict(zip(cols, r)) for r in cls["rows"]])
+    rows["fnid"] = rows.u.map(lambda i: U[i][0]); rows["unit_type"] = rows.u.map(lambda i: U[i][2])
+    rows["doc"] = rows.doc.map(lambda i: docs[i]); rows["status"] = rows.st.map(lambda i: st[i])
+    rows = rows[(rows.assistance == 0) & (rows.unit_type != "admin0") & (rows.status == "Collected") & rows.phase.notna()]
+    latest = rows.reporting_date.max()
+    picks = {}
+    cs_rounds = rows[rows.scenario == "CS"].reporting_date
+    if len(cs_rounds):
+        rd = cs_rounds.max(); sub = rows[(rows.scenario == "CS") & (rows.reporting_date == rd)]
+        picks["CS"] = dict(round=rd, doc=sub.doc.iloc[0], start=sub.projection_start.iloc[0], end=sub.projection_end.iloc[0],
+                           phase=sub.set_index("fnid").phase.astype(int).to_dict())
+    for sc in ("ML1", "ML2"):
+        sub = rows[(rows.scenario == sc) & (rows.reporting_date == latest)]
+        if len(sub):
+            picks[sc] = dict(round=latest, doc=sub.doc.iloc[0], start=sub.projection_start.iloc[0], end=sub.projection_end.iloc[0],
+                             phase=sub.set_index("fnid").phase.astype(int).to_dict())
+    ucols = units["columns"]; ureg = pd.DataFrame([dict(zip(ucols, r)) for r in units["rows"]]).set_index("fnid")
+    key = "fnid" if "fnid" in gdf.columns else [c for c in gdf.columns if c.lower() in ("fnid", "pcode")][0]
+    gdf = gdf.rename(columns={key: "fnid"})
+    return dict(gdf=gdf, picks=picks, units=ureg, generated=cls.get("generated_at"))
+
+
+def fews_zone_stats(c: Country, grid: Grid, fews: dict, zones: dict[str, np.ndarray]) -> tuple[dict, list[dict]]:
+    """Rasterise each scenario's phase onto the page's ERA5 grid; return per-scenario phase grids
+    and per-zone shares of analysable cells in Phase 3+ (area shares, not population)."""
+    res = float(abs(grid.x[1] - grid.x[0]))
+    tr = from_origin(c.lon[0] - res / 2, c.lat[0] + res / 2, res, res)
+    grids = {}
+    for sc, pk in fews["picks"].items():
+        g = fews["gdf"][["fnid", "geometry"]].merge(pd.Series(pk["phase"], name="phase"), left_on="fnid", right_index=True)
+        grids[sc] = rasterize(((geom, int(ph)) for geom, ph in zip(g.geometry, g.phase)), out_shape=c.mask.shape,
+                              transform=tr, fill=0, all_touched=False, dtype="uint8")
+    rows = []
+    for label, zm in zones.items():
+        row = dict(zone=label, n_cells=int(zm.sum()))
+        for sc, G in grids.items():
+            v = G[zm]; v = v[v > 0]
+            row[sc] = dict(p3=float((v >= 3).mean()) if v.size else np.nan, p2=float((v == 2).mean()) if v.size else np.nan,
+                           n=int(v.size), worst=int(v.max()) if v.size else 0)
+        rows.append(row)
+    return grids, rows
+
+
+def fig_fews_maps(c: Country, grids: dict, fews: dict, hit: np.ndarray | None, analysable: np.ndarray | None,
+                  season: str, out: Path, name: str) -> None:
+    """FEWS NET phase maps (CS / ML1 / ML2) at the page's extent, with the El Niño driest-third
+    hit-rate map alongside so the reader can overlay drought exposure and food insecurity."""
+    order = [sc for sc in ("CS", "ML1", "ML2") if sc in grids]
+    n = len(order) + (1 if hit is not None else 0)
+    w, h = _panel_size(c)
+    ncols = 2 if (n >= 4 and w > 3.2) else n
+    nrows = int(np.ceil(n / ncols))
+    H = h * nrows + 1.6 + 0.6 * (nrows - 1)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(w * ncols + 1.6, H), dpi=150)
+    axes = np.atleast_1d(axes).ravel(); ext = _extent(c)
+    fig.subplots_adjust(top=1 - 1.0 / H, bottom=0.55 / H, left=0.02, right=0.98, wspace=0.12, hspace=0.3)
+    for ax in axes[n:]:
+        ax.set_visible(False)
+    cmap = mcolors.ListedColormap([IPC_COLOURS[k] for k in range(1, 6)])
+    for ax, sc in zip(axes, order):
+        pk = fews["picks"][sc]
+        G = grids[sc].astype(float); G[G == 0] = np.nan
+        _pcolor(ax, c, np.where(c.mask, G, np.nan), cmap, 0.5, 5.5)
+        _pcolor(ax, c, np.where(c.mask & np.isnan(G), 0.0, np.nan), mcolors.ListedColormap(["#ececec"]), -1, 1)
+        fews["gdf"].boundary.plot(ax=ax, color="#ffffff", linewidth=0.35)
+        _draw_country(ax, c, ext)
+        lbl = {"CS": "Current situation", "ML1": "Near-term projection", "ML2": "Medium-term projection"}[sc]
+        ax.set_title(f"{lbl}\n{_window(pk['start'], pk['end'])} · round {pk['round']}",
+                     fontsize=9, color=C_TEXT, loc="left")
+    if hit is not None:
+        ax = axes[n - 1]
+        seq = mcolors.LinearSegmentedColormap.from_list("dry", ["#F7F1EA", "#E8CDB0", "#B17E50", "#7A4E22"])
+        ok = c.mask & analysable
+        m = _pcolor(ax, c, np.where(ok, hit * 100, np.nan), seq, 0, 100)
+        _draw_country(ax, c, ext)
+        ax.set_title(f"El Niño years in the cell's\ndriest third of {season} (chance 33%)", fontsize=9, color=C_TEXT, loc="left")
+        cb = fig.colorbar(m, ax=ax, shrink=0.6, pad=0.03); cb.ax.tick_params(labelsize=7.5, colors=C_MUTED)
+    fig.legend(handles=[Patch(color=IPC_COLOURS[k], label=IPC_LABELS[k]) for k in range(1, 6)] + [Patch(color="#ececec", label="not classified")],
+               frameon=False, fontsize=8, loc="lower center", ncol=6, bbox_to_anchor=(0.5, 0.0))
+    fig.suptitle(f"{name}: FEWS NET acute food insecurity (IPC-compatible, not allowing for assistance)"
+                 + (f" — beside the El Niño drought hit-rate" if hit is not None else ""),
+                 fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
 # Analysis for one country
 # --------------------------------------------------------------------------- #
 def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame, cfg: dict,
@@ -676,6 +811,18 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
         if skill:
             fig_skill_issued(c, grid, zones, skill, out_dir / "skill_issued.png", name)
 
+    # Food security context (FEWS NET), rasterised to the page grid for zone shares
+    fews_out = None
+    if spec.get("food_security") == "fews":
+        fews = load_fews(iso3)
+        if fews and fews["picks"]:
+            grids, frows = fews_zone_stats(c, grid, fews, dict(zones) | {"Whole country": ok_head})
+            fig_fews_maps(c, grids, fews, hit, ok_head, head, out_dir / "fews_maps.png", name)
+            fews_out = dict(picks={k: {kk: vv for kk, vv in v.items() if kk != "phase"} for k, v in fews["picks"].items()},
+                            rows=frows, generated=fews["generated"],
+                            n_units={k: len(v["phase"]) for k, v in fews["picks"].items()},
+                            p3_units={k: int(sum(1 for p in v["phase"].values() if p >= 3)) for k, v in fews["picks"].items()})
+
     # Country-level survey cross-check (optional: needs out/ parquet)
     adm0 = None
     try:
@@ -698,7 +845,7 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     return dict(country=c, summaries=summaries, df=df, phase_rows=phase_rows, en=en, driest=driest,
                 r_area=r_area, r_area_lag1=r_area_lag1, comp_med=float(np.nanmedian(comp[ok_head])),
                 comp_frac=float((comp[ok_head] < -0.5).mean()), hit_med=float(np.nanmedian(hit[ok_head])),
-                zone_rows=zone_rows, skill=skill, adm0=adm0, n_cells=int(c.mask.sum()),
+                zone_rows=zone_rows, skill=skill, fews=fews_out, adm0=adm0, n_cells=int(c.mask.sum()),
                 n_head=int(ok_head.sum()))
 
 
@@ -895,6 +1042,8 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
 
     if a.get("skill"):
         out.append(render_skill(spec, a, head))
+    if a.get("fews"):
+        out.append(render_fews(spec, a, head))
 
     for sec in spec.get("sections_after", []):
         out.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
@@ -1001,6 +1150,39 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
                'Skill source: <code>skill_stats_grid_detrended.nc</code> (seas5-skill, DEV blob), the same cube behind '
                'the app\'s pixel skill map. Median of pixel correlations, not the correlation of the zone mean, so it is a '
                'conservative summary for a coherent zone.</p>')
+    return "\n".join(out)
+
+
+def render_fews(spec: dict, a: dict, head: str) -> str:
+    fw = a["fews"]
+    order = [sc for sc in ("CS", "ML1", "ML2") if sc in fw["picks"]]
+    lbl = {"CS": "Current situation", "ML1": "Near-term projection", "ML2": "Medium-term projection"}
+    out = ['<h2>Food security context: FEWS NET</h2>']
+    out.append('<p>FEWS NET\'s IPC-compatible acute food insecurity classification, from the team\'s daily mirror of the '
+               'FEWS NET Data Warehouse (<a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>). '
+               'This is the published map — the “not allowing for assistance” series — on FEWS NET\'s own livelihood-zone × '
+               'district units; grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies areas, '
+               'not populations, so the zone figures below are shares of area, not people. FEWS NET\'s analysis is '
+               'IPC-compatible but independent of the IPC/CH consensus.</p>')
+    out.append(spec.get("food_security_html", ""))
+    out.append('<figure><img src="fews_maps.png" alt="FEWS NET food insecurity phases"><figcaption>'
+               + "; ".join(f'{lbl[sc]}: {_window(fw["picks"][sc]["start"], fw["picks"][sc]["end"])}, '
+                           f'from the {fw["picks"][sc]["round"]} round ({html.escape(fw["picks"][sc]["doc"])}), '
+                           f'{fw["p3_units"][sc]} of {fw["n_units"][sc]} classified units in Phase 3+' for sc in order)
+               + f'. Rightmost panel: the El Niño driest-third hit-rate for {head} from the drought section, for overlay. '
+               f'Mirror snapshot {html.escape(str(fw["generated"])[:10])}. Source: FEWS NET.</figcaption></figure>')
+    out.append('<table><thead><tr><th>Zone</th><th class="num">Cells</th>'
+               + "".join(f'<th class="num">{lbl[sc]}<br><span class="small">share of area in Phase 3+ · Phase 2</span></th>' for sc in order)
+               + '</tr></thead><tbody>')
+    for r in fw["rows"]:
+        cells = []
+        for sc in order:
+            k = r.get(sc)
+            if not k or np.isnan(k["p3"]):
+                cells.append('<td class="num">—</td>'); continue
+            cells.append(f'<td class="num">{pct(k["p3"])} · {pct(k["p2"])}<br><span class="small">worst phase {k["worst"]}</span></td>')
+        out.append(f'<tr><td>{html.escape(r["zone"])}</td><td class="num">{r["n_cells"]}</td>{"".join(cells)}</tr>')
+    out.append('</tbody></table>')
     return "\n".join(out)
 
 
