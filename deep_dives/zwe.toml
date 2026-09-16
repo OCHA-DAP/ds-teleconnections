@@ -6,8 +6,7 @@ name = "Zimbabwe"
 subtitle = "The textbook case: the strongest El Niño → drier signal in the survey, what it missed, and where food insecurity already sits"
 headline_season = "DJF"          # the season the drought analysis is built on
 map_seasons = ["OND", "NDJ", "DJF", "JFM"]   # chronological: the signal is already there in OND and peaks in DJF
-zone_history = true
-zone_history_caption = "Zones follow the DJF rainfall climatology, a proxy for Zimbabwe's natural regions: the wet highveld and north-east, the middleveld, and the dry lowveld and south-west."
+zones_analysis = false   # zones only illustrate the (unimodal, uniform) seasonal cycle; the analysis is national
 skill_issued_month = 9
 food_security = "fews"
 adm0_filtered_note = "they are dry-season windows with almost no rain, listed for completeness only."
@@ -19,7 +18,7 @@ summary_html = '''
 '''
 
 seasonal_cycle_html = '''
-<p>Zimbabwe has a single summer rainy season from November to March: December–February carries about 55% of the annual total and November–March about 89%. The north-east and the eastern highlands are wettest and the Limpopo lowveld in the south and south-west driest, a gradient the country's agricultural natural regions (I to V) follow. The three zone lines are the DJF climatology bands used throughout the page.</p>
+<p>Zimbabwe has a single summer rainy season from November to March: December–February carries about 55% of the annual total and November–March about 89%. The north-east and the eastern highlands are wettest and the Limpopo lowveld in the south and south-west driest, a gradient the country's agricultural natural regions (I to V) follow. The three zone lines are DJF-climatology bands drawn only to make the point: the season is unimodal and its timing is the same everywhere, so the rest of the page treats Zimbabwe as one unit.</p>
 '''
 
 corr_html = '''
@@ -35,23 +34,19 @@ drought_html = '''
 <p>Nationally, El Niño DJF seasons average −0.8 SD, nine of fourteen fall in the driest third and six in the driest fifth, against base rates of 33% and 20%; no El Niño DJF season since 1981 has been in the wettest third. La Niña seasons average +0.6 SD and only one of nineteen was in the driest third. Neutral years supply the remaining droughts: 1981/82, 1990/91, 1993/94 and 2001/02.</p>
 <p>The El Niño list reads as the country's disaster history. 1991/92 is the driest DJF in the record by a wide margin and the worst drought in living memory across the region. 2015/16 is second; the rains failed from October and the state of disaster followed on 4 February 2016. 1982/83 and 1986/87 are fourth and fifth. 2023/24 sits ninth on the DJF ranking but the season collapsed late — JFM 2024 is the third-driest and FMA 2024 the driest in the record — and the state of disaster was declared on 3 April 2024 with an appeal of about two billion dollars. 2018/19 combined a weak El Niño with the second-driest OND in the record.</p>
 <p>The misses matter for a trigger. 1997/98 was the strongest El Niño of the century and the season was near normal nationally: a strongly positive Indian Ocean Dipole is the usual explanation, and it is the reason Zimbabwean forecasters now weigh the Indian Ocean alongside the Pacific. 1987/88 was on the wet side of normal, and 2006/07, 2009/10 and 2014/15 were near normal. Five of fourteen outside the driest third is a good record for a single index, but it is why an ENSO-only trigger would carry a false-alarm rate of about one in three.</p>
-<p>Read as odds: El Niño roughly doubles the chance of a driest-third season and makes a wet one very unlikely; La Niña all but rules out a dry one. The three zones respond alike, with the lowveld and south-west somewhat weaker (zone-mean r −0.57 against −0.67 and −0.68), so a national indicator loses little here — the opposite of the Malawi case.</p>
-'''
-
-zones_html = '''
-<p>Zoning by DJF climatology, as a proxy for the natural regions, shows how uniform the response is: zone-mean correlations of −0.67 in the highveld and north-east and −0.68 in the middleveld, with El Niño hit-rates of 64% and 71%; the dry lowveld and south-west is a little less tightly coupled at −0.57 and 57%. Unganai and Mason found the south more predictable than the north at long range, so the weaker concurrent correlation there is not the whole story: its rains depend more on the late season.</p>
+<p>Read as odds: El Niño roughly doubles the chance of a driest-third season and makes a wet one very unlikely; La Niña all but rules out a dry one. The pixel maps and the province table below show the response is much the same everywhere, a little weaker in the far south-west, so a national indicator loses little here — the opposite of the Malawi case.</p>
 '''
 
 skill_html = '''
-<p>Zimbabwe is where SEAS5 has the most to offer in southern Africa, and it shows in September already. Read the panel against the climatology: the two windows that carry the season, NDJ and DJF, are two and three months ahead in September and reach <em>moderate</em> skill in every zone (median pixel r 0.41–0.50, with 74–95% of cells qualifying), a level Malawi's September issuance never reaches at any lead. The shoulders are weaker: OND is low in the highveld and middleveld and moderate only in the lowveld, and JFM is low everywhere at this lead. The strong ENSO teleconnection is what the model is carrying; in a neutral year the same lead times will have less to say. The practical reading is that a September issuance is already a usable forecast checkpoint for the core of Zimbabwe's season, with the November issuance to confirm.</p>
+<p>Zimbabwe is where SEAS5 has the most to offer in southern Africa, and it shows in September already. Read the panel against the climatology: the two windows that carry the season, NDJ and DJF, are two and three months ahead in September and reach <em>moderate</em> skill nationally (median pixel r 0.48 and 0.42, with 89% and 84% of cells qualifying), a level Malawi's September issuance never reaches at any lead. The shoulders are weaker: OND and JFM are <em>low</em> at this lead (0.27). The strong ENSO teleconnection is what the model is carrying; in a neutral year the same lead times will have less to say. The practical reading is that a September issuance is already a usable forecast checkpoint for the core of Zimbabwe's season, with the November issuance to confirm.</p>
 '''
 
 adm1_html = '''
-<p>By province the picture is as uniform as the zones suggested: concurrent DJF correlations run from −0.71 in Mashonaland East to −0.52 in Matabeleland South, and in every province at least eight of the fourteen El Niño seasons were in the province's own driest third, against fewer than one in six La Niña seasons. The north-east couples most tightly to the Pacific; the far south-west least, in line with Unganai and Mason. Set against that, FEWS NET's October 2026–January 2027 projection puts the largest Phase 3 shares in Matabeleland North and Masvingo (about three quarters of their area) and Manicaland (60%), with Matabeleland South and Mashonaland Central around 40%: the provinces where drought exposure and food insecurity overlap most are Masvingo, Matabeleland North and Manicaland.</p>
+<p>By province the picture is as uniform as the pixel maps suggest: concurrent DJF correlations run from −0.71 in Mashonaland East to −0.52 in Matabeleland South, and in every province at least eight of the fourteen El Niño seasons were in the province's own driest third, against fewer than one in six La Niña seasons. The north-east couples most tightly to the Pacific; the far south-west least, in line with Unganai and Mason.</p>
 '''
 
 food_security_html = '''
-<p>FEWS NET covers Zimbabwe continuously, so the current picture can be set beside the drought exposure. After the 2025/26 harvest no unit is in Phase 3: the June 2026 current situation and the August–September projection are Phase 1 and 2 throughout, with the lowveld and south-west almost entirely Stressed. The medium-term projection for October 2026 to January 2027, the lean season and the first half of the rainy season, puts 57 of 203 units into Phase 3 (Crisis), concentrated in the south and west; the province shares are in the table above. That is the window for which the September SEAS5 issuance forecasts a dry NDJ and DJF at moderate skill. The rightmost panel repeats the El Niño hit-rate map from the drought section so the two can be read together.</p>
+<p>FEWS NET covers Zimbabwe continuously, so the current picture can be set beside the drought exposure. After the 2025/26 harvest no unit is in Phase 3: the June 2026 current situation and the August–September projection are Phase 1 and 2 throughout, with the lowveld and south-west almost entirely Stressed. The medium-term projection for October 2026 to January 2027, the lean season and the first half of the rainy season, puts 57 of 203 units into Phase 3 (Crisis), concentrated in the south and west — Matabeleland North and South, Masvingo, southern Manicaland and the Zambezi valley. Read the last panel with the outlines: those are also the units where El Niño seasons land in the driest third most often. That is the window for which the September SEAS5 issuance forecasts a dry NDJ and DJF at moderate skill. The rightmost panel repeats the El Niño hit-rate map from the drought section so the two can be read together.</p>
 '''
 
 [[zones]]
@@ -111,8 +106,7 @@ html = '''
 <ul>
 <li>ERA5 is a reanalysis; Zimbabwe's gauge network is better than most in the region but has thinned since 2000, so the recent years lean more on the model background.</li>
 <li>Fourteen El Niño seasons is a modest sample; the nine-of-fourteen hit rate has wide uncertainty.</li>
-<li>The zones are DJF-climatology bands, a proxy for the natural regions, not administrative boundaries.</li>
-<li>FEWS NET classifies areas on its own livelihood-zone × district units and publishes no population-in-phase figures; the province shares are shares of unit area (FEWS NET's own admin-1 attribute), not people.</li>
+<li>FEWS NET classifies areas on its own livelihood-zone × district units and publishes no population-in-phase figures; the maps are shown at that level and not aggregated.</li>
 <li>The country boundary is Natural Earth 110m rasterised with “all touched”, so edge cells straddle Zambia, Mozambique, South Africa and Botswana.</li>
 <li>No field-significance correction is applied at pixel level; read coherent regions, not single cells.</li>
 </ul>

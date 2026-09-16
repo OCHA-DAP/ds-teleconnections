@@ -133,7 +133,8 @@ TOML knobs worth knowing: `headline_season` drives the drought analysis; `map_se
 correlation-map panels in the order given (chronological reads best when the sign flips within a
 season, as in Malawi); `[[zones]]` split the country by headline-season climatology (`min_mm_day`,
 `max_mm_day`) and/or latitude (`min_lat`, `max_lat`; a cell centred on a bound goes south), and
-`zone_history = true` adds a per-zone phase-history figure. Each page also gets a SEAS5 skill-by-zone
+`zone_history = true` adds a per-zone phase-history figure; `zones_analysis = false` keeps zones for the
+seasonal cycle and locator map only and runs the rest nationally (Zimbabwe). Each page also gets a SEAS5 skill-by-zone
 figure and table: for one issuance month (`skill_issued_month`, default one month before the headline
 season starts), the median pixel Pearson r per zone for every trimester that issuance covers, binned
 low / moderate / high with the seas5-skill app's thresholds 0.30 / 0.50 and drawn under the rainy-season
@@ -142,8 +143,8 @@ below the axis, with the app's 3- and 10-year alert bands) and an auto-written a
 the latest round's projections on FEWS NET's own units, from the ds-fewsnet-mirror public site JSON and the
 dev-blob unit geometry, cached under `cache/fews_*`), drawn on FEWS NET's own polygons. Every page also gets
 a by-province section built from the team's per-admin ERA5 raster stats (`public.era5`, prod, admin-1 monthly
-means; CODAB polygons via `ocha_stratus.codab`) — headline-season r, El Niño hit-rate and, where FEWS NET is on,
-the area-weighted Phase 3+ share by province; `adm1 = false` drops it. Needs `DSCI_AZ_DB_*` creds and
+means; CODAB polygons via `ocha_stratus.codab`) — headline-season r and El Niño hit-rate; `adm1 = false` drops it. FEWS NET is never aggregated: it is drawn at
+its reported units, and those unit outlines are overlaid on the drought rasters. Needs `DSCI_AZ_DB_*` creds and
 `PGSSLMODE=require`; results are cached as parquet under `cache/`. Read from the app's detrended skill cube, fetched once from the DEV blob into
 `cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill = false` drops the section. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.

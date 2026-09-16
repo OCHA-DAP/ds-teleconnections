@@ -289,7 +289,7 @@ def fig_corr_maps(c: Country, panels: list[dict], out: Path, name: str) -> None:
 
 
 def fig_composite_maps(c: Country, comp: np.ndarray, hit: np.ndarray, analysable: np.ndarray,
-                       season: str, n_en: int, out: Path, name: str) -> None:
+                       season: str, n_en: int, out: Path, name: str, outlines=None) -> None:
     w, h = _panel_size(c)
     fig, axes = plt.subplots(1, 2, figsize=(2 * w + 2.8, h + 1.3), dpi=150)
     fig.subplots_adjust(top=1 - 1.0 / (h + 1.3), bottom=0.2 / (h + 1.3), left=0.02, right=0.98, wspace=0.35)
@@ -305,7 +305,11 @@ def fig_composite_maps(c: Country, comp: np.ndarray, hit: np.ndarray, analysable
     m2 = _pcolor(axes[1], c, np.where(ok, hit * 100, np.nan), seq, 0, 100)
     _pcolor(axes[1], c, np.where(c.mask & ~analysable, 0.0, np.nan), mcolors.ListedColormap(["#ececec"]), -1, 1)
     _draw_country(axes[1], c, ext)
-    axes[1].set_title(f"Share of El Niño years in the cell's\ndriest third of {season} seasons (chance = 33%)", fontsize=9.5, loc="left", color=C_TEXT)
+    if outlines is not None:
+        for ax in axes:
+            outlines.boundary.plot(ax=ax, color="#ffffff", linewidth=0.35, alpha=0.9)
+    axes[1].set_title(f"Share of El Niño years in the cell's\ndriest third of {season} seasons (chance = 33%)"
+                      + ("\nwhite outlines = FEWS NET units" if outlines is not None else ""), fontsize=9.5, loc="left", color=C_TEXT)
     cb = fig.colorbar(m2, ax=axes[1], shrink=0.8, pad=0.02); cb.ax.tick_params(labelsize=8, colors=C_MUTED)
     cb.set_label("% of El Niño years", fontsize=9, color=C_MUTED)
     fig.suptitle(f"{name}: what El Niño (concurrent Niño3.4 ≥ +{ENSO_THRESH})\ndid to the {season} season, per cell",
@@ -516,7 +520,8 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         ys = [row["r"].get(t["code"], np.nan) for t in tris]
         col = zone_cols.get(lbl, "#3f4748")
         is_all = lbl not in zone_cols
-        hx.plot(xs, ys, color=col, lw=2.2 if not is_all else 1.6, ls="-" if not is_all else (0, (4, 2)), zorder=3)
+        solo = len(rows) == 1
+        hx.plot(xs, ys, color=col, lw=2.2 if (not is_all or solo) else 1.6, ls="-" if (not is_all or solo) else (0, (4, 2)), zorder=3)
         for t, x, yv in zip(tris, xs, ys):
             if x is None or np.isnan(yv):
                 continue
@@ -536,10 +541,10 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         hx.spines[sp].set_visible(False)
     for sp in ("left", "bottom"):
         hx.spines[sp].set_color("#c9d0d0")
-    hx.legend(handles=[plt.Line2D([], [], color="#3f4748", ls=(0, (4, 2)), lw=1.6, label="Whole country"),
+    hx.legend(handles=[plt.Line2D([], [], color="#3f4748", ls=(0, (4, 2)) if len(rows) > 1 else "-", lw=1.6, label="Whole country"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = off-season window for that zone (<15% of annual rain)")],
               frameon=False, fontsize=7.5, loc="upper right", ncol=2)
-    hx.set_title("Skill of this issuance (median pixel r)", fontsize=9.5, color=C_TEXT, loc="left")
+    hx.set_title("Skill of this issuance (median pixel r" + (", whole country)" if len(rows) == 1 else ")"), fontsize=9.5, color=C_TEXT, loc="left")
 
     # --- third panel: the current forecast's return period, dry above the axis, wet below (log scale)
     yr = skill.get("issued_year")
@@ -561,7 +566,7 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         z = zone_clim.get(lbl, clim_all); annual = z.sum()
         col = zone_cols.get(lbl, "#3f4748"); is_all = lbl not in zone_cols
         ys = [tr(row["rp"].get(t["code"], np.nan)) if np.isfinite(row["rp"].get(t["code"], np.nan)) else np.nan for t in tris]
-        rx.plot(xs, ys, color=col, lw=2.2 if not is_all else 1.6, ls="-" if not is_all else (0, (4, 2)), zorder=3)
+        rx.plot(xs, ys, color=col, lw=2.2 if (not is_all or len(rows) == 1) else 1.6, ls="-" if (not is_all or len(rows) == 1) else (0, (4, 2)), zorder=3)
         for t, x, yv in zip(tris, xs, ys):
             if x is None or np.isnan(yv):
                 continue
@@ -582,7 +587,7 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
     for sp in ("left", "bottom"):
         rx.spines[sp].set_color("#c9d0d0")
     rx.set_title(f"What this issuance forecasts ({MONTH_NAMES[im - 1]} {yr if yr else ''}): return period of the forecast "
-                 f"anomaly, median pixel per zone", fontsize=9.5, color=C_TEXT, loc="left")
+                 f"anomaly, median pixel" + ("" if len(rows) == 1 else " per zone"), fontsize=9.5, color=C_TEXT, loc="left")
     rx.legend(handles=[plt.Line2D([], [], color=C_MUTED, marker="o", ls="", mew=1.6, label="filled = zone skill ≥ moderate"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = low skill"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", ls="", alpha=0.35, label="faded = off-season for that zone")],
@@ -689,8 +694,9 @@ def fig_fews_maps(c: Country, fews: dict, hit: np.ndarray | None, analysable: np
         seq = mcolors.LinearSegmentedColormap.from_list("dry", ["#F7F1EA", "#E8CDB0", "#B17E50", "#7A4E22"])
         ok = c.mask & analysable
         m = _pcolor(ax, c, np.where(ok, hit * 100, np.nan), seq, 0, 100)
+        gdf.boundary.plot(ax=ax, color="#ffffff", linewidth=0.35, alpha=0.9)
         _draw_country(ax, c, ext)
-        ax.set_title(f"El Niño years in the cell's\ndriest third of {season} (chance 33%)", fontsize=9, color=C_TEXT, loc="left")
+        ax.set_title(f"El Niño years in the cell's driest third\nof {season} (chance 33%), FEWS NET units outlined", fontsize=9, color=C_TEXT, loc="left")
         cb = fig.colorbar(m, ax=ax, shrink=0.6, pad=0.03); cb.ax.tick_params(labelsize=7.5, colors=C_MUTED)
     fig.legend(handles=[Patch(color=IPC_COLOURS[k], label=IPC_LABELS[k]) for k in range(1, 6)] + [Patch(color="#ececec", label="not classified")],
                frameon=False, fontsize=8, loc="lower center", ncol=6, bbox_to_anchor=(0.5, 0.0))
@@ -780,35 +786,11 @@ def adm1_enso_stats(iso3: str, months: list[int], indices: pd.DataFrame, years: 
     return pd.DataFrame(rows).sort_values("r")
 
 
-def fews_adm1_share(fews: dict, scenario: str) -> pd.Series | None:
-    """Area-weighted share of each admin-1 (FEWS NET's own admin1 attribute) in Phase 3+ for a
-    scenario, using the unit polygons' areas — a polygon overlay, no rasterising."""
-    if scenario not in fews["picks"]:
-        return None
-    g = fews["gdf"].copy()
-    g["phase"] = g.fnid.map(fews["picks"][scenario]["phase"])
-    g = g[g.phase.notna()]
-    adm = fews["units"]["admin1"].reindex(g.fnid).values if "admin1" in fews["units"].columns else g.get("admin1")
-    g["admin1"] = adm
-    g = g[g.admin1.notna() & (g.admin1 != "")]
-    g["area"] = g.to_crs("EPSG:6933").area
-    tot = g.groupby("admin1").area.sum()
-    p3 = g[g.phase >= 3].groupby("admin1").area.sum().reindex(tot.index).fillna(0)
-    return (p3 / tot)
-
-
-def fig_adm1_maps(c: Country, adm: gpd.GeoDataFrame, stats: pd.DataFrame, fews_share: pd.Series | None,
-                  season: str, out: Path, name: str, fews_label: str = "") -> None:
+def fig_adm1_maps(c: Country, adm: gpd.GeoDataFrame, stats: pd.DataFrame, season: str, out: Path, name: str) -> None:
     g = adm.merge(stats, on="pcode", how="left")
-    if fews_share is not None:
-        key = "name_y" if "name_y" in g.columns else "name"
-        g["fews_p3"] = g[key].map(fews_share)
     panels = [("r", DIVERGING, -0.7, 0.7, f"{season} rainfall vs Niño3.4\n(admin-1 mean series, concurrent)", "Pearson r"),
               ("en_hit", mcolors.LinearSegmentedColormap.from_list("dry", ["#F7F1EA", "#E8CDB0", "#B17E50", "#7A4E22"]), 1 / 3, 1,
                f"El Niño {season} seasons in the\nunit's driest third (chance 33%)", "share (scale starts at chance)")]
-    if fews_share is not None:
-        panels.append(("fews_p3", mcolors.LinearSegmentedColormap.from_list("ipc3", ["#FAE61E", "#E67800"]), 0, 1,
-                       f"FEWS NET Phase 3+ share of area\n{fews_label}", "share of area"))
     n = len(panels)
     w, h = _panel_size(c)
     fig, axes = plt.subplots(1, n, figsize=(w * n + 1.8, h + 1.1), dpi=150, layout="constrained")
@@ -869,6 +851,10 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     fig_seasonal_cycle(c, grid, hm, out_dir / "seasonal_cycle.png", name, zones or None)
     if zones:
         fig_zone_map(c, zones, out_dir / "zones_map.png", name, head)
+    # `zones_analysis = false` keeps the zones for the seasonal cycle + locator map only (to show a
+    # unimodal, uniform country) and runs everything downstream on the whole country.
+    if not spec.get("zones_analysis", True):
+        zones = {}
 
     # Correlation maps: headline + any extra seasons, best lag 0..3 (as in the survey)
     panels, summaries = [], []
@@ -926,7 +912,9 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     comp = Z[en_mask].mean(0)
     pct = (R.argsort(0).argsort(0) + 1) / R.shape[0]
     hit = (pct[en_mask] <= 1 / 3).mean(0)
-    fig_composite_maps(c, comp, hit, ok_head, head, int(en_mask.sum()), out_dir / "composite_maps.png", name)
+    fews = load_fews(iso3) if spec.get("food_security") == "fews" else None
+    outlines = fews["gdf"] if (fews and fews["picks"]) else None
+    fig_composite_maps(c, comp, hit, ok_head, head, int(en_mask.sum()), out_dir / "composite_maps.png", name, outlines)
     zone_rows, zone_dfs = [], {}
     for label, zm in zones.items():
         if not zm.any():
@@ -946,7 +934,7 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
 
     # SEAS5 forecast skill for the headline trimester, per zone + whole country
     skill = None
-    if spec.get("skill", True) and zones:
+    if spec.get("skill", True):
         # default: issued one month before the headline season starts
         im = int(spec.get("skill_issued_month", ((hm[0] - 2) % 12) + 1))
         skill = seas5_skill_issued(c, dict(zones) | {"Whole country": ok_head}, im)
@@ -954,10 +942,9 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
             fig_skill_issued(c, grid, zones, skill, out_dir / "skill_issued.png", name)
 
     # Food security context (FEWS NET), rasterised to the page grid for zone shares
-    fews_out, fews = None, None
-    if spec.get("food_security") == "fews":
-        fews = load_fews(iso3)
-        if fews and fews["picks"]:
+    fews_out = None
+    if fews and fews["picks"]:
+        if True:
             fig_fews_maps(c, fews, hit, ok_head, head, out_dir / "fews_maps.png", name)
             fews_out = dict(picks={k: {kk: vv for kk, vv in v.items() if kk != "phase"} for k, v in fews["picks"].items()},
                             generated=fews["generated"],
@@ -973,15 +960,9 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
                 adm = load_adm1(iso3)
             except Exception as e:  # noqa: BLE001
                 print(f"  (admin-1 polygons not available: {e})"); adm = None
-            fs, fs_label, fs_sc = None, "", None
-            if fews and fews["picks"]:
-                fs_sc = "ML2" if "ML2" in fews["picks"] else ("ML1" if "ML1" in fews["picks"] else "CS")
-                fs = fews_adm1_share(fews, fs_sc)
-                pk = fews["picks"][fs_sc]; fs_label = f"{_window(pk['start'], pk['end'])} ({fs_sc})"
-                stats["fews_p3"] = stats.name.map(fs)
             if adm is not None:
-                fig_adm1_maps(c, adm, stats, fs, head, out_dir / "adm1_maps.png", name, fs_label)
-            adm1_out = dict(stats=stats, has_map=adm is not None, fews_sc=fs_sc, fews_label=fs_label)
+                fig_adm1_maps(c, adm, stats, head, out_dir / "adm1_maps.png", name)
+            adm1_out = dict(stats=stats, has_map=adm is not None)
 
     # Country-level survey cross-check (optional: needs out/ parquet)
     adm0 = None
@@ -1189,7 +1170,8 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
     out.append(f'<figure><img src="composite_maps.png" alt="El Niño composite and drought hit-rate maps"><figcaption>Left: mean '
                f'standardised {head} anomaly across the El Niño years, per cell (median over analysable cells '
                f'{fmt_r(a["comp_med"])} SD; {pct(a["comp_frac"])} of cells below −0.5 SD). Right: the share of El Niño years '
-               f'that landed in the cell\'s own driest third (median {pct(a["hit_med"])}; chance is 33%).</figcaption></figure>')
+               f'that landed in the cell\'s own driest third (median {pct(a["hit_med"])}; chance is 33%).'
+               + (' White outlines are FEWS NET\'s reporting units.' if spec.get("food_security") == "fews" else "") + '</figcaption></figure>')
     if a["zone_rows"]:
         out.append(f'<h3>By zone</h3>{spec.get("zones_html", "")}')
         out.append('<table><thead><tr><th>Zone</th><th class="num">Cells</th><th class="num">Zone-mean r (concurrent)</th>'
@@ -1257,10 +1239,12 @@ def forecast_summary(sk: dict) -> str:
     if not parts:
         body = (f'The {mon} {yr or ""} issuance has no window at or beyond the app\'s 3-year return-period threshold in any zone.')
     else:
+        national = len(sk["rows"]) == 1
         body = (f'<strong>What the {mon} {yr or ""} issuance forecasts.</strong> Windows at or beyond the app\'s 3-year '
-                f'return-period threshold, by zone (in-season windows excluded): ' + "; ".join(parts) + ". ")
+                f'return-period threshold{"" if national else ", by zone"} (in-season windows excluded): '
+                + "; ".join(parts if not national else [pp.split("</strong> ", 1)[1] for pp in parts]) + ". ")
         body += ("Under the app\'s rule — an alert needs the return period <em>and</em> at least moderate skill — "
-                 + (f'this issuance would raise an alert for {", ".join(alerts)}.' if alerts else
+                 + (f'this issuance would raise an alert for {", ".join(a.replace("Whole country ", "") for a in alerts)}.' if alerts else
                     "none of these would raise an alert, because the skill behind them is low."))
     if ceiling:
         body += (" A return period at the ceiling (about 46 years) means the forecast is the most extreme of the 45-year "
@@ -1273,7 +1257,8 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
     im = sk["issued_month"]
     mon = MONTH_NAMES[im - 1]
     yr = sk.get("issued_year")
-    out = [f'<h2>Can SEAS5 forecast it? Skill of the {mon} issuance, by zone</h2>']
+    national = len(sk["rows"]) == 1
+    out = [f'<h2>Can SEAS5 forecast it? Skill of the {mon} issuance{"" if national else ", by zone"}</h2>']
     out.append(f'<p>A teleconnection is only useful for anticipatory action if the seasonal forecast can carry it. '
                f'The figure reads the seas5-skill app\'s per-pixel skill cube — the temporal Pearson r between the '
                f'detrended ECMWF SEAS5 trimester forecast and detrended ERA5, per 0.4° pixel — for forecasts issued on '
@@ -1333,18 +1318,13 @@ def render_adm1(spec: dict, a: dict, head: str) -> str:
         out.append(f'<figure><img src="adm1_maps.png" alt="Admin-1 maps"><figcaption>Left: Pearson r between the province\'s '
                    f'{head} mean rainfall and concurrent Niño3.4. Middle: share of El Niño {head} seasons in the province\'s own '
                    f'driest third. '
-                   + (f'Right: share of the province\'s area in FEWS NET Phase 3+ for {html.escape(ad["fews_label"])}, area-weighted over '
-                      f'FEWS NET\'s units by their admin-1 attribute (polygon areas, no rasterising).' if ad["fews_sc"] else "")
                    + ' Boundaries: CODAB admin-1 via FieldMaps.</figcaption></figure>')
-    has_f = "fews_p3" in st.columns and st.fews_p3.notna().any()
     out.append('<table><thead><tr><th>Province</th><th class="num">ERA5 pixels</th><th class="num">r (concurrent)</th>'
                '<th class="num">El Niño mean (SD)</th><th class="num">El Niño seasons in driest third</th><th class="num">La Niña in driest third</th>'
-               + (f'<th class="num">FEWS NET Phase 3+<br><span class="small">{html.escape(ad["fews_label"])}</span></th>' if has_f else "")
                + '<th>El Niño driest-third seasons</th></tr></thead><tbody>')
     for _, r in st.iterrows():
         out.append(f'<tr><td>{html.escape(str(r["name"]))}</td><td class="num">{r.n_px}</td><td class="num">{fmt_r(r.r)}</td>'
                    f'<td class="num">{fmt_r(r.en_z)}</td><td class="num">{pct(r.en_hit)} of {r.n_en}</td><td class="num">{pct(r.ln_hit)}</td>'
-                   + (f'<td class="num">{pct(r.fews_p3) if pd.notna(r.get("fews_p3", np.nan)) else "—"}</td>' if has_f else "")
                    + f'<td class="small">{html.escape(r.seasons)}</td></tr>')
     out.append('</tbody></table>')
     return "\n".join(out)
@@ -1359,14 +1339,15 @@ def render_fews(spec: dict, a: dict, head: str) -> str:
                'FEWS NET Data Warehouse (<a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>), drawn '
                'on FEWS NET\'s own livelihood-zone × district units. This is the published map — the “not allowing for '
                'assistance” series; grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies '
-               'areas, not populations, so the province shares above are shares of area, not people, and FEWS NET\'s analysis '
-               'is IPC-compatible but independent of the IPC/CH consensus.</p>')
+               'areas, not populations, and publishes no population-in-phase figures, so the maps are shown at the level FEWS NET '
+               'reports them and are not aggregated here. FEWS NET\'s analysis is IPC-compatible but independent of the IPC/CH '
+               'consensus.</p>')
     out.append(spec.get("food_security_html", ""))
     out.append('<figure><img src="fews_maps.png" alt="FEWS NET food insecurity phases"><figcaption>'
                + "; ".join(f'{lbl[sc]}: {_window(fw["picks"][sc]["start"], fw["picks"][sc]["end"])}, '
                            f'from the {fw["picks"][sc]["round"]} round ({html.escape(fw["picks"][sc]["doc"])}), '
                            f'{fw["p3_units"][sc]} of {fw["n_units"][sc]} classified units in Phase 3+' for sc in order)
-               + f'. Rightmost panel: the El Niño driest-third hit-rate for {head} from the drought section, for overlay. '
+               + f'. Last panel: the El Niño driest-third hit-rate for {head} from the drought section with the FEWS NET unit outlines on top, so the two can be read together. '
                f'Mirror snapshot {html.escape(str(fw["generated"])[:10])}. Source: FEWS NET.</figcaption></figure>')
     return "\n".join(out)
 
