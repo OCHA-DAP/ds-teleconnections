@@ -657,32 +657,11 @@ def load_fews(iso3: str) -> dict | None:
     return dict(gdf=gdf, picks=picks, units=ureg, generated=cls.get("generated_at"))
 
 
-def fews_zone_stats(c: Country, grid: Grid, fews: dict, zones: dict[str, np.ndarray]) -> tuple[dict, list[dict]]:
-    """Rasterise each scenario's phase onto the page's ERA5 grid; return per-scenario phase grids
-    and per-zone shares of analysable cells in Phase 3+ (area shares, not population)."""
-    res = float(abs(grid.x[1] - grid.x[0]))
-    tr = from_origin(c.lon[0] - res / 2, c.lat[0] + res / 2, res, res)
-    grids = {}
-    for sc, pk in fews["picks"].items():
-        g = fews["gdf"][["fnid", "geometry"]].merge(pd.Series(pk["phase"], name="phase"), left_on="fnid", right_index=True)
-        grids[sc] = rasterize(((geom, int(ph)) for geom, ph in zip(g.geometry, g.phase)), out_shape=c.mask.shape,
-                              transform=tr, fill=0, all_touched=False, dtype="uint8")
-    rows = []
-    for label, zm in zones.items():
-        row = dict(zone=label, n_cells=int(zm.sum()))
-        for sc, G in grids.items():
-            v = G[zm]; v = v[v > 0]
-            row[sc] = dict(p3=float((v >= 3).mean()) if v.size else np.nan, p2=float((v == 2).mean()) if v.size else np.nan,
-                           n=int(v.size), worst=int(v.max()) if v.size else 0)
-        rows.append(row)
-    return grids, rows
-
-
-def fig_fews_maps(c: Country, grids: dict, fews: dict, hit: np.ndarray | None, analysable: np.ndarray | None,
+def fig_fews_maps(c: Country, fews: dict, hit: np.ndarray | None, analysable: np.ndarray | None,
                   season: str, out: Path, name: str) -> None:
-    """FEWS NET phase maps (CS / ML1 / ML2) at the page's extent, with the El Niño driest-third
-    hit-rate map alongside so the reader can overlay drought exposure and food insecurity."""
-    order = [sc for sc in ("CS", "ML1", "ML2") if sc in grids]
+    """FEWS NET phase maps (CS / ML1 / ML2) drawn on FEWS NET's own unit polygons, with the El Niño
+    driest-third hit-rate map alongside so drought exposure and food insecurity can be read together."""
+    order = [sc for sc in ("CS", "ML1", "ML2") if sc in fews["picks"]]
     n = len(order) + (1 if hit is not None else 0)
     w, h = _panel_size(c)
     ncols = 2 if (n >= 4 and w > 3.2) else n
@@ -693,17 +672,18 @@ def fig_fews_maps(c: Country, grids: dict, fews: dict, hit: np.ndarray | None, a
     fig.subplots_adjust(top=1 - 1.0 / H, bottom=0.55 / H, left=0.02, right=0.98, wspace=0.12, hspace=0.3)
     for ax in axes[n:]:
         ax.set_visible(False)
-    cmap = mcolors.ListedColormap([IPC_COLOURS[k] for k in range(1, 6)])
+    gdf = fews["gdf"]
     for ax, sc in zip(axes, order):
         pk = fews["picks"][sc]
-        G = grids[sc].astype(float); G[G == 0] = np.nan
-        _pcolor(ax, c, np.where(c.mask, G, np.nan), cmap, 0.5, 5.5)
-        _pcolor(ax, c, np.where(c.mask & np.isnan(G), 0.0, np.nan), mcolors.ListedColormap(["#ececec"]), -1, 1)
-        fews["gdf"].boundary.plot(ax=ax, color="#ffffff", linewidth=0.35)
+        g = gdf.copy(); g["phase"] = g.fnid.map(pk["phase"])
+        g[g.phase.isna()].plot(ax=ax, color="#ececec", edgecolor="white", linewidth=0.3)
+        for ph, col in IPC_COLOURS.items():
+            sub = g[g.phase == ph]
+            if len(sub):
+                sub.plot(ax=ax, color=col, edgecolor="white", linewidth=0.3)
         _draw_country(ax, c, ext)
         lbl = {"CS": "Current situation", "ML1": "Near-term projection", "ML2": "Medium-term projection"}[sc]
-        ax.set_title(f"{lbl}\n{_window(pk['start'], pk['end'])} · round {pk['round']}",
-                     fontsize=9, color=C_TEXT, loc="left")
+        ax.set_title(f"{lbl}\n{_window(pk['start'], pk['end'])} · round {pk['round']}", fontsize=9, color=C_TEXT, loc="left")
     if hit is not None:
         ax = axes[n - 1]
         seq = mcolors.LinearSegmentedColormap.from_list("dry", ["#F7F1EA", "#E8CDB0", "#B17E50", "#7A4E22"])
@@ -714,9 +694,145 @@ def fig_fews_maps(c: Country, grids: dict, fews: dict, hit: np.ndarray | None, a
         cb = fig.colorbar(m, ax=ax, shrink=0.6, pad=0.03); cb.ax.tick_params(labelsize=7.5, colors=C_MUTED)
     fig.legend(handles=[Patch(color=IPC_COLOURS[k], label=IPC_LABELS[k]) for k in range(1, 6)] + [Patch(color="#ececec", label="not classified")],
                frameon=False, fontsize=8, loc="lower center", ncol=6, bbox_to_anchor=(0.5, 0.0))
-    fig.suptitle(f"{name}: FEWS NET acute food insecurity (IPC-compatible, not allowing for assistance)"
-                 + (f" — beside the El Niño drought hit-rate" if hit is not None else ""),
+    fig.suptitle(f"{name}: FEWS NET acute food insecurity (IPC-compatible, not allowing for assistance), on FEWS NET's own units"
+                 + (" — beside the El Niño drought hit-rate" if hit is not None else ""),
                  fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+
+
+# --------------------------------------------------------------------------- #
+# Admin-1 view from the team's ERA5 raster stats (public.era5, per-admin monthly means)
+# --------------------------------------------------------------------------- #
+def _pcode_col(gdf) -> str:
+    for c in gdf.columns:
+        if c.lower() in ("adm1_pcode", "pcode", "adm1_code"):
+            return c
+    raise KeyError(f"no admin-1 pcode column in {list(gdf.columns)}")
+
+
+def load_adm1(iso3: str):
+    """CODAB admin-1 polygons (FieldMaps via ocha-stratus) with the DB's names, cached locally."""
+    cache = Path(f"cache/adm1_{iso3}.parquet")
+    if cache.exists():
+        return gpd.read_parquet(cache)
+    from ocha_stratus import codab
+    g = codab.load_codab_from_blob(iso3.lower(), admin_level=1).to_crs("EPSG:4326")
+    pc = _pcode_col(g)
+    name_col = next((c for c in g.columns if c.lower() in ("adm1_en", "adm1_name", "name")), None)
+    g = g.rename(columns={pc: "pcode"})[["pcode", "geometry"] + ([name_col] if name_col else [])]
+    if name_col:
+        g = g.rename(columns={name_col: "name"})
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    g.to_parquet(cache)
+    return g
+
+
+def load_era5_adm1(iso3: str) -> pd.DataFrame:
+    """Monthly ERA5 precipitation means per admin-1 (mm/day) from the prod DB, cached as parquet."""
+    cache = Path(f"cache/era5_adm1_{iso3}.parquet")
+    if cache.exists() and (pd.Timestamp.now() - pd.Timestamp(cache.stat().st_mtime, unit="s")) < pd.Timedelta(days=30):
+        return pd.read_parquet(cache)
+    import os
+    os.environ.setdefault("PGSSLMODE", "require")
+    import ocha_stratus as stratus
+    eng = stratus.get_engine(stage="prod")
+    df = pd.read_sql("SELECT e.pcode, e.valid_date, e.mean, e.count, p.name FROM public.era5 e "
+                     "LEFT JOIN public.polygon p ON p.pcode = e.pcode AND p.adm_level = 1 "
+                     "WHERE e.iso3 = %(iso)s AND e.adm_level = 1 ORDER BY e.pcode, e.valid_date", eng, params={"iso": iso3})
+    df["valid_date"] = pd.to_datetime(df.valid_date)
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    df.to_parquet(cache)
+    return df
+
+
+def adm1_enso_stats(iso3: str, months: list[int], indices: pd.DataFrame, years: np.ndarray) -> pd.DataFrame | None:
+    """Per admin-1: headline-season mean series from the raster stats, concurrent Niño3.4 r,
+    and the share of El Niño / La Niña seasons in the unit's own driest third."""
+    try:
+        df = load_era5_adm1(iso3)
+    except Exception as e:  # noqa: BLE001
+        print(f"  (ERA5 admin-1 raster stats not available: {e})"); return None
+    if df.empty:
+        return None
+    wrap = 12 in months and 1 in months
+    n0 = nino_series(indices, months, 0)
+    rows = []
+    for pcode, g in df.groupby("pcode"):
+        s = g.set_index("valid_date")["mean"]
+        vals, yrs = [], []
+        for sy in years:
+            ts = [pd.Timestamp(year=sy + (1 if (wrap and m <= 6) else 0), month=m, day=1) for m in months]
+            if all(t in s.index for t in ts):
+                vals.append(float(np.mean([s[t] for t in ts]))); yrs.append(sy)
+        d = pd.DataFrame({"rain": vals}, index=yrs).join(n0.rename("nino")).dropna()
+        if len(d) < 20:
+            continue
+        d["pct"] = d.rain.rank(pct=True)
+        d["phase"] = np.where(d.nino >= ENSO_THRESH, "El Niño", np.where(d.nino <= -ENSO_THRESH, "La Niña", "Neutral"))
+        en, ln = d[d.phase == "El Niño"], d[d.phase == "La Niña"]
+        z = (d.rain - d.rain.mean()) / d.rain.std()
+        rows.append(dict(pcode=pcode, name=g["name"].iloc[0] if pd.notna(g["name"].iloc[0]) else pcode,
+                         n_px=int(g["count"].iloc[0]), r=float(np.corrcoef(d.rain, d.nino)[0, 1]),
+                         en_hit=float((en.pct <= 1 / 3).mean()) if len(en) else np.nan, n_en=len(en),
+                         ln_hit=float((ln.pct <= 1 / 3).mean()) if len(ln) else np.nan,
+                         en_z=float(z[en.index].mean()) if len(en) else np.nan,
+                         seasons=", ".join(str(y) for y in en[en.pct <= 1 / 3].index)))
+    return pd.DataFrame(rows).sort_values("r")
+
+
+def fews_adm1_share(fews: dict, scenario: str) -> pd.Series | None:
+    """Area-weighted share of each admin-1 (FEWS NET's own admin1 attribute) in Phase 3+ for a
+    scenario, using the unit polygons' areas — a polygon overlay, no rasterising."""
+    if scenario not in fews["picks"]:
+        return None
+    g = fews["gdf"].copy()
+    g["phase"] = g.fnid.map(fews["picks"][scenario]["phase"])
+    g = g[g.phase.notna()]
+    adm = fews["units"]["admin1"].reindex(g.fnid).values if "admin1" in fews["units"].columns else g.get("admin1")
+    g["admin1"] = adm
+    g = g[g.admin1.notna() & (g.admin1 != "")]
+    g["area"] = g.to_crs("EPSG:6933").area
+    tot = g.groupby("admin1").area.sum()
+    p3 = g[g.phase >= 3].groupby("admin1").area.sum().reindex(tot.index).fillna(0)
+    return (p3 / tot)
+
+
+def fig_adm1_maps(c: Country, adm: gpd.GeoDataFrame, stats: pd.DataFrame, fews_share: pd.Series | None,
+                  season: str, out: Path, name: str, fews_label: str = "") -> None:
+    g = adm.merge(stats, on="pcode", how="left")
+    if fews_share is not None:
+        key = "name_y" if "name_y" in g.columns else "name"
+        g["fews_p3"] = g[key].map(fews_share)
+    panels = [("r", DIVERGING, -0.7, 0.7, f"{season} rainfall vs Niño3.4\n(admin-1 mean series, concurrent)", "Pearson r"),
+              ("en_hit", mcolors.LinearSegmentedColormap.from_list("dry", ["#F7F1EA", "#E8CDB0", "#B17E50", "#7A4E22"]), 1 / 3, 1,
+               f"El Niño {season} seasons in the\nunit's driest third (chance 33%)", "share (scale starts at chance)")]
+    if fews_share is not None:
+        panels.append(("fews_p3", mcolors.LinearSegmentedColormap.from_list("ipc3", ["#FAE61E", "#E67800"]), 0, 1,
+                       f"FEWS NET Phase 3+ share of area\n{fews_label}", "share of area"))
+    n = len(panels)
+    w, h = _panel_size(c)
+    fig, axes = plt.subplots(1, n, figsize=(w * n + 1.8, h + 1.1), dpi=150, layout="constrained")
+    axes = np.atleast_1d(axes); ext = _extent(c)
+    for ax, (col, cmap, vmin, vmax, title, cblabel) in zip(axes, panels):
+        g.plot(column=col, ax=ax, cmap=cmap, vmin=vmin, vmax=vmax, edgecolor="white", linewidth=0.8,
+               missing_kwds=dict(color="#ececec"))
+        c.neighbours.boundary.plot(ax=ax, color="#b8bfbf", linewidth=0.6)
+        for _, row in g.iterrows():
+            if row.geometry is None or row.geometry.is_empty:
+                continue
+            pt = row.geometry.representative_point()
+            lbl = str(row.get("name_y", row.get("name", "")) or "")
+            ax.text(pt.x, pt.y, lbl, fontsize=6, ha="center", va="center", color=C_TEXT,
+                    path_effects=[__import__("matplotlib.patheffects", fromlist=["withStroke"]).withStroke(linewidth=1.5, foreground="white")])
+        ax.set_xlim(ext[0], ext[1]); ax.set_ylim(ext[2], ext[3]); ax.set_aspect("equal"); ax.set_xticks([]); ax.set_yticks([])
+        for sp in ax.spines.values():
+            sp.set_color("#c9d0d0")
+        ax.set_title(title, fontsize=9, color=C_TEXT, loc="left")
+        sm = plt.cm.ScalarMappable(cmap=cmap, norm=mcolors.Normalize(vmin, vmax)); sm.set_array([])
+        cb = fig.colorbar(sm, ax=ax, shrink=0.6, pad=0.03); cb.ax.tick_params(labelsize=7.5, colors=C_MUTED)
+        cb.set_label(cblabel, fontsize=8, color=C_MUTED)
+    fig.suptitle(f"{name}: admin-1 view from the team's ERA5 raster stats (public.era5, per-province monthly means)",
+                 fontsize=10, color=C_TEXT, x=0.01, ha="left")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
@@ -838,16 +954,34 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
             fig_skill_issued(c, grid, zones, skill, out_dir / "skill_issued.png", name)
 
     # Food security context (FEWS NET), rasterised to the page grid for zone shares
-    fews_out = None
+    fews_out, fews = None, None
     if spec.get("food_security") == "fews":
         fews = load_fews(iso3)
         if fews and fews["picks"]:
-            grids, frows = fews_zone_stats(c, grid, fews, dict(zones) | {"Whole country": ok_head})
-            fig_fews_maps(c, grids, fews, hit, ok_head, head, out_dir / "fews_maps.png", name)
+            fig_fews_maps(c, fews, hit, ok_head, head, out_dir / "fews_maps.png", name)
             fews_out = dict(picks={k: {kk: vv for kk, vv in v.items() if kk != "phase"} for k, v in fews["picks"].items()},
-                            rows=frows, generated=fews["generated"],
+                            generated=fews["generated"],
                             n_units={k: len(v["phase"]) for k, v in fews["picks"].items()},
                             p3_units={k: int(sum(1 for p in v["phase"].values() if p >= 3)) for k, v in fews["picks"].items()})
+
+    # Admin-1 view: the team's ERA5 per-admin raster stats + CODAB polygons (+ FEWS NET share by admin-1)
+    adm1_out = None
+    if spec.get("adm1", True):
+        stats = adm1_enso_stats(iso3, hm, indices, grid.years)
+        if stats is not None and len(stats):
+            try:
+                adm = load_adm1(iso3)
+            except Exception as e:  # noqa: BLE001
+                print(f"  (admin-1 polygons not available: {e})"); adm = None
+            fs, fs_label, fs_sc = None, "", None
+            if fews and fews["picks"]:
+                fs_sc = "ML2" if "ML2" in fews["picks"] else ("ML1" if "ML1" in fews["picks"] else "CS")
+                fs = fews_adm1_share(fews, fs_sc)
+                pk = fews["picks"][fs_sc]; fs_label = f"{_window(pk['start'], pk['end'])} ({fs_sc})"
+                stats["fews_p3"] = stats.name.map(fs)
+            if adm is not None:
+                fig_adm1_maps(c, adm, stats, fs, head, out_dir / "adm1_maps.png", name, fs_label)
+            adm1_out = dict(stats=stats, has_map=adm is not None, fews_sc=fs_sc, fews_label=fs_label)
 
     # Country-level survey cross-check (optional: needs out/ parquet)
     adm0 = None
@@ -871,7 +1005,7 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     return dict(country=c, summaries=summaries, df=df, phase_rows=phase_rows, en=en, driest=driest,
                 r_area=r_area, r_area_lag1=r_area_lag1, comp_med=float(np.nanmedian(comp[ok_head])),
                 comp_frac=float((comp[ok_head] < -0.5).mean()), hit_med=float(np.nanmedian(hit[ok_head])),
-                zone_rows=zone_rows, skill=skill, fews=fews_out, adm0=adm0, n_cells=int(c.mask.sum()),
+                zone_rows=zone_rows, skill=skill, fews=fews_out, adm1=adm1_out, adm0=adm0, n_cells=int(c.mask.sum()),
                 n_head=int(ok_head.sum()))
 
 
@@ -1071,6 +1205,8 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
                        f'Standardised {head} rainfall for each zone\'s area mean, coloured by concurrent ENSO phase; dashed line is '
                        f'the zone\'s own driest-third threshold. {spec.get("zone_history_caption", "")}</figcaption></figure>')
 
+    if a.get("adm1"):
+        out.append(render_adm1(spec, a, head))
     if a.get("skill"):
         out.append(render_skill(spec, a, head))
     if a.get("fews"):
@@ -1184,17 +1320,47 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
     return "\n".join(out)
 
 
+def render_adm1(spec: dict, a: dict, head: str) -> str:
+    ad = a["adm1"]; st = ad["stats"]
+    out = [f'<h2>By province: the same numbers from the team\'s ERA5 raster stats</h2>']
+    out.append('<p>The zones above are analysis bands; operational units are provinces. This section repeats the '
+               'headline-season analysis on the team\'s standard per-admin ERA5 raster stats (monthly means per admin-1 '
+               'unit from <code>public.era5</code>, the same table the SEAS5 skill app and the drought triggers use), so '
+               'nothing here is recomputed from pixels: each province\'s season series is the stored mean, correlated with '
+               'concurrent Niño3.4 and ranked against its own history.</p>')
+    out.append(spec.get("adm1_html", ""))
+    if ad["has_map"]:
+        out.append(f'<figure><img src="adm1_maps.png" alt="Admin-1 maps"><figcaption>Left: Pearson r between the province\'s '
+                   f'{head} mean rainfall and concurrent Niño3.4. Middle: share of El Niño {head} seasons in the province\'s own '
+                   f'driest third. '
+                   + (f'Right: share of the province\'s area in FEWS NET Phase 3+ for {html.escape(ad["fews_label"])}, area-weighted over '
+                      f'FEWS NET\'s units by their admin-1 attribute (polygon areas, no rasterising).' if ad["fews_sc"] else "")
+                   + ' Boundaries: CODAB admin-1 via FieldMaps.</figcaption></figure>')
+    has_f = "fews_p3" in st.columns and st.fews_p3.notna().any()
+    out.append('<table><thead><tr><th>Province</th><th class="num">ERA5 pixels</th><th class="num">r (concurrent)</th>'
+               '<th class="num">El Niño mean (SD)</th><th class="num">El Niño seasons in driest third</th><th class="num">La Niña in driest third</th>'
+               + (f'<th class="num">FEWS NET Phase 3+<br><span class="small">{html.escape(ad["fews_label"])}</span></th>' if has_f else "")
+               + '<th>El Niño driest-third seasons</th></tr></thead><tbody>')
+    for _, r in st.iterrows():
+        out.append(f'<tr><td>{html.escape(str(r["name"]))}</td><td class="num">{r.n_px}</td><td class="num">{fmt_r(r.r)}</td>'
+                   f'<td class="num">{fmt_r(r.en_z)}</td><td class="num">{pct(r.en_hit)} of {r.n_en}</td><td class="num">{pct(r.ln_hit)}</td>'
+                   + (f'<td class="num">{pct(r.fews_p3) if pd.notna(r.get("fews_p3", np.nan)) else "—"}</td>' if has_f else "")
+                   + f'<td class="small">{html.escape(r.seasons)}</td></tr>')
+    out.append('</tbody></table>')
+    return "\n".join(out)
+
+
 def render_fews(spec: dict, a: dict, head: str) -> str:
     fw = a["fews"]
     order = [sc for sc in ("CS", "ML1", "ML2") if sc in fw["picks"]]
     lbl = {"CS": "Current situation", "ML1": "Near-term projection", "ML2": "Medium-term projection"}
     out = ['<h2>Food security context: FEWS NET</h2>']
     out.append('<p>FEWS NET\'s IPC-compatible acute food insecurity classification, from the team\'s daily mirror of the '
-               'FEWS NET Data Warehouse (<a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>). '
-               'This is the published map — the “not allowing for assistance” series — on FEWS NET\'s own livelihood-zone × '
-               'district units; grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies areas, '
-               'not populations, so the zone figures below are shares of area, not people. FEWS NET\'s analysis is '
-               'IPC-compatible but independent of the IPC/CH consensus.</p>')
+               'FEWS NET Data Warehouse (<a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>), drawn '
+               'on FEWS NET\'s own livelihood-zone × district units. This is the published map — the “not allowing for '
+               'assistance” series; grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies '
+               'areas, not populations, so the province shares above are shares of area, not people, and FEWS NET\'s analysis '
+               'is IPC-compatible but independent of the IPC/CH consensus.</p>')
     out.append(spec.get("food_security_html", ""))
     out.append('<figure><img src="fews_maps.png" alt="FEWS NET food insecurity phases"><figcaption>'
                + "; ".join(f'{lbl[sc]}: {_window(fw["picks"][sc]["start"], fw["picks"][sc]["end"])}, '
@@ -1202,18 +1368,6 @@ def render_fews(spec: dict, a: dict, head: str) -> str:
                            f'{fw["p3_units"][sc]} of {fw["n_units"][sc]} classified units in Phase 3+' for sc in order)
                + f'. Rightmost panel: the El Niño driest-third hit-rate for {head} from the drought section, for overlay. '
                f'Mirror snapshot {html.escape(str(fw["generated"])[:10])}. Source: FEWS NET.</figcaption></figure>')
-    out.append('<table><thead><tr><th>Zone</th><th class="num">Cells</th>'
-               + "".join(f'<th class="num">{lbl[sc]}<br><span class="small">share of area in Phase 3+ · Phase 2</span></th>' for sc in order)
-               + '</tr></thead><tbody>')
-    for r in fw["rows"]:
-        cells = []
-        for sc in order:
-            k = r.get(sc)
-            if not k or np.isnan(k["p3"]):
-                cells.append('<td class="num">—</td>'); continue
-            cells.append(f'<td class="num">{pct(k["p3"])} · {pct(k["p2"])}<br><span class="small">worst phase {k["worst"]}</span></td>')
-        out.append(f'<tr><td>{html.escape(r["zone"])}</td><td class="num">{r["n_cells"]}</td>{"".join(cells)}</tr>')
-    out.append('</tbody></table>')
     return "\n".join(out)
 
 

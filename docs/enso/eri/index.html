@@ -125,6 +125,18 @@ a{color:var(--b6)}
 <tr><td>Highlands &amp; west (JAS ≥ 2 mm/day)</td><td class="num">79</td><td class="num">−0.41</td><td class="num">−0.65</td><td class="num">67%</td><td class="num">56%</td></tr>
 <tr><td>Drier margin (JAS 0.25–2 mm/day)</td><td class="num">82</td><td class="num">−0.40</td><td class="num">−0.57</td><td class="num">67%</td><td class="num">67%</td></tr>
 </tbody></table>
+<h2>By province: the same numbers from the team's ERA5 raster stats</h2>
+<p>The zones above are analysis bands; operational units are provinces. This section repeats the headline-season analysis on the team's standard per-admin ERA5 raster stats (monthly means per admin-1 unit from <code>public.era5</code>, the same table the SEAS5 skill app and the drought triggers use), so nothing here is recomputed from pixels: each province's season series is the stored mean, correlated with concurrent Niño3.4 and ranked against its own history.</p>
+
+<figure><img src="adm1_maps.png" alt="Admin-1 maps"><figcaption>Left: Pearson r between the province's JAS mean rainfall and concurrent Niño3.4. Middle: share of El Niño JAS seasons in the province's own driest third.  Boundaries: CODAB admin-1 via FieldMaps.</figcaption></figure>
+<table><thead><tr><th>Province</th><th class="num">ERA5 pixels</th><th class="num">r (concurrent)</th><th class="num">El Niño mean (SD)</th><th class="num">El Niño seasons in driest third</th><th class="num">La Niña in driest third</th><th>El Niño driest-third seasons</th></tr></thead><tbody>
+<tr><td>Debubawi Keih Bahri</td><td class="num">722</td><td class="num">−0.51</td><td class="num">−0.82</td><td class="num">78% of 9</td><td class="num">8%</td><td class="small">1987, 1991, 1997, 2004, 2009, 2015, 2023</td></tr>
+<tr><td>Debub</td><td class="num">317</td><td class="num">−0.50</td><td class="num">−0.98</td><td class="num">89% of 9</td><td class="num">8%</td><td class="small">1982, 1987, 1991, 1997, 2002, 2004, 2015, 2023</td></tr>
+<tr><td>Gash Barka</td><td class="num">1129</td><td class="num">−0.36</td><td class="num">−0.67</td><td class="num">56% of 9</td><td class="num">25%</td><td class="small">1991, 2004, 2009, 2015, 2023</td></tr>
+<tr><td>Anseba</td><td class="num">711</td><td class="num">−0.31</td><td class="num">−0.61</td><td class="num">56% of 9</td><td class="num">17%</td><td class="small">1991, 2004, 2009, 2015, 2023</td></tr>
+<tr><td>Semienawi Keih Bahri</td><td class="num">1177</td><td class="num">−0.30</td><td class="num">−0.81</td><td class="num">67% of 9</td><td class="num">17%</td><td class="small">1991, 2002, 2004, 2009, 2015, 2023</td></tr>
+<tr><td>Maekel</td><td class="num">36</td><td class="num">−0.29</td><td class="num">−0.73</td><td class="num">67% of 9</td><td class="num">17%</td><td class="small">1982, 1991, 2002, 2004, 2015, 2023</td></tr>
+</tbody></table>
 <h2>Can SEAS5 forecast it? Skill of the Jun issuance, by zone</h2>
 <p>A teleconnection is only useful for anticipatory action if the seasonal forecast can carry it. The figure reads the seas5-skill app's per-pixel skill cube — the temporal Pearson r between the detrended ECMWF SEAS5 trimester forecast and detrended ERA5, per 0.4° pixel — for forecasts issued on 1 Jun, sampled at this page's cells and summarised as the median pixel r per zone. Bins are the app's (<em>low</em> &lt; 0.30 ≤ <em>moderate</em> &lt; 0.50 ≤ <em>high</em>). Each point is one three-month window the issuance covers, drawn on its middle month under the rainy-season climatology, so the reader sees which part of the season each forecast window reaches and how much skill it has there.</p>
 

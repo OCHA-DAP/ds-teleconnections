@@ -140,7 +140,11 @@ low / moderate / high with the seas5-skill app's thresholds 0.30 / 0.50 and draw
 climatology, plus the return period of that issuance's current forecast anomaly per zone (dry above / wet
 below the axis, with the app's 3- and 10-year alert bands) and an auto-written alert summary. `food_security = "fews"` adds a FEWS NET section (current situation and
 the latest round's projections on FEWS NET's own units, from the ds-fewsnet-mirror public site JSON and the
-dev-blob unit geometry, cached under `cache/fews_*`), with per-zone shares of area in Phase 3+. Read from the app's detrended skill cube, fetched once from the DEV blob into
+dev-blob unit geometry, cached under `cache/fews_*`), drawn on FEWS NET's own polygons. Every page also gets
+a by-province section built from the team's per-admin ERA5 raster stats (`public.era5`, prod, admin-1 monthly
+means; CODAB polygons via `ocha_stratus.codab`) — headline-season r, El Niño hit-rate and, where FEWS NET is on,
+the area-weighted Phase 3+ share by province; `adm1 = false` drops it. Needs `DSCI_AZ_DB_*` creds and
+`PGSSLMODE=require`; results are cached as parquet under `cache/`. Read from the app's detrended skill cube, fetched once from the DEV blob into
 `cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill = false` drops the section. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 
