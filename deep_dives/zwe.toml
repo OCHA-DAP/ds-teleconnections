@@ -1,53 +1,61 @@
-# Zimbabwe — ENSO deep dive. Narrative is curated here; figures and tables are
-# recomputed by enso_deep_dive.py from the cached ERA5 grid + Niño3.4, the seas5-skill
-# skill cube and the FEWS NET mirror.
+# Zimbabwe — ENSO deep dive, question-led: how bad is the coming season, how sure are we,
+# how much of it is El Niño. Figures and tables are recomputed by enso_deep_dive.py; the
+# narrative here must be reconciled against them after every rebuild.
 iso3 = "ZWE"
 name = "Zimbabwe"
-subtitle = "The textbook case: the strongest El Niño → drier signal in the survey, what it missed, and where food insecurity already sits"
-headline_season = "DJF"          # the season the drought analysis is built on
-map_seasons = ["OND", "NDJ", "DJF", "JFM"]   # chronological: the signal is already there in OND and peaks in DJF
-zones_analysis = false   # zones only illustrate the (unimodal, uniform) seasonal cycle; the analysis is national
+subtitle = "How bad is the 2026/27 season likely to be, how confident are we, and how much of it is El Niño?"
+headline_season = "DJF"
+map_seasons = ["OND", "NDJ", "DJF", "JFM"]
+zones_analysis = false        # zones only illustrate the unimodal, uniform season
 skill_issued_month = 9
 food_security = "fews"
-adm0_filtered_note = "they are dry-season windows with almost no rain, listed for completeness only."
+show_adm0 = false
+skill_intro = false
+fews_intro = false
+adm1_intro = false
+section_order = ["summary", "skill", "fews", "drought", "era5", "adm1", "after", "refs"]
 
 summary_html = '''
-<p><strong>Bottom line.</strong> Zimbabwe is the country the southern-Africa row was written for. The catalogue's <em>robust</em>, El Niño → drier DJF grade rests on a literature that starts with Zimbabwe itself — Cane, Eshel and Buckland's 1994 <em>Nature</em> paper forecast Zimbabwean maize yield from Pacific sea-surface temperature — and ERA5 gives it the strongest national correlation in the survey: DJF r = −0.68, every grid cell past −0.3 and 86% of them past −0.5. Unlike Malawi, the signal is not confined to one region or one part of the season: it is already present in OND (r ≈ −0.5), peaks in DJF and holds through JFM, in the wet north-east and the dry south-west alike.</p>
-<p><strong>For drought.</strong> Of the fourteen El Niño DJF seasons since 1981, nine fell in the driest third and six in the driest fifth; none fell in the wettest third. La Niña seasons went the other way: one of nineteen in the driest third, eleven in the wettest. The El Niño list is the country's drought calendar — 1982/83, 1986/87, 1991/92 (the driest season in the record), 1994/95, 2002/03, 2004/05, 2015/16, 2018/19 and 2023/24 — and the misses are as instructive as the hits: 1997/98, the strongest El Niño of the century, produced a near-normal season, and 1987/88, 2009/10 and 2014/15 were normal or wet.</p>
-<p><strong>Recommendation.</strong> Keep <em>robust</em> and keep DJF. Add the drought framing to the catalogue row (El Niño roughly doubles the odds of a driest-third season and all but rules out a wet one), note the 1997/98 lesson — the Indian Ocean can override the Pacific — and record that Zimbabwe already has an El Niño anticipatory action plan, so the question here is calibration and timing rather than whether the signal exists.</p>
-'''
-
-seasonal_cycle_html = '''
-<p>Zimbabwe has a single summer rainy season from November to March: December–February carries about 55% of the annual total and November–March about 89%. The north-east and the eastern highlands are wettest and the Limpopo lowveld in the south and south-west driest, a gradient the country's agricultural natural regions (I to V) follow. The three zone lines are DJF-climatology bands drawn only to make the point: the season is unimodal and its timing is the same everywhere, so the rest of the page treats Zimbabwe as one unit.</p>
-'''
-
-corr_html = '''
-<p>The four panels tell a simpler story than Malawi's. In OND, before the rains have properly started, the whole country is already brown at −0.3 to −0.5, strongest in the south. In NDJ the correlation deepens to a median of −0.48, and in DJF to −0.57, with 86% of cells past −0.5 and the strongest values across the middleveld and Mashonaland; in JFM it eases to a median of −0.46 but remains past −0.3 in almost every cell, weakest in the far south. There is no part of the country and no part of the season with the opposite sign.</p>
-<p>The survey's pixel map therefore shows Zimbabwe as uniformly dark brown, and its country map carries the largest negative value on the continent.</p>
-'''
-
-adm0_html = '''
-<p>The country-level pass gives the same shape: correlations of about −0.5 for OND and NDJ, −0.68 for DJF, −0.54 for JFM and a fading −0.35 for FMA, all significant, with the partial correlations (other modes held constant) keeping most of the amplitude. The dry-season windows are filtered by the survey's 25% rainy-season rule and carry no information.</p>
-'''
-
-drought_html = '''
-<p>Nationally, El Niño DJF seasons average −0.8 SD, nine of fourteen fall in the driest third and six in the driest fifth, against base rates of 33% and 20%; no El Niño DJF season since 1981 has been in the wettest third. La Niña seasons average +0.6 SD and only one of nineteen was in the driest third. Neutral years supply the remaining droughts: 1981/82, 1990/91, 1993/94 and 2001/02.</p>
-<p>The El Niño list reads as the country's disaster history. 1991/92 is the driest DJF in the record by a wide margin and the worst drought in living memory across the region. 2015/16 is second; the rains failed from October and the state of disaster followed on 4 February 2016. 1982/83 and 1986/87 are fourth and fifth. 2023/24 sits ninth on the DJF ranking but the season collapsed late — JFM 2024 is the third-driest and FMA 2024 the driest in the record — and the state of disaster was declared on 3 April 2024 with an appeal of about two billion dollars. 2018/19 combined a weak El Niño with the second-driest OND in the record.</p>
-<p>The misses matter for a trigger. 1997/98 was the strongest El Niño of the century and the season was near normal nationally: a strongly positive Indian Ocean Dipole is the usual explanation, and it is the reason Zimbabwean forecasters now weigh the Indian Ocean alongside the Pacific. 1987/88 was on the wet side of normal, and 2006/07, 2009/10 and 2014/15 were near normal. Five of fourteen outside the driest third is a good record for a single index, but it is why an ENSO-only trigger would carry a false-alarm rate of about one in three.</p>
-<p>Read as odds: El Niño roughly doubles the chance of a driest-third season and makes a wet one very unlikely; La Niña all but rules out a dry one. The pixel maps and the province table below show the response is much the same everywhere, a little weaker in the far south-west, so a national indicator loses little here — the opposite of the Malawi case.</p>
+<p><strong>1. How bad.</strong> The September 2026 SEAS5 issuance forecasts a dry season across the whole of Zimbabwe: the national forecast for OND, NDJ, DJF and JFM sits at 15- to 23-year return periods on the dry side of its own 45-year hindcast — among the driest one in twenty forecasts the model has ever made for these months. FEWS NET already projects 57 of 203 units into Phase 3 (Crisis) for October 2026 to January 2027, concentrated in the south and west, before the rains have started.</p>
+<p><strong>2. How confident.</strong> Moderately, on the sign; less so on the magnitude. SEAS5 skill from September is <em>moderate</em> for the core of the season (NDJ r = 0.48, DJF 0.42) and low for the shoulders, so the model explains about a fifth of the variance at this lead. The record is the stronger argument: nine of the fourteen El Niño DJF seasons since 1981 were in the driest third and none in the wettest, and of the six El Niños that reached +1.5 °C in DJF, four produced a driest-third season. The one-in-three miss rate is real — 1997/98, the strongest El Niño of the century, was near normal — and this issuance sits unusually deep in the dry tail of its hindcast across the globe, so its return periods should be read as a ranking, not as calibrated probabilities.</p>
+<p><strong>3. How much is El Niño.</strong> Most of it. Niño3.4 stood at +1.89 °C in August 2026 and rising, on course for one of the strongest events in the record. ENSO explains about 46% of Zimbabwe's DJF rainfall variance (r = −0.68, the strongest national correlation in the survey), the response is uniform across provinces, and SEAS5's skill here is largely the ENSO signal it carries. The rest is the Indian Ocean and weather noise, which is what turned 1997/98 into a non-event.</p>
 '''
 
 skill_html = '''
-<p>Zimbabwe is where SEAS5 has the most to offer in southern Africa, and it shows in September already. Read the panel against the climatology: the two windows that carry the season, NDJ and DJF, are two and three months ahead in September and reach <em>moderate</em> skill nationally (median pixel r 0.48 and 0.42, with 89% and 84% of cells qualifying), a level Malawi's September issuance never reaches at any lead. The shoulders are weaker: OND and JFM are <em>low</em> at this lead (0.27). The strong ENSO teleconnection is what the model is carrying; in a neutral year the same lead times will have less to say. The practical reading is that a September issuance is already a usable forecast checkpoint for the core of Zimbabwe's season, with the November issuance to confirm.</p>
-'''
-
-adm1_html = '''
-<p>By province the picture is as uniform as the pixel maps suggest: concurrent DJF correlations run from −0.71 in Mashonaland East to −0.52 in Matabeleland South, and in every province at least eight of the fourteen El Niño seasons were in the province's own driest third, against fewer than one in six La Niña seasons. The north-east couples most tightly to the Pacific; the far south-west least, in line with Unganai and Mason.</p>
+<p>The figure reads the seas5-skill app's per-pixel skill cube for the 1 September 2026 issuance, summarised as the national median pixel. Top: the rainy season, November to March, unimodal and the same everywhere. Middle: how much skill SEAS5 has for each window from September — <em>moderate</em> for NDJ (0.48) and DJF (0.42), the two windows that carry the season, <em>low</em> for OND and JFM (0.27). Bottom: what the issuance forecasts — a dry season throughout, at return periods of 5 years for SON, 23 for OND and NDJ, 19 for DJF and 15 for JFM. Under the app's rule (return period ≥ 3 years at moderate skill or better) NDJ and DJF would raise an alert.</p>
 '''
 
 food_security_html = '''
-<p>FEWS NET covers Zimbabwe continuously, so the current picture can be set beside the drought exposure. After the 2025/26 harvest no unit is in Phase 3: the June 2026 current situation and the August–September projection are Phase 1 and 2 throughout, with the lowveld and south-west almost entirely Stressed. The medium-term projection for October 2026 to January 2027, the lean season and the first half of the rainy season, puts 57 of 203 units into Phase 3 (Crisis), concentrated in the south and west — Matabeleland North and South, Masvingo, southern Manicaland and the Zambezi valley. Read the last panel with the outlines: those are also the units where El Niño seasons land in the driest third most often. That is the window for which the September SEAS5 issuance forecasts a dry NDJ and DJF at moderate skill. The rightmost panel repeats the El Niño hit-rate map from the drought section so the two can be read together.</p>
+<p>FEWS NET's August 2026 outlook update, at FEWS NET's own livelihood-zone × district units and not aggregated here. The June current situation and the August–September projection are Phase 1 and 2 throughout after the 2025/26 harvest. The medium-term projection for October 2026 to January 2027 moves 57 of 203 units to Phase 3 (Crisis) across Matabeleland North and South, Masvingo, southern Manicaland and the Zambezi valley — the lean season and the first half of the forecast rains. The last panel overlays the FEWS NET unit outlines on the El Niño drought hit-rate from the next section: the units projected into Crisis are also where El Niño seasons land in the driest third most often.</p>
 '''
+
+drought_html = '''
+<p>Fourteen DJF seasons since 1981 had El Niño conditions (Niño3.4 ≥ +0.5). Nine fell in Zimbabwe's driest third and six in the driest fifth; none reached the wettest third. La Niña seasons ran the other way: one of nineteen in the driest third, eleven in the wettest. The El Niño list is the country's disaster calendar — 1991/92 (driest in the record), 2015/16 (second), 1982/83, 1986/87, 1994/95, 2002/03, 2004/05, 2018/19 and 2023/24, when the season collapsed in February and a state of disaster followed in April. The misses are 1997/98 (near normal despite the strongest El Niño of the century; a positive Indian Ocean Dipole overrode the Pacific), 1987/88, 2006/07, 2009/10 and 2014/15.</p>
+<p>For the current season the relevant comparison is the strong events. Of the six El Niños that reached +1.5 °C in DJF — 1982/83, 1991/92, 1997/98, 2009/10, 2015/16, 2023/24 — four produced a driest-third season and three of those the driest fifth; two were near normal. That is the historical basis for the confidence: El Niño roughly doubles the odds of a driest-third season and all but rules out a wet one, but a strong El Niño is not a guarantee, and the one-in-three miss rate is why an ENSO-only trigger is not enough on its own.</p>
+'''
+
+era5_intro_html = '''
+<p>Two things establish how much of the forecast is El Niño: the current state of the Pacific, and how tightly Zimbabwe's rainfall has followed it. Everything below is computed from the ERA5 monthly grid and the NOAA Niño3.4 index used by the global survey, restricted to cells inside the country.</p>
+'''
+
+seasonal_cycle_html = '''
+<p>One rainy season, November to March, with December–February carrying about 55% of the annual total. The three climatology bands in the chart and the locator map are there only to show that the season's timing is the same across the country, which is why the rest of this page treats Zimbabwe as one unit.</p>
+'''
+
+corr_html = '''
+<p>The DJF correlation with Niño3.4 is −0.68 nationally, the strongest in the survey; every cell is past −0.3 and 86% past −0.5. An r of −0.68 means ENSO accounts for about 46% of the year-to-year variance in DJF rainfall. The signal is already present in OND (−0.5), peaks in DJF and holds through JFM, with the same sign everywhere: there is no part of the country and no part of the season that responds the other way. This is the textbook southern-Africa teleconnection, quantified for Zimbabwe since Cane, Eshel and Buckland (1994) showed Pacific sea-surface temperature explained more than 60% of the variance in the national maize yield.</p>
+'''
+
+adm1_html = '''
+<p>From the team's per-province ERA5 raster stats: concurrent DJF correlations run from −0.71 in Mashonaland East to −0.52 in Matabeleland South, and in every province at least eight of the fourteen El Niño seasons were in the province's own driest third against fewer than one in six La Niña seasons. The coupling is a little weaker in the far south-west; otherwise the country moves together.</p>
+'''
+
+[titles]
+skill = "1. How bad is the coming season?"
+fews = "Where food insecurity already sits (FEWS NET)"
+drought = "2. How confident are we? What El Niño seasons have done before"
+era5 = "3. How much of this is El Niño?"
+adm1 = "The same, by province"
 
 [[zones]]
 label = "Highveld & north-east (DJF ≥ 6 mm/day)"
@@ -64,75 +72,35 @@ max_mm_day = 4.5
 direction = "drier"
 season = "DJF"
 evidence = "robust"
-source_html = '<a href="https://journals.ametsoc.org/view/journals/bams/82/4/1520-0477_2001_082_0619_ppaawe_2_3_co_2.xml">Mason &amp; Goddard 2001 (BAMS)</a>, from the southern-Africa row (Zimbabwe, Zambia, Malawi, Mozambique, South Africa, Botswana)'
+source_html = '<a href="https://journals.ametsoc.org/view/journals/bams/82/4/1520-0477_2001_082_0619_ppaawe_2_3_co_2.xml">Mason &amp; Goddard 2001 (BAMS)</a>'
 
 [assessment]
 direction = "drier, whole country"
 season = "OND–JFM, peaking DJF"
 evidence = "robust"
-evidence_note = "The best-documented ENSO–rainfall link in southern Africa, with Zimbabwe-specific studies going back to 1994; ERA5 gives the strongest national correlation in the survey (DJF r = −0.68) and a uniform response across zones. Main caveat: the 1997/98 miss, when the Indian Ocean overrode the Pacific."
-one_line = "The textbook case. Robust grade earned by Zimbabwe-specific work since Cane et al. (1994); ERA5 DJF r = −0.68, the strongest in the survey, with every cell past −0.3 and the signal already present in OND. Nine of fourteen El Niño DJF seasons were in the driest third and none in the wettest; 1997/98 is the miss to remember."
-
-[[sections_before]]
-title = "Why the catalogue says “robust, DJF”"
-html = '''
-<p>The literature map was built region by region, and Zimbabwe is the anchor of the southern-Africa block. The regional finding — austral-summer rainfall reduced under El Niño and enhanced under La Niña — is sourced to Mason &amp; Goddard's (2001) global probabilistic composite, but for Zimbabwe it is not an inheritance: the country has the longest and most specific ENSO literature in the block, and the composite merely confirms what the national studies found first. The DJF season is right for Zimbabwe, where the signal peaks mid-season; the same window is a compromise for the block's northern members.</p>
-'''
-
-[[sections_before]]
-title = "What the literature actually supports"
-html = '''
-<p><strong>Zimbabwe is where the southern-Africa ENSO story was quantified.</strong> Cane, Eshel &amp; Buckland (1994) showed that sea-surface temperature in the eastern equatorial Pacific explained more than 60% of the variance in Zimbabwe's national maize yield, with usable lead times of up to a year, and argued the relationship was tighter for yield than for rainfall itself. Phillips, Cane &amp; Rosenzweig (1998) traced the mechanism through the seasonal rainfall pattern to simulated yields. Makarau &amp; Jury (1997) and Unganai &amp; Mason (2002) established the predictability: up to about 70% of the variance in summer rainfall is potentially predictable at long range, most of it in the second half of the season (January–March), with the south more predictable than the north. Mamombe, Kim &amp; Choi (2017) confirm ENSO as the leading driver of interannual variability in the modern record.</p>
-<p><strong>The regional mechanism is the same one described for Malawi</strong> — a warm eastern Pacific weakens the Angola low and the moisture flux into the subcontinent and shifts the South Indian Convergence Zone offshore — but Zimbabwe sits at the heart of the affected region rather than at its edge, which is why the response is uniform across the country and present from the start of the season. Reason &amp; Jagadheesha (2005) reproduce the recent El Niño impacts in models; Mason &amp; Goddard (2001) place Zimbabwe among the areas with the highest probability of below-normal rainfall in El Niño summers.</p>
-<p><strong>Two caveats from the literature.</strong> First, the relationship is not stationary: Richard et al. (2000) show the late-summer rainfall–ENSO correlation over tropical southern Africa was close to zero before about 1970 and significant only afterwards, so the 45-year ERA5 window sits entirely in the strong-coupling era. Second, the Indian Ocean can override the Pacific: Manatsa, Chingombe &amp; Matarira (2008) find that when a positive Indian Ocean Dipole and El Niño compete, the Dipole's influence on Zimbabwe's summer rainfall dominates, which is the accepted explanation for the near-normal 1997/98 season that followed the loudest El Niño forecast in the country's history.</p>
-<p><strong>Operational record.</strong> Zimbabwe has responded to El Niño with national declarations three times in the ERA5 period. On 4 February 2016 the President declared a state of drought disaster after the failed 2015/16 rains, with the food-insecure population rising through the year to about four million. In November 2023 OCHA and partners issued an El Niño anticipatory action plan for October 2023–March 2024, one of the first in the region; the season then collapsed in February and on 3 April 2024 a state of disaster was declared, with more than 80% of the country reporting below-normal rainfall and an appeal of about two billion dollars. The 1991/92 drought, before the national forecasting system existed, remains the reference event for the region.</p>
-'''
-
-[[sections_after]]
-title = "Recommendation for the survey"
-html = '''
-<ul>
-<li><strong>Keep the grade and the season.</strong> Zimbabwe's <em>robust</em> El Niño → drier DJF is the best-supported entry in the block; if anything the row should cite Cane et al. (1994) and Unganai &amp; Mason (2002) alongside Mason &amp; Goddard, since the national literature predates the global composite.</li>
-<li><strong>Add the drought framing</strong> to the “This study (ERA5)” column: nine of fourteen El Niño DJF seasons in the driest third, none in the wettest; La Niña one of nineteen in the driest third.</li>
-<li><strong>Record the 1997/98 caveat</strong> and the Indian Ocean Dipole as the modifier, so a reader of the map does not take the row as a guarantee.</li>
-<li><strong>Note the early signal.</strong> Unlike Malawi, the OND correlation is already about −0.5, so a September ENSO state is actionable for the whole season, and the November SEAS5 issuance is the natural forecast checkpoint.</li>
-<li><strong>For trigger work</strong>, a national indicator is defensible here (the zones respond alike), but pair ENSO with the Indian Ocean Dipole or with the seasonal forecast to buy down the one-in-three false-alarm rate that an ENSO-only rule would carry.</li>
-</ul>
-'''
+evidence_note = "Strongest national ENSO–rainfall correlation in the survey (DJF r = −0.68), uniform across provinces."
+one_line = "2026/27 outlook: SEAS5 forecasts a dry season nationwide (15–23-year return periods, moderate skill for NDJ–DJF) as Niño3.4 passes +1.9 °C; nine of fourteen El Niño DJF seasons since 1981 were in the driest third and none in the wettest; ENSO explains about half of Zimbabwe's DJF rainfall variance. FEWS NET already projects Crisis for a quarter of its units by October–January."
 
 [[sections_after]]
 title = "Caveats"
 html = '''
 <ul>
-<li>ERA5 is a reanalysis; Zimbabwe's gauge network is better than most in the region but has thinned since 2000, so the recent years lean more on the model background.</li>
-<li>Fourteen El Niño seasons is a modest sample; the nine-of-fourteen hit rate has wide uncertainty.</li>
-<li>FEWS NET classifies areas on its own livelihood-zone × district units and publishes no population-in-phase figures; the maps are shown at that level and not aggregated.</li>
-<li>The country boundary is Natural Earth 110m rasterised with “all touched”, so edge cells straddle Zambia, Mozambique, South Africa and Botswana.</li>
-<li>No field-significance correction is applied at pixel level; read coherent regions, not single cells.</li>
+<li>The September 2026 SEAS5 issuance sits in the dry tail of its hindcast far more often than a calibrated forecast should, across the whole globe, not only here; a strong El Niño can produce that, but so can a normalisation problem, and the check has not been completed. Read ceiling return periods as “beyond the record”.</li>
+<li>Fourteen El Niño seasons, six of them strong, is a small sample; the hit rates carry wide uncertainty.</li>
+<li>ERA5 is a reanalysis and Zimbabwe's gauge network has thinned since 2000, so recent years lean more on the model background.</li>
+<li>FEWS NET classifies areas, not people, and publishes no population-in-phase figures; its analysis is IPC-compatible but independent of the IPC/CH consensus.</li>
 </ul>
 '''
 
 [[references]]
 html = 'Cane, M. A., Eshel, G. &amp; Buckland, R. W. (1994). Forecasting Zimbabwean maize yield using eastern equatorial Pacific sea surface temperature. <em>Nature</em> 370, 204–205. <a href="https://www.nature.com/articles/370204a0">link</a>'
 [[references]]
-html = 'Phillips, J. G., Cane, M. A. &amp; Rosenzweig, C. (1998). ENSO, seasonal rainfall patterns and simulated maize yield variability in Zimbabwe. <em>Agricultural and Forest Meteorology</em> 90, 39–50. <a href="https://www.sciencedirect.com/science/article/pii/S0168192397000956">link</a>'
-[[references]]
-html = 'Makarau, A. &amp; Jury, M. R. (1997). Predictability of Zimbabwe summer rainfall. <em>International Journal of Climatology</em> 17, 1421–1432.'
-[[references]]
 html = 'Unganai, L. S. &amp; Mason, S. J. (2002). Long-range predictability of Zimbabwe summer rainfall. <em>International Journal of Climatology</em> 22, 1091–1103. <a href="https://doi.org/10.1002/joc.786">link</a>'
-[[references]]
-html = 'Mamombe, V., Kim, W. &amp; Choi, Y.-S. (2017). Rainfall variability over Zimbabwe and its relation to large-scale atmosphere–ocean processes. <em>International Journal of Climatology</em> 37, 963–971. <a href="https://doi.org/10.1002/joc.4752">link</a>'
 [[references]]
 html = 'Manatsa, D., Chingombe, W. &amp; Matarira, C. H. (2008). The impact of the positive Indian Ocean dipole on Zimbabwe droughts. <em>International Journal of Climatology</em> 28, 2011–2029. <a href="https://doi.org/10.1002/joc.1695">link</a>'
 [[references]]
-html = 'Richard, Y., Trzaska, S., Roucou, P. &amp; Rouault, M. (2000). Modification of the southern African rainfall variability/ENSO relationship since the late 1960s. <em>Climate Dynamics</em> 16, 883–895. <a href="https://link.springer.com/article/10.1007/s003820000086">link</a>'
-[[references]]
-html = 'Reason, C. J. C. &amp; Jagadheesha, D. (2005). A model investigation of recent ENSO impacts over southern Africa. <em>Meteorology and Atmospheric Physics</em> 89, 181–205.'
-[[references]]
 html = 'Mason, S. J. &amp; Goddard, L. (2001). Probabilistic precipitation anomalies associated with ENSO. <em>Bulletin of the American Meteorological Society</em> 82, 619–638. <a href="https://journals.ametsoc.org/view/journals/bams/82/4/1520-0477_2001_082_0619_ppaawe_2_3_co_2.xml">link</a>'
 [[references]]
-html = 'Zimbabwe: 2016–2017 Drought Disaster Domestic and International Appeal for Assistance (state of disaster declared 4 February 2016). <a href="https://reliefweb.int/report/zimbabwe/zimbabwe-2016-2017-drought-disaster-domestic-and-international-appeal-assistance">link</a>'
+html = 'UNICEF Zimbabwe (2024). 2024 El Niño induced drought disaster: domestic and international appeal for assistance (state of disaster declared 3 April 2024). <a href="https://www.unicef.org/zimbabwe/reports/2024-el-nino-induced-drought-disaster-domestic-and-international-appeal-assistance">link</a>; OCHA (2023). Zimbabwe: El Niño Anticipatory Action Plan, Oct 2023 – Mar 2024. <a href="https://www.unocha.org/publications/report/zimbabwe/zimbabwe-el-nino-anticipatory-action-plan-oct-2023-mar-2024-issued-november-2023">link</a>'
 [[references]]
-html = 'OCHA (2023). Zimbabwe: El Niño Anticipatory Action Plan, Oct 2023 – Mar 2024. <a href="https://www.unocha.org/publications/report/zimbabwe/zimbabwe-el-nino-anticipatory-action-plan-oct-2023-mar-2024-issued-november-2023">link</a>; UNICEF Zimbabwe (2024). 2024 El Niño induced drought disaster: domestic and international appeal for assistance. <a href="https://www.unicef.org/zimbabwe/reports/2024-el-nino-induced-drought-disaster-domestic-and-international-appeal-assistance">link</a>; OCHA (2024). Zimbabwe: Drought Flash Appeal May 2024 – April 2025. <a href="https://www.unocha.org/publications/report/zimbabwe/zimbabwe-drought-flash-appeal-may-2024-april-2025-may-2024">link</a>'
-[[references]]
-html = 'FEWS NET Data Warehouse, Zimbabwe IPC-compatible classification, via <a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>. Source: FEWS NET.'
+html = 'FEWS NET Data Warehouse, Zimbabwe IPC-compatible classification, via <a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>. Source: FEWS NET. SEAS5 skill and forecast return periods from the seas5-skill app&#39;s detrended skill cube. Niño3.4 from NOAA PSL.'

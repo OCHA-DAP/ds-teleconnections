@@ -146,7 +146,12 @@ a by-province section built from the team's per-admin ERA5 raster stats (`public
 means; CODAB polygons via `ocha_stratus.codab`) — headline-season r and El Niño hit-rate; `adm1 = false` drops it. FEWS NET is never aggregated: it is drawn at
 its reported units, and those unit outlines are overlaid on the drought rasters. Needs `DSCI_AZ_DB_*` creds and
 `PGSSLMODE=require`; results are cached as parquet under `cache/`. Read from the app's detrended skill cube, fetched once from the DEV blob into
-`cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill = false` drops the section. Top-level keys must sit above the first
+`cache/skill_stats_grid_detrended.nc` (1.2 GB); `skill = false` drops the section. A page can be reordered or trimmed with `section_order` (block names:
+verdict, summary, before, era5, drought, adm1, skill, fews, after, refs) and re-headed with a `[titles]` table;
+`show_adm0`, `skill_intro`, `fews_intro`, `adm1_intro` switch the boilerplate off (see Zimbabwe, which is
+written around three questions). The Niño3.4 *analysis* series is pinned in `cache/nino34.data` (NOAA CPC ERSST v5,
+identical to the PSL series the survey was built on); the live PSL series (ERSST v6 since 2026, ~+0.2 °C) is
+fetched weekly into `cache/nino34_latest.data` and used only for the current-ENSO-state line. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 
 ---

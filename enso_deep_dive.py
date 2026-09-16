@@ -48,6 +48,7 @@ C_TEXT, C_MUTED = "#1f2324", "#5e6a6b"
 DIVERGING = mcolors.LinearSegmentedColormap.from_list(
     "brbu", ["#7A4E22", "#B17E50", "#E8CDB0", "#F3F3F1", "#BFD9EE", "#5E9FD2", "#1F5F96"])
 ENSO_THRESH = 0.5
+NINO_LATEST = None   # latest NOAA Niño3.4 series (current-state line only); set in main()
 GRADES = {"robust": "#9C6730", "moderate": "#D29A6C", "single-study": "#F0DAC2", "none": "#DBDBDB"}
 
 
@@ -985,7 +986,15 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     except Exception as e:  # noqa: BLE001
         print(f"  ({iso3}: country-level parquet not available: {e})")
 
+    nino_now = (NINO_LATEST if NINO_LATEST is not None else indices["nino34"]).dropna()
+    nino_now = nino_now[nino_now > -90]
+    now_val = float(nino_now.iloc[-1]); now_date = nino_now.index[-1]
+    now_phase = "El Niño" if now_val >= ENSO_THRESH else "La Niña" if now_val <= -ENSO_THRESH else "neutral"
+    # 3-month running mean, NOAA-style
+    now_3m = float(nino_now.iloc[-3:].mean())
+
     return dict(country=c, summaries=summaries, df=df, phase_rows=phase_rows, en=en, driest=driest,
+                nino_now=dict(value=now_val, date=now_date, phase=now_phase, mean3=now_3m),
                 r_area=r_area, r_area_lag1=r_area_lag1, comp_med=float(np.nanmedian(comp[ok_head])),
                 comp_frac=float((comp[ok_head] < -0.5).mean()), hit_med=float(np.nanmedian(hit[ok_head])),
                 zone_rows=zone_rows, skill=skill, fews=fews_out, adm1=adm1_out, adm0=adm0, n_cells=int(c.mask.sum()),
@@ -1065,12 +1074,17 @@ def pct(v) -> str:
     return f"{100 * v:.0f}%"
 
 
+DEFAULT_ORDER = ["verdict", "summary", "before", "era5", "drought", "adm1", "skill", "fews", "after", "refs"]
+
+
 def render_country(spec: dict, a: dict, end_year: int) -> str:
+    """Assemble the page from named blocks. `section_order` in the TOML reorders or drops blocks;
+    `titles` overrides a block's h2 (e.g. to phrase it as a question)."""
     name, head = spec["name"], spec["headline_season"]
     cat, ours = spec["catalogue"], spec["assessment"]
-    s0 = a["summaries"][0]
     en, df = a["en"], a["df"]
-    ph = {r["phase"]: r for r in a["phase_rows"]}
+    titles = spec.get("titles", {})
+    T = lambda key, default: html.escape(titles.get(key, default))
 
     out = [HEAD.format(title=f"{name} — ENSO deep dive", desc=html.escape(ours["one_line"]), css=CSS,
                        home="../", home_label="ENSO country deep dives")]
@@ -1078,132 +1092,144 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
     out.append(f'<p class="meta">{html.escape(spec.get("subtitle", ""))} &nbsp;·&nbsp; ERA5 0.25° 1981–{end_year} '
                f'&nbsp;·&nbsp; Niño3.4 (NOAA PSL) &nbsp;·&nbsp; {a["n_cells"]} grid cells, {a["n_head"]} with a {head} season</p>')
 
-    # Verdict cards
-    out.append('<div class="verdict">')
-    out.append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
-               f'<p>{chip(cat["evidence"])} <span class="small">source: {cat["source_html"]}</span></p></div>')
-    out.append(f'<div class="card"><p class="lbl">This review assesses</p><p class="big">El Niño → {html.escape(ours["direction"])}, {html.escape(ours["season"])}</p>'
-               f'<p>{chip(ours["evidence"])} <span class="small">{html.escape(ours["evidence_note"])}</span></p></div>')
-    out.append('</div>')
-    out.append(f'<div class="summary">{spec["summary_html"]}</div>')
+    def block_verdict():
+        o = ['<div class="verdict">']
+        o.append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
+                 f'<p>{chip(cat["evidence"])} <span class="small">source: {cat["source_html"]}</span></p></div>')
+        o.append(f'<div class="card"><p class="lbl">This review assesses</p><p class="big">El Niño → {html.escape(ours["direction"])}, {html.escape(ours["season"])}</p>'
+                 f'<p>{chip(ours["evidence"])} <span class="small">{html.escape(ours["evidence_note"])}</span></p></div>')
+        o.append('</div>')
+        return o
 
-    # Narrative sections before the data
-    for sec in spec.get("sections_before", []):
-        out.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
+    def block_summary():
+        return [f'<div class="summary">{spec["summary_html"]}</div>']
 
-    # ---- ERA5 evidence ----
-    out.append('<h2>What ERA5 shows</h2>')
-    out.append('<p>Everything in this section is computed from the same ERA5 monthly grid and NOAA Niño3.4 index the '
-               'survey uses, restricted to the cells inside the country. A cell–season is analysed only if that season '
-               'holds at least a quarter of the cell\'s annual rainfall and averages at least 0.25 mm/day (the survey\'s '
-               'rainy-season and aridity filters).</p>')
-    out.append(f'<h3>Seasonal cycle</h3>{spec.get("seasonal_cycle_html", "")}')
-    out.append('<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology"><figcaption>Area-mean monthly '
-               'rainfall over all grid cells in the country. Dark bars mark the headline season used below.</figcaption></figure>')
-    if spec.get("zones"):
-        out.append('<figure style="max-width:620px"><img src="zones_map.png" alt="Zone locator map"><figcaption>Where the zones '
-                   'are: the 0.25° cells assigned to each zone used in the charts and tables on this page'
-                   + (' (latitude bands)' if any("min_lat" in z or "max_lat" in z for z in spec["zones"]) else
-                      f' (bands of {head} climatology)') + '.</figcaption></figure>')
+    def block_before():
+        return [f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}' for sec in spec.get("sections_before", [])]
 
-    out.append(f'<h3>Pixel-level correlation with Niño3.4</h3>{spec.get("corr_html", "")}')
-    out.append('<figure><img src="corr_maps.png" alt="Pixel-level Niño3.4 correlation maps"><figcaption>Pearson r between '
-               'seasonal rainfall and Niño3.4 for each 0.25° cell, keeping the lag (0–3 months, index leading) with the '
-               'largest |r|, exactly as the survey\'s pixel pass does. Brown = drier under El Niño, blue = wetter. Grey cells '
-               'have no analysable season in that window.</figcaption></figure>')
-    out.append('<table><thead><tr><th>Season</th><th class="num">Cells analysed</th><th class="num">Share of annual rain</th>'
-               '<th class="num">Median r</th><th class="num">Range</th><th class="num">Significant (p&lt;0.05)</th>'
-               '<th class="num">|r| ≥ 0.30</th><th class="num">|r| ≥ 0.50</th></tr></thead><tbody>')
-    for s in a["summaries"]:
-        neg = s["median_r"] < 0
-        out.append(f'<tr{" class=hl" if s["season"] == head else ""}><td>{s["season"]}</td><td class="num">{s["n_cells"]} / {s["n_country"]}</td>'
-                   f'<td class="num">{pct(s["mean_share"])}</td><td class="num">{fmt_r(s["median_r"])}</td>'
-                   f'<td class="num">{fmt_r(s["min_r"])} to {fmt_r(s["max_r"])}</td>'
-                   f'<td class="num">{pct(s["frac_sig_neg"] if neg else s["frac_sig_pos"])} {"negative" if neg else "positive"}</td>'
-                   f'<td class="num">{pct(s["frac_mod_neg"] if neg else s["frac_mod_pos"])}</td>'
-                   f'<td class="num">{pct(s["frac_strong_neg"] if neg else s["frac_strong_pos"])}</td></tr>')
-    out.append('</tbody></table>')
+    def block_after():
+        return [f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}' for sec in spec.get("sections_after", [])]
 
-    if a["adm0"] is not None:
-        out.append(f'<h3>Country-level view (the survey\'s ADM0 pass)</h3>{spec.get("adm0_html", "")}')
-        out.append('<table><thead><tr><th>Trimester</th><th class="num">Share of annual rain</th><th class="num">Total r (best lag)</th>'
-                   '<th class="num">Lag (mo)</th><th class="num">p</th><th class="num">Unique-signal r (partial)</th></tr></thead><tbody>')
-        for _, r in a["adm0"].iterrows():
-            rainy = r.share >= 0.25
-            cls = ' class="hl"' if r.trimester == head else ""
-            style = "" if rainy else ' style="color:#9aa3ad;"'
-            out.append(f'<tr{cls}{style}><td>{r.trimester}{"" if rainy else " <span class=small>filtered *</span>"}</td>'
-                       f'<td class="num">{pct(r.share)}</td><td class="num">{fmt_r(r.r)}</td><td class="num">{r.lag}</td>'
-                       f'<td class="num">{r.p:.3f}</td><td class="num">{fmt_r(r.r_partial)}</td></tr>')
-        out.append('</tbody></table>')
-        out.append('<p class="small">* Below the survey\'s rainy-season filter (trimester climatology under 25% of the annual '
-                   'mean), so the survey never shows these correlations at country level; '
-                   + spec.get("adm0_filtered_note", "they are listed here for completeness.") + '</p>')
+    def block_era5():
+        o = [f'<h2>{T("era5", "What ERA5 shows")}</h2>']
+        nn = a.get("nino_now")
+        if nn:
+            o.append(f'<p class="small">Latest Niño3.4 in NOAA PSL\'s current series: {nn["value"]:+.2f} °C for {nn["date"]:%B %Y} '
+                     f'(three-month mean {nn["mean3"]:+.2f}), i.e. {nn["phase"]} conditions by the ±{ENSO_THRESH} threshold used on this page. '
+                     f'The historical analysis below uses the survey\'s pinned Niño3.4 series (NOAA PSL, ERSST v5 basis), which runs '
+                     f'about 0.2 °C cooler than the current ERSST v6 series.</p>')
+        o.append(spec.get("era5_intro_html",
+                 '<p>Everything in this section is computed from the same ERA5 monthly grid and NOAA Niño3.4 index the '
+                 'survey uses, restricted to the cells inside the country. A cell–season is analysed only if that season '
+                 'holds at least a quarter of the cell\'s annual rainfall and averages at least 0.25 mm/day (the survey\'s '
+                 'rainy-season and aridity filters).</p>'))
+        o.append(f'<h3>Seasonal cycle</h3>{spec.get("seasonal_cycle_html", "")}')
+        o.append('<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology"><figcaption>Area-mean monthly '
+                 'rainfall over all grid cells in the country. Dark bars mark the headline season used below.</figcaption></figure>')
+        if spec.get("zones"):
+            o.append('<figure style="max-width:620px"><img src="zones_map.png" alt="Zone locator map"><figcaption>Where the zones '
+                     'are: the 0.25° cells assigned to each zone used in the charts and tables on this page'
+                     + (' (latitude bands)' if any("min_lat" in z or "max_lat" in z for z in spec["zones"]) else
+                        f' (bands of {head} climatology)') + '.</figcaption></figure>')
+        o.append(f'<h3>Pixel-level correlation with Niño3.4</h3>{spec.get("corr_html", "")}')
+        o.append('<figure><img src="corr_maps.png" alt="Pixel-level Niño3.4 correlation maps"><figcaption>Pearson r between '
+                 'seasonal rainfall and Niño3.4 for each 0.25° cell, keeping the lag (0–3 months, index leading) with the '
+                 'largest |r|, exactly as the survey\'s pixel pass does. Brown = drier under El Niño, blue = wetter. Grey cells '
+                 'have no analysable season in that window.</figcaption></figure>')
+        o.append('<table><thead><tr><th>Season</th><th class="num">Cells analysed</th><th class="num">Share of annual rain</th>'
+                 '<th class="num">Median r</th><th class="num">Range</th><th class="num">Significant (p&lt;0.05)</th>'
+                 '<th class="num">|r| ≥ 0.30</th><th class="num">|r| ≥ 0.50</th></tr></thead><tbody>')
+        for s_ in a["summaries"]:
+            neg = s_["median_r"] < 0
+            o.append(f'<tr{" class=hl" if s_["season"] == head else ""}><td>{s_["season"]}</td><td class="num">{s_["n_cells"]} / {s_["n_country"]}</td>'
+                     f'<td class="num">{pct(s_["mean_share"])}</td><td class="num">{fmt_r(s_["median_r"])}</td>'
+                     f'<td class="num">{fmt_r(s_["min_r"])} to {fmt_r(s_["max_r"])}</td>'
+                     f'<td class="num">{pct(s_["frac_sig_neg"] if neg else s_["frac_sig_pos"])} {"negative" if neg else "positive"}</td>'
+                     f'<td class="num">{pct(s_["frac_mod_neg"] if neg else s_["frac_mod_pos"])}</td>'
+                     f'<td class="num">{pct(s_["frac_strong_neg"] if neg else s_["frac_strong_pos"])}</td></tr>')
+        o.append('</tbody></table>')
+        if a["adm0"] is not None and spec.get("show_adm0", True):
+            o.append(f'<h3>Country-level view (the survey\'s ADM0 pass)</h3>{spec.get("adm0_html", "")}')
+            o.append('<table><thead><tr><th>Trimester</th><th class="num">Share of annual rain</th><th class="num">Total r (best lag)</th>'
+                     '<th class="num">Lag (mo)</th><th class="num">p</th><th class="num">Unique-signal r (partial)</th></tr></thead><tbody>')
+            for _, r in a["adm0"].iterrows():
+                rainy = r.share >= 0.25
+                if not rainy and spec.get("hide_filtered_adm0", False):
+                    continue
+                cls = ' class="hl"' if r.trimester == head else ""
+                style = "" if rainy else ' style="color:#9aa3ad;"'
+                o.append(f'<tr{cls}{style}><td>{r.trimester}{"" if rainy else " <span class=small>filtered *</span>"}</td>'
+                         f'<td class="num">{pct(r.share)}</td><td class="num">{fmt_r(r.r)}</td><td class="num">{r.lag}</td>'
+                         f'<td class="num">{r.p:.3f}</td><td class="num">{fmt_r(r.r_partial)}</td></tr>')
+            o.append('</tbody></table>')
+            if not spec.get("hide_filtered_adm0", False):
+                o.append('<p class="small">* Below the survey\'s rainy-season filter (trimester climatology under 25% of the annual '
+                         'mean), so the survey never shows these correlations at country level; '
+                         + spec.get("adm0_filtered_note", "they are listed here for completeness.") + '</p>')
+        return o
 
-    # ---- Drought ----
-    out.append(f'<h2>El Niño and {head} drought</h2>{spec.get("drought_html", "")}')
-    out.append(f'<figure><img src="phase_history.png" alt="{head} rainfall history by ENSO phase"><figcaption>Standardised '
-               f'{head} rainfall, averaged over the cells with a {head} season, coloured by the ENSO phase of the same '
-               f'season (Niño3.4 ≥ +{ENSO_THRESH} El Niño, ≤ −{ENSO_THRESH} La Niña). El Niño years are labelled. '
-               f'Area-mean correlation with concurrent Niño3.4: r = {fmt_r(a["r_area"])}; with Niño3.4 one month earlier: '
-               f'r = {fmt_r(a["r_area_lag1"])}.</figcaption></figure>')
-    out.append('<table><thead><tr><th>ENSO phase (concurrent)</th><th class="num">Seasons</th><th class="num">Mean anomaly (SD)</th>'
-               '<th class="num">In driest third</th><th class="num">In driest fifth</th><th class="num">In wettest third</th></tr></thead><tbody>')
-    for r in a["phase_rows"]:
-        out.append(f'<tr><td>{r["phase"]}</td><td class="num">{r["n"]}</td><td class="num">{fmt_r(r["mean_z"])}</td>'
-                   f'<td class="num">{pct(r["tercile"])}</td><td class="num">{pct(r["quintile"])}</td><td class="num">{pct(r["wettest"])}</td></tr>')
-    out.append('</tbody></table>')
-    out.append(f'<h3>Every El Niño {head} season since 1981</h3>')
-    out.append('<table><thead><tr><th>Year</th><th class="num">Niño3.4 (' + head + ')</th><th class="num">Rainfall anomaly (SD)</th>'
-               '<th class="num">Rank (1 = driest)</th><th>Outcome</th></tr></thead><tbody>')
-    n_all = len(df)
-    for yr, r in en.iterrows():
-        rank = int(round(r.pct * n_all))
-        outcome = ("driest fifth" if r.pct <= 0.2 else "driest third" if r.pct <= 1 / 3 else
-                   "wettest third" if r.pct > 2 / 3 else "near normal")
-        out.append(f'<tr><td>{yr}</td><td class="num">{r.nino:+.2f}</td><td class="num">{fmt_r(r.z)}</td>'
-                   f'<td class="num">{rank} of {n_all}</td><td>{outcome}</td></tr>')
-    out.append('</tbody></table>')
-    dr = a["driest"]
-    ph_counts = dr.phase.value_counts().to_dict()
-    out.append(f'<p class="small">The {len(dr)} driest-third {head} seasons: '
-               + ", ".join(f"{y} ({p})" for y, p in zip(dr.sort_index().index, dr.sort_index().phase)) + ". "
-               f'Phase split: {", ".join(f"{k} {v}" for k, v in ph_counts.items())}.</p>')
-    out.append(f'<figure><img src="composite_maps.png" alt="El Niño composite and drought hit-rate maps"><figcaption>Left: mean '
-               f'standardised {head} anomaly across the El Niño years, per cell (median over analysable cells '
-               f'{fmt_r(a["comp_med"])} SD; {pct(a["comp_frac"])} of cells below −0.5 SD). Right: the share of El Niño years '
-               f'that landed in the cell\'s own driest third (median {pct(a["hit_med"])}; chance is 33%).'
-               + (' White outlines are FEWS NET\'s reporting units.' if spec.get("food_security") == "fews" else "") + '</figcaption></figure>')
-    if a["zone_rows"]:
-        out.append(f'<h3>By zone</h3>{spec.get("zones_html", "")}')
-        out.append('<table><thead><tr><th>Zone</th><th class="num">Cells</th><th class="num">Zone-mean r (concurrent)</th>'
-                   '<th class="num">El Niño composite (median SD)</th><th class="num">El Niño years in the zone\'s driest third</th>'
-                   '<th class="num">Per-cell median</th></tr></thead><tbody>')
-        for z in a["zone_rows"]:
-            out.append(f'<tr><td>{html.escape(z["zone"])}</td><td class="num">{z["n_cells"]}</td><td class="num">{fmt_r(z["r"])}</td>'
-                       f'<td class="num">{fmt_r(z["comp"])}</td><td class="num">{pct(z["hit_zone"]) if not np.isnan(z["hit_zone"]) else "—"}</td>'
-                       f'<td class="num">{pct(z["hit"]) if not np.isnan(z["hit"]) else "—"}</td></tr>')
-        out.append('</tbody></table>')
-        if spec.get("zone_history"):
-            out.append(f'<figure><img src="zone_history.png" alt="{head} rainfall history by zone and ENSO phase"><figcaption>'
-                       f'Standardised {head} rainfall for each zone\'s area mean, coloured by concurrent ENSO phase; dashed line is '
-                       f'the zone\'s own driest-third threshold. {spec.get("zone_history_caption", "")}</figcaption></figure>')
+    def block_drought():
+        ph = {r["phase"]: r for r in a["phase_rows"]}
+        o = [f'<h2>{T("drought", f"El Niño and {head} drought")}</h2>{spec.get("drought_html", "")}']
+        o.append(f'<figure><img src="phase_history.png" alt="{head} rainfall history by ENSO phase"><figcaption>Standardised '
+                 f'{head} rainfall, averaged over the cells with a {head} season, coloured by the ENSO phase of the same '
+                 f'season (Niño3.4 ≥ +{ENSO_THRESH} El Niño, ≤ −{ENSO_THRESH} La Niña). El Niño years are labelled. '
+                 f'Area-mean correlation with concurrent Niño3.4: r = {fmt_r(a["r_area"])}; with Niño3.4 one month earlier: '
+                 f'r = {fmt_r(a["r_area_lag1"])}.</figcaption></figure>')
+        o.append('<table><thead><tr><th>ENSO phase (concurrent)</th><th class="num">Seasons</th><th class="num">Mean anomaly (SD)</th>'
+                 '<th class="num">In driest third</th><th class="num">In driest fifth</th><th class="num">In wettest third</th></tr></thead><tbody>')
+        for r in a["phase_rows"]:
+            o.append(f'<tr><td>{r["phase"]}</td><td class="num">{r["n"]}</td><td class="num">{fmt_r(r["mean_z"])}</td>'
+                     f'<td class="num">{pct(r["tercile"])}</td><td class="num">{pct(r["quintile"])}</td><td class="num">{pct(r["wettest"])}</td></tr>')
+        o.append('</tbody></table>')
+        o.append(f'<h3>Every El Niño {head} season since 1981</h3>')
+        o.append('<table><thead><tr><th>Year</th><th class="num">Niño3.4 (' + head + ')</th><th class="num">Rainfall anomaly (SD)</th>'
+                 '<th class="num">Rank (1 = driest)</th><th>Outcome</th></tr></thead><tbody>')
+        n_all = len(df)
+        for yr, r in en.iterrows():
+            rank = int(round(r.pct * n_all))
+            outcome = ("driest fifth" if r.pct <= 0.2 else "driest third" if r.pct <= 1 / 3 else
+                       "wettest third" if r.pct > 2 / 3 else "near normal")
+            o.append(f'<tr><td>{yr}</td><td class="num">{r.nino:+.2f}</td><td class="num">{fmt_r(r.z)}</td>'
+                     f'<td class="num">{rank} of {n_all}</td><td>{outcome}</td></tr>')
+        o.append('</tbody></table>')
+        dr = a["driest"]
+        ph_counts = dr.phase.value_counts().to_dict()
+        o.append(f'<p class="small">The {len(dr)} driest-third {head} seasons: '
+                 + ", ".join(f"{y} ({p})" for y, p in zip(dr.sort_index().index, dr.sort_index().phase)) + ". "
+                 f'Phase split: {", ".join(f"{k} {v}" for k, v in ph_counts.items())}.</p>')
+        o.append(f'<figure><img src="composite_maps.png" alt="El Niño composite and drought hit-rate maps"><figcaption>Left: mean '
+                 f'standardised {head} anomaly across the El Niño years, per cell (median over analysable cells '
+                 f'{fmt_r(a["comp_med"])} SD; {pct(a["comp_frac"])} of cells below −0.5 SD). Right: the share of El Niño years '
+                 f'that landed in the cell\'s own driest third (median {pct(a["hit_med"])}; chance is 33%).'
+                 + (' White outlines are FEWS NET\'s reporting units.' if spec.get("food_security") == "fews" else "") + '</figcaption></figure>')
+        if a["zone_rows"]:
+            o.append(f'<h3>By zone</h3>{spec.get("zones_html", "")}')
+            o.append('<table><thead><tr><th>Zone</th><th class="num">Cells</th><th class="num">Zone-mean r (concurrent)</th>'
+                     '<th class="num">El Niño composite (median SD)</th><th class="num">El Niño years in the zone\'s driest third</th>'
+                     '<th class="num">Per-cell median</th></tr></thead><tbody>')
+            for z in a["zone_rows"]:
+                o.append(f'<tr><td>{html.escape(z["zone"])}</td><td class="num">{z["n_cells"]}</td><td class="num">{fmt_r(z["r"])}</td>'
+                         f'<td class="num">{fmt_r(z["comp"])}</td><td class="num">{pct(z["hit_zone"]) if not np.isnan(z["hit_zone"]) else "—"}</td>'
+                         f'<td class="num">{pct(z["hit"]) if not np.isnan(z["hit"]) else "—"}</td></tr>')
+            o.append('</tbody></table>')
+            if spec.get("zone_history"):
+                o.append(f'<figure><img src="zone_history.png" alt="{head} rainfall history by zone and ENSO phase"><figcaption>'
+                         f'Standardised {head} rainfall for each zone\'s area mean, coloured by concurrent ENSO phase; dashed line is '
+                         f'the zone\'s own driest-third threshold. {spec.get("zone_history_caption", "")}</figcaption></figure>')
+        return o
 
-    if a.get("adm1"):
-        out.append(render_adm1(spec, a, head))
-    if a.get("skill"):
-        out.append(render_skill(spec, a, head))
-    if a.get("fews"):
-        out.append(render_fews(spec, a, head))
-
-    for sec in spec.get("sections_after", []):
-        out.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
-
-    if spec.get("references"):
-        out.append('<h2>References</h2><ul class="refs">')
-        for ref in spec["references"]:
-            out.append(f'<li>{ref["html"]}</li>')
-        out.append('</ul>')
+    blocks = {
+        "verdict": block_verdict, "summary": block_summary, "before": block_before, "era5": block_era5,
+        "drought": block_drought,
+        "adm1": lambda: [render_adm1(spec, a, head, T("adm1", "By province: the same numbers from the team\'s ERA5 raster stats"))] if a.get("adm1") else [],
+        "skill": lambda: [render_skill(spec, a, head, titles.get("skill"))] if a.get("skill") else [],
+        "fews": lambda: [render_fews(spec, a, head, T("fews", "Food security context: FEWS NET"))] if a.get("fews") else [],
+        "after": block_after,
+        "refs": lambda: (['<h2>References</h2><ul class="refs">'] + [f'<li>{ref["html"]}</li>' for ref in spec["references"]] + ['</ul>']) if spec.get("references") else [],
+    }
+    for key in spec.get("section_order", DEFAULT_ORDER):
+        out.extend(blocks[key]())
     out.append(f'<p class="small">Generated by <code>enso_deep_dive.py</code> from <code>deep_dives/{spec["slug"]}.toml</code>. '
                f'Method and data as in the <a href="../../survey/">global survey</a>.</p>')
     out.append(FOOT)
@@ -1254,14 +1280,14 @@ def forecast_summary(sk: dict) -> str:
     return f'<p>{body}</p>'
 
 
-def render_skill(spec: dict, a: dict, head: str) -> str:
+def render_skill(spec: dict, a: dict, head: str, title: str | None = None) -> str:
     sk = a["skill"]
     im = sk["issued_month"]
     mon = MONTH_NAMES[im - 1]
     yr = sk.get("issued_year")
     national = len(sk["rows"]) == 1
-    out = [f'<h2>Can SEAS5 forecast it? Skill of the {mon} issuance{"" if national else ", by zone"}</h2>']
-    out.append(f'<p>A teleconnection is only useful for anticipatory action if the seasonal forecast can carry it. '
+    out = [f'<h2>{html.escape(title) if title else f"Can SEAS5 forecast it? Skill of the {mon} issuance" + ("" if national else ", by zone")}</h2>']
+    out.append("" if not spec.get("skill_intro", True) else f'<p>A teleconnection is only useful for anticipatory action if the seasonal forecast can carry it. '
                f'The figure reads the seas5-skill app\'s per-pixel skill cube — the temporal Pearson r between the '
                f'detrended ECMWF SEAS5 trimester forecast and detrended ERA5, per 0.4° pixel — for forecasts issued on '
                f'1 {mon}, sampled at this page\'s cells and summarised as the median pixel r per zone. Bins are the app\'s '
@@ -1273,13 +1299,14 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
     out.append(f'<figure><img src="skill_issued.png" alt="SEAS5 skill of the {mon} issuance by zone"><figcaption>Top: '
                f'monthly rainfall climatology, whole country (bars) and zones (lines), from two months before the issuance '
                f'to the end of the seven-month SEAS5 horizon. Bottom: median pixel skill of the {mon} issuance for each '
-               f'three-month window, plotted on the window\'s middle month, one line per zone and a dashed line for the '
-               f'whole country, over the app\'s low / moderate / high bands. Hollow markers are windows holding under 15% '
-               f'of that zone\'s annual rain (the app\'s off-season mask); windows left of the dashed vertical had '
+               f'three-month window, plotted on the window\'s middle month, '
+               + ("for the whole country" if national else "one line per zone and a dashed line for the whole country")
+               + f', over the app\'s low / moderate / high bands. Hollow markers are windows holding under 15% '
+               f'of {"the" if national else "that zone"}\'s annual rain (the app\'s off-season mask); windows left of the dashed vertical had '
                f'already started at issuance, so part of them is observed rather than forecast. Third panel: the return period of '
                f'the {mon} {yr if yr else ""} forecast anomaly in each window (Weibull rank of the forecast among its own hindcasts, '
-               f'the app\'s forecast_rp / flood_rp), median pixel per zone; dry seasons plot above the axis and wet below, '
-               f'with the app\'s severe (3-year) and very severe (10-year) alert bands. Filled markers mean the zone\'s skill '
+               f'the app\'s forecast_rp / flood_rp), median pixel{"" if national else " per zone"}; dry seasons plot above the axis and wet below, '
+               f'with the app\'s severe (3-year) and very severe (10-year) alert bands. Filled markers mean {"the" if national else "the zone" + chr(39) + "s"} skill '
                f'there is at least moderate, the app\'s condition for raising an alert.</figcaption></figure>')
     # compact table of the same numbers, with the share of cells at moderate-or-better
     tris = sk["trimesters"]
@@ -1302,15 +1329,15 @@ def render_skill(spec: dict, a: dict, head: str) -> str:
     out.append(f'<p class="small">Each cell: median pixel r, its bin, the share of the zone\'s cells at moderate-or-better skill, and the '
                f'median return period of the {mon} {yr if yr else ""} forecast anomaly (dry = forecast below its hindcast median). '
                'Skill source: <code>skill_stats_grid_detrended.nc</code> (seas5-skill, DEV blob), the same cube behind '
-               'the app\'s pixel skill map. Median of pixel correlations, not the correlation of the zone mean, so it is a '
-               'conservative summary for a coherent zone.</p>')
+               'the app\'s pixel skill map. Median of pixel correlations, not the correlation of the area mean, so it is a '
+               'conservative summary for a coherent area.</p>')
     return "\n".join(out)
 
 
-def render_adm1(spec: dict, a: dict, head: str) -> str:
+def render_adm1(spec: dict, a: dict, head: str, title: str | None = None) -> str:
     ad = a["adm1"]; st = ad["stats"]
-    out = [f'<h2>By province: the same numbers from the team\'s ERA5 raster stats</h2>']
-    out.append('<p>The zones above are analysis bands; operational units are provinces. This section repeats the '
+    out = [f'<h2>{title or "By province: the same numbers from the team&#39;s ERA5 raster stats"}</h2>']
+    out.append("" if not spec.get("adm1_intro", True) else '<p>The zones above are analysis bands; operational units are provinces. This section repeats the '
                'headline-season analysis on the team\'s standard per-admin ERA5 raster stats (monthly means per admin-1 '
                'unit from <code>public.era5</code>, the same table the SEAS5 skill app and the drought triggers use), so '
                'nothing here is recomputed from pixels: each province\'s season series is the stored mean, correlated with '
@@ -1318,7 +1345,7 @@ def render_adm1(spec: dict, a: dict, head: str) -> str:
     out.append(spec.get("adm1_html", ""))
     if ad["has_map"]:
         out.append(f'<figure><img src="adm1_maps.png" alt="Admin-1 maps"><figcaption>Left: Pearson r between the province\'s '
-                   f'{head} mean rainfall and concurrent Niño3.4. Middle: share of El Niño {head} seasons in the province\'s own '
+                   f'{head} mean rainfall and concurrent Niño3.4. Right: share of El Niño {head} seasons in the province\'s own '
                    f'driest third. '
                    + ' Boundaries: CODAB admin-1 via FieldMaps.</figcaption></figure>')
     out.append('<table><thead><tr><th>Province</th><th class="num">ERA5 pixels</th><th class="num">r (concurrent)</th>'
@@ -1332,12 +1359,12 @@ def render_adm1(spec: dict, a: dict, head: str) -> str:
     return "\n".join(out)
 
 
-def render_fews(spec: dict, a: dict, head: str) -> str:
+def render_fews(spec: dict, a: dict, head: str, title: str | None = None) -> str:
     fw = a["fews"]
     order = [sc for sc in ("CS", "ML1", "ML2") if sc in fw["picks"]]
     lbl = {"CS": "Current situation", "ML1": "Near-term projection", "ML2": "Medium-term projection"}
-    out = ['<h2>Food security context: FEWS NET</h2>']
-    out.append('<p>FEWS NET\'s IPC-compatible acute food insecurity classification, from the team\'s daily mirror of the '
+    out = [f'<h2>{title or "Food security context: FEWS NET"}</h2>']
+    out.append("" if not spec.get("fews_intro", True) else '<p>FEWS NET\'s IPC-compatible acute food insecurity classification, from the team\'s daily mirror of the '
                'FEWS NET Data Warehouse (<a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>), drawn '
                'on FEWS NET\'s own livelihood-zone × district units. This is the published map — the “not allowing for '
                'assistance” series; grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies '
@@ -1396,6 +1423,21 @@ def main() -> None:
         raise SystemExit("no deep_dives/*.toml found")
     grid = load_grid(cfg)
     gdf = ts.load_admin0_gdf(cfg)
+    # The analysis uses the survey's pinned Niño3.4 series (cache/nino34.data) so every published
+    # number stays reproducible; the *latest* NOAA series is fetched separately (weekly) and used
+    # only for the "current ENSO state" line. NOAA moved nina34.anom.data to ERSST v6 in 2026,
+    # which shifts anomalies by ~+0.2 °C and changes phase counts — do not mix the two.
+    latest = cfg["cache_dir"] / "nino34_latest.data"
+    if not latest.exists() or (pd.Timestamp.now() - pd.Timestamp(latest.stat().st_mtime, unit="s")) > pd.Timedelta(days=7):
+        try:
+            import requests
+            txt = requests.get(ts.INDEX_SOURCES["nino34"], timeout=60).text
+            if len(txt) > 1000:
+                latest.write_text(txt)
+        except Exception as e:  # noqa: BLE001
+            print(f"  (Niño3.4 latest refresh failed: {e})")
+    global NINO_LATEST
+    NINO_LATEST = ts._parse_psl(latest.read_text()) if latest.exists() else None
     indices = ts.load_indices(cfg)
     for spec in specs:
         if args.only and spec["slug"] != args.only:
