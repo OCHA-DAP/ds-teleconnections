@@ -199,6 +199,30 @@ def fig_seasonal_cycle(c: Country, grid: Grid, headline: list[int], out: Path, n
     fig.tight_layout(); fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
 
+def fig_zone_map(c: Country, zones: dict[str, np.ndarray], out: Path, name: str, head: str) -> None:
+    """Locator map: which cells belong to which zone (same colours as the zone lines elsewhere)."""
+    w, h = _panel_size(c, base=3.6, floor=2.2)
+    fig, ax = plt.subplots(figsize=(w + 2.6, h + 0.9), dpi=150)
+    ext = _extent(c)
+    cols = ["#1F5F96", "#5E9FD2", "#18614c", "#8a4f7d"]
+    idx = np.full(c.mask.shape, np.nan)
+    for i, (label, zm) in enumerate(zones.items()):
+        idx[zm] = i
+    n = len(zones)
+    cmap = mcolors.ListedColormap(cols[:n])
+    _pcolor(ax, c, idx, cmap, -0.5, n - 0.5)
+    # cells inside the country but in no zone (no headline season): light grey
+    none = c.mask & np.isnan(idx)
+    _pcolor(ax, c, np.where(none, 0.0, np.nan), mcolors.ListedColormap(["#ececec"]), -1, 1)
+    _draw_country(ax, c, ext)
+    ax.set_title(f"{name}: zones used on this page", fontsize=10, color=C_TEXT, loc="left")
+    handles = [Patch(color=cols[i], label=f"{lbl} — {int(zm.sum())} cells") for i, (lbl, zm) in enumerate(zones.items())]
+    if none.any():
+        handles.append(Patch(color="#ececec", label=f"no {head} season ({int(none.sum())} cells)"))
+    ax.legend(handles=handles, frameon=False, fontsize=8, loc="center left", bbox_to_anchor=(1.02, 0.5))
+    fig.savefig(out, bbox_inches="tight"); plt.close(fig)
+
+
 def _draw_country(ax, c: Country, grid_extent):
     c.neighbours.boundary.plot(ax=ax, color="#b8bfbf", linewidth=0.6)
     c.geom.boundary.plot(ax=ax, color="#1f2324", linewidth=1.1)
@@ -727,6 +751,8 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
         zm &= (lat2d > z.get("min_lat", -90.0)) & (lat2d <= z.get("max_lat", 90.0))
         zones[z["label"]] = zm
     fig_seasonal_cycle(c, grid, hm, out_dir / "seasonal_cycle.png", name, zones or None)
+    if zones:
+        fig_zone_map(c, zones, out_dir / "zones_map.png", name, head)
 
     # Correlation maps: headline + any extra seasons, best lag 0..3 (as in the survey)
     panels, summaries = [], []
@@ -957,6 +983,11 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
     out.append(f'<h3>Seasonal cycle</h3>{spec.get("seasonal_cycle_html", "")}')
     out.append('<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology"><figcaption>Area-mean monthly '
                'rainfall over all grid cells in the country. Dark bars mark the headline season used below.</figcaption></figure>')
+    if spec.get("zones"):
+        out.append('<figure style="max-width:620px"><img src="zones_map.png" alt="Zone locator map"><figcaption>Where the zones '
+                   'are: the 0.25° cells assigned to each zone used in the charts and tables on this page'
+                   + (' (latitude bands)' if any("min_lat" in z or "max_lat" in z for z in spec["zones"]) else
+                      f' (bands of {head} climatology)') + '.</figcaption></figure>')
 
     out.append(f'<h3>Pixel-level correlation with Niño3.4</h3>{spec.get("corr_html", "")}')
     out.append('<figure><img src="corr_maps.png" alt="Pixel-level Niño3.4 correlation maps"><figcaption>Pearson r between '
