@@ -1010,9 +1010,10 @@ def fig_seasons(rows: list[dict], head: str, out: Path, name: str, start_year: i
             ax.text(r["year"], r["cerf_usd"] / 1e6 + 0.3, f'{r["cerf_usd"] / 1e6:.0f}', fontsize=6.5, color=C_TEXT, ha="center", va="bottom")
     ax.set_ylabel("CERF drought\nallocations (US$ M)", fontsize=8.5, color=C_MUTED); _style_ax(ax)
     ax = axes[2]
-    kinds = [("pre", -0.28, "pre-season outlook (issued Jun–Sep, for Oct–Jan)", dict(alpha=1.0, edgecolor="none")),
-             ("mid", 0.0, "in-season outlook (issued Oct, for Feb–May)", dict(alpha=0.55, edgecolor="none")),
-             ("obs", 0.28, "observed at the lean-season peak (Jan–Apr)", dict(alpha=1.0, edgecolor=C_TEXT, linewidth=0.8))]
+    plt.rcParams["hatch.linewidth"] = 0.6
+    kinds = [("pre", -0.28, "pre-season outlook (issued Jun–Sep, for Oct–Jan)", dict(hatch="///", edgecolor="#5a3a12", linewidth=0)),
+             ("mid", 0.0, "in-season outlook (issued Oct, for Feb–May)", dict(hatch="\\\\\\", edgecolor="#5a3a12", linewidth=0)),
+             ("obs", 0.28, "observed at the lean-season peak (Jan–Apr)", dict(edgecolor="none", linewidth=0))]
     for key, off, _, style in kinds:
         for r in rows:
             e = (r.get("fews_all") or {}).get(key)
@@ -1026,9 +1027,9 @@ def fig_seasons(rows: list[dict], head: str, out: Path, name: str, start_year: i
                     base += v
     ax.set_ylabel("FEWS NET units in\nPhase 3 / 4 / 5 (%)", fontsize=8.5, color=C_MUTED); ax.set_ylim(0, 105); _style_ax(ax)
     handles = [Patch(color=IPC_COLOURS[3], label="Phase 3"), Patch(color=IPC_COLOURS[4], label="Phase 4"), Patch(color=IPC_COLOURS[5], label="Phase 5"),
-               Patch(facecolor="#bbbbbb", alpha=1.0, label="left: pre-season outlook (Jun–Sep, for Oct–Jan)"),
-               Patch(facecolor="#bbbbbb", alpha=0.55, label="middle: in-season outlook (Oct, for Feb–May)"),
-               Patch(facecolor="#bbbbbb", edgecolor=C_TEXT, linewidth=0.8, label="right: observed, lean-season peak (Jan–Apr)")]
+               Patch(facecolor="#d9d9d9", hatch="///", edgecolor="#5a3a12", linewidth=0, label="left: pre-season outlook (Jun–Sep, for Oct–Jan)"),
+               Patch(facecolor="#d9d9d9", hatch="\\\\\\", edgecolor="#5a3a12", linewidth=0, label="middle: in-season outlook (Oct, for Feb–May)"),
+               Patch(facecolor="#d9d9d9", edgecolor="none", label="right: observed, lean-season peak (Jan–Apr)")]
     ax.legend(handles=handles, frameon=False, fontsize=7, loc="upper left", ncol=2)
     first_p3 = min([r["year"] for r in rows if any((e.get("p3", 0) + e.get("p4", 0) + e.get("p5", 0)) > 0 for e in (r.get("fews_all") or {}).values())] or [yrs[0]])
     if first_p3 > yrs[0]:
