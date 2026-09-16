@@ -659,10 +659,15 @@ def load_fews(iso3: str) -> dict | None:
         if len(sub):
             picks[sc] = dict(round=latest, doc=sub.doc.iloc[0], start=sub.projection_start.iloc[0], end=sub.projection_end.iloc[0],
                              phase=sub.set_index("fnid").phase.astype(int).to_dict())
+    # per-round share of classified units in Phase 3+ / 4+ (current situation), for the season table
+    hist = {}
+    cs_all = rows[rows.scenario == "CS"]
+    for rd, g in cs_all.groupby("reporting_date"):
+        hist[rd] = dict(n=int(len(g)), p3=float((g.phase >= 3).mean()), p4=float((g.phase >= 4).mean()))
     ucols = units["columns"]; ureg = pd.DataFrame([dict(zip(ucols, r)) for r in units["rows"]]).set_index("fnid")
     key = "fnid" if "fnid" in gdf.columns else [c for c in gdf.columns if c.lower() in ("fnid", "pcode")][0]
     gdf = gdf.rename(columns={key: "fnid"})
-    return dict(gdf=gdf, picks=picks, units=ureg, generated=cls.get("generated_at"))
+    return dict(gdf=gdf, picks=picks, units=ureg, generated=cls.get("generated_at"), history=hist)
 
 
 def fig_fews_maps(c: Country, fews: dict, hit: np.ndarray | None, analysable: np.ndarray | None,
@@ -822,6 +827,192 @@ def fig_adm1_maps(c: Country, adm: gpd.GeoDataFrame, stats: pd.DataFrame, season
 
 
 # --------------------------------------------------------------------------- #
+# Season-by-season table: rainfall, ENSO phase, CERF drought allocations, FEWS NET population
+# --------------------------------------------------------------------------- #
+def load_cerf_drought(iso3: str) -> pd.DataFrame:
+    """CERF drought allocations for a country from the team's OneGMS mirror (aa.cerf_allocation,
+    dev DB) joined to the drought-period supplement (aa.cerf_supplement). Cached as parquet."""
+    cache = Path(f"cache/cerf_drought_{iso3}.parquet")
+    if cache.exists() and (pd.Timestamp.now() - pd.Timestamp(cache.stat().st_mtime, unit="s")) < pd.Timedelta(days=7):
+        return pd.read_parquet(cache)
+    import os
+    os.environ.setdefault("PGSSLMODE", "require")
+    import ocha_stratus as stratus
+    eng = stratus.get_engine(stage="dev")
+    df = pd.read_sql(
+        "SELECT a.application_code, a.year, a.window_name, a.emergency_type, a.title, a.amount_approved, "
+        "a.first_project_approved_date, s.valid_month_start, s.valid_year_start, s.valid_month_end, s.valid_year_end, s.not_drought "
+        "FROM aa.cerf_allocation a LEFT JOIN aa.cerf_supplement s ON s.application_code = a.application_code "
+        "WHERE a.country_iso3 = %(iso)s AND a.emergency_type = 'Drought' ORDER BY a.first_project_approved_date", eng, params={"iso": iso3})
+    df = df[df.not_drought.isna() | (df.not_drought == False)]  # noqa: E712
+    df["first_project_approved_date"] = pd.to_datetime(df.first_project_approved_date)
+    cache.parent.mkdir(parents=True, exist_ok=True); df.to_parquet(cache)
+    return df
+
+
+def load_fews_population(iso2: str) -> pd.DataFrame | None:
+    """FEWS NET's public national population-in-Phase-3+ series (FDW ipcpopulationsize: FAOB monthly
+    current situation from 2019, Annual Peak Needs from 2016). Values are FEWS NET's bins (low–high)."""
+    cache = Path(f"cache/fdw_ipcpopulationsize_{iso2}.json")
+    try:
+        if not cache.exists() or (pd.Timestamp.now() - pd.Timestamp(cache.stat().st_mtime, unit="s")) > pd.Timedelta(days=7):
+            import requests
+            r = requests.get(f"https://fdw.fews.net/api/ipcpopulationsize/?country_code={iso2}&format=json&page_size=1000", timeout=120)
+            r.raise_for_status(); cache.write_text(r.text)
+        res = json.loads(cache.read_text())["results"]
+    except Exception as e:  # noqa: BLE001
+        print(f"  (FDW population series not available: {e})"); return None
+    df = pd.DataFrame(res)
+    if df.empty:
+        return None
+    df = df[(df.status == "Collected") & (df.phase == "3+")].copy()
+    df["start"] = pd.to_datetime(df.projection_start); df["end"] = pd.to_datetime(df.projection_end)
+    return df[["scenario_name", "source_document", "start", "end", "value", "low_value", "high_value"]]
+
+
+def _fmt_range(lo, hi) -> str:
+    def m(v):
+        return f"{v / 1e6:.1f}".rstrip("0").rstrip(".")
+    if lo is None or (isinstance(lo, float) and np.isnan(lo)):
+        return "—"
+    if hi is None or (isinstance(hi, float) and np.isnan(hi)):
+        return f"{m(lo)} M"
+    return f"{m(lo)}–{m(float(hi) + 1)} M"
+
+
+def season_table(iso3: str, iso2: str, df: pd.DataFrame, head: str, fews: dict | None, forecast_year: int | None = None) -> list[dict]:
+    """One row per headline season since 1981: rainfall anomaly/rank, ENSO phase, CERF drought
+    allocations attributed to the season, FEWS NET population in Phase 3+ (peak in the consumption
+    year Apr Y+1 – Mar Y+2) and the share of FEWS NET units in Phase 3+ / 4+ at that peak."""
+    n_all = len(df)
+    try:
+        cerf = load_cerf_drought(iso3)
+    except Exception as e:  # noqa: BLE001
+        print(f"  (CERF mirror not available: {e})"); cerf = pd.DataFrame()
+    pop = load_fews_population(iso2)
+    # FEWS NET unit shares per CS round (from the mirror's classification record)
+    unit_share = {}
+    if fews and fews.get("history") is not None:
+        unit_share = fews["history"]
+    def build_row(yr: int, r):
+        cy0, cy1 = pd.Timestamp(yr + 1, 4, 1), pd.Timestamp(yr + 2, 3, 31)   # consumption year
+        # CERF: supplement valid period first, else allocation date in the consumption year
+        cerf_txt = ""
+        if len(cerf):
+            def season_of(a):
+                """Season the allocation responds to: the supplement's dated rainy season when present
+                (starts Jul–Dec → that year; Jan–Jun → the year before), else the consumption year the
+                allocation date falls in (Apr Y+1 – Mar Y+2 → season Y)."""
+                if pd.notna(a.valid_year_start):
+                    y0 = int(a.valid_year_start); m0 = int(a.valid_month_start) if pd.notna(a.valid_month_start) else 11
+                    return (y0 if m0 >= 7 else y0 - 1), True
+                d = a.first_project_approved_date
+                return (d.year - 2 if d.month <= 3 else d.year - 1), False
+            att = [season_of(a) for _, a in cerf.iterrows()]
+            hits = cerf[[y == yr for y, _ in att]]
+            dated = [ok for (y, ok) in att if y == yr]
+            if len(hits):
+                cerf_txt = f'US$ {hits.amount_approved.sum() / 1e6:.1f} M · ' + "; ".join(
+                    f'{a.first_project_approved_date:%b %Y} ({a.window_name.split()[0]}, {a.amount_approved / 1e6:.1f} M{"" if ok else ", by date"})'
+                    for (_, a), ok in zip(hits.iterrows(), dated))
+        # FEWS NET population 3+: peak monthly CS in the consumption year; else Peak Needs whose period starts in it
+        pop_txt, pop_src = "", ""
+        if pop is not None and len(pop):
+            cs = pop[(pop.scenario_name == "Current Situation") & (pop.start >= cy0) & (pop.start <= cy1)]
+            pn = pop[(pop.scenario_name == "Peak Needs") & (pop.start >= cy0) & (pop.start <= cy1)]
+            cand = pd.concat([cs, pn]) if (len(cs) or len(pn)) else cs
+            if len(cand):
+                k = cand.loc[cand.value.idxmax()]; pop_txt = _fmt_range(k.low_value, k.high_value)
+                pop_src = (f"FAOB, peak {k.start:%b %Y}" if k.scenario_name == "Current Situation"
+                           else f"Peak Needs {k.start:%b %Y}–{k.end:%b %Y}")
+        # FEWS NET unit shares at the peak CS round in the consumption year
+        share_txt, share_src = "", ""
+        if unit_share:
+            rounds = {rd: v for rd, v in unit_share.items() if cy0 <= pd.Timestamp(rd + "-01") <= cy1}
+            if rounds:
+                rd, v = max(rounds.items(), key=lambda kv: kv[1]["p3"])
+                share_txt = f'{pct(v["p3"])} / {pct(v["p4"])}'; share_src = f'{rd} · {v["n"]} units'
+        if r is None:
+            return dict(year=yr, label=f"{yr}/{str(yr + 1)[-2:]}", z=None, rank=None, n=n_all, nino=None, phase="Neutral",
+                        cerf=cerf_txt, pop=pop_txt, pop_src=pop_src, share=share_txt, share_src=share_src, forecast=None, gap=True)
+        return dict(year=yr, label=f"{yr}/{str(yr + 1)[-2:]}", z=float(r.z), rank=int(round(r.pct * n_all)), n=n_all,
+                    nino=float(r.nino), phase=r.phase, cerf=cerf_txt, pop=pop_txt, pop_src=pop_src,
+                    share=share_txt, share_src=share_src, forecast=None, gap=False)
+
+    rows = [build_row(int(yr), r) for yr, r in df.iterrows()]
+    last = int(df.index.max())
+    for yr in range(last + 1, (forecast_year or last + 1)):
+        rows.append(build_row(yr, None))
+    return rows
+
+
+def forecast_row(a: dict, head: str, fews: dict | None, pop_iso2: str | None) -> dict | None:
+    """A final row for the season now being forecast: SEAS5 return period, current ENSO state,
+    FEWS NET's projection (units in Phase 3+ / 4+) and its projected Peak Needs population."""
+    sk, nn = a.get("skill"), a.get("nino_now")
+    if not sk or not nn:
+        return None
+    yr = int(sk.get("issued_year") or int(a["df"].index.max()) + 1)
+    hm0 = ts._TRIMESTER_MONTHS[head][0]
+    if hm0 < sk["issued_month"] and hm0 <= 6:     # season starts next calendar year (e.g. JFM issued in Sep)
+        yr = yr  # season year labels the year the season's first month... keep the issuance year as the season label
+    wc = [r for r in sk["rows"] if r["zone"].startswith("Whole country")] or sk["rows"]
+    rp = wc[0]["rp"].get(head, np.nan); r_sk = wc[0]["r"].get(head, np.nan)
+    rp_txt = "—" if np.isnan(rp) else (f'SEAS5 {MONTH_NAMES[sk["issued_month"] - 1]} issuance: {"dry" if rp > 0 else "wet"}, return period {abs(rp):.0f} yr ({skill_cat(r_sk)} skill)')
+    share_txt, share_src, pop_txt, pop_src = "", "", "", ""
+    if fews and fews.get("picks"):
+        sc = "ML2" if "ML2" in fews["picks"] else "ML1" if "ML1" in fews["picks"] else None
+        if sc:
+            ph = pd.Series(fews["picks"][sc]["phase"])
+            share_txt = f'{pct((ph >= 3).mean())} / {pct((ph >= 4).mean())}'
+            share_src = f'{sc} projection {_window(fews["picks"][sc]["start"], fews["picks"][sc]["end"])} · {len(ph)} units'
+    return dict(year=yr, label=f"{yr}/{str(yr + 1)[-2:]} (forecast)", z=None, rank=None, n=None, rp_txt=rp_txt,
+                nino=nn["value"], phase=nn["phase"].replace("neutral", "Neutral"), nino_date=nn["date"],
+                cerf="", pop=pop_txt, pop_src=pop_src, share=share_txt, share_src=share_src, forecast=True)
+
+
+def render_seasons(spec: dict, a: dict, head: str, title: str | None = None) -> str:
+    rows = a["seasons"]
+    out = [f'<h2>{html.escape(title) if title else f"Season by season: {head} rainfall, ENSO, CERF and FEWS NET"}</h2>']
+    out.append(spec.get("seasons_html", ""))
+    out.append('<div style="overflow-x:auto"><table class="skill seasons"><thead><tr><th>Season</th>'
+               f'<th class="num">{head} rainfall<br><span class="small">anomaly (SD) · rank, 1 = driest</span></th>'
+               f'<th>ENSO<br><span class="small">Niño3.4 in {head}</span></th>'
+               '<th>CERF drought allocation<br><span class="small">for this season\'s drought</span></th>'
+               '<th class="num">FEWS NET, people in Phase 3+<br><span class="small">peak in the following consumption year</span></th>'
+               '<th class="num">FEWS NET units in Phase 3+ / 4+<br><span class="small">share of classified units at that peak</span></th></tr></thead><tbody>')
+    for r in rows:
+        cls = ' class="hl"' if r["phase"] == "El Niño" else ""
+        ph = {"El Niño": "#D1495B", "La Niña": "#2E7DBD", "Neutral": "#9AA3AD"}[r["phase"]]
+        if r.get("forecast"):
+            rain = f'<span class="small">{html.escape(r["rp_txt"])}</span>'
+            enso = (f'<span class="chip" style="background:{ph};color:#fff;margin:0">{r["phase"]}</span> '
+                    f'<span class="small">{r["nino"]:+.2f} in {r["nino_date"]:%b %Y}</span>')
+            cls = ' class="hl" style="border-top:2px solid #c9d0d0"'
+        elif r.get("gap"):
+            rain = '<span class="small">ERA5 season not yet in the cache</span>'
+            enso = '<span class="small">—</span>'; cls = ""
+        else:
+            rain = f'{fmt_r(r["z"])} · {r["rank"]} of {r["n"]}'
+            enso = f'<span class="chip" style="background:{ph};color:#fff;margin:0">{r["phase"]}</span> <span class="small">{r["nino"]:+.2f}</span>'
+        out.append(f'<tr{cls}><td>{r["label"]}</td><td class="num">{rain}</td><td>{enso}</td>'
+                   f'<td>{html.escape(r["cerf"]) if r["cerf"] else "<span class=small>—</span>"}</td>'
+                   f'<td class="num">{r["pop"] or "<span class=small>—</span>"}' + (f'<br><span class="small">{html.escape(r["pop_src"])}</span>' if r["pop_src"] else "") + '</td>'
+                   f'<td class="num">{r["share"] or "<span class=small>—</span>"}' + (f'<br><span class="small">{html.escape(r["share_src"])}</span>' if r["share_src"] else "") + '</td></tr>')
+    out.append('</tbody></table></div>')
+    out.append('<p class="small">Rainfall: ERA5 area mean over the rain-fed cells, standardised over 1981–2025. ENSO phase: concurrent Niño3.4 '
+               f'(≥ +{ENSO_THRESH} El Niño, ≤ −{ENSO_THRESH} La Niña; pinned NOAA series). CERF: Rapid Response / Underfunded Emergencies applications with '
+               'emergency type “Drought” from the team\'s OneGMS mirror, attributed to the rainy season named in the CERF drought-period '
+               'supplement (or, failing that, to the season whose harvest year the allocation fell in). FEWS NET people in Phase 3+: '
+               'FEWS NET\'s public national series (Food Assistance Outlook Brief monthly current situation from 2019; Annual Peak Needs '
+               '2016–2018), shown as FEWS NET\'s published range, peak within the consumption year Apr–Mar after the harvest. FEWS NET '
+               'publishes no population in Phase 4+; the last column gives the share of FEWS NET\'s classified units in Phase 3+ and in '
+               'Phase 4+ at that peak (from the mirror\'s classification record, 2011 onward). “By date” marks a CERF allocation attributed '
+               'from its approval date alone. Highlighted rows are El Niño seasons; the last row is the season now being forecast.</p>')
+    return "\n".join(out)
+
+
+# --------------------------------------------------------------------------- #
 # Analysis for one country
 # --------------------------------------------------------------------------- #
 def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame, cfg: dict,
@@ -954,7 +1145,14 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
                             n_units={k: len(v["phase"]) for k, v in fews["picks"].items()},
                             p3_units={k: int(sum(1 for p in v["phase"].values() if p >= 3)) for k, v in fews["picks"].items()})
 
-    # Admin-1 view: the team's ERA5 per-admin raster stats + CODAB polygons (+ FEWS NET share by admin-1)
+    seasons, seasons_iso2 = None, None
+    if spec.get("season_table"):
+        iso2 = spec.get("iso2") or (fews["gdf"].iso2.iloc[0] if (fews and "iso2" in fews["gdf"].columns) else iso3[:2])
+        fyear = int(skill["issued_year"]) if (skill and skill.get("issued_year")) else None
+        seasons = season_table(iso3, iso2, df, head, fews, fyear)
+        seasons_iso2 = iso2
+
+    # Admin-1 view: the team's ERA5 per-admin raster stats + CODAB polygons
     adm1_out = None
     if spec.get("adm1", True):
         stats = adm1_enso_stats(iso3, hm, indices, grid.years)
@@ -993,12 +1191,17 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     # 3-month running mean, NOAA-style
     now_3m = float(nino_now.iloc[-3:].mean())
 
-    return dict(country=c, summaries=summaries, df=df, phase_rows=phase_rows, en=en, driest=driest,
+    result = dict(country=c, summaries=summaries, df=df, phase_rows=phase_rows, en=en, driest=driest,
                 nino_now=dict(value=now_val, date=now_date, phase=now_phase, mean3=now_3m),
                 r_area=r_area, r_area_lag1=r_area_lag1, comp_med=float(np.nanmedian(comp[ok_head])),
                 comp_frac=float((comp[ok_head] < -0.5).mean()), hit_med=float(np.nanmedian(hit[ok_head])),
-                zone_rows=zone_rows, skill=skill, fews=fews_out, adm1=adm1_out, adm0=adm0, n_cells=int(c.mask.sum()),
+                zone_rows=zone_rows, skill=skill, fews=fews_out, adm1=adm1_out, seasons=seasons, adm0=adm0, n_cells=int(c.mask.sum()),
                 n_head=int(ok_head.sum()))
+    if seasons is not None:
+        fr = forecast_row(result, head, fews, seasons_iso2)
+        if fr:
+            result["seasons"] = seasons + [fr]
+    return result
 
 
 # --------------------------------------------------------------------------- #
@@ -1032,7 +1235,7 @@ th{background:#eef2f7;font-weight:600}
 td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .hl{background:#fbf3ea}
 .refs li{margin:0 0 6px;font-size:14px}
-table.skill{font-size:12.5px;width:100%}table.skill th,table.skill td{padding:5px 6px}table.skill .chip{font-size:11px;padding:1px 6px}table.skill .small{font-size:11px}
+table.skill{font-size:12.5px;width:100%}table.seasons td,table.seasons th{vertical-align:top}table.skill th,table.skill td{padding:5px 6px}table.skill .chip{font-size:11px;padding:1px 6px}table.skill .small{font-size:11px}
 a{color:var(--b6)}
 .small{font-size:13px;color:var(--n7)}
 @media(max-width:640px){.wrap{padding:12px 18px 36px}.verdict{grid-template-columns:1fr}h1{font-size:24px}}
@@ -1074,7 +1277,7 @@ def pct(v) -> str:
     return f"{100 * v:.0f}%"
 
 
-DEFAULT_ORDER = ["verdict", "summary", "before", "era5", "drought", "adm1", "skill", "fews", "after", "refs"]
+DEFAULT_ORDER = ["verdict", "summary", "before", "era5", "drought", "seasons", "adm1", "skill", "fews", "after", "refs"]
 
 
 def render_country(spec: dict, a: dict, end_year: int) -> str:
@@ -1225,6 +1428,7 @@ def render_country(spec: dict, a: dict, end_year: int) -> str:
         "adm1": lambda: [render_adm1(spec, a, head, T("adm1", "By province: the same numbers from the team\'s ERA5 raster stats"))] if a.get("adm1") else [],
         "skill": lambda: [render_skill(spec, a, head, titles.get("skill"))] if a.get("skill") else [],
         "fews": lambda: [render_fews(spec, a, head, T("fews", "Food security context: FEWS NET"))] if a.get("fews") else [],
+        "seasons": lambda: [render_seasons(spec, a, head, titles.get("seasons"))] if a.get("seasons") else [],
         "after": block_after,
         "refs": lambda: (['<h2>References</h2><ul class="refs">'] + [f'<li>{ref["html"]}</li>' for ref in spec["references"]] + ['</ul>']) if spec.get("references") else [],
     }

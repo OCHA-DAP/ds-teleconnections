@@ -13,7 +13,8 @@ show_adm0 = false
 skill_intro = false
 fews_intro = false
 adm1_intro = false
-section_order = ["summary", "skill", "fews", "drought", "era5", "adm1", "after", "refs"]
+season_table = true
+section_order = ["summary", "skill", "fews", "drought", "seasons", "era5", "adm1", "after", "refs"]
 
 summary_html = '''
 <p><strong>1. How bad.</strong> The September 2026 SEAS5 issuance forecasts a dry season across the whole of Zimbabwe: the national forecast for OND, NDJ, DJF and JFM sits at 15- to 23-year return periods on the dry side of its own 45-year hindcast — among the driest one in twenty forecasts the model has ever made for these months. FEWS NET already projects 57 of 203 units into Phase 3 (Crisis) for October 2026 to January 2027, concentrated in the south and west, before the rains have started.</p>
@@ -46,6 +47,10 @@ corr_html = '''
 <p>The DJF correlation with Niño3.4 is −0.68 nationally, the strongest in the survey; every cell is past −0.3 and 86% past −0.5. An r of −0.68 means ENSO accounts for about 46% of the year-to-year variance in DJF rainfall. The signal is already present in OND (−0.5), peaks in DJF and holds through JFM, with the same sign everywhere: there is no part of the country and no part of the season that responds the other way. This is the textbook southern-Africa teleconnection, quantified for Zimbabwe since Cane, Eshel and Buckland (1994) showed Pacific sea-surface temperature explained more than 60% of the variance in the national maize yield.</p>
 '''
 
+seasons_html = '''
+<p>Every season since 1981 on one line: how dry it was, whether it was an El Niño season, whether CERF funded a drought response for it, and what FEWS NET recorded for the lean season that followed. Where the FEWS NET series exists, the largest caseloads follow the El Niño seasons of 2018/19 and 2023/24 and the 2015/16 drought; the two CERF allocations of 2023/24 were the first made <em>during</em> the season rather than after the harvest had failed.</p>
+'''
+
 adm1_html = '''
 <p>From the team's per-province ERA5 raster stats: concurrent DJF correlations run from −0.71 in Mashonaland East to −0.52 in Matabeleland South, and in every province at least eight of the fourteen El Niño seasons were in the province's own driest third against fewer than one in six La Niña seasons. The coupling is a little weaker in the far south-west; otherwise the country moves together.</p>
 '''
@@ -56,6 +61,7 @@ fews = "Where food insecurity already sits (FEWS NET)"
 drought = "2. How confident are we? What El Niño seasons have done before"
 era5 = "3. How much of this is El Niño?"
 adm1 = "The same, by province"
+seasons = "Season by season: rainfall, El Niño, CERF and FEWS NET"
 
 [[zones]]
 label = "Highveld & north-east (DJF ≥ 6 mm/day)"
