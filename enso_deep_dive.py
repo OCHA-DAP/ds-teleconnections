@@ -49,6 +49,7 @@ DIVERGING = mcolors.LinearSegmentedColormap.from_list(
     "brbu", ["#7A4E22", "#B17E50", "#E8CDB0", "#F3F3F1", "#BFD9EE", "#5E9FD2", "#1F5F96"])
 ENSO_THRESH = 0.5
 NINO_LATEST = None   # latest NOAA Niño3.4 series (current-state line only); set in main()
+END_YEAR = 2025      # last year with ERA5 months in the cache; set in main()
 GRADES = {"robust": "#9C6730", "moderate": "#D29A6C", "single-study": "#F0DAC2", "none": "#DBDBDB"}
 
 
@@ -57,11 +58,54 @@ GRADES = {"robust": "#9C6730", "moderate": "#D29A6C", "single-study": "#F0DAC2",
 # --------------------------------------------------------------------------- #
 @dataclass
 class Grid:
-    stack: np.ndarray               # (n_months, ny, nx) memmap, full viewport
+    stack: np.ndarray               # (n_months, ny, nx) memmap, full viewport (the survey's cache)
     mpos: dict[tuple[int, int], int]
     x: np.ndarray
     y: np.ndarray
     years: np.ndarray = field(default_factory=lambda: np.arange(1981, 2026))
+    ext: np.ndarray | None = None   # months published after the survey's cache (monthly_ext.npy)
+
+
+def extend_pixel_cache(cfg: dict) -> None:
+    """Append the ERA5 months published after the survey's cache (which stops at its end_year) to a
+    small side file, cache/era5_pixel/monthly_ext.npy, so the deep dives can use the current season
+    without touching the survey's cache or its validity check. Rebuilt when the blob has newer months."""
+    d = cfg["cache_dir"] / "era5_pixel"
+    meta = json.loads((d / "meta.json").read_text())
+    last = tuple(meta["ym"][-1])
+    ext_meta = d / "meta_ext.json"
+    have = [tuple(t) for t in json.loads(ext_meta.read_text())["ym"]] if ext_meta.exists() else []
+    try:
+        import ocha_stratus as stratus
+        container = stratus.get_container_client("raster", stage="prod")
+        available = {ts._PIXEL_DATE_RE.search(b.name).group(0): b.name
+                     for b in container.list_blobs(name_starts_with=ts.PIXEL_BLOB_PREFIX) if ts._PIXEL_DATE_RE.search(b.name)}
+    except Exception as e:  # noqa: BLE001
+        print(f"  (ERA5 blob not reachable, using cached months only: {e})"); return
+    want = []
+    yr, m = last
+    while True:
+        m += 1
+        if m > 12:
+            m = 1; yr += 1
+        key = f"{yr}-{m:02d}-01"
+        if key not in available:
+            break
+        want.append((yr, m))
+    if not want or want == have:
+        return
+    print(f"  extending the ERA5 pixel cache with {len(want)} month(s): {want[0]} … {want[-1]}")
+    x, y = np.asarray(meta["x"]), np.asarray(meta["y"])
+    probe = stratus.open_blob_cog(available[f"{want[0][0]}-{want[0][1]:02d}-01"], container_name="raster", container_client=container)
+    xs, ys = probe.x.values, probe.y.values
+    x0 = int(np.argmin(np.abs(xs - x[0]))); y0 = int(np.argmin(np.abs(ys - y[0])))
+    assert np.allclose(xs[x0:x0 + len(x)], x) and np.allclose(ys[y0:y0 + len(y)], y), "grid window mismatch"
+    arr = np.lib.format.open_memmap(d / "monthly_ext.npy", mode="w+", dtype="float32", shape=(len(want), len(y), len(x)))
+    for i, (yr, m) in enumerate(want):
+        da = stratus.open_blob_cog(available[f"{yr}-{m:02d}-01"], container_name="raster", container_client=container)
+        arr[i] = da.isel(band=0, y=slice(y0, y0 + len(y)), x=slice(x0, x0 + len(x))).values.astype("float32")
+    arr.flush(); del arr
+    ext_meta.write_text(json.dumps({"ym": want}))
 
 
 def load_grid(cfg: dict) -> Grid:
@@ -69,9 +113,14 @@ def load_grid(cfg: dict) -> Grid:
     meta = json.loads((d / "meta.json").read_text())
     stack = np.load(d / "monthly.npy", mmap_mode="r")
     ym = [tuple(t) for t in meta["ym"]]
-    return Grid(stack=stack, mpos={p: i for i, p in enumerate(ym)},
+    ext = None
+    if (d / "meta_ext.json").exists() and (d / "monthly_ext.npy").exists():
+        ext_ym = [tuple(t) for t in json.loads((d / "meta_ext.json").read_text())["ym"]]
+        ext = np.load(d / "monthly_ext.npy", mmap_mode="r")
+        ym = ym + ext_ym
+    return Grid(stack=stack, ext=ext, mpos={p: i for i, p in enumerate(ym)},
                 x=np.asarray(meta["x"]), y=np.asarray(meta["y"]),
-                years=np.arange(cfg["start_year"], cfg["end_year"] + 1))
+                years=np.arange(cfg["start_year"], ym[-1][0] + 1))
 
 
 @dataclass
@@ -98,8 +147,11 @@ def cut_country(grid: Grid, gdf: gpd.GeoDataFrame, iso3: str, pad: int = 2) -> C
     c0, c1 = max(ix.min() - pad, 0), min(ix.max() + pad + 1, len(grid.x))
     bbox = sel.total_bounds
     nb = gdf[gdf.intersects(sel.geometry.union_all().buffer(3.0)) & (gdf.iso3 != iso3)]
+    sub = grid.stack[:, r0:r1, c0:c1]
+    if grid.ext is not None:
+        sub = np.concatenate([np.asarray(sub), np.asarray(grid.ext[:, r0:r1, c0:c1])], axis=0)
     return Country(iso3=iso3, geom=sel.geometry, lat=grid.y[r0:r1], lon=grid.x[c0:c1],
-                   mask=full[r0:r1, c0:c1], sub=grid.stack[:, r0:r1, c0:c1], neighbours=nb)
+                   mask=full[r0:r1, c0:c1], sub=sub, neighbours=nb)
 
 
 def season_months(code: str) -> list[int]:
@@ -284,7 +336,7 @@ def fig_corr_maps(c: Country, panels: list[dict], out: Path, name: str) -> None:
     cb.set_ticks([-0.6, -0.3, 0, 0.3, 0.6])
     cb.ax.text(0.5, 1.03, "wetter under\nEl Niño", transform=cb.ax.transAxes, fontsize=7.5, color=C_MUTED, va="bottom", ha="center")
     cb.ax.text(0.5, -0.03, "drier under\nEl Niño", transform=cb.ax.transAxes, fontsize=7.5, color=C_MUTED, va="top", ha="center")
-    fig.suptitle(f"{name}: pixel-level Niño3.4 correlation\n(ERA5 0.25°, 1981–2025; grey = season too small to analyse)",
+    fig.suptitle(f"{name}: pixel-level Niño3.4 correlation\n(ERA5 0.25°, 1981–{END_YEAR}; grey = season too small to analyse)",
                  fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
@@ -1100,7 +1152,7 @@ def render_seasons(spec: dict, a: dict, head: str, title: str | None = None) -> 
                    f'<td{shade(r.get("cerf_usd", 0), max_cerf, (177, 126, 80))}>{html.escape(r["cerf"]) if r["cerf"] else "<span class=small>—</span>"}</td>'
                    f'<td class="num"{shade(p3p, 1.0)}>{r.get("fews") or "<span class=small>—</span>"}' + (f'<br><span class="small">{html.escape(r["fews_src"])}</span>' if r.get("fews_src") else "") + '</td></tr>')
     out.append('</tbody></table></div>')
-    out.append('<p class="small">Rainfall: ERA5 area mean over the rain-fed cells, standardised over 1981–2025. ENSO phase: concurrent Niño3.4 '
+    out.append(f'<p class="small">Rainfall: ERA5 area mean over the rain-fed cells, standardised over 1981–{END_YEAR}. ENSO phase: concurrent Niño3.4 '
                f'(≥ +{ENSO_THRESH} El Niño, ≤ −{ENSO_THRESH} La Niña; pinned NOAA series). CERF: Rapid Response / Underfunded Emergencies applications with '
                'emergency type “Drought” from the team\'s OneGMS mirror, attributed to the rainy season named in the CERF drought-period '
                'supplement (or, failing that, to the season whose harvest year the allocation fell in; “by date”). FEWS NET: the outlook for '
@@ -1724,7 +1776,10 @@ def main() -> None:
     specs = [tomllib.loads(p.read_text()) | {"slug": p.stem} for p in sorted(DEEP_DIR.glob("*.toml"))]
     if not specs:
         raise SystemExit("no deep_dives/*.toml found")
+    extend_pixel_cache(cfg)
     grid = load_grid(cfg)
+    global END_YEAR
+    END_YEAR = int(grid.years[-1])
     gdf = ts.load_admin0_gdf(cfg)
     # The analysis uses the survey's pinned Niño3.4 series (cache/nino34.data) so every published
     # number stays reproducible; the *latest* NOAA series is fetched separately (weekly) and used
@@ -1747,11 +1802,11 @@ def main() -> None:
             continue
         print(f"{spec['iso3']}: {spec['name']}")
         a = analyse(spec, grid, gdf, indices, cfg, OUT_DIR / spec["slug"])
-        (OUT_DIR / spec["slug"] / "index.html").write_text(render_country(spec, a, cfg["end_year"]), encoding="utf-8")
+        (OUT_DIR / spec["slug"] / "index.html").write_text(render_country(spec, a, int(grid.years[-1])), encoding="utf-8")
         for s in a["summaries"]:
             print(f"  {s['season']}: {s['n_cells']} cells, median r {s['median_r']:+.2f}, sig {pct(max(s['frac_sig_neg'], s['frac_sig_pos']))}")
         print(f"  El Niño composite median {a['comp_med']:+.2f} SD; hit-rate median {pct(a['hit_med'])}")
-    (OUT_DIR / "index.html").write_text(render_index(specs, cfg["end_year"]), encoding="utf-8")
+    (OUT_DIR / "index.html").write_text(render_index(specs, int(grid.years[-1])), encoding="utf-8")
     print(f"wrote {OUT_DIR}/index.html")
 
 

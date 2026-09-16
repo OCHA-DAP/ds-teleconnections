@@ -125,7 +125,9 @@ uv run python enso_deep_dive.py              # rebuild every country + the index
 uv run python enso_deep_dive.py --only eri   # one country
 ```
 
-Needs `cache/era5_pixel/` (built by a survey run; blob access only) and, for the country-level
+Needs `cache/era5_pixel/` (built by a survey run; blob access only — the deep-dive script then appends any newer
+ERA5 months from the prod raster blob into `cache/era5_pixel/monthly_ext.npy`, so the current season is analysed
+without touching the survey's cache) and, for the country-level
 cross-check table, the survey's `out/corr_*_l3.parquet`. No DB access. To add a country, copy
 `deep_dives/eri.toml` or `deep_dives/mwi.toml`, edit, run, and commit `docs/enso/`.
 
