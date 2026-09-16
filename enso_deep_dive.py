@@ -654,9 +654,9 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
 # Food security context: FEWS NET IPC-compatible classification (ds-fewsnet-mirror)
 # --------------------------------------------------------------------------- #
 # Classification + unit registry from the mirror's public site JSON (regenerated daily from the
-# team's dev DB); unit geometry from the dev blob. Rules from the mirror's README: published
-# map = assistance false; phase null = not classified (never Phase 1); drop the admin0 FAOB
-# series; key every row on both the collection round and the projection window.
+# team's dev DB); unit geometry from the dev blob. Rules: phase null = not classified (never
+# Phase 1); drop the admin0 FAOB series; key every row on both the collection round and the
+# projection window; keep every unit regardless of the assistance ("!") flag.
 FEWS_SITE = "https://ocha-dap.github.io/ds-fewsnet-mirror/data"
 FEWS_BLOB = "ds-fewsnet-mirror/processed/units/{iso3}.geojson"
 IPC_COLOURS = {1: "#CDFACD", 2: "#FAE61E", 3: "#E67800", 4: "#C80000", 5: "#640000"}
@@ -698,7 +698,11 @@ def load_fews(iso3: str) -> dict | None:
     rows = pd.DataFrame([dict(zip(cols, r)) for r in cls["rows"]])
     rows["fnid"] = rows.u.map(lambda i: U[i][0]); rows["unit_type"] = rows.u.map(lambda i: U[i][2])
     rows["doc"] = rows.doc.map(lambda i: docs[i]); rows["status"] = rows.st.map(lambda i: st[i])
-    rows = rows[(rows.assistance == 0) & (rows.unit_type != "admin0") & (rows.status == "Collected") & rows.phase.notna()]
+    # One row per unit × scenario × round. `assistance` (FDW is_allowing_for_assistance) marks the "!"
+    # units whose mapped phase is held down by humanitarian assistance — it is a flag on the published
+    # phase, not a second series — so it is NOT filtered on. (Checked against the October 2016 package
+    # shapefiles: CS 204 units incl. 37 with HA0 = True; ML2 shows 12 units at Phase 4.)
+    rows = rows[(rows.unit_type != "admin0") & (rows.status == "Collected") & rows.phase.notna()]
     latest = rows.reporting_date.max()
     picks = {}
     cs_rounds = rows[rows.scenario == "CS"].reporting_date
@@ -797,7 +801,7 @@ def fig_fews_maps(c: Country, fews: dict, hit: np.ndarray | None, analysable: np
         cb = fig.colorbar(m, ax=ax, shrink=0.6, pad=0.03); cb.ax.tick_params(labelsize=7.5, colors=C_MUTED)
     fig.legend(handles=[Patch(color=IPC_COLOURS[k], label=IPC_LABELS[k]) for k in range(1, 6)] + [Patch(color="#ececec", label="not classified")],
                frameon=False, fontsize=8, loc="lower center", ncol=6, bbox_to_anchor=(0.5, 0.0))
-    fig.suptitle(f"{name}: FEWS NET acute food insecurity (IPC-compatible, not allowing for assistance), on FEWS NET's own units"
+    fig.suptitle(f"{name}: FEWS NET acute food insecurity (IPC-compatible), on FEWS NET's own units"
                  + (" — beside the El Niño drought hit-rate" if hit is not None else ""),
                  fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
@@ -1755,8 +1759,8 @@ def render_fews(spec: dict, a: dict, head: str, title: str | None = None) -> str
     out = [f'<h2>{title or "Food security context: FEWS NET"}</h2>']
     out.append("" if not spec.get("fews_intro", True) else '<p>FEWS NET\'s IPC-compatible acute food insecurity classification, from the team\'s daily mirror of the '
                'FEWS NET Data Warehouse (<a href="https://ocha-dap.github.io/ds-fewsnet-mirror/">ds-fewsnet-mirror</a>), drawn '
-               'on FEWS NET\'s own livelihood-zone × district units. This is the published map — the “not allowing for '
-               'assistance” series; grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies '
+               'on FEWS NET\'s own livelihood-zone × district units. This is the published map (units FEWS NET marks “!”, where '
+               'assistance holds the phase down, are counted at their mapped phase); grey means FEWS NET did not classify the unit, which is not Phase 1. FEWS NET classifies '
                'areas, not populations, and publishes no population-in-phase figures, so the maps are shown at the level FEWS NET '
                'reports them and are not aggregated here. FEWS NET\'s analysis is IPC-compatible but independent of the IPC/CH '
                'consensus.</p>')
