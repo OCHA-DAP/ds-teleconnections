@@ -956,26 +956,35 @@ def season_table(iso3: str, df: pd.DataFrame, head: str, fews: dict | None, fore
         cerf_txt, cerf_usd, cerf_items = "", 0.0, []
         if len(cerf):
             def season_of(a):
-                """Season the allocation responds to: the supplement's dated rainy season when present
-                (starts Jul–Dec → that year; Jan–Jun → the year before), else the consumption year the
-                allocation date falls in (Apr Y+1 – Mar Y+2 → season Y)."""
+                """(season, dated, spans) — the season the allocation responds to. With a dated drought period
+                in the supplement: the last Nov–Mar rainy season the period reaches (a period spanning two failed
+                seasons is attributed to the later one, flagged `spans`). Without one: the consumption year the
+                approval date falls in (Apr Y+1 – Mar Y+2 → season Y)."""
                 if pd.notna(a.valid_year_start):
-                    y0 = int(a.valid_year_start); m0 = int(a.valid_month_start) if pd.notna(a.valid_month_start) else 11
-                    return (y0 if m0 >= 7 else y0 - 1), True
+                    y0, m0 = int(a.valid_year_start), int(a.valid_month_start) if pd.notna(a.valid_month_start) else 11
+                    y1 = int(a.valid_year_end) if pd.notna(a.valid_year_end) else y0
+                    m1 = int(a.valid_month_end) if pd.notna(a.valid_month_end) else m0
+                    s0 = y0 if m0 >= 4 else y0 - 1          # season containing (or next after) the start month
+                    s1 = y1 if m1 >= 11 else y1 - 1         # season containing (or before) the end month
+                    s1 = max(s1, s0)
+                    return s1, True, s1 > s0, s0
                 d = a.first_project_approved_date
-                return (d.year - 2 if d.month <= 3 else d.year - 1), False
+                return (d.year - 2 if d.month <= 3 else d.year - 1), False, False, None
             att = [season_of(a) for _, a in cerf.iterrows()]
-            hits = cerf[[y == yr for y, _ in att]]
-            dated = [ok for (y, ok) in att if y == yr]
+            hits = cerf[[y == yr for y, *_ in att]]
+            dated = [(ok, spans, s0) for (y, ok, spans, s0) in att if y == yr]
             cerf_usd = float(hits.amount_approved.sum()) if len(hits) else 0.0
             cerf_items = []
-            for (_, a), ok in zip(hits.iterrows(), dated):
+            for (_, a), (ok, spans, s0) in zip(hits.iterrows(), dated):
                 d = a.first_project_approved_date
                 lag = (d.year - yr) * 12 + d.month - 12          # months after 1 December of the season
-                cerf_items.append(dict(date=d, usd=float(a.amount_approved), lag=int(lag), window=a.window_name.split()[0], dated=ok))
+                cerf_items.append(dict(date=d, usd=float(a.amount_approved), lag=int(lag), window=a.window_name.split()[0],
+                                       dated=ok, spans=spans, s0=s0))
             if len(hits):
                 cerf_txt = f'US$ {hits.amount_approved.sum() / 1e6:.1f} M · ' + "; ".join(
-                    f'{it["date"]:%b %Y} ({it["window"]}, {it["usd"] / 1e6:.1f} M, {it["lag"]:+d} mo{"" if it["dated"] else ", by date"})'
+                    f'{it["date"]:%b %Y} ({it["window"]}, {it["usd"] / 1e6:.1f} M, {it["lag"]:+d} mo'
+                    + ("" if it["dated"] else ", by date")
+                    + (f'; its drought period also covers {it["s0"]}/{str(it["s0"] + 1)[-2:]}' if it["spans"] else "") + ")"
                     for it in cerf_items)
         # FEWS NET pre-season outlook for Oct Y – Jan Y+1 (issued Jun–Sep Y): shares of units in Phase 3 / 4 / 5
         fw = (outlook.get(yr) or {}).get("pre")
@@ -1071,10 +1080,10 @@ def fig_seasons(rows: list[dict], head: str, out: Path, name: str, start_year: i
             ax.bar([r["year"]], [h], bottom=base, width=0.78, color="#B17E50" if k % 2 == 0 else "#C99A72", edgecolor="white", linewidth=0.6)
             base += h
         if items:
-            ax.text(r["year"], base + 0.4, " · ".join(f'{it["lag"]:+d}' for it in items), fontsize=6.5, color=C_TEXT, ha="center", va="bottom")
+            ax.text(r["year"], base + 0.4, " · ".join(f'{it["lag"]:+d}{"†" if it["spans"] else ""}' for it in items), fontsize=6.5, color=C_TEXT, ha="center", va="bottom")
     ax.set_ylabel("CERF drought\nallocations (US$ M)", fontsize=8.5, color=C_MUTED); _style_ax(ax)
     ax.set_ylim(0, max([r.get("cerf_usd", 0) / 1e6 for r in rows] + [1]) * 1.35)
-    ax.text(0.01, 0.93, "+N = approval month in months after 1 December of that season (0 = mid-season; two segments = two allocations)",
+    ax.text(0.01, 0.93, "+N = approval month in months after 1 December of that season (0 = mid-season; two segments = two allocations; † = its drought period also covers the previous season)",
             transform=ax.transAxes, fontsize=7, color=C_MUTED, va="top")
     ax = axes[2]
     plt.rcParams["hatch.linewidth"] = 0.6
@@ -1180,7 +1189,7 @@ def render_seasons(spec: dict, a: dict, head: str, title: str | None = None) -> 
     out.append(f'<p class="small">Rainfall: ERA5 area mean over the rain-fed cells, standardised over 1981–{END_YEAR}. ENSO phase: concurrent Niño3.4 '
                f'(≥ +{ENSO_THRESH} El Niño, ≤ −{ENSO_THRESH} La Niña; pinned NOAA series). CERF: Rapid Response / Underfunded Emergencies applications with '
                'emergency type “Drought” from the team\'s OneGMS mirror, attributed to the rainy season named in the CERF drought-period '
-               'supplement (or, failing that, to the season whose harvest year the allocation fell in; “by date”); “+N mo” is the approval month counted from 1 December of that season. FEWS NET: the outlook for '
+               'supplement — when that period spans two failed seasons the allocation sits under the later one and says so — or, failing that, to the season whose harvest year the allocation fell in (“by date”); “+N mo” is the approval month counted from 1 December of that season. FEWS NET: the outlook for '
                'October–January issued between June and September of that year — the same product as the current medium-term projection, so '
                'each row shows the pre-season picture that season started from — as shares of FEWS NET\'s classified units in Phase 3, 4 and 5 '
                '(unit counts, since older unit vintages carry no geometry; FEWS NET classifies areas and publishes no population by phase). '
