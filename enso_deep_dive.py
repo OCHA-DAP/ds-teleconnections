@@ -659,11 +659,21 @@ def load_fews(iso3: str) -> dict | None:
         if len(sub):
             picks[sc] = dict(round=latest, doc=sub.doc.iloc[0], start=sub.projection_start.iloc[0], end=sub.projection_end.iloc[0],
                              phase=sub.set_index("fnid").phase.astype(int).to_dict())
-    # per-round share of classified units in Phase 3+ / 4+ (current situation), for the season table
+    # Per year: the pre-season outlook for the October–January window (the same product as the
+    # current medium-term projection) — latest round issued by September whose ML1/ML2 window starts
+    # 1 October; fallback to an October-issued ML1 (marked). Shares are of classified units (unit
+    # counts: older FNID vintages carry no geometry in the mirror).
     hist = {}
-    cs_all = rows[rows.scenario == "CS"]
-    for rd, g in cs_all.groupby("reporting_date"):
-        hist[rd] = dict(n=int(len(g)), p3=float((g.phase >= 3).mean()), p4=float((g.phase >= 4).mean()))
+    ml = rows[rows.scenario.isin(["ML1", "ML2"]) & rows.projection_start.str.endswith("-10-01")]
+    for yr, g in ml.groupby(ml.projection_start.str[:4].astype(int)):
+        pre = g[g.reporting_date <= f"{yr}-09"]
+        pick = pre if len(pre) else g[g.reporting_date == f"{yr}-10"]
+        if not len(pick):
+            continue
+        rd = pick.reporting_date.max(); h = pick[pick.reporting_date == rd]
+        hist[int(yr)] = dict(n=int(len(h)), p3=float((h.phase == 3).mean()), p4=float((h.phase == 4).mean()),
+                             p5=float((h.phase == 5).mean()), round=rd, doc=h.doc.iloc[0], scenario=h.scenario.iloc[0],
+                             pre_season=bool(len(pre)), window=f"{_window(h.projection_start.iloc[0], h.projection_end.iloc[0])}")
     ucols = units["columns"]; ureg = pd.DataFrame([dict(zip(ucols, r)) for r in units["rows"]]).set_index("fnid")
     key = "fnid" if "fnid" in gdf.columns else [c for c in gdf.columns if c.lower() in ("fnid", "pcode")][0]
     gdf = gdf.rename(columns={key: "fnid"})
@@ -850,37 +860,7 @@ def load_cerf_drought(iso3: str) -> pd.DataFrame:
     return df
 
 
-def load_fews_population(iso2: str) -> pd.DataFrame | None:
-    """FEWS NET's public national population-in-Phase-3+ series (FDW ipcpopulationsize: FAOB monthly
-    current situation from 2019, Annual Peak Needs from 2016). Values are FEWS NET's bins (low–high)."""
-    cache = Path(f"cache/fdw_ipcpopulationsize_{iso2}.json")
-    try:
-        if not cache.exists() or (pd.Timestamp.now() - pd.Timestamp(cache.stat().st_mtime, unit="s")) > pd.Timedelta(days=7):
-            import requests
-            r = requests.get(f"https://fdw.fews.net/api/ipcpopulationsize/?country_code={iso2}&format=json&page_size=1000", timeout=120)
-            r.raise_for_status(); cache.write_text(r.text)
-        res = json.loads(cache.read_text())["results"]
-    except Exception as e:  # noqa: BLE001
-        print(f"  (FDW population series not available: {e})"); return None
-    df = pd.DataFrame(res)
-    if df.empty:
-        return None
-    df = df[(df.status == "Collected") & (df.phase == "3+")].copy()
-    df["start"] = pd.to_datetime(df.projection_start); df["end"] = pd.to_datetime(df.projection_end)
-    return df[["scenario_name", "source_document", "start", "end", "value", "low_value", "high_value"]]
-
-
-def _fmt_range(lo, hi) -> str:
-    def m(v):
-        return f"{v / 1e6:.1f}".rstrip("0").rstrip(".")
-    if lo is None or (isinstance(lo, float) and np.isnan(lo)):
-        return "—"
-    if hi is None or (isinstance(hi, float) and np.isnan(hi)):
-        return f"{m(lo)} M"
-    return f"{m(lo)}–{m(float(hi) + 1)} M"
-
-
-def season_table(iso3: str, iso2: str, df: pd.DataFrame, head: str, fews: dict | None, forecast_year: int | None = None) -> list[dict]:
+def season_table(iso3: str, df: pd.DataFrame, head: str, fews: dict | None, forecast_year: int | None = None) -> list[dict]:
     """One row per headline season since 1981: rainfall anomaly/rank, ENSO phase, CERF drought
     allocations attributed to the season, FEWS NET population in Phase 3+ (peak in the consumption
     year Apr Y+1 – Mar Y+2) and the share of FEWS NET units in Phase 3+ / 4+ at that peak."""
@@ -889,11 +869,8 @@ def season_table(iso3: str, iso2: str, df: pd.DataFrame, head: str, fews: dict |
         cerf = load_cerf_drought(iso3)
     except Exception as e:  # noqa: BLE001
         print(f"  (CERF mirror not available: {e})"); cerf = pd.DataFrame()
-    pop = load_fews_population(iso2)
-    # FEWS NET unit shares per CS round (from the mirror's classification record)
-    unit_share = {}
-    if fews and fews.get("history") is not None:
-        unit_share = fews["history"]
+    outlook = fews["history"] if (fews and fews.get("history")) else {}
+
     def build_row(yr: int, r):
         cy0, cy1 = pd.Timestamp(yr + 1, 4, 1), pd.Timestamp(yr + 2, 3, 31)   # consumption year
         # CERF: supplement valid period first, else allocation date in the consumption year
@@ -916,33 +893,20 @@ def season_table(iso3: str, iso2: str, df: pd.DataFrame, head: str, fews: dict |
                 cerf_txt = f'US$ {hits.amount_approved.sum() / 1e6:.1f} M · ' + "; ".join(
                     f'{a.first_project_approved_date:%b %Y} ({a.window_name.split()[0]}, {a.amount_approved / 1e6:.1f} M{"" if ok else ", by date"})'
                     for (_, a), ok in zip(hits.iterrows(), dated))
-        # FEWS NET population 3+: peak monthly CS in the consumption year; else Peak Needs whose period starts in it
-        pop_txt, pop_src, pop_lo, pop_hi = "", "", np.nan, np.nan
-        if pop is not None and len(pop):
-            cs = pop[(pop.scenario_name == "Current Situation") & (pop.start >= cy0) & (pop.start <= cy1)]
-            mid = pop.start + (pop.end - pop.start) / 2          # Peak Needs periods straddle the harvest: attribute by midpoint
-            pn = pop[(pop.scenario_name == "Peak Needs") & (mid >= cy0) & (mid <= cy1)]
-            cand = pd.concat([cs, pn]) if (len(cs) or len(pn)) else cs
-            if len(cand):
-                k = cand.loc[cand.value.idxmax()]; pop_txt = _fmt_range(k.low_value, k.high_value)
-                pop_lo = float(k.low_value); pop_hi = float(k.high_value) + 1 if pd.notna(k.high_value) else np.nan
-                pop_src = (f"FAOB, peak {k.start:%b %Y}" if k.scenario_name == "Current Situation"
-                           else f"Peak Needs {k.start:%b %Y}–{k.end:%b %Y}")
-        # FEWS NET unit shares at the peak CS round in the consumption year
-        share_txt, share_src, p3, p4 = "", "", np.nan, np.nan
-        if unit_share:
-            rounds = {rd: v for rd, v in unit_share.items() if cy0 <= pd.Timestamp(rd + "-01") <= cy1}
-            if rounds:
-                rd, v = max(rounds.items(), key=lambda kv: kv[1]["p3"])
-                share_txt = f'{pct(v["p3"])} / {pct(v["p4"])}'; share_src = f'{rd} · {v["n"]} units'
-                p3, p4 = v["p3"], v["p4"]
-        extra = dict(cerf_usd=cerf_usd, pop_lo=pop_lo, pop_hi=pop_hi, p3=p3, p4=p4)
+        # FEWS NET pre-season outlook for Oct Y – Jan Y+1 (issued Jun–Sep Y): shares of units in Phase 3 / 4 / 5
+        fw = outlook.get(yr)
+        if fw:
+            fews_txt = f'{pct(fw["p3"])} / {pct(fw["p4"])} / {pct(fw["p5"])}'
+            fews_src = f'{fw["window"]} · round {fw["round"]} ({fw["scenario"]}{"" if fw["pre_season"] else ", issued in October"}) · {fw["n"]} units'
+            p3, p4, p5 = fw["p3"], fw["p4"], fw["p5"]
+        else:
+            fews_txt, fews_src, p3, p4, p5 = "", "", np.nan, np.nan, np.nan
+        extra = dict(cerf_usd=cerf_usd, p3=p3, p4=p4, p5=p5, fews=fews_txt, fews_src=fews_src)
         if r is None:
             return dict(year=yr, label=f"{yr}/{str(yr + 1)[-2:]}", z=None, rank=None, n=n_all, nino=None, phase="Neutral",
-                        cerf=cerf_txt, pop=pop_txt, pop_src=pop_src, share=share_txt, share_src=share_src, forecast=None, gap=True, **extra)
+                        cerf=cerf_txt, forecast=None, gap=True, **extra)
         return dict(year=yr, label=f"{yr}/{str(yr + 1)[-2:]}", z=float(r.z), rank=int(round(r.pct * n_all)), n=n_all,
-                    nino=float(r.nino), phase=r.phase, cerf=cerf_txt, pop=pop_txt, pop_src=pop_src,
-                    share=share_txt, share_src=share_src, forecast=None, gap=False, **extra)
+                    nino=float(r.nino), phase=r.phase, cerf=cerf_txt, forecast=None, gap=False, **extra)
 
     rows = [build_row(int(yr), r) for yr, r in df.iterrows()]
     last = int(df.index.max())
@@ -951,7 +915,7 @@ def season_table(iso3: str, iso2: str, df: pd.DataFrame, head: str, fews: dict |
     return rows
 
 
-def forecast_row(a: dict, head: str, fews: dict | None, pop_iso2: str | None) -> dict | None:
+def forecast_row(a: dict, head: str, fews: dict | None) -> dict | None:
     """A final row for the season now being forecast: SEAS5 return period, current ENSO state,
     FEWS NET's projection (units in Phase 3+ / 4+) and its projected Peak Needs population."""
     sk, nn = a.get("skill"), a.get("nino_now")
@@ -964,19 +928,16 @@ def forecast_row(a: dict, head: str, fews: dict | None, pop_iso2: str | None) ->
     wc = [r for r in sk["rows"] if r["zone"].startswith("Whole country")] or sk["rows"]
     rp = wc[0]["rp"].get(head, np.nan); r_sk = wc[0]["r"].get(head, np.nan)
     rp_txt = "—" if np.isnan(rp) else (f'SEAS5 {MONTH_NAMES[sk["issued_month"] - 1]} issuance: {"dry" if rp > 0 else "wet"}, return period {abs(rp):.0f} yr ({skill_cat(r_sk)} skill)')
-    share_txt, share_src, pop_txt, pop_src = "", "", "", ""
-    p3f, p4f = np.nan, np.nan
-    if fews and fews.get("picks"):
-        sc = "ML2" if "ML2" in fews["picks"] else "ML1" if "ML1" in fews["picks"] else None
-        if sc:
-            ph = pd.Series(fews["picks"][sc]["phase"])
-            share_txt = f'{pct((ph >= 3).mean())} / {pct((ph >= 4).mean())}'
-            share_src = f'{sc} projection {_window(fews["picks"][sc]["start"], fews["picks"][sc]["end"])} · {len(ph)} units'
-            p3f, p4f = float((ph >= 3).mean()), float((ph >= 4).mean())
+    fw = (fews or {}).get("history", {}).get(yr)
+    if fw:
+        fews_txt = f'{pct(fw["p3"])} / {pct(fw["p4"])} / {pct(fw["p5"])}'
+        fews_src = f'{fw["window"]} · round {fw["round"]} ({fw["scenario"]}) · {fw["n"]} units'
+        p3f, p4f, p5f = fw["p3"], fw["p4"], fw["p5"]
+    else:
+        fews_txt, fews_src, p3f, p4f, p5f = "", "", np.nan, np.nan, np.nan
     return dict(year=yr, label=f"{yr}/{str(yr + 1)[-2:]} (forecast)", z=None, rank=None, n=None, rp_txt=rp_txt,
                 nino=nn["value"], phase=nn["phase"].replace("neutral", "Neutral"), nino_date=nn["date"],
-                cerf="", pop=pop_txt, pop_src=pop_src, share=share_txt, share_src=share_src, forecast=True,
-                rp=rp, cerf_usd=0.0, pop_lo=np.nan, pop_hi=np.nan, p3=p3f, p4=p4f)
+                cerf="", forecast=True, rp=rp, cerf_usd=0.0, p3=p3f, p4=p4f, p5=p5f, fews=fews_txt, fews_src=fews_src)
 
 
 def fig_seasons(rows: list[dict], head: str, out: Path, name: str) -> None:
@@ -985,8 +946,8 @@ def fig_seasons(rows: list[dict], head: str, out: Path, name: str) -> None:
     hist = [r for r in rows if not r.get("forecast") and not r.get("gap")]
     fc = next((r for r in rows if r.get("forecast")), None)
     yrs = np.array([r["year"] for r in rows])
-    fig, axes = plt.subplots(4, 1, figsize=(9.6, 8.2), dpi=150, sharex=True,
-                             gridspec_kw=dict(height_ratios=[2.2, 1.2, 1.4, 1.2], hspace=0.12))
+    fig, axes = plt.subplots(3, 1, figsize=(9.6, 7.0), dpi=150, sharex=True,
+                             gridspec_kw=dict(height_ratios=[2.2, 1.2, 1.5], hspace=0.12))
     ax = axes[0]
     col = {"El Niño": C_ELNINO, "Neutral": C_NEUTRAL, "La Niña": C_LANINA}
     ax.bar([r["year"] for r in hist], [r["z"] for r in hist], color=[col[r["phase"]] for r in hist], width=0.78)
@@ -1006,29 +967,26 @@ def fig_seasons(rows: list[dict], head: str, out: Path, name: str) -> None:
     ax.legend(handles=[Patch(color=C_ELNINO, label="El Niño"), Patch(color=C_NEUTRAL, label="Neutral"), Patch(color=C_LANINA, label="La Niña"),
                        Patch(facecolor="none", edgecolor=C_TEXT, hatch="///", label="SEAS5 forecast (return period → percentile)")],
               frameon=False, fontsize=7.5, loc="upper left", ncol=4)
-    ax.set_title(f"{name}: season by season — rainfall and ENSO, CERF drought funding, FEWS NET food insecurity", fontsize=10, color=C_TEXT, loc="left")
+    ax.set_title(f"{name}: season by season — rainfall and ENSO, CERF drought funding, FEWS NET pre-season outlook", fontsize=10, color=C_TEXT, loc="left")
     _style_ax(ax)
-    # CERF
     ax = axes[1]
     ax.bar([r["year"] for r in rows], [r.get("cerf_usd", 0) / 1e6 for r in rows], color="#B17E50", width=0.78)
     for r in rows:
         if r.get("cerf_usd", 0) > 0:
             ax.text(r["year"], r["cerf_usd"] / 1e6 + 0.3, f'{r["cerf_usd"] / 1e6:.0f}', fontsize=6.5, color=C_TEXT, ha="center", va="bottom")
     ax.set_ylabel("CERF drought\nallocations (US$ M)", fontsize=8.5, color=C_MUTED); _style_ax(ax)
-    # FEWS NET population 3+ (ranges)
     ax = axes[2]
-    for r in rows:
-        lo, hi = r.get("pop_lo", np.nan), r.get("pop_hi", np.nan)
-        if np.isfinite(lo):
-            hi = hi if np.isfinite(hi) else lo
-            ax.bar([r["year"]], [(hi - lo) / 1e6], bottom=lo / 1e6, color="#E67800", alpha=0.85 if not r.get("gap") else 0.5, width=0.78)
-    ax.set_ylabel("FEWS NET people\nin Phase 3+ (M)", fontsize=8.5, color=C_MUTED); _style_ax(ax)
-    ax.text(0.01, 0.9, "bars span FEWS NET's published range (lean-season peak after the harvest)", transform=ax.transAxes, fontsize=7, color=C_MUTED, va="top")
-    # units in Phase 3+
-    ax = axes[3]
-    ax.bar([r["year"] for r in rows], [100 * r["p3"] if np.isfinite(r.get("p3", np.nan)) else 0 for r in rows],
-           color=["#E67800" if not r.get("forecast") else "none" for r in rows], edgecolor="#E67800", hatch=["" if not r.get("forecast") else "///" for r in rows], width=0.78)
-    ax.set_ylabel("FEWS NET units\nin Phase 3+ (%)", fontsize=8.5, color=C_MUTED); ax.set_ylim(0, 105); _style_ax(ax)
+    ys = [r["year"] for r in rows]
+    p3 = np.array([100 * r["p3"] if np.isfinite(r.get("p3", np.nan)) else 0 for r in rows])
+    p4 = np.array([100 * r["p4"] if np.isfinite(r.get("p4", np.nan)) else 0 for r in rows])
+    p5 = np.array([100 * r["p5"] if np.isfinite(r.get("p5", np.nan)) else 0 for r in rows])
+    ax.bar(ys, p3, color=IPC_COLOURS[3], width=0.78, label="Phase 3 Crisis")
+    ax.bar(ys, p4, bottom=p3, color=IPC_COLOURS[4], width=0.78, label="Phase 4 Emergency")
+    ax.bar(ys, p5, bottom=p3 + p4, color=IPC_COLOURS[5], width=0.78, label="Phase 5 Famine")
+    ax.set_ylabel("FEWS NET units, Oct–Jan outlook\nissued Jun–Sep (% of units)", fontsize=8.5, color=C_MUTED); ax.set_ylim(0, 105); _style_ax(ax)
+    ax.legend(frameon=False, fontsize=7.5, loc="upper left", ncol=3)
+    first = min([r["year"] for r in rows if np.isfinite(r.get("p3", np.nan))] or [ys[0]])
+    ax.text(first - 0.6, 45, "no FEWS NET outlook before this ▸", fontsize=7, color=C_MUTED, ha="right", va="center")
     ax.set_xlim(yrs.min() - 1, yrs.max() + 1)
     ax.set_xticks([y for y in yrs if y % 5 == 0]); ax.set_xticklabels([f"{y}/{str(y + 1)[-2:]}" for y in yrs if y % 5 == 0])
     ax.tick_params(labelsize=8.5, colors=C_MUTED)
@@ -1046,11 +1004,10 @@ def render_seasons(spec: dict, a: dict, head: str, title: str | None = None) -> 
     out.append(spec.get("seasons_html", ""))
     out.append(f'<figure><img src="seasons.png" alt="Season-by-season time series"><figcaption>The table as a time series: '
                f'{head} rainfall anomaly coloured by ENSO phase (hatched = the SEAS5 forecast for the coming season, its return period '
-               f'converted to a percentile); CERF drought allocations by season; FEWS NET people in Phase 3+ as FEWS NET\'s published '
-               f'range at the lean-season peak; share of FEWS NET units in Phase 3+ at that peak (hatched = projection). Shaded column = the season being forecast.</figcaption></figure>')
+               f'converted to a percentile); CERF drought allocations by season; FEWS NET\'s pre-season outlook for October–January as '
+               f'stacked shares of units in Phase 3, 4 and 5. Shaded column = the season being forecast.</figcaption></figure>')
     rows = list(reversed(rows))   # recent first, forecast on top
     max_cerf = max([r.get("cerf_usd", 0) for r in rows] + [1.0])
-    max_pop = max([r["pop_lo"] for r in rows if np.isfinite(r.get("pop_lo", np.nan))] + [1.0])
 
     def shade(v, vmax, rgb=(230, 120, 0), floor=0.08):
         """Background colour: darker for worse; white when zero/absent."""
@@ -1071,8 +1028,7 @@ def render_seasons(spec: dict, a: dict, head: str, title: str | None = None) -> 
                f'<th class="num">{head} rainfall<br><span class="small">anomaly (SD) · rank, 1 = driest</span></th>'
                f'<th>ENSO<br><span class="small">Niño3.4 in {head}</span></th>'
                '<th>CERF drought allocation<br><span class="small">for this season\'s drought</span></th>'
-               '<th class="num">FEWS NET, people in Phase 3+<br><span class="small">peak in the following consumption year</span></th>'
-               '<th class="num">FEWS NET units in Phase 3+ / 4+<br><span class="small">share of classified units at that peak</span></th></tr></thead><tbody>')
+               '<th class="num">FEWS NET outlook for Oct–Jan, issued before the season<br><span class="small">share of units in Phase 3 / 4 / 5</span></th></tr></thead><tbody>')
     for r in rows:
         cls = ' class="hl"' if r["phase"] == "El Niño" else ""
         ph = {"El Niño": "#D1495B", "La Niña": "#2E7DBD", "Neutral": "#9AA3AD"}[r["phase"]]
@@ -1088,21 +1044,21 @@ def render_seasons(spec: dict, a: dict, head: str, title: str | None = None) -> 
             rain = f'{fmt_r(r["z"])} · {r["rank"]} of {r["n"]}'
             enso = f'<span class="chip" style="background:{ph};color:#fff;margin:0">{r["phase"]}</span> <span class="small">{r["nino"]:+.2f}</span>'
         cls = cls.replace(' class="hl"', "")   # phase is carried by the chip; row highlight would fight the cell shading
+        p3p = (r.get("p3", np.nan) + r.get("p4", np.nan) + r.get("p5", np.nan)) if np.isfinite(r.get("p3", np.nan)) else np.nan
         out.append(f'<tr{cls}><td>{"<strong>" + r["label"] + "</strong>" if r.get("forecast") else r["label"]}</td>'
                    f'<td class="num"{shade_rain(r)}>{rain}</td><td>{enso}</td>'
                    f'<td{shade(r.get("cerf_usd", 0), max_cerf, (177, 126, 80))}>{html.escape(r["cerf"]) if r["cerf"] else "<span class=small>—</span>"}</td>'
-                   f'<td class="num"{shade(r.get("pop_lo", np.nan), max_pop)}>{r["pop"] or "<span class=small>—</span>"}' + (f'<br><span class="small">{html.escape(r["pop_src"])}</span>' if r["pop_src"] else "") + '</td>'
-                   f'<td class="num"{shade(r.get("p3", np.nan), 1.0)}>{r["share"] or "<span class=small>—</span>"}' + (f'<br><span class="small">{html.escape(r["share_src"])}</span>' if r["share_src"] else "") + '</td></tr>')
+                   f'<td class="num"{shade(p3p, 1.0)}>{r.get("fews") or "<span class=small>—</span>"}' + (f'<br><span class="small">{html.escape(r["fews_src"])}</span>' if r.get("fews_src") else "") + '</td></tr>')
     out.append('</tbody></table></div>')
     out.append('<p class="small">Rainfall: ERA5 area mean over the rain-fed cells, standardised over 1981–2025. ENSO phase: concurrent Niño3.4 '
                f'(≥ +{ENSO_THRESH} El Niño, ≤ −{ENSO_THRESH} La Niña; pinned NOAA series). CERF: Rapid Response / Underfunded Emergencies applications with '
                'emergency type “Drought” from the team\'s OneGMS mirror, attributed to the rainy season named in the CERF drought-period '
-               'supplement (or, failing that, to the season whose harvest year the allocation fell in). FEWS NET people in Phase 3+: '
-               'FEWS NET\'s public national series (Food Assistance Outlook Brief monthly current situation from 2019; Annual Peak Needs '
-               '2016–2018, attributed by the midpoint of their period), shown as FEWS NET\'s published range, peak within the consumption year Apr–Mar after the harvest. FEWS NET '
-               'publishes no population in Phase 4+; the last column gives the share of FEWS NET\'s classified units in Phase 3+ and in '
-               'Phase 4+ at that peak (from the mirror\'s classification record, 2011 onward). “By date” marks a CERF allocation attributed '
-               'from its approval date alone. Cells are shaded darker for worse outcomes (drier season, larger allocation, more people or units in Phase 3+); most recent season first, the forecast season on top.</p>')
+               'supplement (or, failing that, to the season whose harvest year the allocation fell in; “by date”). FEWS NET: the outlook for '
+               'October–January issued between June and September of that year — the same product as the current medium-term projection, so '
+               'each row shows the pre-season picture that season started from — as shares of FEWS NET\'s classified units in Phase 3, 4 and 5 '
+               '(unit counts, since older unit vintages carry no geometry; FEWS NET classifies areas and publishes no population by phase). '
+               '“Issued in October” marks a year with no June–September outlook. Cells are shaded darker for worse outcomes; most recent '
+               'season first, the forecast season on top.</p>')
     return "\n".join(out)
 
 
@@ -1239,12 +1195,10 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
                             n_units={k: len(v["phase"]) for k, v in fews["picks"].items()},
                             p3_units={k: int(sum(1 for p in v["phase"].values() if p >= 3)) for k, v in fews["picks"].items()})
 
-    seasons, seasons_iso2 = None, None
+    seasons = None
     if spec.get("season_table"):
-        iso2 = spec.get("iso2") or (fews["gdf"].iso2.iloc[0] if (fews and "iso2" in fews["gdf"].columns) else iso3[:2])
         fyear = int(skill["issued_year"]) if (skill and skill.get("issued_year")) else None
-        seasons = season_table(iso3, iso2, df, head, fews, fyear)
-        seasons_iso2 = iso2
+        seasons = season_table(iso3, df, head, fews, fyear)
 
     # Admin-1 view: the team's ERA5 per-admin raster stats + CODAB polygons
     adm1_out = None
@@ -1292,7 +1246,7 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
                 zone_rows=zone_rows, skill=skill, fews=fews_out, adm1=adm1_out, seasons=seasons, adm0=adm0, n_cells=int(c.mask.sum()),
                 n_head=int(ok_head.sum()))
     if seasons is not None:
-        fr = forecast_row(result, head, fews, seasons_iso2)
+        fr = forecast_row(result, head, fews)
         if fr:
             result["seasons"] = seasons + [fr]
         fig_seasons(result["seasons"], head, out_dir / "seasons.png", name)
