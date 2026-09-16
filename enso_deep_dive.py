@@ -496,7 +496,8 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
     ax.text(xpos[im] + 0.08, ax.get_ylim()[1] * 0.97, f"issued\n1 {MONTH_NAMES[im - 1]}", fontsize=8, color=C_TEXT, va="top")
     ax.set_ylabel("mm / day", fontsize=9, color=C_MUTED)
     ax.legend(frameon=False, fontsize=8, loc="best", ncol=1)
-    ax.set_title(f"{name}: skill of the {MONTH_NAMES[im - 1]} SEAS5 issuance by zone, against the rainy season",
+    solo_fig = len(rows) == 1
+    ax.set_title(f"{name}: skill of the {MONTH_NAMES[im - 1]} SEAS5 issuance{'' if solo_fig else ' by zone'}, against the rainy season",
                  fontsize=10, color=C_TEXT, loc="left")
     _style_ax(ax)
     # --- bottom: median pixel skill per zone as lines over the trimester middle months, on the
@@ -542,7 +543,8 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
     for sp in ("left", "bottom"):
         hx.spines[sp].set_color("#c9d0d0")
     hx.legend(handles=[plt.Line2D([], [], color="#3f4748", ls=(0, (4, 2)) if len(rows) > 1 else "-", lw=1.6, label="Whole country"),
-                       plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = off-season window for that zone (<15% of annual rain)")],
+                       plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6,
+                                  label="hollow = off-season window" + ("" if solo_fig else " for that zone") + " (<15% of annual rain)")],
               frameon=False, fontsize=7.5, loc="upper right", ncol=2)
     hx.set_title("Skill of this issuance (median pixel r" + (", whole country)" if len(rows) == 1 else ")"), fontsize=9.5, color=C_TEXT, loc="left")
 
@@ -588,9 +590,9 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         rx.spines[sp].set_color("#c9d0d0")
     rx.set_title(f"What this issuance forecasts ({MONTH_NAMES[im - 1]} {yr if yr else ''}): return period of the forecast "
                  f"anomaly, median pixel" + ("" if len(rows) == 1 else " per zone"), fontsize=9.5, color=C_TEXT, loc="left")
-    rx.legend(handles=[plt.Line2D([], [], color=C_MUTED, marker="o", ls="", mew=1.6, label="filled = zone skill ≥ moderate"),
+    rx.legend(handles=[plt.Line2D([], [], color=C_MUTED, marker="o", ls="", mew=1.6, label="filled = skill ≥ moderate" if solo_fig else "filled = zone skill ≥ moderate"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = low skill"),
-                       plt.Line2D([], [], color=C_MUTED, marker="o", ls="", alpha=0.35, label="faded = off-season for that zone")],
+                       plt.Line2D([], [], color=C_MUTED, marker="o", ls="", alpha=0.35, label="faded = off-season" if solo_fig else "faded = off-season for that zone")],
               frameon=False, fontsize=7.5, loc="upper center", bbox_to_anchor=(0.5, -0.32), ncol=3)
     fig.savefig(out, bbox_inches="tight"); plt.close(fig)
 
