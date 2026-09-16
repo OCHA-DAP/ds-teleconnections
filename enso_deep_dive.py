@@ -988,8 +988,8 @@ def fig_seasons(rows: list[dict], head: str, out: Path, name: str) -> None:
     first = min([r["year"] for r in rows if np.isfinite(r.get("p3", np.nan))] or [ys[0]])
     ax.text(first - 0.6, 45, "no FEWS NET outlook before this ▸", fontsize=7, color=C_MUTED, ha="right", va="center")
     ax.set_xlim(yrs.min() - 1, yrs.max() + 1)
-    ax.set_xticks([y for y in yrs if y % 5 == 0]); ax.set_xticklabels([f"{y}/{str(y + 1)[-2:]}" for y in yrs if y % 5 == 0])
-    ax.tick_params(labelsize=8.5, colors=C_MUTED)
+    ax.set_xticks(list(yrs)); ax.set_xticklabels([f"{y}/{str(y + 1)[-2:]}" for y in yrs], rotation=90)
+    ax.tick_params(labelsize=7, colors=C_MUTED)
     for a_ in axes[1:]:
         a_.tick_params(labelsize=8, colors=C_MUTED)
     if fc:

@@ -48,7 +48,7 @@ corr_html = '''
 '''
 
 seasons_html = '''
-<p>Every season since 1981 on one line: how dry it was, whether it was an El Niño season, whether CERF funded a drought response for it, and what FEWS NET was projecting for October–January before that season began — the same product as the projection we have now, so the rows are comparable with the top one. Zimbabwe has never had a Phase 4 or 5 area in FEWS NET's record. The El Niño seasons that became disasters started from very different places: 2015/16 from 26% of units projected in Crisis, 2023/24 from 17%; the seasons after them (2016/17, 2024/25) began from 60% and 100%. 2026/27 begins from 28%.</p>
+<p>Every season since 1981 on one line: how dry it was, whether it was an El Niño season, whether CERF funded a drought response for it, and what FEWS NET was projecting for October–January before that season began — the same product as the projection we have now, so the rows are comparable with the top one. Phase 4 (Emergency) has appeared once in FEWS NET's Zimbabwe record — the October 2016 outlook projected twelve southern units into Emergency for February–April 2017, the lean season after the 2015/16 drought — and never in a current-situation classification; Phase 5 never. The El Niño seasons that became disasters started from very different places: 2015/16 from 26% of units projected in Crisis, 2023/24 from 17%; the seasons after them (2016/17, 2024/25) began from 60% and 100%. 2026/27 begins from 28%.</p>
 '''
 
 adm1_html = '''
