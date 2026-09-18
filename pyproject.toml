@@ -10,4 +10,7 @@ dependencies = [
     "scipy",
     "matplotlib",
     "ocha-stratus",
+    "xarray>=2026.4.0",
+    "h5netcdf>=1.8.1",
+    "h5py>=3.16.0",
 ]

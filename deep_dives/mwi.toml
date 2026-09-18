@@ -1,0 +1,138 @@
+# Malawi — ENSO deep dive. Narrative is curated here; figures and tables are
+# recomputed by enso_deep_dive.py from the cached ERA5 grid + Niño3.4.
+iso3 = "MWI"
+name = "Malawi"
+subtitle = "Right grade, wrong window: the El Niño signal is a late-season, southern-half phenomenon that a national DJF average erases"
+headline_season = "JFM"          # the season the drought analysis is built on
+map_seasons = ["NDJ", "DJF", "JFM", "FMA"]   # chronological: the sign walks from blue to brown
+zone_history = true
+skill_issued_month = 9
+zone_history_caption = "The three zones are latitude bands (north of 12.5°S, 12.5–14.5°S, south of 14.5°S), roughly the Northern, Central and Southern Regions. Note 2024: the wettest JFM on record in the north, the sixth-driest in the south."
+adm0_filtered_note = "they are listed here because the early-season (NDJ) and shoulder-season correlations carry the opposite sign and are part of the story."
+
+summary_html = '''
+<p><strong>Bottom line.</strong> The survey catalogue grades Malawi <em>robust</em> for El Niño → drier DJF rains, inheriting the southern-Africa row (Mason &amp; Goddard 2001). The grade is deserved — Malawi is one of the few countries in the block with its own ENSO literature, and ERA5 reproduces the regional signal — but the catalogue's season is wrong and its scale is wrong. Nationally, DJF rainfall is uncorrelated with Niño3.4 (r ≈ 0). The drying arrives late: JFM r ≈ −0.34 and FMA r ≈ −0.43 at country level, −0.44 in the Central Region. And it is confined to the centre and south: north of about 12.5°S Malawi behaves like East Africa, with a <em>wetter</em> early season (NDJ r ≈ +0.5) under El Niño and no late-season drying at all.</p>
+<p><strong>For drought.</strong> In the south, seven of the ten El Niño JFM seasons since 1981 fell in the driest third (1983, 1987, 1992, 1995, 2010, 2016, 2024), and La Niña seasons almost never did. Nationally the count is five of ten, because the northern half offsets the south: in 2023/24 ERA5 has the Southern Region in its sixth-driest JFM of 46 years while the Northern Region had its wettest on record, and the national mean reads “wet”. 1991/92, the worst drought in the record, was an El Niño year and the driest JFM in every zone.</p>
+<p><strong>Recommendation.</strong> Keep <em>robust</em>, but move the catalogue season from DJF to JFM–FMA, mark the country seasonally and regionally split (NDJ wetter in the north, JFM–FMA drier in the centre and south), cite the Malawi-specific studies, and read the survey's pixel map rather than its country map for this country.</p>
+'''
+
+seasonal_cycle_html = '''
+<p>Malawi has a single rainy season from November to April: December–March carries about 79% of the annual total over the average cell, and the six months from May to October under 6%. The three-month windows the survey tests all sit inside one season, so the choice between DJF, JFM and FMA is a choice about <em>which part</em> of the season, not which season. The north (blue line) is wetter and its rains run a little later into March and April than the south's.</p>
+'''
+
+corr_html = '''
+<p>Read the four panels left to right and the sign walks through the season. In NDJ the whole north is strongly positive (up to +0.5) and the south only faintly negative: El Niño's first effect on Malawi is a wet, early start in the north. In DJF, the catalogue's window, the southern and central cells have turned brown (−0.2 to −0.4) while the northern cells around Karonga, Rumphi and the Nyika plateau are still blue (+0.3 or more); the two halves cancel and the national number is near zero. In JFM the drying covers the centre and south at −0.3 to −0.5, half of all cells are past the survey's −0.3 bin, and the north has faded to neutral. In FMA even the north turns weakly brown; this is the window with the largest national correlation.</p>
+<p>The survey's default pixel view (unique signal, 3-month lag) therefore shows Malawi as a brown south and a blue or blank north, and its country view shows a weaker number than the literature would lead a reader to expect.</p>
+'''
+
+adm0_html = '''
+<p>The country-level pass tells the same story in one column: the sign flips from positive in NDJ to negative from JFM onward, passing through zero in DJF, the catalogue's season. The best national correlation is FMA at about −0.4, close to Mozambique's JFM value and not far from Zimbabwe's DJF, but it is reached two to three months later in the season than the catalogue implies. The partial correlations (other modes held constant) keep the sign and most of the amplitude.</p>
+'''
+
+drought_html = '''
+<p>Nationally, El Niño JFM seasons average −0.3 SD and half of them fall in the driest third, against a 33% base rate; La Niña seasons average +0.25 SD and lean wet. The El Niño list is instructive. 1992 is the driest JFM in the record by a wide margin, 1987 and 1983 are in the driest fifth, 1995 and 2016 are in the driest third. Then come four seasons — 1998, 2003, 2010, 2019 — that were near normal or wet, and 2024, which the national mean puts in the wettest third.</p>
+<p>The zone panels below resolve the apparent misses. 2024 was a genuine El Niño drought in the south (sixth-driest JFM of 46, with the February dry spell that led to the 23 March 2024 disaster declaration in 23 of 28 districts), masked by an exceptional wet season in the north. 2016 was dry in the centre and south and wetter than normal in the north; the 12 April 2016 national-disaster declaration cited dry spells in the Central and Southern Regions and floods in the Northern Region, exactly the ERA5 pattern. 1998 was dry in the centre, near normal in the south and wet in the north. 2010 scraped into the south's driest third and 2019 into the north's. Only 2003 was an El Niño season with no dry zone anywhere in Malawi. In the Southern Region alone, seven of ten El Niño JFM seasons were in the driest third (1983, 1987, 1992, 1995, 2010, 2016, 2024) and two in the wettest (2003, 2019); two of sixteen La Niña seasons were in the driest third.</p>
+<p>The early season runs the other way. Across the fifteen El Niño NDJ seasons since 1981 the national mean was wetter than normal in seven and in the driest third in two; in the north, nine of fifteen were in the wettest third. The January 2015 floods in the Shire valley, during a weak El Niño, fit that pattern, as does the very wet January–February 2024 in the north.</p>
+<p>Read as odds for the centre and south: El Niño roughly doubles the chance of a driest-third late season and makes a wet one unlikely; La Niña makes a dry late season rare. Nationally aggregated numbers understate both effects, and in a year like 2024 they hide the drought altogether.</p>
+'''
+
+skill_html = '''
+<p>Read against the climatology, the September issuance is a weak instrument for Malawi's rains. The three windows that carry the season — NDJ, DJF and JFM — are all <em>low</em> skill in every zone (median pixel r 0.1–0.3, whole country 0.21–0.26), with one marginal exception: DJF in the Southern Region reaches <em>moderate</em> (0.33, 58% of cells). The Central Region is close to zero for OND through DJF. The windows on the left (JAS, ASO) score high or moderate only because their months are already observed, and they are dry-season months anyway, hence the hollow markers.</p>
+<p>The practical reading is that in September the ENSO state is the better signal for Malawi's centre and south, and the seasonal forecast adds little to it. Forecast-based action should wait for later issuances: from the same skill cube, the November issuance reaches moderate skill for FMA in the centre and south (median r 0.37–0.39, 78–90% of cells), which is also the window where the ENSO correlation peaks. The north's weaker ENSO link and low September skill argue for treating it separately, as the drought record already does.</p>
+'''
+
+zones_html = '''
+<p>Splitting the country into three latitude bands, roughly the Northern, Central and Southern Regions, shows the gradient directly. The zone-mean correlation with concurrent Niño3.4 is about zero in the north, −0.4 in the centre and −0.35 in the south; the El Niño hit-rate rises from north to south.</p>
+'''
+
+[[zones]]
+label = "Northern Region (north of 12.5°S)"
+min_lat = -12.5
+[[zones]]
+label = "Central Region (12.5–14.5°S)"
+min_lat = -14.5
+max_lat = -12.5
+[[zones]]
+label = "Southern Region (south of 14.5°S)"
+max_lat = -14.5
+
+[catalogue]
+direction = "drier"
+season = "DJF"
+evidence = "robust"
+source_html = '<a href="https://journals.ametsoc.org/view/journals/bams/82/4/1520-0477_2001_082_0619_ppaawe_2_3_co_2.xml">Mason &amp; Goddard 2001 (BAMS)</a>, from the southern-Africa row (Zimbabwe, Zambia, Malawi, Mozambique, South Africa, Botswana)'
+
+[assessment]
+direction = "drier late season in the centre & south; wetter early season in the north"
+season = "JFM–FMA drier · NDJ wetter (north)"
+evidence = "robust"
+evidence_note = "Regional literature robust and Malawi-specific studies agree; ERA5 confirms the direction at −0.35 to −0.45 for JFM–FMA in the centre and south. The catalogue's DJF window nets to zero nationally because the north responds with the opposite sign."
+one_line = "Graded robust from the southern-Africa row, and the grade holds — but the season is wrong. Nationally DJF is uncorrelated with ENSO (r ≈ 0); the drying is late-season (JFM r ≈ −0.34, FMA −0.45) and confined to the centre and south, while the north gets a wetter early season. Seven of ten El Niño JFM seasons were in the south's driest third."
+
+[[sections_before]]
+title = "Why the catalogue says “robust, DJF”"
+html = '''
+<p>The literature map was built region by region, and Malawi sits inside the southern-Africa block with Zimbabwe, Zambia, Mozambique, South Africa and Botswana. The block took the grade of the best-replicated finding in African ENSO climatology: austral-summer rainfall over the subcontinent is reduced under El Niño and enhanced under La Niña, sourced to Mason &amp; Goddard's (2001) global probabilistic composite. That finding is not in doubt; it is the basis of every regional seasonal-forecast consensus (SARCOF) since the 1990s.</p>
+<p>Two things were inherited along with the grade. The season, “DJF”, was written for the whole block; for the core of the subcontinent the ENSO signal peaks in DJF–JFM, but for Malawi, at the block's northern edge, it peaks later. And the direction was written as a single national response, which for a country that spans 9.5°S to 17°S turns out to be a simplification that matters.</p>
+'''
+
+[[sections_before]]
+title = "What the literature actually supports"
+html = '''
+<p><strong>The regional mechanism is solid, and it is a late-summer one.</strong> Warm eastern-Pacific SST shifts the Walker circulation, weakens the Angola low and the moisture flux into the subcontinent, and displaces the South Indian Convergence Zone north-eastward over the ocean; the result is subsidence and reduced rainfall over the southern African interior. Reason &amp; Jagadheesha (2005) reproduce this in models for the recent El Niños; Hoell et al. (2015) and Ratnam et al. (2014) show the response depends on El Niño flavour, strongest for canonical eastern-Pacific events. The seasonality has been known since Lindesay (1988) and Nicholson &amp; Kim (1997): the subcontinent's ENSO signal is a January–March phenomenon, weak or of the opposite sign in the early season. The catalogue's DJF is a reasonable compromise for the block but the wrong window for its northern members.</p>
+<p><strong>Malawi sits on the hinge between two poles.</strong> Nicholson &amp; Kim (1997) describe the African ENSO response as a dipole: eastern equatorial Africa wetter in the short rains, southern Africa drier in late summer, with the nodal zone running through Tanzania and northern Mozambique. Northern Malawi is in that nodal zone. Nicholson, Klotter &amp; Chavula's (2014) Malawi climatology characterises the country as a transition between the East African and southern African rainfall regimes, with a stable mid-November onset, a north that is wetter and later-ending than the south, and an ENSO influence that is real but spatially uneven. ERA5's pattern — a north that responds like Kenya and a south that responds like Zimbabwe — is what this literature predicts.</p>
+<p><strong>Malawi-specific evidence exists.</strong> Unlike most of the block's smaller members, Malawi has its own ENSO studies. Jury &amp; Mwafulirwa (2002) relate Malawi's summer rainfall to Pacific and Indian Ocean SST over 1950s–1990s, find dry summers associated with El Niño, and show usable predictability from the preceding season's SST; Jury &amp; Gwazantini (2002) extend this to Lake Malawi levels and Shire River flow, which integrate the late-season rains. Later station analyses (e.g. Ngongondo et al. 2011; Kumbuyo et al. 2014) confirm the ENSO link in the rainfall record. This is what earns Malawi its <em>robust</em> grade, rather than the regional composite alone.</p>
+<p><strong>Operational record.</strong> The three worst food-security seasons of the past 35 years were all El Niño late seasons. 1991/92 was the worst drought in living memory across southern Africa; Malawi's maize harvest fell by well over half. In 2015/16, after a season of late onset, dry spells in the Central and Southern Regions and floods in the north, the President declared a state of national disaster on 12 April 2016 and the vulnerability assessment put 6.5 million people in need, then the largest emergency in the country's history. In 2023/24, prolonged dry spells in January and February, some longer than four weeks, led to a state of disaster in 23 of 28 districts on 23 March 2024, with about two million farming households affected; the districts named were almost all in the centre and south, plus Karonga in the north for floods. The El Niño signal in Malawi is not a curiosity of the correlation table; it is the country's disaster calendar.</p>
+'''
+
+[[sections_after]]
+title = "Recommendation for the survey"
+html = '''
+<ul>
+<li><strong>Keep the grade.</strong> Malawi's <em>robust</em> El Niño evidence is earned; if anything it is better supported by country-specific work than most of the block.</li>
+<li><strong>Change the season</strong> on the catalogue row from DJF to JFM–FMA (or “late season, Jan–Apr”). The catalogue's own “This study (ERA5)” column already says FMA −0.41; the row should agree with it.</li>
+<li><strong>Mark the country split</strong>, seasonally and regionally: NDJ wetter (north), JFM–FMA drier (centre and south). This is the same bidirectional treatment Ethiopia and Yemen receive, and it stops the map implying that northern Malawi shares the south's drought risk.</li>
+<li><strong>Cite the Malawi studies</strong> — Jury &amp; Mwafulirwa (2002), Nicholson et al. (2014) — alongside Mason &amp; Goddard on the catalogue row.</li>
+<li><strong>Add the drought framing</strong> to the “This study (ERA5)” column: in the Southern Region, seven of ten El Niño JFM seasons were in the driest third (1992, 2016, 2024 most consequentially), and the national mean hides this whenever the north is wet.</li>
+<li><strong>For the seas5-skill ENSO slides and any Malawi trigger work</strong>, use JFM or FMA and a sub-national (ADM1 or pixel) view; a national DJF indicator has essentially no ENSO skill here.</li>
+<li><strong>In September, lean on ENSO, not SEAS5.</strong> The September issuance has <em>low</em> skill for NDJ, DJF and JFM in every zone (south DJF marginally moderate); forecast-based action should wait for the November issuance, which reaches <em>moderate</em> skill for FMA in the centre and south. Treat the north separately.</li>
+</ul>
+'''
+
+[[sections_after]]
+title = "Caveats"
+html = '''
+<ul>
+<li>ERA5 is a reanalysis; Malawi's gauge network is thin outside the main stations, so the rainfall field leans on the model background. The north–south gradient is consistent with the station literature, but the 2024 northern anomaly (the wettest JFM in the record by a large margin) should be checked against CHIRPS or DCCMS station data before it is quoted.</li>
+<li>The country polygon includes Lake Malawi, about a fifth of the national area, so the “national” mean and the Northern and Central zones include open-water cells.</li>
+<li>The zone boundaries (12.5°S and 14.5°S) are latitude proxies for the Northern, Central and Southern Regions, not the administrative lines.</li>
+<li>Ten El Niño JFM seasons is a small sample; a seven-of-ten hit rate has wide uncertainty and one more event could move it by ten points.</li>
+<li>The country boundary is Natural Earth 110m rasterised with “all touched”, so edge cells straddle Mozambique, Zambia and Tanzania.</li>
+<li>No field-significance correction is applied at pixel level; read coherent regions, not single cells.</li>
+</ul>
+'''
+
+[[references]]
+html = 'Mason, S. J. &amp; Goddard, L. (2001). Probabilistic precipitation anomalies associated with ENSO. <em>Bulletin of the American Meteorological Society</em> 82, 619–638. <a href="https://journals.ametsoc.org/view/journals/bams/82/4/1520-0477_2001_082_0619_ppaawe_2_3_co_2.xml">link</a>'
+[[references]]
+html = 'Nicholson, S. E. &amp; Kim, J. (1997). The relationship of the El Niño–Southern Oscillation to African rainfall. <em>International Journal of Climatology</em> 17, 117–135.'
+[[references]]
+html = 'Nicholson, S. E., Klotter, D. &amp; Chavula, G. (2014). A detailed rainfall climatology for Malawi, Southern Africa. <em>International Journal of Climatology</em> 34, 315–325. <a href="https://doi.org/10.1002/joc.3687">link</a>'
+[[references]]
+html = 'Jury, M. R. &amp; Mwafulirwa, N. D. (2002). Climate variability in Malawi, part 1: dry summers, statistical associations and predictability. <em>International Journal of Climatology</em> 22, 1289–1302. <a href="https://doi.org/10.1002/joc.771">link</a>'
+[[references]]
+html = 'Jury, M. R. &amp; Gwazantini, M. E. (2002). Climate variability in Malawi, part 2: sensitivity and prediction of lake levels. <em>International Journal of Climatology</em> 22, 1303–1312.'
+[[references]]
+html = 'Lindesay, J. A. (1988). South African rainfall, the Southern Oscillation and a Southern Hemisphere semi-annual cycle. <em>Journal of Climatology</em> 8, 17–30.'
+[[references]]
+html = 'Reason, C. J. C. &amp; Jagadheesha, D. (2005). A model investigation of recent ENSO impacts over southern Africa. <em>Meteorology and Atmospheric Physics</em> 89, 181–205.'
+[[references]]
+html = 'Hoell, A., Funk, C., Magadzire, T., Zinke, J. &amp; Husak, G. (2015). El Niño–Southern Oscillation diversity and Southern Africa teleconnections during austral summer. <em>Climate Dynamics</em> 45, 1583–1599.'
+[[references]]
+html = 'Ratnam, J. V., Behera, S. K., Masumoto, Y. &amp; Yamagata, T. (2014). Remote effects of El Niño and Modoki events on the austral summer precipitation of southern Africa. <em>Journal of Climate</em> 27, 3802–3815.'
+[[references]]
+html = 'Ngongondo, C., Xu, C.-Y., Gottschalk, L. &amp; Alemaw, B. (2011). Evaluation of spatial and temporal characteristics of rainfall in Malawi. <em>Theoretical and Applied Climatology</em> 106, 79–93. <a href="https://doi.org/10.1007/s00704-011-0413-0">link</a>'
+[[references]]
+html = 'Kumbuyo, C. P., Yasuda, H., Kitamura, Y. &amp; Shimizu, K. (2014). Fluctuation of rainfall time series in Malawi: an analysis of selected areas. <em>Geofizika</em> 31, 13–28.'
+[[references]]
+html = 'Declaration of a State of National Disaster caused by prolonged dry spells during the 2015/2016 season, 12 April 2016. <a href="https://reliefweb.int/report/malawi/declaration-state-national-disaster-caused-prolonged-dry-spells-during-20152016-season">link</a>; Malawi: El Niño impact assessment highlights, April 2024. <a href="https://reliefweb.int/report/malawi/malawi-el-nino-impact-assessment-highlights-april-2024">link</a>; Malawi: National El Niño Induced Prolonged Dry Spells and Floods Response Appeal, April 2024. <a href="https://reliefweb.int/report/malawi/malawi-national-el-nino-induced-prolonged-dry-spells-and-floods-response-appeal-april-2024">link</a>'
