@@ -709,12 +709,14 @@ def load_fews(iso3: str) -> dict | None:
     if len(cs_rounds):
         rd = cs_rounds.max(); sub = rows[(rows.scenario == "CS") & (rows.reporting_date == rd)]
         picks["CS"] = dict(round=rd, doc=sub.doc.iloc[0], start=sub.projection_start.iloc[0], end=sub.projection_end.iloc[0],
-                           phase=sub.set_index("fnid").phase.astype(int).to_dict())
+                           phase=sub.set_index("fnid").phase.astype(int).to_dict(),
+                           ha=set(sub.fnid[sub.assistance == 1]))
     for sc in ("ML1", "ML2"):
         sub = rows[(rows.scenario == sc) & (rows.reporting_date == latest)]
         if len(sub):
             picks[sc] = dict(round=latest, doc=sub.doc.iloc[0], start=sub.projection_start.iloc[0], end=sub.projection_end.iloc[0],
-                             phase=sub.set_index("fnid").phase.astype(int).to_dict())
+                             phase=sub.set_index("fnid").phase.astype(int).to_dict(),
+                             ha=set(sub.fnid[sub.assistance == 1]))
     # Per year: the pre-season outlook for the October–January window (the same product as the
     # current medium-term projection) — latest round issued by September whose ML1/ML2 window starts
     # 1 October; fallback to an October-issued ML1 (marked). Shares are of classified units (unit
@@ -787,6 +789,11 @@ def fig_fews_maps(c: Country, fews: dict, hit: np.ndarray | None, analysable: np
             sub = g[g.phase == ph]
             if len(sub):
                 sub.plot(ax=ax, color=col, edgecolor="white", linewidth=0.3)
+        # FEWS NET's "!" — phase held down by humanitarian assistance — drawn as FEWS NET draws it
+        for _, u in g[g.fnid.isin(pk.get("ha", set()))].iterrows():
+            pt = u.geometry.representative_point()
+            ax.text(pt.x, pt.y, "!", fontsize=7, fontweight="bold", ha="center", va="center", color="#1d2021",
+                    bbox=dict(boxstyle="circle,pad=0.15", fc="white", ec="#1d2021", lw=0.6))
         _draw_country(ax, c, ext)
         lbl = {"CS": "Current situation", "ML1": "Near-term projection", "ML2": "Medium-term projection"}[sc]
         ax.set_title(f"{lbl}\n{_window(pk['start'], pk['end'])} · round {pk['round']}", fontsize=9, color=C_TEXT, loc="left")
@@ -799,8 +806,9 @@ def fig_fews_maps(c: Country, fews: dict, hit: np.ndarray | None, analysable: np
         _draw_country(ax, c, ext)
         ax.set_title(f"El Niño years in the cell's driest third\nof {season} (chance 33%), FEWS NET units outlined", fontsize=9, color=C_TEXT, loc="left")
         cb = fig.colorbar(m, ax=ax, shrink=0.6, pad=0.03); cb.ax.tick_params(labelsize=7.5, colors=C_MUTED)
-    fig.legend(handles=[Patch(color=IPC_COLOURS[k], label=IPC_LABELS[k]) for k in range(1, 6)] + [Patch(color="#ececec", label="not classified")],
-               frameon=False, fontsize=8, loc="lower center", ncol=6, bbox_to_anchor=(0.5, 0.0))
+    fig.legend(handles=[Patch(color=IPC_COLOURS[k], label=IPC_LABELS[k]) for k in range(1, 6)] + [Patch(color="#ececec", label="not classified"),
+                        plt.Line2D([], [], marker="$!$", ms=7, color="#1d2021", ls="", label="! = at least one phase worse without assistance")],
+               frameon=False, fontsize=8, loc="lower center", ncol=7, bbox_to_anchor=(0.5, 0.0))
     fig.suptitle(f"{name}: FEWS NET acute food insecurity (IPC-compatible), on FEWS NET's own units"
                  + (" — beside the El Niño drought hit-rate" if hit is not None else ""),
                  fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
@@ -1330,7 +1338,7 @@ def analyse(spec: dict, grid: Grid, gdf: gpd.GeoDataFrame, indices: pd.DataFrame
     if fews and fews["picks"]:
         if True:
             fig_fews_maps(c, fews, hit, ok_head, head, out_dir / "fews_maps.png", name)
-            fews_out = dict(picks={k: {kk: vv for kk, vv in v.items() if kk != "phase"} for k, v in fews["picks"].items()},
+            fews_out = dict(picks={k: {kk: vv for kk, vv in v.items() if kk not in ("phase", "ha")} for k, v in fews["picks"].items()},
                             generated=fews["generated"],
                             n_units={k: len(v["phase"]) for k, v in fews["picks"].items()},
                             p3_units={k: int(sum(1 for p in v["phase"].values() if p >= 3)) for k, v in fews["picks"].items()})
