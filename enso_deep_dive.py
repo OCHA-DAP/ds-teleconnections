@@ -517,7 +517,7 @@ def seas5_skill_issued(c: Country, zones: dict[str, np.ndarray], issued_month: i
 
 
 def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill: dict, out: Path,
-                     name: str, off_share: float = 0.15) -> None:
+                     name: str, off_share: float = 0.15, area_label: str = "Whole country") -> None:
     """Climatology on top, skill heatmap underneath, on a shared month axis.
 
     Months run from two before the issuance to six after (the 7-month SEAS5 horizon). Each
@@ -540,7 +540,7 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
                                      gridspec_kw=dict(height_ratios=[2.4, 2.4, 2.4], hspace=0.12))
     # --- top: climatology
     clim_all = monthly(c.mask)
-    ax.bar(range(9), clim_all[[m - 1 for m in months]], color="#D8C3AC", width=0.72, label="Whole country")
+    ax.bar(range(9), clim_all[[m - 1 for m in months]], color="#D8C3AC", width=0.72, label=area_label)
     zone_clim = {}
     for (label, zm), col in zip(zones.items(), ["#1F5F96", "#5E9FD2", "#18614c", "#8a4f7d"]):
         z = monthly(zm); zone_clim[label] = z
@@ -595,11 +595,11 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
         hx.spines[sp].set_visible(False)
     for sp in ("left", "bottom"):
         hx.spines[sp].set_color("#c9d0d0")
-    hx.legend(handles=[plt.Line2D([], [], color="#3f4748", ls=(0, (4, 2)) if len(rows) > 1 else "-", lw=1.6, label="Whole country"),
+    hx.legend(handles=[plt.Line2D([], [], color="#3f4748", ls=(0, (4, 2)) if len(rows) > 1 else "-", lw=1.6, label=area_label),
                        plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6,
                                   label="hollow = off-season window" + ("" if solo_fig else " for that zone") + " (<15% of annual rain)")],
               frameon=False, fontsize=7.5, loc="upper right", ncol=2)
-    hx.set_title("Skill of this issuance (median pixel r" + (", whole country)" if len(rows) == 1 else ")"), fontsize=9.5, color=C_TEXT, loc="left")
+    hx.set_title("Skill of this issuance (median pixel r" + ((", whole country)" if area_label == "Whole country" else f", {area_label})") if len(rows) == 1 else ")"), fontsize=9.5, color=C_TEXT, loc="left")
 
     # --- third panel: the current forecast's return period, dry above the axis, wet below (log scale)
     yr = skill.get("issued_year")
@@ -1847,6 +1847,11 @@ def main() -> None:
         if args.only and spec["slug"] != args.only:
             continue
         print(f"{spec['iso3']}: {spec['name']}")
+        if spec.get("builder") == "gaza":
+            # Gaza is three ERA5 cells and a wet-season hazard: its own module (reuses this one's pieces)
+            import gaza_deep_dive
+            gaza_deep_dive.build(spec, grid, gdf, indices)
+            continue
         a = analyse(spec, grid, gdf, indices, cfg, OUT_DIR / spec["slug"])
         (OUT_DIR / spec["slug"] / "index.html").write_text(render_country(spec, a, int(grid.years[-1])), encoding="utf-8")
         for s in a["summaries"]:

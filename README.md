@@ -158,6 +158,16 @@ identical to the PSL series the survey was built on); the live PSL series (ERSST
 fetched weekly into `cache/nino34_latest.data` and used only for the current-ENSO-state line. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 
+**Gaza Strip** (`deep_dives/gaza.toml`, `builder = "gaza"`) is built by its own module, `gaza_deep_dive.py`, which
+`enso_deep_dive.py` dispatches to (or run it directly: `uv run python gaza_deep_dive.py`). The Strip is three ERA5 cells and
+its winter hazard is rain, wind, sea and cold rather than drought, so the page reuses the series' chrome, SEAS5 skill figure and
+pixel correlation maps but adds: four independent rainfall records (ERA5 hourly point series for the three cells from the CDS
+`reanalysis-era5-single-levels-timeseries` dataset, 1950–; the GPCC 1° combined product via NOAA PSL NCSS, 1891–; IMERG late v7
+daily from the prod raster blob, 1998–; GHCN-Daily Beer Sheva, 1921–2016), a 31-year running-correlation stationarity test
+(HadISST Niño3.4 before 1950), daily metrics by ENSO phase, and the last three winters' daily rainfall against dated impacts
+curated in the TOML (`[[impacts]]`, `[[prewar]]`, public UN/cluster sources only). Downloads cache under `cache/gaza/`; CDS
+needs a key in `~/.cdsapirc` (the CDS endpoint is forced, whatever URL the file names).
+
 ---
 
 ## The web app

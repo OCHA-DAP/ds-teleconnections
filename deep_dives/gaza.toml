@@ -1,0 +1,331 @@
+# Gaza Strip — ENSO deep dive. Built by gaza_deep_dive.py (builder = "gaza"), not the generic
+# analyse(): the Strip is three ERA5 cells and its winter hazard is rain, wind, sea and cold, not drought.
+# Figures and tables are recomputed on every run; the narrative here must be reconciled against
+# them after every rebuild. Impacts are curated from public UN/cluster reporting only.
+iso3 = "PSE"
+name = "Gaza Strip"
+builder = "gaza"
+subtitle = "What the 2026 El Niño means for Gaza's 2026/27 winter, how far to trust it, and what winter weather does in the Strip"
+skill_issued_month = 9
+skill_intro = false
+timeline_winters = [2023, 2024, 2025]
+
+summary_html = '''
+<p><strong>1. What the forecasts say.</strong> A very strong El Niño is under way. NOAA gives El Niño 100% odds through January–March and a 75% chance that October–December will be the strongest since 1950, weakening through the winter. Every multi-model forecast checked (C3S, ECMWF SEAS5, NMME, IRI, the WMO Lead Centre) favours above-normal rain over the southern Levant in October–December (40–70% for the wet tercile), with weaker odds in November–January and no wet signal for December–February, where one system (NMME) leans dry. All favour a warmer-than-normal winter. SEAS5 puts September–November and October–December over the Strip at 9- and 7-year wet return periods, with moderate skill; after December both its skill and its signal fade.</p>
+<p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. Two gauge-based records and a reanalysis correlate at +0.55 to +0.67 with winter Niño3.4, and 9 of the 14 El Niño winters fell in Gaza's wettest third, against 2 (GPCC) or none (ERA5) in the driest. That moves the chance of a wettest-third winter from about one in three to about two in three, with a wide range (roughly 40–85%) on 14 cases. But the same records show no positive link before 1979. And the strong El Niños, the relevant analogues for this year, have been the least reliable: three of six were wet, one normal, and two normal to dry, including 2023/24, the first winter of the war. The two wettest, 1982/83 and 1991/92, both followed major volcanic eruptions, which makes them doubtful analogues for a winter forecast to be warm. El Niño shifts the odds towards a wet winter, mostly in its first half; it does not forecast one.</p>
+<p><strong>3. What changes in an El Niño winter.</strong> Mostly the number of rainy days (about ten more per winter than in a La Niña winter) and, in two of the three daily records, of days with 10 mm or more. The biggest single storms are only loosely tied to El Niño, and cold nights not at all.</p>
+<p><strong>4. What winter weather does in Gaza now.</strong> Every winter since October 2023 has flooded tents, including the very dry 2024/25. Damage followed ordinary rain (on several occasions no more than about 16 mm in a day; Byron's wettest day was about 66 mm), high tides with almost no rain, wind, and cold nights. Last winter the Shelter Cluster counted more than 42,000 tents damaged in Storm Byron alone, 71% of households were flooded at least once, and at least 11 children died of hypothermia (Ministry of Health). In September 2026, 451 sites holding about 464,000 people are rated high flood risk.</p>
+'''
+
+before_html = '''
+<p class="small"><strong>About the catalogue row.</strong> The survey's Palestine row was computed on the Natural Earth polygon for the West Bank only, so it has never described Gaza. Its second citation is garbled: the paper is Price, Stone, Huppert, Rajagopalan &amp; Alpert (1998) in <em>Geophysical Research Letters</em>, not a <em>Journal of Climate</em> paper. And Mariotti et al. (2002) found the El Niño autumn wet signal in the <em>western</em> Mediterranean, with negative anomalies in the east in their reanalysis. The grade here rests on this page's four records and on the Israel-specific literature.</p>
+'''
+
+forecast_html = '''
+<p>NOAA's September outlook gives El Niño 100% odds for every season through January–March 2027. It has the event peaking in October–December, with a median relative Niño3.4 index of +2.67 °C and a 75% chance of exceeding +2.5 °C, which no event since 1950 has done. It then weakens to about +1.8 °C by January–March. On that same relative index, the October–December and November–January medians are above every El Niño since 1950. All 22 models in the IRI plume stay “very strong” through December–February, and IRI's traditional Niño3.4 (on a different sea-surface temperature dataset) was +2.52 °C in August and about +3.0 °C in mid-September; the highest month in the series this page uses is +2.72 °C (November 2015). A positive Indian Ocean Dipole is developing and is expected to fade by early 2027. The coming winter is likely to be a stronger El Niño than any the relationships below were fitted on.</p>
+<p>The rainfall forecasts agree on a shape, not only a sign: wet odds for October–December, weaker for November–January, and no wet signal for December–February, where NMME leans dry (40–60%). That is the part of the season the El Niño signal has historically favoured (section 2), and the part where SEAS5 has skill. The forecasts also agree the winter will be warm. A warm winter still has cold nights: the newborn hypothermia deaths of December 2024 happened on nights of about 9 °C. SEAS5 and the C3S multi-model mean lean towards a negative North Atlantic Oscillation in late winter. Most Levant studies find that pattern is not a wet one for Israel and Palestine (Nissen et al. 2010; Sandler et al. 2024), and the forecast pressure anomaly over the Levant is near zero.</p>
+'''
+
+forecast_table_note = '''
+<p class="small">Tercile probabilities for the wet (AN) or dry (BN) category at or near Gaza, read from the legend classes of each centre's published maps. The Strip is smaller than every model's grid cell, so these are southern-Levant values. “No signal” means no category above 40%. Compiled 30 September 2026. The October issuances (NOAA on 8 October, C3S around 10–13 October) will extend the horizon to January–March, and the Mediterranean Climate Outlook Forum (MedCOF) normally issues its winter consensus in late November.</p>
+'''
+
+skill_html = '''
+<p>The September 2026 SEAS5 issuance forecasts a wet start to the season over the Strip and little after it. September–November is at a 9-year wet return period, October–December 7 years and November–January 3.5 years; December–February and January–March are slightly dry of their hindcast medians (2- to 3-year dry return periods). Skill from September is moderate for the first three windows (r = 0.44–0.49) and low or absent for the last two (0.29 and 0.0). The raw ensemble-mean files for a box over the Strip give the same picture independently of the app's cube (table below): the September–November forecast is the 5th-wettest of 46 September issuances since 1981 and October–December the 8th. SEAS5's three wettest September–November hindcasts are 1997, 1982 and 2015, the three strongest El Niños in its record. So this is the El Niño signal the model carries, not an independent source of information.</p>
+'''
+
+enso_intro_html = '''
+<p>Gaza's rain falls between October and April, most of it from December to February, almost all of it from Mediterranean cyclones. The Strip is 365 km²: three ERA5 cells and a corner of one GPCC cell. So this section uses four rainfall records: two gauge-based (the GPCC analysis, and the Beer Sheva gauge, which is one of GPCC's inputs), a reanalysis that assimilates no rain gauges (ERA5), and a satellite product (IMERG). It asks two questions: does El Niño make Gaza's winter wetter, and has it always done so?</p>
+'''
+
+stationarity_html = '''
+<p>Since the late 1970s, yes; before that, no. Since 1979 the correlation between the October–April total and December–February Niño3.4 is +0.55 in GPCC (to 2024/25), +0.59 in ERA5 (to 2025/26) and +0.67 at the Beer Sheva gauge (to 2015/16). Each is significant at p &lt; 0.001 and unchanged by detrending, and each holds at +0.45 to +0.62 without 1982/83 and 1991/92. Before 1979 the same records give −0.06 (GPCC, from 1891), −0.26 (Beer Sheva, from 1921; nominally significant, p = 0.045) and −0.26 (ERA5, from 1950). Over each full record the correlation is weak (+0.13 to +0.29). All three running correlations climb out of the noise band in the early 1980s and stay out. The switch is in the gauge records as well as the reanalysis, so it is not an artefact of ERA5.</p>
+<p>The literature found the same break. Price et al. (1998) saw significant correlations only in the last 25 years of their Israeli record, and Alpert et al. (2005) found no connection before the 1970s. A 2026 Israel Meteorological Service technical report (not peer-reviewed) finds r ≈ 0.50–0.55 over the last 50 years, strongest in the northern Negev and the Shephelah next to Gaza, and about 11–14% more rain per degree of Niño3.4. Similar switches have been found for Arabian winter rainfall (Kang et al. 2015) and Euro-Mediterranean winter storm frequency (Kamil et al. 2017: −0.24 in 1950–79, +0.44 in 1987–2016). Reviews call the eastern Mediterranean ENSO influence “seasonally dependent, small, and intermittent” (Dayan et al. 2015).</p>
+<p>What this means for use: the relationship has held for 45 winters, the whole period in which seasonal forecasts have existed. But it is not a law of nature, and it could weaken again. IMERG (1998–) agrees on the sign but is weaker (r = +0.31, not significant over 28 winters). Its seasonal totals track the gauges less well (r = 0.72 with GPCC) than ERA5 does (0.91).</p>
+'''
+
+history_html = '''
+<p>Since 1979, 9 of the 14 El Niño winters in the GPCC record fell in the wettest third and 2 in the driest; in ERA5, 9 and none. La Niña winters ran the other way: 2 of 19 in the wettest third and 10 in the driest. Before 1979, El Niño winters were as likely to be dry as wet (8 in the wettest third and 11 in the driest, of 25), and La Niña winters were if anything wet (11 of 26 in the wettest third, 5 in the driest).</p>
+'''
+
+strong_html = '''
+<p>Strength does not buy certainty, and the literature agrees that larger El Niños do not reliably bring larger rainfall anomalies here (Mariotti et al. 2002; Alpert et al. 2005). Of the six strong El Niños since 1979:</p>
+<ul>
+<li>three were wet: 1982/83 and 1991/92, the two wettest winters since 1979, and 2015/16;</li>
+<li>one was normal (1997/98);</li>
+<li>two were normal to dry, depending on the record: 2009/10, and 2023/24, the first winter of the war.</li>
+</ul>
+<p>1982/83 and 1991/92 both followed major volcanic eruptions (El Chichón, Pinatubo), and 1991/92 was unusually cold across the Middle East. That makes them doubtful analogues for a winter every forecast expects to be warm. It is a caution about analogues, not a reason to discount them: we found no study attributing their rainfall to the eruptions. The two strong events before 1979 (1957/58, 1972/73) were normal to dry. The El Niño winters that delivered most reliably were moderate ones (1986/87, 1987/88, 1994/95, 2002/03).</p>
+'''
+
+trimester_html = '''
+<p>The concurrent signal runs through the whole season, strongest early: r = 0.35–0.52 for every three-month window from October–December to January–March, in both GPCC and ERA5. What matters for a forecast now is the August–October Niño3.4, known before the season starts. It predicts the season total nearly as well (r = 0.45 in GPCC, 0.50 in ERA5), the windows from October–December to December–February at 0.32–0.46, and January–March more weakly (0.28–0.29, borderline significant). That matches SEAS5, whose skill and wet signal both fade after December, and the literature, which puts the eastern Mediterranean ENSO signal in autumn and early winter (Hochman &amp; Gildor 2025; Mariotti et al. 2005).</p>
+'''
+
+maps_html = '''
+<p>The signal is not a Gaza artefact. Across the southern Levant (the Israeli coastal plain, the hills of the West Bank, western Jordan and southern Lebanon), cells show the same positive correlation. It is most coherent in October–December (97% of analysable cells at r ≥ 0.3, though only 71 cells are analysable; the rest are too dry in that window) and November–January (76% of 144), and patchier in December–February and January–March. As in the survey, each cell keeps the best of four lags (0–3 months), which flatters r somewhat; the composite maps use concurrent December–February Niño3.4 and no lag search. Over the 14 El Niño winters of 1981/82–2025/26, every analysed cell in the region had a positive mean anomaly. The cells over the Strip averaged +0.77 standard deviations, with 64% of El Niño winters in their wettest third against 33% by chance.</p>
+'''
+
+daily_html = '''
+<p>A wetter El Niño winter is mostly a winter with more rainy days, not bigger storms. In all three records the number of rain days rises with Niño3.4 (r = 0.55–0.65). ERA5 has 54 rain days in an average El Niño winter against 42 in a La Niña winter, IMERG 41 against 33, and the Beer Sheva gauge 33 against 22. Days of 10 mm or more rise clearly at Beer Sheva (7.8 against 4.4) and in ERA5, but not in IMERG. The heaviest days are only loosely tied: for days of 20 mm or more and for the season's wettest day, correlations are 0.16–0.34, and only ERA5's wettest day clears p &lt; 0.05. The Israel Meteorological Service likewise finds no significant El Niño link to daily or storm maximum rainfall, but about 15% more days with a nearby low in El Niño than in La Niña winters. Cold nights show no link (Beer Sheva, r = +0.08). Windy days may be somewhat more frequent (12.8 against 9.3 of ERA5's top-5% days, r = +0.34, p = 0.02); with 17 tests in the table, treat that as suggestive.</p>
+<p>The distinction matters for people in tents. The storms that tear down shelters and flood whole sites, like Byron in December 2025, can come in any winter. What El Niño adds is more wet days around them. Our reading, not tested here, is that this is what keeps ground saturated, stormwater basins full and bedding wet between storms.</p>
+'''
+
+impacts_intro_html = '''
+<p>As of September 2026 about 1.7 million people live in roughly 1,600 displacement sites, and 65% of households live in tents or makeshift shelters. Last winter 71% of households were flooded at least once, and 83% of those in tents (Shelter Cluster). The inter-agency flood-exposure outlook for 2026/27 puts 989 of 1,764 assessed sites in medium- or high-risk areas, and 451 sites holding about 464,000 people in high-risk areas (IOM, Site Management Cluster and Shelter Cluster, September 2026; OCHA). That exposure map uses terrain and past flooding, not rainfall. No published analysis links rainfall amounts to tent flooding in Gaza, and no rain gauge inside the Strip reports internationally. The table below is a first pass at that link: every dated winter impact in UN reporting since October 2023, with the weather over the Strip on those days.</p>
+<p>Three things stand out.</p>
+<ul>
+<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over the Strip. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over the Strip every winter. Byron (about 150 mm over a week in IMERG) was large, but the pre-war benchmark, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
+<li><strong>Several damaging events came with little or no rain.</strong> These were the coastal flooding of 24–25 November 2024 (about 3 mm; high tides), the wind storms of 5–6 February 2025 and 14 March 2026, and the cold spells in which newborns died of hypothermia (ERA5 minimum 9 °C on 24–29 December 2024, 4 °C on 24–25 February 2025). A seasonal rainfall forecast says nothing about these.</li>
+<li><strong>Reporting changed between winters</strong>, from descriptive in 2023/24 to authority counts in 2024/25 and daily cluster alerts in 2025/26. So impact counts cannot be compared across winters; the dates can.</li>
+</ul>
+'''
+
+prewar_html = '''
+<p>Before October 2023, winter floods hit homes, refugee camps and the low ground around Wadi Gaza and the Sheikh Radwan stormwater lagoon, mostly because drainage was overwhelmed or pumping stations had no power. Even then the threshold was low. “Mild rainfall” (about 3 mm in IMERG) flooded houses and a sewage pump station in Gaza City in November 2017, and four children died of cold in the January 2015 storm, all from families made homeless in the 2014 war.</p>
+'''
+
+strong_notes = { "1982" = "El Chichón erupted in April 1982; 1982/83 is in Dogar et al.'s (2017) composite of volcanically cooled Middle East winters.", "1991" = "Pinatubo erupted in June 1991; snow in Jerusalem and the Negev; about twice the average rainfall in Israel (IMS).", "2009" = "IMS: southern coastal plain 50–75% of normal.", "2015" = "IMS: Be'eri, next to Gaza, 153% of normal; nationally a dry year.", "2023" = "IMS: 70–90% of normal along the Gaza border while northern Israel had 130–165%; about 2 °C warmer than average." }
+
+[catalogue]
+direction = "wetter"
+season = "DJF"
+evidence = "single-study"
+source_html = 'Mariotti, Zeng &amp; Lau 2002 (GRL); “Price, Stone &amp; Rind 1998 (J. Climate)” as cited (see below)'
+
+[assessment]
+direction = "wetter, Oct–Apr"
+season = "strongest Oct–Jan"
+evidence = "moderate"
+evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.55 to +0.67); the same records show no positive link before 1979, and strong events have been mixed."
+one_line = "2026/27 outlook: a very strong El Niño, and every multi-model forecast favours a wet October–December and a warm winter. Since 1979, 9 of 14 El Niño winters in Gaza were in the wettest third, but the link did not exist before the late 1970s and strong events have been mixed. Tent flooding has followed ordinary rain days, high tides, wind and cold every winter of the war."
+
+[titles]
+forecast = "1. What the forecasts say for this winter"
+skill = "SEAS5 for the Strip: skill and the September 2026 forecast"
+enso = "2. How much El Niño matters for a Gaza winter"
+daily = "3. What changes in an El Niño winter, and what does not"
+impacts = "4. What winter weather does in Gaza"
+
+# ---- Impacts, war winters (numbered in the timeline figure). Public UN sources only; figures from
+# Gaza authorities are italicised and attributed. Dates are the reported event dates.
+[[impacts]]
+start = "2023-11-13"
+end = "2023-11-14"
+hazard = "R W"
+what_html = 'First rains of the war: rain and flooding “damaged or destroyed tents and makeshifts” of people outside the shelters in the south; no count.'
+source_html = '<a href="https://www.ochaopt.org/content/hostilities-gaza-strip-and-israel-flash-update-39">OCHA Flash Update #39</a>, 14 Nov 2023'
+[[impacts]]
+start = "2023-12-13"
+hazard = "R"
+what_html = 'Heavy rain “flooding many of the areas”; the following week, tents and makeshift shelters in Rafah flooded; no count.'
+source_html = '<a href="https://www.ochaopt.org/content/hostilities-gaza-strip-and-israel-flash-update-68">OCHA Flash Update #68</a>, 13 Dec 2023; <a href="https://www.ochaopt.org/content/hostilities-gaza-strip-and-israel-flash-update-73">#73</a>'
+[[impacts]]
+start = "2024-01-24"
+end = "2024-01-25"
+hazard = "R W C"
+what_html = 'Overnight rain flooded tents in Deir al Balah and Rafah, washing away bedding and food; no count.'
+source_html = 'UNRWA via OCHA (28 Jan 2024); <a href="https://www.cnn.com/2024/01/25/middleeast/torrential-rain-gaza-israel-khan-younis-offensive-intl/index.html">CNN</a>, 25 Jan 2024'
+[[impacts]]
+start = "2024-11-24"
+end = "2024-11-25"
+hazard = "R S"
+what_html = 'Rain and high tides: about 7,000 shoreline families affected; more than 600 tents hit by the tide at Al Qarara; 60 shelters destroyed and 120 damaged at two Deir al Balah sites. <em>About 10,000 tents washed away or damaged (Government Media Office).</em> UNOSAT later mapped 528 coastal shelters affected by the tide.'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-241-gaza-strip">OCHA HSU #241</a>, 26 Nov 2024; <a href="https://unosat.org/static/unosat_filesystem/4050/UNOSAT_A3_portrait_FloodImpactAssessment_Rafah_Gaza_Strip_13Dec2024.pdf">UNOSAT</a>, 13 Dec 2024'
+[[impacts]]
+start = "2024-12-24"
+end = "2024-12-29"
+hazard = "C"
+what_html = '<em>At least five newborns died of hypothermia in tents in central and southern Gaza (Ministry of Health); eight by 6 January.</em>'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-251-gaza-strip">OCHA HSU #251</a>, 31 Dec 2024'
+[[impacts]]
+start = "2024-12-30"
+end = "2024-12-31"
+hazard = "R"
+what_html = '<em>1,542 tents flooded across Gaza, Khan Younis, Deir al Balah and Rafah (Civil Defence).</em>'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-253-gaza-strip">OCHA HSU #253</a>, 8 Jan 2025'
+[[impacts]]
+start = "2025-02-05"
+end = "2025-02-06"
+hazard = "R W"
+what_html = 'Rain and strong wind: at least 800 families at the 23 sites assessed reported damage to shelters, tents, water tanks and latrines (a floor, not a Strip total).'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-263-gaza-strip">OCHA HSU #263</a>, 11 Feb 2025'
+[[impacts]]
+start = "2025-02-24"
+end = "2025-02-25"
+hazard = "C"
+what_html = '<em>Six newborns died of cold (health officials).</em>'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-267-gaza-strip">OCHA HSU #267</a>, Feb 2025'
+[[impacts]]
+start = "2025-11-14"
+end = "2025-11-15"
+hazard = "R S"
+what_html = 'First rains after the ceasefire: an estimated 13,000 tents completely damaged (Shelter Cluster); more than 13,000 households affected; the Sheikh Radwan stormwater basin rose 37 cm; sea reached coastal tents on 16–17 November.'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-342-gaza-strip">OCHA HSU #342</a>, 20 Nov 2025'
+[[impacts]]
+start = "2025-12-10"
+end = "2025-12-17"
+hazard = "R W S"
+what_html = '<strong>Storm Byron.</strong> More than 42,000 tents or makeshift shelters damaged in 320 sites, at least 235,000 people affected, 17 buildings collapsed (Shelter Cluster); 12 storm-related deaths, 11 in collapsing buildings and one from hypothermia (Health Cluster).'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-349-gaza-strip">OCHA HSU #349</a>, 18 Dec 2025; <a href="https://www.ochaopt.org/content/gaza-humanitarian-response-situation-report-no-49">SitRep 49</a>'
+[[impacts]]
+start = "2025-12-26"
+end = "2025-12-30"
+hazard = "R S W"
+what_html = 'Seawater “once again” inundated tents in Al Mawasi; strong wind destroyed or damaged numerous tents; no count.'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-351-gaza-strip">OCHA HSU #351</a>, 30 Dec 2025'
+[[impacts]]
+start = "2026-01-09"
+end = "2026-01-10"
+hazard = "R"
+what_html = 'More than 1,300 households in 34 northern sites lost their shelters.'
+source_html = '<a href="https://www.ochaopt.org/content/gaza-humanitarian-response-situation-report-no-61">OCHA SitRep 61</a>, 13 Jan 2026'
+[[impacts]]
+start = "2026-01-12"
+end = "2026-01-16"
+hazard = "W C R"
+what_html = 'Wind and cold with some rain: 4,136 households (about 19,230 people) affected in 106 sites; 3,455 tents and makeshift shelters destroyed or severely damaged; 7 deaths and 34 injuries (Site Management Cluster). On 12–13 January three children died of cold.'
+source_html = '<a href="https://www.ochaopt.org/content/gaza-humanitarian-response-situation-report-no-61">OCHA SitRep 61</a>, 13 Jan 2026; <a href="https://www.ochaopt.org/content/gaza-humanitarian-response-situation-report-no-62">SitRep 62</a>, 16 Jan 2026'
+[[impacts]]
+start = "2026-03-14"
+hazard = "W R"
+what_html = 'Sandstorm and strong wind, then rain: 894 households affected; 29 shelters destroyed and 32 damaged.'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-report-19-march-2026">OCHA HSR</a>, 19 Mar 2026'
+[[impacts]]
+start = "2026-03-25"
+end = "2026-03-26"
+hazard = "R"
+what_html = 'Heavy rain flooded or damaged the tents and belongings of more than 3,000 people (about 600 households).'
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-report-2-april-2026">OCHA HSR</a>, 2 Apr 2026'
+
+# ---- Pre-war winter events (UN or Red Cross reporting; IMERG from 1998)
+[[prewar]]
+start = "2008-10-27"
+end = "2008-10-28"
+hazard = "R"
+what_html = 'Beach and Jabalia camps flooded; streets filled with water and sewage; no count.'
+source_html = '<a href="https://www.un.org/unispal/document/auto-insert-202884">UNRWA</a>, 1 Nov 2008'
+[[prewar]]
+start = "2010-01-18"
+end = "2010-01-19"
+hazard = "R"
+what_html = 'Wadi Gaza flood: about 800 people evacuated from Al Mughraqa and Juhor ad-Dik, water up to 2 m inside houses.'
+source_html = '<a href="https://www.ochaopt.org/sites/default/files/ocha_opt_the_humanitarian_monitor_2010_01_31_english.pdf">OCHA Humanitarian Monitor</a>, Jan 2010'
+[[prewar]]
+start = "2013-01-07"
+end = "2013-01-10"
+hazard = "R W"
+what_html = '530 homes damaged; 20 families displaced; one death in a rain-induced tunnel collapse.'
+source_html = '<a href="https://www.un.org/unispal/document/auto-insert-194567/">OCHA</a>, 16 Jan 2013'
+[[prewar]]
+start = "2013-12-11"
+end = "2013-12-14"
+hazard = "R C"
+what_html = '<strong>Storm Alexa.</strong> About 10,000 people evacuated at the peak; homes of about 21,000 people damaged; 2 deaths; the Sheikh Radwan lagoon overflowed on 14 December. The widely quoted “40,000 displaced” has no UN source.'
+source_html = '<a href="https://unispal.un.org/pdfs/AA6D4FA03A98636185257C43006590A4.pdf">OCHA SitRep</a>, 14 Dec 2013; <a href="https://www.un.org/unispal/document/auto-insert-202086/">16 Dec</a>'
+[[prewar]]
+start = "2014-11-24"
+end = "2014-11-27"
+hazard = "R"
+what_html = 'After the 2014 war: about 350 people moved to UNRWA shelters; hundreds evacuated around the Sheikh Radwan lagoon; UNRWA declared an emergency in Gaza City.'
+source_html = '<a href="https://www.ochaopt.org/content/winter-rains-caused-flooding-across-gaza">OCHA</a>, Nov 2014'
+[[prewar]]
+start = "2015-01-06"
+end = "2015-01-13"
+hazard = "C R"
+what_html = 'Storm Huda: four children died of cold on 9, 10, 11 and 13 January, all from families whose homes were destroyed in the 2014 war; 151 people in UNRWA centres.'
+source_html = '<a href="https://unispal.un.org/pdfs/UNICEFSitRpt_150115.pdf">UNICEF SitRep</a>, Jan 2015'
+[[prewar]]
+start = "2017-11-26"
+hazard = "R"
+what_html = '“Mild rainfall” flooded houses, shops and the al-Nafaq sewage pump station in Gaza City (no grid power for the pumps).'
+source_html = '<a href="https://www.ochaopt.org/content/poor-infrastructure-and-lack-funding-put-over-560000-people-risk-flooding-gaza-strip">OCHA</a>, Dec 2017'
+[[prewar]]
+start = "2019-12-08"
+end = "2019-12-09"
+hazard = "R"
+what_html = 'About 2,000 homes flooded (initial reports).'
+source_html = '<a href="https://www.ochaopt.org/sites/default/files/hummonitor_nov_2019.pdf">OCHA Humanitarian Bulletin</a>, Dec 2019'
+[[prewar]]
+start = "2020-01-18"
+end = "2020-01-19"
+hazard = "R C"
+what_html = 'About 100 families temporarily displaced by flooded homes; two deaths in Gaza (Red Crescent).'
+source_html = '<a href="https://www.ochaopt.org/content/gaza-strip-snapshot-january-2020">OCHA</a>, Jan 2020; IFRC DREF MDRPS011'
+
+# ---- Seasonal forecasts at or near Gaza, 1 September 2026 issuances (legend classes of published maps)
+[[forecasts]]
+source_html = '<a href="https://charts.ecmwf.int/products/c3s_seasonal_spatial_mm_rain_3m?area=area11&amp;base_time=202609010000&amp;type=tsum&amp;valid_time=202610010000">C3S multi-system</a> (9 models)'
+issued = "Sep 2026"
+ond = "wet 50–60%"
+ndj = "wet 40–50%"
+djf = "no signal"
+temp = "warm 60–100%"
+[[forecasts]]
+source_html = '<a href="https://charts.ecmwf.int/products/c3s_seasonal_spatial_ecmf_rain_3m?area=area11&amp;base_time=202609010000&amp;type=tsum&amp;valid_time=202610010000">ECMWF SEAS5</a>'
+issued = "Sep 2026"
+ond = "wet 50–60%"
+ndj = "no signal"
+djf = "no signal"
+temp = "warm 70–100% (Nov–Feb)"
+[[forecasts]]
+source_html = '<a href="https://www.cpc.ncep.noaa.gov/products/NMME/prob/images/prob_ensemble_prate_season1.png">NMME</a> (NOAA)'
+issued = "Sep 2026"
+ond = "wet 50–60%"
+ndj = "wet 40–50%"
+djf = "dry 40–60%"
+temp = "warm 50–90%"
+[[forecasts]]
+source_html = '<a href="https://iri.columbia.edu/climate/forecast/net_asmt/2026/sep2026/images/OND26_MEa_pcp.gif">IRI</a> (calibrated NMME)'
+issued = "Sep 2026"
+ond = "wet ≥ 70%"
+ndj = "wet 40–45%"
+djf = "no signal (Jan–Mar: no signal)"
+temp = "warm 45% to ≥ 70%"
+[[forecasts]]
+source_html = '<a href="https://www.wmolc.org/seasonPmmeUI/plot_PMME">WMO Lead Centre LRF-MME</a> (11 centres, 2.5° cells)'
+issued = "Sep 2026"
+ond = "wet 40–50%"
+ndj = "no signal"
+djf = "no signal (dry 40–50% offshore)"
+temp = "warm 70% to ≥ 80% (Nov–Feb)"
+
+[[sections_after]]
+title = "Caveats"
+html = '''
+<ul>
+<li><strong>A relationship that switched on can switch off.</strong> The El Niño link in all three long records appears only after the late 1970s. The page's numbers describe 1979–2025, not a physical law, and the coming event is likely to be stronger than any in that period.</li>
+<li><strong>Small samples and index choice.</strong> 14 El Niño winters since 1979 on the pinned index (16 on HadISST), six of them strong and two of those following major eruptions. Every hit rate here carries wide uncertainty, and the break at 1979 was identified from the data and the literature together.</li>
+<li><strong>No rain gauge inside Gaza reports internationally.</strong> GPCC is a 1° analysis that takes in the southern coastal plain and north-western Negev; after 2019 it is the Monitoring product, built on fewer gauges. Beer Sheva is 46 km inland, drier, and one of GPCC's inputs, so the two are not independent. ERA5 is three 25 km cells, partly over the sea, and assimilates no rain gauges. IMERG is the satellite-only late run, which tracks the gauges less well year to year. Their agreement on the sign and the timing is the evidence; no single number is Gaza's.</li>
+<li><strong>Forecast calibration.</strong> The September 2026 SEAS5 issuance sits in the tails of its hindcast unusually often across the globe (see the <a href="../zwe/">Zimbabwe page</a>); a very strong El Niño can do that, but the normalisation check is not complete. Read its return periods as a ranking. The last time El Niño and a positive Indian Ocean Dipole lined up, a “forecast of opportunity” for October–December 2023 gave better than 60% odds of above-normal rain over Southwest Asia, and the season came in at the 15th percentile (Hoell et al. 2025).</li>
+<li><strong>Rainfall is one of four winter hazards.</strong> Sea surge, wind and cold caused a large share of the damage and deaths in the last three winters, and none of them has an El Niño signal in this analysis or in the literature.</li>
+<li><strong>Impact figures.</strong> Counts from Gaza authorities (Ministry of Health, Civil Defence, Government Media Office) are relayed, not verified, by the UN; OCHA does not systematically monitor non-conflict deaths. Reporting practice changed between winters, and several figures are cumulative or count exposure rather than impact.</li>
+</ul>
+'''
+
+[[references]]
+html = 'Price, C., Stone, L., Huppert, A., Rajagopalan, B. &amp; Alpert, P. (1998). A possible link between El Niño and precipitation in Israel. <em>Geophysical Research Letters</em> 25, 3963–3966. <a href="https://doi.org/10.1029/1998GL900098">doi:10.1029/1998GL900098</a>'
+[[references]]
+html = 'Alpert, P. et al. (2005). Tropical tele-connections to the Mediterranean climate and weather. <em>Advances in Geosciences</em> 2, 157–160. <a href="https://doi.org/10.5194/adgeo-2-157-2005">doi:10.5194/adgeo-2-157-2005</a>'
+[[references]]
+html = 'Mariotti, A., Zeng, N. &amp; Lau, K.-M. (2002). Euro-Mediterranean rainfall and ENSO — a seasonally varying relationship. <em>Geophysical Research Letters</em> 29, 1621. <a href="https://doi.org/10.1029/2001GL014248">doi:10.1029/2001GL014248</a>; Mariotti, A., Ballabrera-Poy, J. &amp; Zeng, N. (2005). Tropical influence on Euro-Asian autumn rainfall variability. <em>Climate Dynamics</em> 24, 511–521. <a href="https://doi.org/10.1007/s00382-004-0498-6">doi:10.1007/s00382-004-0498-6</a>'
+[[references]]
+html = 'Halfon, N., Ilotoviz, E., Carmona, Y., Yosef, Y. &amp; Givati, A. (2026). The link between extreme El Niño values and precipitation in Israel (Hebrew; author names transliterated). Israel Meteorological Service technical report, July 2026. <a href="https://ims.gov.il/he/node/2921">ims.gov.il</a> (not peer-reviewed)'
+[[references]]
+html = 'Hochman, A. &amp; Gildor, H. (2025). Synergistic effects of El Niño–Southern Oscillation and the Indian Ocean Dipole on Middle Eastern subseasonal precipitation variability and predictability. <em>QJRMS</em> 151, e4903. <a href="https://doi.org/10.1002/qj.4903">doi:10.1002/qj.4903</a>'
+[[references]]
+html = 'Kang, I.-S. et al. (2015). Multidecadal changes in the relationship between ENSO and wet-season precipitation in the Arabian Peninsula. <em>Journal of Climate</em> 28, 4743–4752. <a href="https://doi.org/10.1175/JCLI-D-14-00388.1">doi:10.1175/JCLI-D-14-00388.1</a>; Kamil, S. et al. (2017). Multidecadal changes in the relationship of storm frequency over Euro-Mediterranean region and ENSO during boreal winter. <em>Earth Systems and Environment</em> 1. <a href="https://doi.org/10.1007/s41748-017-0011-0">doi:10.1007/s41748-017-0011-0</a>'
+[[references]]
+html = 'Dayan, U., Nissen, K. M. &amp; Ulbrich, U. (2015). Atmospheric conditions inducing extreme precipitation over the eastern and western Mediterranean. <em>NHESS</em> 15, 2525–2544. <a href="https://doi.org/10.5194/nhess-15-2525-2015">doi:10.5194/nhess-15-2525-2015</a>'
+[[references]]
+html = 'Nissen, K. M. et al. (2010). Cyclones causing wind storms in the Mediterranean. <em>NHESS</em> 10, 1379–1391. <a href="https://doi.org/10.5194/nhess-10-1379-2010">doi:10.5194/nhess-10-1379-2010</a>; Sandler, D. et al. (2024). The connection between North Atlantic storm track regimes and eastern Mediterranean cyclonic activity. <em>Weather and Climate Dynamics</em> 5, 1103–1116. <a href="https://doi.org/10.5194/wcd-5-1103-2024">doi:10.5194/wcd-5-1103-2024</a>'
+[[references]]
+html = 'Dogar, M. M. et al. (2017). Sensitivity of the regional climate in the Middle East and North Africa to volcanic perturbations. <em>JGR Atmospheres</em> 122, 7922–7948. <a href="https://doi.org/10.1002/2017JD026783">doi:10.1002/2017JD026783</a>'
+[[references]]
+html = 'Hoell, A. et al. (2025). An unexpected outcome followed an apparent seasonal forecast of opportunity and prolonged drought in Southwest Asia. <em>International Journal of Climatology</em> 45. <a href="https://doi.org/10.1002/joc.8851">doi:10.1002/joc.8851</a>'
+[[references]]
+html = 'NOAA CPC ENSO diagnostic discussion, 10 September 2026 <a href="https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_disc_sep2026/ensodisc.shtml">link</a>; IRI ENSO forecast, 21 September 2026 <a href="https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/">link</a>.'
+[[references]]
+html = 'IOM, Site Management Cluster &amp; Shelter Cluster (2026). Sites exposed to flood risk: Phase one outlook for rainy season 2026–27 <a href="https://www.sheltercluster.org/palestine/documents/sites-exposed-flood-risk">link</a>; Shelter Cluster (2026). Exposed on all sides: shelter severity and household needs across accessible areas in Gaza <a href="https://www.sheltercluster.org/palestine/documents/shelter-severity-and-household-needs-across-accessible-areas-gaza">link</a>; OCHA Humanitarian Situation Report, 25 September 2026 <a href="https://www.ochaopt.org/content/humanitarian-situation-report-25-september-2026">link</a>.'
+[[references]]
+html = 'Rainfall: GPCC Full Data v2020 to 2019 + Monitoring v2020 after (DWD), combined 1° product via <a href="https://psl.noaa.gov/data/gridded/data.gpcc.html">NOAA PSL</a>; ERA5 hourly time series (Copernicus Climate Change Service); IMERG late run v7 (NASA), from the team blob; GHCN-Daily Beer Sheva IS000051690 (NOAA NCEI). Niño3.4: NOAA PSL (ERSST v5 pinned; HadISST before 1950). SEAS5 skill and forecast return periods from the seas5-skill app&#39;s detrended skill cube. Boundaries: COD-AB (OCHA) via FieldMaps.'
