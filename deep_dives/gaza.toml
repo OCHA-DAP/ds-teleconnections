@@ -1,17 +1,17 @@
-# Gaza Strip — ENSO deep dive. Built by gaza_deep_dive.py (builder = "gaza"), not the generic
-# analyse(): the Strip is three ERA5 cells and its winter hazard is rain, wind, sea and cold, not drought.
+# Gaza — ENSO deep dive. Built by gaza_deep_dive.py (builder = "gaza"), not the generic
+# analyse(): Gaza is three ERA5 cells and its winter hazard is rain, wind, sea and cold, not drought.
 # Figures and tables are recomputed on every run; the narrative here must be reconciled against
 # them after every rebuild. Impacts are curated from public UN/cluster reporting only.
 iso3 = "PSE"
-name = "Gaza Strip"
+name = "Gaza"
 builder = "gaza"
-subtitle = "What the 2026 El Niño means for Gaza's 2026/27 winter, how far to trust it, and what winter weather does in the Strip"
+subtitle = "What the 2026 El Niño means for Gaza's 2026/27 winter, how far to trust it, and what winter weather does in Gaza"
 skill_issued_month = 9
 skill_intro = false
 timeline_winters = [2023, 2024, 2025]
 
 summary_html = '''
-<p><strong>1. What the forecasts say.</strong> A very strong El Niño is under way. NOAA gives El Niño 100% odds through January–March and a 75% chance that October–December will be the strongest since 1950, weakening through the winter. Every multi-model forecast checked (C3S, ECMWF SEAS5, NMME, IRI, the WMO Lead Centre) favours above-normal rain over the southern Levant in October–December (40–70% for the wet tercile), with weaker odds in November–January and no wet signal for December–February, where one system (NMME) leans dry. All favour a warmer-than-normal winter. SEAS5 puts September–November and October–December over the Strip at 9- and 7-year wet return periods, with moderate skill; after December both its skill and its signal fade.</p>
+<p><strong>1. What the forecasts say.</strong> A very strong El Niño is under way. NOAA gives El Niño 100% odds through January–March and a 75% chance that October–December will be the strongest since 1950, weakening through the winter. Every multi-model forecast checked (C3S, ECMWF SEAS5, NMME, IRI, the WMO Lead Centre) favours above-normal rain over the southern Levant in October–December (40–70% for the wet tercile), with weaker odds in November–January and no wet signal for December–February, where one system (NMME) leans dry. All favour a warmer-than-normal winter. SEAS5 puts September–November and October–December over Gaza at 9- and 7-year wet return periods, with moderate skill; after December both its skill and its signal fade.</p>
 <p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. Two gauge-based records and a reanalysis correlate at +0.55 to +0.67 with winter Niño3.4, and 9 of the 14 El Niño winters fell in Gaza's wettest third, against 2 (GPCC) or none (ERA5) in the driest. That moves the chance of a wettest-third winter from about one in three to about two in three, with a wide range (roughly 40–85%) on 14 cases. But the same records show no positive link before 1979. And the strong El Niños, the relevant analogues for this year, have been the least reliable: three of six were wet, one normal, and two normal to dry, including 2023/24, the first winter of the war. The two wettest, 1982/83 and 1991/92, both followed major volcanic eruptions, which makes them doubtful analogues for a winter forecast to be warm. El Niño shifts the odds towards a wet winter, mostly in its first half; it does not forecast one.</p>
 <p><strong>3. What changes in an El Niño winter.</strong> Mostly the number of rainy days (about ten more per winter than in a La Niña winter) and, in two of the three daily records, of days with 10 mm or more. The biggest single storms are only loosely tied to El Niño, and cold nights not at all.</p>
 <p><strong>4. What winter weather does in Gaza now.</strong> Every winter since October 2023 has flooded tents, including the very dry 2024/25. Damage followed ordinary rain (on several occasions no more than about 16 mm in a day; Byron's wettest day was about 66 mm), high tides with almost no rain, wind, and cold nights. Last winter the Shelter Cluster counted more than 42,000 tents damaged in Storm Byron alone, 71% of households were flooded at least once, and at least 11 children died of hypothermia (Ministry of Health). In September 2026, 451 sites holding about 464,000 people are rated high flood risk.</p>
@@ -27,15 +27,19 @@ forecast_html = '''
 '''
 
 forecast_table_note = '''
-<p class="small">Tercile probabilities for the wet (AN) or dry (BN) category at or near Gaza, read from the legend classes of each centre's published maps. The Strip is smaller than every model's grid cell, so these are southern-Levant values. “No signal” means no category above 40%. Compiled 30 September 2026. The October issuances (NOAA on 8 October, C3S around 10–13 October) will extend the horizon to January–March, and the Mediterranean Climate Outlook Forum (MedCOF) normally issues its winter consensus in late November.</p>
+<p class="small">Tercile probabilities for the wet (AN) or dry (BN) category at or near Gaza, read from the legend classes of each centre's published maps. Gaza is smaller than every model's grid cell, so these are southern-Levant values. “No signal” means no category above 40%. Compiled 30 September 2026. The October issuances (NOAA on 8 October, C3S around 10–13 October) will extend the horizon to January–March, and the Mediterranean Climate Outlook Forum (MedCOF) normally issues its winter consensus in late November.</p>
 '''
 
 skill_html = '''
-<p>The September 2026 SEAS5 issuance forecasts a wet start to the season over the Strip and little after it. September–November is at a 9-year wet return period, October–December 7 years and November–January 3.5 years; December–February and January–March are slightly dry of their hindcast medians (2- to 3-year dry return periods). Skill from September is moderate for the first three windows (r = 0.44–0.49) and low or absent for the last two (0.29 and 0.0). The raw ensemble-mean files for a box over the Strip give the same picture independently of the app's cube (table below): the September–November forecast is the 5th-wettest of 46 September issuances since 1981 and October–December the 8th. SEAS5's three wettest September–November hindcasts are 1997, 1982 and 2015, the three strongest El Niños in its record. So this is the El Niño signal the model carries, not an independent source of information.</p>
+<p>The September 2026 SEAS5 issuance forecasts a wet start to the season over Gaza and little after it. September–November is at a 9-year wet return period, October–December 7 years and November–January 3.5 years; December–February and January–March are slightly dry of their hindcast medians (2- to 3-year dry return periods). Skill from September is moderate for the first three windows (r = 0.44–0.49) and low or absent for the last two (0.29 and 0.0). The raw ensemble-mean files for a box over Gaza give the same picture independently of the app's cube (table below): the September–November forecast is the 5th-wettest of 46 September issuances since 1981 and October–December the 8th. SEAS5's three wettest September–November hindcasts are 1997, 1982 and 2015, the three strongest El Niños in its record. So this is the El Niño signal the model carries, not an independent source of information.</p>
+'''
+
+monthly_html = '''
+<p>By month, the wet signal sits in October (+79% on the hindcast mean, the 4th-wettest of 46 September forecasts) and November (+22%, the 8th). December, January and March are at their hindcast means, and February is slightly dry (−11%). Skill for single months is low throughout the rainy season (r = −0.01 to +0.27), so read the monthly split as a guide to where the three-month signal sits, not as a forecast for individual months.</p>
 '''
 
 enso_intro_html = '''
-<p>Gaza's rain falls between October and April, most of it from December to February, almost all of it from Mediterranean cyclones. The Strip is 365 km²: three ERA5 cells and a corner of one GPCC cell. So this section uses four rainfall records: two gauge-based (the GPCC analysis, and the Beer Sheva gauge, which is one of GPCC's inputs), a reanalysis that assimilates no rain gauges (ERA5), and a satellite product (IMERG). It asks two questions: does El Niño make Gaza's winter wetter, and has it always done so?</p>
+<p>Gaza's rain falls between October and April, most of it from December to February, almost all of it from Mediterranean cyclones. Gaza is 365 km²: three ERA5 cells and a corner of one GPCC cell. So this section uses four rainfall records: two gauge-based (the GPCC analysis, and the Beer Sheva gauge, which is one of GPCC's inputs), a reanalysis that assimilates no rain gauges (ERA5), and a satellite product (IMERG). It asks two questions: does El Niño make Gaza's winter wetter, and has it always done so?</p>
 '''
 
 stationarity_html = '''
@@ -63,7 +67,7 @@ trimester_html = '''
 '''
 
 maps_html = '''
-<p>The signal is not a Gaza artefact. Across the southern Levant (the Israeli coastal plain, the hills of the West Bank, western Jordan and southern Lebanon), cells show the same positive correlation. It is most coherent in October–December (97% of analysable cells at r ≥ 0.3, though only 71 cells are analysable; the rest are too dry in that window) and November–January (76% of 144), and patchier in December–February and January–March. As in the survey, each cell keeps the best of four lags (0–3 months), which flatters r somewhat; the composite maps use concurrent December–February Niño3.4 and no lag search. Over the 14 El Niño winters of 1981/82–2025/26, every analysed cell in the region had a positive mean anomaly. The cells over the Strip averaged +0.77 standard deviations, with 64% of El Niño winters in their wettest third against 33% by chance.</p>
+<p>The signal is not a Gaza artefact. Across the southern Levant (the Israeli coastal plain, the hills of the West Bank, western Jordan and southern Lebanon), cells show the same positive correlation. It is most coherent in October–December (97% of analysable cells at r ≥ 0.3, though only 71 cells are analysable; the rest are too dry in that window) and November–January (76% of 144), and patchier in December–February and January–March. As in the survey, each cell keeps the best of four lags (0–3 months), which flatters r somewhat; the composite maps use concurrent December–February Niño3.4 and no lag search. Over the 14 El Niño winters of 1981/82–2025/26, every analysed cell in the region had a positive mean anomaly. The cells over Gaza averaged +0.77 standard deviations, with 64% of El Niño winters in their wettest third against 33% by chance.</p>
 '''
 
 daily_html = '''
@@ -72,10 +76,10 @@ daily_html = '''
 '''
 
 impacts_intro_html = '''
-<p>As of September 2026 about 1.7 million people live in roughly 1,600 displacement sites, and 65% of households live in tents or makeshift shelters. Last winter 71% of households were flooded at least once, and 83% of those in tents (Shelter Cluster). The inter-agency flood-exposure outlook for 2026/27 puts 989 of 1,764 assessed sites in medium- or high-risk areas, and 451 sites holding about 464,000 people in high-risk areas (IOM, Site Management Cluster and Shelter Cluster, September 2026; OCHA). That exposure map uses terrain and past flooding, not rainfall. No published analysis links rainfall amounts to tent flooding in Gaza, and no rain gauge inside the Strip reports internationally. The table below is a first pass at that link: every dated winter impact in UN reporting since October 2023, with the weather over the Strip on those days.</p>
+<p>As of September 2026 about 1.7 million people live in roughly 1,600 displacement sites, and 65% of households live in tents or makeshift shelters. Last winter 71% of households were flooded at least once, and 83% of those in tents (Shelter Cluster). The inter-agency flood-exposure outlook for 2026/27 puts 989 of 1,764 assessed sites in medium- or high-risk areas, and 451 sites holding about 464,000 people in high-risk areas (IOM, Site Management Cluster and Shelter Cluster, September 2026; OCHA). That exposure map uses terrain and past flooding, not rainfall. No published analysis links rainfall amounts to tent flooding in Gaza, and no rain gauge inside Gaza reports internationally. The table below is a first pass at that link: every dated winter impact in UN reporting since October 2023, with the weather over Gaza on those days.</p>
 <p>Three things stand out.</p>
 <ul>
-<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over the Strip. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over the Strip every winter. Byron (about 150 mm over a week in IMERG) was large, but the pre-war benchmark, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
+<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over Gaza. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over Gaza every winter. Byron (about 150 mm over a week in IMERG) was large, but the pre-war benchmark, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
 <li><strong>Several damaging events came with little or no rain.</strong> These were the coastal flooding of 24–25 November 2024 (about 3 mm; high tides), the wind storms of 5–6 February 2025 and 14 March 2026, and the cold spells in which newborns died of hypothermia (ERA5 minimum 9 °C on 24–29 December 2024, 4 °C on 24–25 February 2025). A seasonal rainfall forecast says nothing about these.</li>
 <li><strong>Reporting changed between winters</strong>, from descriptive in 2023/24 to authority counts in 2024/25 and daily cluster alerts in 2025/26. So impact counts cannot be compared across winters; the dates can.</li>
 </ul>
@@ -102,7 +106,7 @@ one_line = "2026/27 outlook: a very strong El Niño, and every multi-model forec
 
 [titles]
 forecast = "1. What the forecasts say for this winter"
-skill = "SEAS5 for the Strip: skill and the September 2026 forecast"
+skill = "SEAS5 for Gaza: skill and the September 2026 forecast"
 enso = "2. How much El Niño matters for a Gaza winter"
 daily = "3. What changes in an El Niño winter, and what does not"
 impacts = "4. What winter weather does in Gaza"
@@ -148,7 +152,7 @@ source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-u
 start = "2025-02-05"
 end = "2025-02-06"
 hazard = "R W"
-what_html = 'Rain and strong wind: at least 800 families at the 23 sites assessed reported damage to shelters, tents, water tanks and latrines (a floor, not a Strip total).'
+what_html = 'Rain and strong wind: at least 800 families at the 23 sites assessed reported damage to shelters, tents, water tanks and latrines (a floor, not a Gaza-wide total).'
 source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-263-gaza-strip">OCHA HSU #263</a>, 11 Feb 2025'
 [[impacts]]
 start = "2025-02-24"

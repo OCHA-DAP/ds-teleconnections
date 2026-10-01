@@ -1,12 +1,12 @@
-"""Gaza Strip — ENSO deep dive (bespoke builder for deep_dives/gaza.toml).
+"""Gaza — ENSO deep dive (bespoke builder for deep_dives/gaza.toml).
 
 The generic builder in enso_deep_dive.py works on a country's ERA5 cells and a drought framing.
-Gaza does not fit either: the Strip is 365 km², three 0.25° ERA5 cells, and the winter hazard is
+Gaza does not fit either: Gaza is 365 km², three 0.25° ERA5 cells, and the winter hazard is
 too much rain, not too little. This module reuses the series' page chrome, SEAS5 skill figure and
 pixel correlation maps, and adds what a Gaza page needs:
 
 * four independent rainfall records, because one reanalysis cell is not enough evidence —
-  ERA5 hourly point series for the three cells over the Strip (CDS time-series dataset, 1950–),
+  ERA5 hourly point series for the three cells over Gaza (CDS time-series dataset, 1950–),
   GPCC gauge analysis (1° cell over Gaza and the southern coastal plain, 1891–), IMERG late
   v7 daily at 0.1° (team blob, 1998–), and the Beer Sheva rain gauge (GHCN-Daily, 1921–2016);
 * a stationarity test, because the El Niño link in this region is known to switch on and off;
@@ -49,7 +49,7 @@ CACHE = Path("cache/gaza")
 OUT = edd.OUT_DIR / SLUG
 UTM = 32636                                   # metres, for overlap areas
 
-# ERA5 0.25° cells that overlap the Strip (centres). Weights are the share of the Strip's area in
+# ERA5 0.25° cells that overlap Gaza (centres). Weights are the share of Gaza's area in
 # each cell, computed from the COD-AB polygon at run time.
 ERA5_CELLS = {"n": (31.50, 34.50), "s": (31.25, 34.25), "nw": (31.50, 34.25)}
 GPCC_CELL = (31.5, 34.5)                      # 1° cell: 31–32°N, 34–35°E
@@ -71,7 +71,7 @@ WET_SEQ = mcolors.LinearSegmentedColormap.from_list("wet", ["#F4F7FA", "#BFD9EE"
 # Data
 # --------------------------------------------------------------------------- #
 def gaza_polygons() -> tuple[gpd.GeoDataFrame, gpd.GeoDataFrame]:
-    """COD-AB (FieldMaps via ocha-stratus): the Strip (admin 1, PS02) and its five governorates."""
+    """COD-AB (FieldMaps via ocha-stratus): Gaza (admin 1, PS02) and its five governorates."""
     p1, p2 = CACHE / "pse_adm1.parquet", CACHE / "pse_adm2.parquet"
     if not (p1.exists() and p2.exists()):
         from ocha_stratus import codab
@@ -170,7 +170,7 @@ def ghcn_daily(station: str) -> pd.DataFrame:
 
 def imerg_daily(weights_fn) -> pd.DataFrame:
     """IMERG late run v7 daily (mm/day) from the prod raster blob, windowed COG reads over IMERG_BOX,
-    cached as a small cube and topped up with new days on each run. Returns the Strip's area-weighted
+    cached as a small cube and topped up with new days on each run. Returns Gaza's area-weighted
     daily mean plus its northern (Gaza City, North Gaza) and southern (Khan Younis, Rafah) halves."""
     import ocha_stratus as stratus
     import rasterio
@@ -292,7 +292,7 @@ def winter_daily_metrics(d: pd.DataFrame, wind_thresh: float | None = None, min_
 # Grid (ERA5 monthly pixel stack shared with the survey)
 # --------------------------------------------------------------------------- #
 def region_country(grid: edd.Grid, gaza: gpd.GeoDataFrame, ne: gpd.GeoDataFrame) -> edd.Country:
-    """An edd.Country over REGION: mask = land cells (Natural Earth + the Strip), geom = the Strip,
+    """An edd.Country over REGION: mask = land cells (Natural Earth + Gaza), geom = Gaza,
     so the survey's map helpers draw the southern Levant with Gaza outlined."""
     res = float(abs(grid.x[1] - grid.x[0]))
     w, s, e, n = REGION
@@ -500,11 +500,17 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     ok_wet = c.mask & (S.mean(0) >= ts.PIXEL_MIN_TRI_MM_DAY)
     fig_wet_composite(c, comp, hit, ok_wet, int(en.sum()), int(sy.min()), int(sy.max()), OUT / "composite_maps.png")
 
-    # 6. SEAS5: skill + current forecast for the cells over the Strip
+    # 6. SEAS5: skill + current forecast for the cells over Gaza
     gc = edd.Country(iso3="GAZ", geom=gaza.geometry, lat=c.lat, lon=c.lon, mask=gz_cells, sub=c.sub, neighbours=c.neighbours)
-    skill = edd.seas5_skill_issued(gc, {"Gaza Strip": gz_cells}, int(spec.get("skill_issued_month", 9)))
+    skill = edd.seas5_skill_issued(gc, {"Gaza": gz_cells}, int(spec.get("skill_issued_month", 9)))
     if skill:
-        edd.fig_skill_issued(gc, grid, {}, skill, OUT / "skill_issued.png", "Gaza Strip", area_label="Gaza Strip")
+        edd.fig_skill_issued(gc, grid, {}, skill, OUT / "skill_issued.png", "Gaza", area_label="Gaza")
+
+    # SEAS5 raw ensemble mean: rank cross-check by window and the forecast by month
+    seas5_raw = seas5_raw_ranks(int(spec.get("skill_issued_month", 9)))
+    seas5_mon = seas5_monthly(seas5_raw, mon["ERA5"]) if seas5_raw else None
+    if seas5_mon:
+        fig_seas5_monthly(seas5_mon, seas5_raw["year"], seas5_raw["month"], OUT / "seas5_monthly.png")
 
     # 7. Figures on the Gaza series
     fig_cycle(mon, OUT / "seasonal_cycle.png")
@@ -523,7 +529,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     nn = edd.NINO_LATEST.dropna() if edd.NINO_LATEST is not None else n_pin
     nn = nn[nn > -90]
     return dict(wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
-                wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, seas5_raw=seas5_raw_ranks(), skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
+                wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
                 end_era5=end_era5, end_imerg=imerg.index[-1], n_grid=(int(sy.min()), int(sy.max())), n_en_grid=int(en.sum()),
                 comp_gaza=float(np.nanmean(comp[gz_cells])), hit_gaza=float(np.nanmean(hit[gz_cells])),
                 hit_region=float(np.nanmedian(hit[ok_wet])), comp_region_pos=float((comp[ok_wet] > 0).mean()),
@@ -533,7 +539,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
 
 def seas5_raw_ranks(issued_month: int = 9, box=(34.0, 31.0, 34.8, 31.8)) -> dict | None:
     """Cross-check of the skill cube: the raw SEAS5 ensemble-mean precipitation (prod raster blob,
-    precip_em_i<YYYY>-<MM>-01_lt<k>.tif) averaged over a box on the Strip, for every issuance of
+    precip_em_i<YYYY>-<MM>-01_lt<k>.tif) averaged over a box over Gaza, for every issuance of
     `issued_month` since 1981. For each three-month window: where the latest issuance ranks among
     all of them (1 = wettest) and the three wettest hindcast years. Cached; refreshed when a new
     year's issuance appears."""
@@ -574,12 +580,33 @@ def seas5_raw_ranks(issued_month: int = 9, box=(34.0, 31.0, 34.8, 31.8)) -> dict
         rank = int((v > v[latest]).sum()) + 1
         top = [int(y) for y in v.drop(latest).sort_values(ascending=False).index[:3]]
         out.append(dict(code=code, rank=rank, n=len(v), ratio=float(v[latest] / v.drop(latest).mean()), top=top))
-    return dict(year=latest, month=issued_month, rows=out)
+    return dict(year=latest, month=issued_month, rows=out, em=df)
+
+
+def seas5_monthly(sr: dict, era5_monthly: pd.Series) -> list[dict]:
+    """The same raw ensemble-mean files, month by month: each lead month's hindcast mean and latest
+    forecast (mm/month), the forecast's rank among all issuances (1 = wettest), and the detrended
+    correlation of the hindcast ensemble mean with ERA5 rainfall over Gaza (1981 to the last
+    complete year) as the month's skill."""
+    em, latest, im = sr["em"], sr["year"], sr["month"]
+    rows = []
+    for lt in range(7):
+        m = (im - 1 + lt) % 12 + 1
+        yoff = 1 if im + lt > 12 else 0
+        days = np.array([pd.Timestamp(y + yoff, m, 1).days_in_month for y in em.index])
+        v = em[str(lt)] * days
+        hind = v.drop(latest)
+        obs = pd.Series({y: era5_monthly.get(pd.Timestamp(y + yoff, m, 1), np.nan) for y in hind.index}).dropna()
+        hh = hind.loc[obs.index]
+        r = float(stats.pearsonr(signal.detrend(hh.values), signal.detrend(obs.values))[0])
+        rows.append(dict(month=m, lead=lt, hind=float(hind.mean()), fc=float(v[latest]), pct=float(v[latest] / hind.mean() - 1),
+                         rank=int((v > v[latest]).sum()) + 1, n=len(v), r=r, obs_clim=float(obs.mean()), n_skill=len(obs)))
+    return rows
 
 
 def impact_rain(events: list[dict], imerg: pd.DataFrame, era5: pd.DataFrame) -> list[dict]:
     """For each dated impact, over the window [start − 1 day, end]: the largest IMERG daily total over
-    the Strip (and its northern and southern halves), the IMERG window total, the lowest ERA5 daily
+    Gaza (and its northern and southern halves), the IMERG window total, the lowest ERA5 daily
     minimum temperature and the highest hourly ERA5 10 m wind."""
     rows = []
     for e in events:
@@ -595,8 +622,8 @@ def impact_rain(events: list[dict], imerg: pd.DataFrame, era5: pd.DataFrame) -> 
 # --------------------------------------------------------------------------- #
 # Figures
 # --------------------------------------------------------------------------- #
-SRC_LABEL = {"GPCC": "GPCC gauge analysis (1° cell)", "ERA5": "ERA5 (3 cells over the Strip)",
-             "IMERG": "IMERG late v7 (Strip, 0.1°)", "Beer Sheva gauge": "Beer Sheva rain gauge"}
+SRC_LABEL = {"GPCC": "GPCC gauge analysis (1° cell)", "ERA5": "ERA5 (3 cells over Gaza)",
+             "IMERG": "IMERG late v7 (Gaza, 0.1°)", "Beer Sheva gauge": "Beer Sheva rain gauge"}
 MON_ORDER = [8, 9, 10, 11, 12, 1, 2, 3, 4, 5, 6, 7]
 
 
@@ -713,7 +740,7 @@ def fig_daily(dm: dict[str, pd.DataFrame], out: Path) -> None:
 
 
 def fig_winters(imerg: pd.DataFrame, events: list[dict], winters: list[int], out: Path) -> None:
-    """Daily IMERG rainfall over the Strip for each winter, with the dated impacts (numbered as in the table)."""
+    """Daily IMERG rainfall over Gaza for each winter, with the dated impacts (numbered as in the table)."""
     fig, axes = plt.subplots(len(winters), 1, figsize=(9.6, 2.35 * len(winters) + 0.4), dpi=150, sharey=True)
     axes = np.atleast_1d(axes)
     num = {id(e): i + 1 for i, e in enumerate(events)}
@@ -743,10 +770,48 @@ def fig_winters(imerg: pd.DataFrame, events: list[dict], winters: list[int], out
         ax.xaxis.set_major_formatter(matplotlib.dates.DateFormatter("%b"))
         ax.tick_params(labelsize=8)
         edd._style_ax(ax)
-    axes[len(winters) // 2].set_ylabel("mm per day (Strip mean)", fontsize=9, color=C_MUTED)
-    axes[0].set_title("Daily rainfall over the Gaza Strip (IMERG) and dated reports of winter-weather impacts (▼, numbered as in the table)\n"
+    axes[len(winters) // 2].set_ylabel("mm per day (Gaza mean)", fontsize=9, color=C_MUTED)
+    axes[0].set_title("Daily rainfall over Gaza (IMERG) and dated reports of winter-weather impacts (▼, numbered as in the table)\n"
                       "dotted line: 20 mm/day", fontsize=9.5, color=C_TEXT, loc="left", pad=22)
     fig.tight_layout()
+    _save(fig, out)
+
+
+def fig_seas5_monthly(rows: list[dict], year: int, im: int, out: Path) -> None:
+    """Two panels on one month axis: forecast vs hindcast mean (mm/month), and the month's skill."""
+    x = np.arange(len(rows)); w = 0.38
+    labels = [edd.MONTH_NAMES[r["month"] - 1] for r in rows]
+    fig, (ax, sx) = plt.subplots(2, 1, figsize=(9.6, 6.4), dpi=150, sharex=True,
+                                 gridspec_kw=dict(height_ratios=[3, 2], hspace=0.18))
+    hind = [r["hind"] for r in rows]; fc = [r["fc"] for r in rows]
+    ax.bar(x - w / 2 - 0.01, hind, w, color="#C9D0D0", label="SEAS5 hindcast mean, 1981–" + str(year - 1))
+    ax.bar(x + w / 2 + 0.01, fc, w, color="#1F5F96", label=f"{edd.MONTH_NAMES[im - 1]} {year} forecast")
+    top = max(max(hind), max(fc))
+    for i, r in enumerate(rows):
+        ax.text(x[i] + w / 2 + 0.01, r["fc"] + top * 0.02, f"{_pct_signed(r['pct'])}\n{r['rank']} of {r['n']}",
+                ha="center", va="bottom", fontsize=7.5, color=C_TEXT)
+    ax.set_ylim(0, top * 1.28)
+    ax.set_ylabel("mm per month (ensemble mean)", fontsize=9, color=C_MUTED)
+    ax.legend(frameon=False, fontsize=8, loc="upper left")
+    ax.set_title(f"Gaza: the {edd.MONTH_NAMES[im - 1]} {year} SEAS5 forecast by month (label: forecast vs hindcast mean, and rank, 1 = wettest)",
+                 fontsize=10, color=C_TEXT, loc="left")
+    ax.grid(axis="y", color="#eceff0", lw=0.8); ax.set_axisbelow(True)
+    edd._style_ax(ax)
+    lo, hi = edd.SKILL_THRESH["r_mod"], edd.SKILL_THRESH["r_high"]
+    for y0, y1, c, lab in [(-0.3, 0, "#f7ecea", "negative"), (0, lo, "#f3f7f6", "low"), (lo, hi, "#e3f1ec", "moderate"), (hi, 1, "#cfe7de", "high")]:
+        sx.axhspan(y0, y1, color=c, zorder=0)
+        sx.text(len(rows) - 0.45, (y0 + y1) / 2, lab, fontsize=7.5, color=C_MUTED, va="center", ha="right", style="italic")
+    cols = [edd.SKILL_CATS.get(edd.skill_cat(r["r"]), "#cccccc") for r in rows]
+    sx.bar(x, [r["r"] for r in rows], 0.5, color=cols, edgecolor="#5e6a6b", linewidth=0.6)
+    for i, r in enumerate(rows):
+        sx.text(x[i], r["r"] + (0.03 if r["r"] >= 0 else -0.03), f"{r['r']:+.2f}".replace("-", "−"), ha="center", va="bottom" if r["r"] >= 0 else "top", fontsize=7.5, color=C_TEXT)
+    sx.axhline(0, color="#8a9495", lw=0.8)
+    sx.set_ylim(-0.3, 0.8)
+    sx.set_ylabel("skill (r)", fontsize=9, color=C_MUTED)
+    sx.set_title(f"Skill of the {edd.MONTH_NAMES[im - 1]} issuance for each month: detrended r with ERA5 over Gaza, 1981–{year - 1}",
+                 fontsize=9.5, color=C_TEXT, loc="left")
+    sx.set_xticks(x, labels, fontsize=9)
+    edd._style_ax(sx)
     _save(fig, out)
 
 
@@ -768,7 +833,7 @@ def fig_wet_composite(c: edd.Country, comp: np.ndarray, hit: np.ndarray, ok: np.
         cb = fig.colorbar(m, ax=ax, shrink=0.75, pad=0.02, fraction=0.05); cb.ax.tick_params(labelsize=8, colors=C_MUTED)
         cb.set_label(lab, fontsize=9, color=C_MUTED)
     fig.suptitle(f"Southern Levant: what El Niño (DJF Niño3.4 ≥ +{ENSO_THRESH}) did to the rainy season,\nper ERA5 cell, {y0}/{str(y0 + 1)[2:]}–{y1}/{str(y1 + 1)[2:]}; "
-                 "Gaza Strip outlined; grey = too dry to analyse", fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
+                 "Gaza outlined; grey = too dry to analyse", fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
     _save(fig, out)
 
 
@@ -781,6 +846,10 @@ def _r(v) -> str:
 
 def _p(v) -> str:
     return "—" if v is None or np.isnan(v) else ("&lt;0.001" if v < 0.001 else f"{v:.3f}")
+
+
+def _pct_signed(v: float) -> str:
+    return f"{100 * v:+.0f}%".replace("-", "−")
 
 
 def _mm(v) -> str:
@@ -799,7 +868,7 @@ def _ord(p: float) -> str:
 
 def impact_table(rows: list[dict], numbered: bool) -> str:
     o = ['<div style="overflow-x:auto"><table><thead><tr>' + ('<th>#</th>' if numbered else '') +
-         '<th>Dates</th><th>Hazard</th><th>What was reported</th><th class="num">IMERG wettest day<br><span class="small">Strip · north · south</span></th>'
+         '<th>Dates</th><th>Hazard</th><th>What was reported</th><th class="num">IMERG wettest day<br><span class="small">Gaza · north · south</span></th>'
          '<th class="num">Window total<br><span class="small">IMERG · ERA5</span></th><th class="num">ERA5 coldest night · strongest wind</th><th>Source</th></tr></thead><tbody>']
     for i, e in enumerate(rows, 1):
         d = e["start"] if e.get("end", e["start"]) == e["start"] else f'{e["start"]} to {e["end"]}'
@@ -815,9 +884,9 @@ def impact_table(rows: list[dict], numbered: bool) -> str:
 def render(spec: dict, a: dict) -> str:
     ours, cat = spec["assessment"], spec["catalogue"]
     T = lambda k, d: html.escape(spec.get("titles", {}).get(k, d))
-    o = [edd.HEAD.format(title="Gaza Strip — ENSO deep dive", desc=html.escape(ours["one_line"]), css=edd.CSS,
+    o = [edd.HEAD.format(title="Gaza — ENSO deep dive", desc=html.escape(ours["one_line"]), css=edd.CSS,
                          home="../", home_label="ENSO country deep dives")]
-    o.append('<p class="eyebrow">ENSO country deep dive</p><h1>Gaza Strip</h1>')
+    o.append('<p class="eyebrow">ENSO country deep dive</p><h1>Gaza</h1>')
     o.append(f'<p class="meta">{html.escape(spec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{a["end_era5"]:%Y}, '
              f'IMERG 1998–{a["end_imerg"]:%Y}, Beer Sheva gauge 1921–2016 &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
     # verdict
@@ -848,11 +917,13 @@ def render(spec: dict, a: dict) -> str:
         o.append('</tbody></table></div>')
         o.append(spec.get("forecast_table_note", ""))
     if a.get("skill"):
-        o.append(edd.render_skill(spec, a, "OND", spec.get("titles", {}).get("skill", "SEAS5 for the Strip: skill and the September forecast"))
-                 .replace("whole country (bars) and zones (lines)", "the cells over the Strip (bars)")
-                 .replace("for the whole country", "for the cells over the Strip")
-                 .replace("of the's annual rain", "of the Strip's annual rain")
-                 .replace("Gaza Strip SON, Gaza Strip OND, Gaza Strip NDJ", "SON, OND and NDJ"))
+        sk_html = (edd.render_skill(spec, a, "OND", spec.get("titles", {}).get("skill", "SEAS5 for Gaza: skill and the September forecast"))
+                 .replace("whole country (bars) and zones (lines)", "the cells over Gaza (bars)")
+                 .replace("for the whole country", "for the cells over Gaza")
+                 .replace("of the's annual rain", "of Gaza's annual rain")
+                   )
+        # the shared auto-summary names the zone before each window ("Gaza SON, Gaza OND"): drop it
+        o.append(re.sub(r"\bGaza (?=[A-Z]{3}\b)", "", sk_html))
     sr = a.get("seas5_raw")
     if sr:
         o.append(f'<p class="small">Cross-check from the raw ensemble-mean files (box 31.0–31.8°N, 34.0–34.8°E), {edd.MONTH_NAMES[sr["month"] - 1]} issuances '
@@ -862,14 +933,32 @@ def render(spec: dict, a: dict) -> str:
                  + "".join(f'<tr><td>{r["code"]}</td><td class="num">{r["rank"]} of {r["n"]}</td><td class="num">{r["ratio"]:.2f}</td>'
                            f'<td>{", ".join(str(y) for y in r["top"])}</td></tr>' for r in sr["rows"])
                  + '</tbody></table>')
+    sm = a.get("seas5_mon")
+    if sm:
+        o.append(f'<h3>The same forecast, month by month</h3>{spec.get("monthly_html", "")}')
+        o.append('<figure><img src="seas5_monthly.png" alt="SEAS5 forecast and skill by month"><figcaption>Top: the SEAS5 ensemble-mean '
+                 'rainfall for each month of the September issuance, averaged over a box on Gaza (31.0–31.8°N, 34.0–34.8°E), against the mean of '
+                 'the same month in the 1981–2025 September hindcasts; labels give the forecast as a percentage above or below that mean and its '
+                 'rank among all 46 September issuances (1 = wettest). Bottom: the skill of that month\'s forecast, the correlation between the '
+                 'detrended hindcast ensemble mean and detrended ERA5 rainfall over Gaza, on the app\'s low / moderate / high bands. A single month '
+                 'is noisier than a three-month window, so monthly skill is lower than in the figure above. September gets about 3 mm in an '
+                 'average year, so its skill says little.</figcaption></figure>')
+        o.append('<table><thead><tr><th>Month</th><th class="num">Hindcast mean</th><th class="num">Forecast</th><th class="num">vs mean</th>'
+                 '<th class="num">Rank (1 = wettest)</th><th class="num">Skill r</th><th class="num">ERA5 mean, Gaza</th></tr></thead><tbody>'
+                 + "".join(f'<tr><td>{edd.MONTH_NAMES[r["month"] - 1]}</td><td class="num">{r["hind"]:.0f} mm</td><td class="num">{r["fc"]:.0f} mm</td>'
+                           f'<td class="num">{_pct_signed(r["pct"])}</td><td class="num">{r["rank"]} of {r["n"]}</td>'
+                           f'<td class="num">{_r(r["r"])} {edd.skill_chip(edd.skill_cat(r["r"]))}</td><td class="num">{r["obs_clim"]:.0f} mm</td></tr>' for r in sm)
+                 + '</tbody></table>')
+        o.append('<p class="small">SEAS5 ensemble-mean totals are smoother than any single year, so compare the forecast with the hindcast mean and '
+                 'rank, not with observed rainfall. ERA5 mean: the three cells over Gaza, same years, for scale.</p>')
 
     # 2. ENSO and the rainy season
     o.append(f'<h2>{T("enso", "2. How much El Niño matters for a Gaza winter")}</h2>')
     o.append(spec.get("enso_intro_html", ""))
     o.append('<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology for Gaza"><figcaption>Monthly climatology from three '
-             'records. GPCC is a 1° cell (31–32°N, 34–35°E) that takes in the southern coastal plain and the north-western Negev as well as the Strip; '
-             f'ERA5 is the mean of the three 0.25° cells over the Strip, weighted by the share of the Strip in each '
-             f'({", ".join(f"{100 * v:.0f}%" for v in a["wts"].values())}); IMERG is the area-weighted mean of the 0.1° cells over the Strip.'
+             'records. GPCC is a 1° cell (31–32°N, 34–35°E) that takes in the southern coastal plain and the north-western Negev as well as Gaza; '
+             f'ERA5 is the mean of the three 0.25° cells over Gaza, weighted by the share of Gaza in each '
+             f'({", ".join(f"{100 * v:.0f}%" for v in a["wts"].values())}); IMERG is the area-weighted mean of the 0.1° cells over Gaza.'
              '</figcaption></figure>')
     o.append(f'<h3>The link switched on in the late 1970s</h3>{spec.get("stationarity_html", "")}')
     o.append('<figure><img src="stationarity.png" alt="Running correlation between Gaza rainfall and Niño3.4"><figcaption>Pearson r between the '
@@ -941,11 +1030,11 @@ def render(spec: dict, a: dict) -> str:
     o.append(f'<h3>Across the region</h3>{spec.get("maps_html", "")}')
     o.append('<figure><img src="corr_maps.png" alt="Pixel correlation maps, southern Levant"><figcaption>Pearson r between three-month rainfall and '
              'Niño3.4 for each ERA5 0.25° cell, keeping the lag (0–3 months, index leading) with the largest |r| as the survey does. '
-             'Blue = wetter under El Niño. Grey cells hold under a quarter of their annual rain in that window. The Strip is outlined.</figcaption></figure>')
+             'Blue = wetter under El Niño. Grey cells hold under a quarter of their annual rain in that window. Gaza is outlined.</figcaption></figure>')
     o.append(f'<figure><img src="composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean standardised '
              f'October–April anomaly over the {a["n_en_grid"]} El Niño winters of {_yr(a["n_grid"][0])}–{_yr(a["n_grid"][1])} '
-             f'(cells over the Strip: {a["comp_gaza"]:+.2f} SD; positive in {100 * a["comp_region_pos"]:.0f}% of analysed cells). '
-             f'Right: the share of those winters in each cell\'s wettest third (the Strip: {100 * a["hit_gaza"]:.0f}%; regional median '
+             f'(cells over Gaza: {a["comp_gaza"]:+.2f} SD; positive in {100 * a["comp_region_pos"]:.0f}% of analysed cells). '
+             f'Right: the share of those winters in each cell\'s wettest third (Gaza: {100 * a["hit_gaza"]:.0f}%; regional median '
              f'{100 * a["hit_region"]:.0f}%; chance is 33%).</figcaption></figure>')
 
     # 3. Daily weather
@@ -974,15 +1063,15 @@ def render(spec: dict, a: dict) -> str:
     o.append(spec.get("impacts_intro_html", ""))
     fr = a["freq"]
     o.append(f'<p class="small">How often the rain that has caused these impacts comes: over 1998–2025, IMERG puts an average of '
-             f'{fr[10]:.1f} days of ≥ 10 mm, {fr[20]:.1f} of ≥ 20 mm, {fr[30]:.1f} of ≥ 30 mm and {fr[50]:.1f} of ≥ 50 mm over the Strip in each October–April.</p>')
+             f'{fr[10]:.1f} days of ≥ 10 mm, {fr[20]:.1f} of ≥ 20 mm, {fr[30]:.1f} of ≥ 30 mm and {fr[50]:.1f} of ≥ 50 mm over Gaza in each October–April.</p>')
     o.append('<figure><img src="winters.png" alt="Daily rainfall over Gaza, 2023/24 to 2025/26, with impacts"><figcaption>IMERG late run, '
-             'area-weighted mean over the Strip. Markers are the start dates of the reported impacts in the table below.</figcaption></figure>')
+             'area-weighted mean over Gaza. Markers are the start dates of the reported impacts in the table below.</figcaption></figure>')
     o.append(impact_table(a["ev_rows"], numbered=True))
     o.append('<p class="small">Hazard: R rain and flooding, S sea surge or high tide, W wind, C cold. Weather columns cover the window from the day '
-             'before the reported start to the reported end: IMERG wettest day over the Strip (north = cells at 31.4–31.6°N: North Gaza, '
-             'Gaza and most of Deir al Balah; south = 31.2–31.4°N: Khan Younis and Rafah); window totals from IMERG and from ERA5 (which smooths rain over 25 km cells and '
+             'before the reported start to the reported end: IMERG wettest day over Gaza (north = cells at 31.4–31.6°N: North Gaza, '
+             'Gaza governorate and most of Deir al Balah; south = 31.2–31.4°N: Khan Younis and Rafah); window totals from IMERG and from ERA5 (which smooths rain over 25 km cells and '
              'runs lower on heavy days; the two disagree on single days by a factor of two or more, so read them as a range); ERA5 lowest daily minimum temperature and highest hourly 10 m wind, averaged '
-             'over the three cells on the Strip (partly sea, so milder and less gusty than an exposed tent site). Figures in <em>italics</em> '
+             'over the three cells over Gaza (partly sea, so milder and less gusty than an exposed tent site). Figures in <em>italics</em> '
              'are from Gaza authorities (Ministry of Health, Civil Defence, Government Media Office) as relayed by the UN; the rest are UN '
              'agency or cluster figures.</p>')
     if a.get("pre_rows"):
