@@ -103,6 +103,7 @@ range_intro_html = '''
 <p>There is not enough counted impact data for the West Bank to say how many households a winter will affect. What the record can show is how often the weather that has caused harm comes, whether El Niño changes that, and who is exposed now.</p>
 '''
 
+week_html = "The Jerusalem gauge record ends in 2015. Byron's week, half an average year over the West Bank in IMERG and the wettest week in its record, brought no damage that we could find reported; the January 2013 floods came with more than 260 mm in 48 hours in parts of the north."
 first_storm_html = '''
 <p>In 7 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more over the West Bank came before 1 December, against 14 of 28 winters overall. Against the other winters that is unlikely to be chance alone (p ≈ 0.03), though eight winters is a small sample. Last winter's most damaging West Bank event, on 28–30 December 2025, came in a December that gave Jerusalem more than 237 mm, its wettest December since 2013 according to the Palestinian Meteorological Department (via Al Jazeera).</p>
 '''

@@ -96,6 +96,7 @@ range_intro_html = '''
 <p>The question for planners is what this winter could do. The record cannot answer that with a forecast: there is one well-documented winter, reporting that changed every year, and a population whose exposure keeps changing. What it can do is bound the answer. This section separates the weather (how many storms, how big, how early, and what El Niño does or does not change) from what each kind of storm did last winter, and then uses last winter as two reference points.</p>
 '''
 
+week_html = "Beer Sheva is about 40 km inland and drier than Gaza, so compare its shares, not its millimetres. For a sense of scale: Byron's week, close to half an average year, damaged more than 42,000 tents."
 first_storm_html = '''
 <p>This is where El Niño may matter, though not by much more than chance on eight winters. In 5 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more came before 1 December, against 12 of 28 winters overall, and the September forecasts put this year's wet anomaly in October and November. Damage does not wait for a big storm, though. In each of the last three winters the first weather damage was reported in mid to late November (13–14 November 2023, 24–25 November 2024, 14–15 November 2025), and in two of them that came before the winter's first 20 mm storm. Last winter's first storm, with 22 mm, damaged about 13,000 tents.</p>
 '''

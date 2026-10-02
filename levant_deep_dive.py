@@ -609,6 +609,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
 
     # Storm statistics, the event catalogue and last winter as reference points
     st = storm_stats(imerg.pr, era5.pr, djf_pin)
+    week = week_ladder(imerg.pr, bs.pr)
     cold = cold_stats(era5.tmin, djf_pin)
     data_dir = edd.DEEP_DIR / "data"
     ev = load_events(data_dir / f"{A.slug}_events.csv", imerg, era5) if (data_dir / f"{A.slug}_events.csv").exists() else None
@@ -627,7 +628,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
 
     nn = edd.NINO_LATEST.dropna() if edd.NINO_LATEST is not None else n_pin
     nn = nn[nn > -90]
-    out = dict(wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
+    out = dict(week=week, wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
                 wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, st=st, cold=cold, ev=ev, ref=ref, gauge_last=int(dm["gauge"].index.max()), seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
                 end_era5=end_era5, end_imerg=imerg.index[-1], n_grid=(int(sy.min()), int(sy.max())), n_en_grid=int(en.sum()),
                 comp_gaza=float(np.nanmean(comp[gz_cells])), hit_gaza=float(np.nanmean(hit[gz_cells])),
@@ -705,6 +706,30 @@ def seas5_monthly(sr: dict, era5_monthly: pd.Series) -> list[dict]:
         rows.append(dict(month=m, lead=lt, hind=float(hind.mean()), fc=float(v[latest]), pct=float(v[latest] / hind.mean() - 1),
                          rank=int((v > v[latest]).sum()) + 1, n=len(v), r=r, obs_clim=float(obs.mean()), n_skill=len(obs)))
     return rows
+
+
+def week_ladder(imerg: pd.Series, gauge: pd.Series) -> dict:
+    """The wettest 7 days of each winter (rolling sum of daily totals, by season year), in mm and as a share of the
+    source's own mean annual (August–July) total: the scale against which a 7-day forecast total can be read."""
+    out = {}
+    for k, d in (("IMERG", imerg.loc["1998-08":]), ("gauge", gauge.dropna())):
+        sy = season_year(d.index)
+        cnt = d.groupby(sy).count()
+        full = cnt.index[cnt >= 330]
+        ann = d.groupby(sy).sum().loc[full]
+        mx = d.rolling(7).sum().groupby(season_year(d.index)).max()
+        if k == "IMERG":                              # every complete winter (to April), including the last one
+            last = int(season_year(d.index[-1:])[0]) - (0 if d.index[-1].month in (5, 6, 7) else 1)
+            mx = mx.loc[1998:last]
+        else:
+            mx = mx.loc[full]
+        m = float(ann.mean())
+        out[k] = dict(mean=m, first=int(ann.index.min()), last=int(ann.index.max()), n=len(mx),
+                      med=float(mx.median()), q80=float(mx.quantile(0.8)), mx=float(mx.max()), mx_year=int(mx.idxmax()),
+                      share20=int((mx >= 0.2 * m).sum()), share30=int((mx >= 0.3 * m).sum()))
+    b = imerg.loc["2025-12-08":"2025-12-21"].rolling(7).sum()
+    out["byron"] = dict(mm=float(b.max()), end=b.idxmax()) if b.notna().any() else None
+    return out
 
 
 def reference_winters(ev: pd.DataFrame, totals: pd.DataFrame, storms_im: pd.DataFrame) -> dict:
@@ -1286,6 +1311,40 @@ def render_range(spec: dict, a: dict) -> str:
                 f'Against the other winters the difference is unlikely to be chance alone (Fisher exact test, p = {p_fish:.2f}), though eight El Niño winters is a small sample.')
              + (f' {", ".join(none_)} had no storm of 20 mm or more and {"has" if len(none_) == 1 else "have"} no dot.' if none_ else '')
              + '</figcaption></figure>')
+    # how big a week of rain is
+    wk = a.get("week")
+    if wk:
+        im, ga = wk["IMERG"], wk["gauge"]
+        pc = lambda v, m: f"{100 * v / m:.0f}%"
+        o.append('<h3>How big a week of rain is</h3>')
+        o.append(f'<p>A 7-day rainfall forecast can be read against the year: in a typical winter the wettest week over {A.ref} brings about '
+                 f'{pc(im["med"], im["mean"])} of an average year\'s rain (IMERG), and one winter in five brings a week of {pc(im["q80"], im["mean"])} or more '
+                 f'({im["share30"]} of {im["n"]} winters since 1998/99 had a week of 30% or more). The share travels better between data sources than '
+                 f'millimetres do: IMERG and the {html.escape(A.gauge_short)} gauge differ in their totals but roughly agree on the share. '
+                 + spec.get("week_html", "") + '</p>')
+        o.append(f'<table><thead><tr><th>Wettest 7 days of a winter</th><th class="num">IMERG over {html.escape(A.ref)}</th>'
+                 f'<th class="num">Share of the year</th><th class="num">{html.escape(A.gauge_short)} gauge</th><th class="num">Share of the year</th></tr></thead><tbody>')
+        o.append(f'<tr><td>Average year (for scale)</td><td class="num">{im["mean"]:.0f} mm</td><td class="num">100%</td>'
+                 f'<td class="num">{ga["mean"]:.0f} mm</td><td class="num">100%</td></tr>')
+        o.append(f'<tr><td>Typical winter (median)</td><td class="num">{im["med"]:.0f} mm</td><td class="num">{pc(im["med"], im["mean"])}</td>'
+                 f'<td class="num">{ga["med"]:.0f} mm</td><td class="num">{pc(ga["med"], ga["mean"])}</td></tr>')
+        o.append(f'<tr><td>One winter in five</td><td class="num">{im["q80"]:.0f} mm</td><td class="num">{pc(im["q80"], im["mean"])}</td>'
+                 f'<td class="num">{ga["q80"]:.0f} mm</td><td class="num">{pc(ga["q80"], ga["mean"])}</td></tr>')
+        o.append(f'<tr><td>Wettest in the record</td><td class="num">{im["mx"]:.0f} mm<br><span class="small">{_yr(im["mx_year"])}</span></td>'
+                 f'<td class="num">{pc(im["mx"], im["mean"])}</td><td class="num">{ga["mx"]:.0f} mm<br><span class="small">{_yr(ga["mx_year"])}</span></td>'
+                 f'<td class="num">{pc(ga["mx"], ga["mean"])}</td></tr>')
+        if wk["byron"]:
+            e_ = wk["byron"]["end"]
+            o.append(f'<tr class="hl"><td>Storm Byron, 7 days to {e_:%-d} December 2025</td><td class="num">{wk["byron"]["mm"]:.0f} mm</td>'
+                     f'<td class="num">{pc(wk["byron"]["mm"], im["mean"])}</td><td class="num">—</td><td class="num">—</td></tr>')
+        o.append('</tbody></table>')
+        o.append(f'<p class="small">Highest 7-day running total in each season (August–July), divided by the same source\'s mean annual total: IMERG '
+                 f'{_yr(im["first"])}–{_yr(im["last"])} (area-weighted over {html.escape(A.ref)}), {html.escape(A.gauge_name)} {_yr(ga["first"])}–{_yr(ga["last"])} '
+                 '(seasons with at least 330 days reported). To use with a forecast: take the forecast 7-day total for the area and divide by the '
+                 'annual mean of the same kind of source (an area average for an area forecast, a gauge for a point). Forecast totals for a week ahead '
+                 'are much less certain than for the next two or three days, and a 7-day total says nothing about how much fell in an hour, which is '
+                 'what drives flash floods.</p>')
+
     # what one storm of each kind did
     if ev is not None and spec.get("storm_kinds"):
         e = ev.set_index("event_id")
