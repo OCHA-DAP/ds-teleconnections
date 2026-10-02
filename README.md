@@ -170,6 +170,13 @@ daily from the prod raster blob, 1998–; GHCN-Daily Beer Sheva, 1921–2016), a
 curated in the TOML (`[[impacts]]`, `[[prewar]]`, public UN/cluster sources only). Downloads cache under `cache/gaza/`; CDS
 needs a key in `~/.cdsapirc` (the CDS endpoint is forced, whatever URL the file names).
 
+The West Bank page adds a farming section from its `[agri]` table (`levant_agri.py`): three agro-ecological zones defined by
+governorate (`[[agri.zones]]`), their ERA5 rain, spring MODIS NDVI per zone (MOD13Q1 v061 COGs on the Microsoft Planetary
+Computer, anonymous SAS token, cached to `cache/westbank/modis_ndvi_zones.parquet`), NOAA STAR province-averaged vegetation
+health (1982–), FAOSTAT yields for Palestine (subset committed as `deep_dives/data/pse_faostat_crops.csv`; `fetch_faostat`
+rebuilds it from the bulk file) and PCBS olive presses and 2021 census cereal area by governorate
+(`deep_dives/data/pcbs_*.csv`, with a source URL per row). Crop year Y follows the October Y−1 to April Y rainy season.
+
 ---
 
 ## The web app

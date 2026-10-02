@@ -11,7 +11,9 @@ series' page chrome, SEAS5 skill figure and pixel correlation maps, and adds:
   gauge (GHCN-Daily: Beer Sheva for Gaza, Jerusalem for the West Bank);
 * a stationarity test, because the El Niño link in this region is known to switch on and off;
 * daily metrics (rain days, heavy-rain days, wettest day, cold nights, wind) by ENSO phase;
-* storm counts, first-storm timing and the last winters' rainfall against reported impacts.
+* storm counts, first-storm timing and the last winters' rainfall against reported impacts;
+* for the West Bank ([agri] in its TOML), crop years against rain and El Niño by agro-ecological zone
+  (levant_agri.py: FAOSTAT, PCBS, NOAA STAR vegetation health, MODIS NDVI).
 
 What differs between the pages sits in each TOML's [area] table (Area dataclass; Gaza defaults).
 
@@ -625,13 +627,17 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
 
     nn = edd.NINO_LATEST.dropna() if edd.NINO_LATEST is not None else n_pin
     nn = nn[nn > -90]
-    return dict(wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
+    out = dict(wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
                 wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, st=st, cold=cold, ev=ev, ref=ref, gauge_last=int(dm["gauge"].index.max()), seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
                 end_era5=end_era5, end_imerg=imerg.index[-1], n_grid=(int(sy.min()), int(sy.max())), n_en_grid=int(en.sum()),
                 comp_gaza=float(np.nanmean(comp[gz_cells])), hit_gaza=float(np.nanmean(hit[gz_cells])),
                 hit_region=float(np.nanmedian(hit[ok_wet])), comp_region_pos=float((comp[ok_wet] > 0).mean()),
                 nino_now=dict(value=float(nn.iloc[-1]), date=nn.index[-1], mean3=float(nn.iloc[-3:].mean())),
                 imerg_last=imerg, era5=era5)
+    if spec.get("agri"):                          # West Bank: crop years against rain and El Niño
+        import levant_agri
+        out["agri"] = levant_agri.analyse(spec, out)
+    return out
 
 
 def seas5_raw_ranks(issued_month: int = 9, box=(34.0, 31.0, 34.8, 31.8)) -> dict | None:
@@ -1519,6 +1525,9 @@ def render(spec: dict, a: dict) -> str:
     o.append(spec.get("impacts_after_html", ""))
     if a.get("st"):
         o.append(render_range(spec, a))
+    if a.get("agri"):
+        import levant_agri
+        o.append(levant_agri.render(spec, a))
     for sec in spec.get("sections_after", []):
         o.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
     if spec.get("references"):
