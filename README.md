@@ -158,8 +158,10 @@ identical to the PSL series the survey was built on); the live PSL series (ERSST
 fetched weekly into `cache/nino34_latest.data` and used only for the current-ENSO-state line. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 
-**Gaza Strip** (`deep_dives/gaza.toml`, `builder = "gaza"`) is built by its own module, `gaza_deep_dive.py`, which
-`enso_deep_dive.py` dispatches to (or run it directly: `uv run python gaza_deep_dive.py`). The Strip is three ERA5 cells and
+**Gaza and the West Bank** (`deep_dives/gaza.toml`, `deep_dives/west-bank.toml`, `builder = "levant"`) are built by their own
+module, `levant_deep_dive.py`, which `enso_deep_dive.py` dispatches to (or run it directly: `uv run python levant_deep_dive.py gaza`).
+What differs between the two pages (COD-AB polygon, ERA5 cells, GPCC cells, rain gauge, IMERG and SEAS5 boxes, labels) sits in
+each TOML's `[area]` table; Gaza's values are the defaults. Gaza is three ERA5 cells and
 its winter hazard is rain, wind, sea and cold rather than drought, so the page reuses the series' chrome, SEAS5 skill figure and
 pixel correlation maps but adds: four independent rainfall records (ERA5 hourly point series for the three cells from the CDS
 `reanalysis-era5-single-levels-timeseries` dataset, 1950–; the GPCC 1° combined product via NOAA PSL NCSS, 1891–; IMERG late v7

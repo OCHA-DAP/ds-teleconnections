@@ -1847,10 +1847,10 @@ def main() -> None:
         if args.only and spec["slug"] != args.only:
             continue
         print(f"{spec['iso3']}: {spec['name']}")
-        if spec.get("builder") == "gaza":
-            # Gaza is three ERA5 cells and a wet-season hazard: its own module (reuses this one's pieces)
-            import gaza_deep_dive
-            gaza_deep_dive.build(spec, grid, gdf, indices)
+        if spec.get("builder") in ("gaza", "levant"):
+            # Gaza and the West Bank: wet-season hazards on a few ERA5 cells: own module (reuses this one's pieces)
+            import levant_deep_dive
+            levant_deep_dive.build(spec, grid, gdf, indices)
             continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack

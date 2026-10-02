@@ -1,10 +1,10 @@
-# Gaza — ENSO deep dive. Built by gaza_deep_dive.py (builder = "gaza"), not the generic
+# Gaza — ENSO deep dive. Built by levant_deep_dive.py (builder = "levant"), not the generic
 # analyse(): Gaza is three ERA5 cells and its winter hazard is rain, wind, sea and cold, not drought.
 # Figures and tables are recomputed on every run; the narrative here must be reconciled against
 # them after every rebuild. Impacts are curated from public UN/cluster reporting only.
 iso3 = "PSE"
 name = "Gaza"
-builder = "gaza"
+builder = "levant"
 subtitle = "What the 2026 El Niño means for Gaza's 2026/27 winter, how far to trust it, and what winter weather does in Gaza"
 skill_issued_month = 9
 skill_intro = false
