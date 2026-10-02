@@ -32,6 +32,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import requests
+from matplotlib import ticker
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 from rasterio.features import rasterize
@@ -641,11 +642,77 @@ def analyse(spec: dict, indices: pd.DataFrame) -> dict:
     return a
 
 
+
+
+# --------------------------------------------------------------------------- #
+# Language: the page is built in English (OUT/) and, when deep_dives/i18n/<slug>.fr.toml exists,
+# again in French (OUT/fr/) from the same analysis, figures included. Narrative lives in the TOMLs;
+# the strings below are the figure labels, captions and table headers.
+# --------------------------------------------------------------------------- #
+LANG = "en"
+OUTDIR = OUT
+FR_SPEC = edd.DEEP_DIR / "i18n" / f"{SLUG}.fr.toml"
+NNBSP = " "                               # French: narrow no-break space before % and in thousands
+MONTH_FR = ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre", "novembre", "décembre"]
+MONTH_FR_ABBR = ["janv.", "févr.", "mars", "avr.", "mai", "juin", "juil.", "août", "sept.", "oct.", "nov.", "déc."]
+MONTH_EN_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+SRC_FR = {"GPCC first guess": "GPCC, première estimation", "GPCC monitoring": "GPCC, produit de suivi"}
+PHASE_FR = {"El Niño": "El Niño", "Neutral": "neutre", "La Niña": "La Niña"}
+
+
+def set_lang(lang: str) -> None:
+    global LANG, OUTDIR
+    LANG = lang
+    OUTDIR = OUT / "fr" if lang == "fr" else OUT
+    OUTDIR.mkdir(parents=True, exist_ok=True)
+
+
+def _t(en: str, fr: str) -> str:
+    return fr if LANG == "fr" else en
+
+
+def _num(s: str) -> str:
+    """Typography for a formatted number: true minus; decimal comma in French."""
+    s = s.replace("-", "−")
+    return s.replace(".", ",") if LANG == "fr" else s
+
+
+def _src(k: str) -> str:
+    return SRC_FR.get(k, k) if LANG == "fr" else k
+
+
+def _mon(m: int) -> str:
+    return (MONTH_FR_ABBR if LANG == "fr" else MONTH_EN_ABBR)[m - 1]
+
+
+def _date(t: pd.Timestamp, day: bool = True) -> str:
+    if LANG == "fr":
+        return (f"{_jour(t.day)} " if day else "") + f"{MONTH_FR[t.month - 1]} {t.year}"
+    return t.strftime("%d %B %Y" if day else "%B %Y")
+
+
+def _jour(d: int) -> str:
+    return "1er" if d == 1 else str(d)
+
+
+def _de(w: str) -> str:
+    """French "de" with elision: d'octobre, de mars."""
+    return ("d'" if w[:1].lower() in "aeiouyhéè" else "de ") + w
+
+
+def _ax_numbers(ax, x: bool = False) -> None:
+    """French decimal comma and true minus on the value axes (year axes are left alone)."""
+    f = ticker.FuncFormatter(lambda v, _: _num(f"{v:g}"))
+    ax.yaxis.set_major_formatter(f)
+    if x:
+        ax.xaxis.set_major_formatter(f)
+
+
 # --------------------------------------------------------------------------- #
 # Figures
 # --------------------------------------------------------------------------- #
 def _save(fig, name: str) -> None:
-    fig.savefig(OUT / name, dpi=150, bbox_inches="tight"); plt.close(fig)
+    fig.savefig(OUTDIR / name, dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
 def figures(a: dict) -> None:
@@ -658,19 +725,21 @@ def fig_history(a: dict) -> None:
     col = h.phase.map({"El Niño": C_EN, "Neutral": C_NEU, "La Niña": C_LN})
     ax.bar(h.index, h.z, color=col, width=0.78)
     ax.plot(h.index, h.zc, "o", ms=3.6, mfc="white", mec=C_TEXT, mew=0.9)
-    zt = (h.gpcc.quantile(1 / 3) - h.gpcc.mean()) / h.gpcc.std()
     ax.axhline(0, color="#9aa3ad", lw=0.8)
     for yr, row in h[h.phase == "El Niño"].iterrows():
         ax.text(yr, min(row.z, row.zc if pd.notna(row.zc) else row.z) - 0.1, str(yr), fontsize=7, color=C_EN, ha="center", va="top", rotation=90)
     ax.set_xlim(1949, 2026.2)
-    ax.set_ylabel("June–September rainfall\nanomaly (SD)", fontsize=9, color=C_MUTED)
-    ax.legend(handles=[Patch(color=C_EN, label=f"El Niño (Jul–Sep Niño3.4 ≥ +{THR})"), Patch(color=C_NEU, label="Neutral"),
-                       Patch(color=C_LN, label=f"La Niña (≤ −{THR})"),
-                       Line2D([], [], marker="o", ls="", mfc="white", mec=C_TEXT, label="CHIRPS v3 (1981–)")],
+    ax.set_ylabel(_t("June–September rainfall\nanomaly (SD)", "Anomalie des pluies\njuin–septembre (écart-type)"), fontsize=9, color=C_MUTED)
+    thr = _num(f"{THR}")
+    ax.legend(handles=[Patch(color=C_EN, label=_t(f"El Niño (Jul–Sep Niño3.4 ≥ +{thr})", f"El Niño (Niño3.4 juil.–sept. ≥ +{thr})")),
+                       Patch(color=C_NEU, label=_t("Neutral", "Neutre")),
+                       Patch(color=C_LN, label=f"La Niña (≤ −{thr})"),
+                       Line2D([], [], marker="o", ls="", mfc="white", mec=C_TEXT, label=_t("CHIRPS v3 (1981–)", "CHIRPS v3 (depuis 1981)"))],
               frameon=False, fontsize=8, loc="upper left", ncol=4, bbox_to_anchor=(0, 1.13))
-    ax.set_title("Extrême-Nord: June–September rainfall, GPCC gauge analysis (bars) and CHIRPS v3 (dots), by ENSO phase",
+    ax.set_title(_t("Extrême-Nord: June–September rainfall, GPCC gauge analysis (bars) and CHIRPS v3 (dots), by ENSO phase",
+                    "Extrême-Nord : pluies de juin–septembre, analyse de stations GPCC (barres) et CHIRPS v3 (points), selon la phase ENSO"),
                  fontsize=9.5, color=C_TEXT, loc="left", pad=22)
-    edd._style_ax(ax)
+    edd._style_ax(ax); _ax_numbers(ax)
     fig.tight_layout(); _save(fig, "history.png")
 
 
@@ -681,12 +750,14 @@ def fig_running(a: dict) -> None:
     ax.axhspan(-crit, crit, color="#eef1f1")
     ax.axhline(0, color="#9aa3ad", lw=0.8)
     ax.plot(run.index, run.values, color=SRC_COL["GPCC"], lw=2)
-    ax.text(1966, crit + 0.03, "inside the grey band: not significant for one 31-year window", fontsize=7.5, color=C_MUTED, va="bottom")
+    ax.text(1966, crit + 0.03, _t("inside the grey band: not significant for one 31-year window",
+                                  "dans la bande grise : non significatif sur une fenêtre de 31 ans"), fontsize=7.5, color=C_MUTED, va="bottom")
     ax.set_ylim(-0.75, 0.45); ax.set_xlim(1964, 2011)
-    ax.set_ylabel("r, 31-year window", fontsize=9, color=C_MUTED)
-    ax.set_title("GPCC June–September rainfall (detrended) against July–September Niño3.4, 31-year running correlation",
+    ax.set_ylabel(_t("r, 31-year window", "r, fenêtre de 31 ans"), fontsize=9, color=C_MUTED)
+    ax.set_title(_t("GPCC June–September rainfall (detrended) against July–September Niño3.4, 31-year running correlation",
+                    "Pluies GPCC de juin–septembre (tendance retirée) et Niño3.4 de juillet–septembre : corrélation glissante sur 31 ans"),
                  fontsize=9.5, color=C_TEXT, loc="left")
-    edd._style_ax(ax)
+    edd._style_ax(ax); _ax_numbers(ax)
     fig.tight_layout(); _save(fig, "running.png")
 
 
@@ -695,7 +766,7 @@ def fig_2026(a: dict) -> None:
     rows = [r for r in a["y2026"] if "jja" in r]
     order = ["ERA5", "IMERG", "GPCC first guess", "GPCC monitoring", "CHIRPS v3", "CHIRPS v2"]
     rows = sorted(rows, key=lambda r: order.index(r["src"]) if r["src"] in order else 99)
-    labels = [r["src"] for r in rows]
+    labels = [_src(r["src"]) for r in rows]
     vals = [r["jja"] for r in rows]
     cols = [SRC_COL.get(r["src"].split(" first")[0].split(" monitoring")[0], "#1F5F96") for r in rows]
     y = np.arange(len(rows))
@@ -705,23 +776,25 @@ def fig_2026(a: dict) -> None:
             b.set_alpha(0.55)
     ax1.axvline(100, color=C_TEXT, lw=0.9)
     for yi, v in zip(y, vals):
-        ax1.text(v + 2, yi, f"{v:.0f}%", va="center", fontsize=8.5, color=C_TEXT)
+        ax1.text(v + 2, yi, _pc(v), va="center", fontsize=8.5, color=C_TEXT)
     ax1.set_yticks(y, labels, fontsize=8.5); ax1.invert_yaxis(); ax1.set_xlim(0, 135)
-    ax1.set_xlabel(f"June–August 2026, % of the {BASE[0]}–{BASE[1]} mean", fontsize=8.5, color=C_MUTED)
-    ax1.set_title("Five rainfall products, one season", fontsize=9.5, color=C_TEXT, loc="left")
+    ax1.set_xlabel(_t(f"June–August 2026, % of the {BASE[0]}–{BASE[1]} mean", f"Juin–août 2026, en % de la moyenne {BASE[0]}–{BASE[1]}"), fontsize=8.5, color=C_MUTED)
+    ax1.set_title(_t("Five rainfall products, one season", "Cinq produits de précipitations, une seule saison"), fontsize=9.5, color=C_TEXT, loc="left")
     edd._style_ax(ax1); ax1.xaxis.grid(True, color="#e6eaea"); ax1.yaxis.grid(False)
     cum = a["imerg_cum"]
     base = cum[[c for c in cum.columns if c <= BASE[1]]]
     x = cum.index.values
-    ax2.fill_between(x, base.quantile(0.1, axis=1), base.quantile(0.9, axis=1), color="#e8e2ee", lw=0, label=f"{BASE[0]}–{BASE[1]}, 10th–90th percentile")
-    ax2.plot(x, base.median(axis=1), color="#a58cb0", lw=1.2, label="median")
+    ax2.fill_between(x, base.quantile(0.1, axis=1), base.quantile(0.9, axis=1), color="#e8e2ee", lw=0,
+                     label=_t(f"{BASE[0]}–{BASE[1]}, 10th–90th percentile", f"{BASE[0]}–{BASE[1]}, 10e–90e centile"))
+    ax2.plot(x, base.median(axis=1), color="#a58cb0", lw=1.2, label=_t("median", "médiane"))
     s26 = cum[2026].dropna()
     ax2.plot(s26.index, s26.values, color=SRC_COL["IMERG"], lw=2.2, label="2026")
     ticks = [0, 31, 61, 92, 123, 153]
-    ax2.set_xticks(ticks, ["1 May", "1 Jun", "1 Jul", "1 Aug", "1 Sep", "1 Oct"], fontsize=8.5)
+    ax2.set_xticks(ticks, [f"1 {_mon(m)}" if LANG == "en" else f"1er {_mon(m)}" for m in (5, 6, 7, 8, 9, 10)], fontsize=8.5)
     ax2.set_xlim(0, 183)
-    ax2.set_ylabel("mm since 1 May", fontsize=8.5, color=C_MUTED)
-    ax2.set_title(f"IMERG, Extrême-Nord mean, cumulative to {a['imerg_last']:%d %b %Y}", fontsize=9.5, color=C_TEXT, loc="left")
+    ax2.set_ylabel(_t("mm since 1 May", "mm depuis le 1er mai"), fontsize=8.5, color=C_MUTED)
+    ax2.set_title(_t(f"IMERG, Extrême-Nord mean, cumulative to {a['imerg_last']:%d %b %Y}",
+                     f"IMERG, moyenne de l'Extrême-Nord, cumul au {_date(a['imerg_last'])}"), fontsize=9.5, color=C_TEXT, loc="left")
     ax2.legend(frameon=False, fontsize=8, loc="upper left")
     edd._style_ax(ax2)
     fig.tight_layout(); _save(fig, "season2026.png")
@@ -729,27 +802,30 @@ def fig_2026(a: dict) -> None:
 
 def fig_vegetation(a: dict) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.4))
-    for ax, key, ttl in [(axes[0], "zfparc_crop", "Cropland biomass (ASAP zFPARc)"), (axes[1], "spi3_crop", "3-month rainfall index (ASAP SPI-3, cropland)")]:
+    panels = [(axes[0], "zfparc_crop", _t("Cropland biomass (ASAP zFPARc)", "biomasse des cultures (ASAP zFPARc)")),
+              (axes[1], "spi3_crop", _t("3-month rainfall index (ASAP SPI-3, cropland)", "indice de précipitations normalisé sur 3 mois (ASAP SPI-3, cultures)"))]
+    for ax, key, ttl in panels:
         s = a["veg"][key]
         s = s[s.index.month.isin([5, 6, 7, 8, 9, 10])]
         df = pd.DataFrame({"v": s.values, "year": s.index.year, "k": s.index.strftime("%m-%d")})
         piv = df.pivot_table(index="k", columns="year", values="v")
         base = piv[[c for c in piv.columns if BASE[0] <= c <= BASE[1]]]
         x = np.arange(len(piv))
-        ax.fill_between(x, base.min(axis=1), base.max(axis=1), color="#eef1f1", lw=0, label=f"{base.columns.min()}–{BASE[1]} range")
+        ax.fill_between(x, base.min(axis=1), base.max(axis=1), color="#eef1f1", lw=0,
+                        label=_t(f"{base.columns.min()}–{BASE[1]} range", f"plage {base.columns.min()}–{BASE[1]}"))
         for yy, cc in [(2015, C_EN), (2023, "#e8a0a9")]:
             if yy in piv:
                 ax.plot(x, piv[yy], color=cc, lw=1.1, ls=(0, (3, 2)), label=f"{yy} (El Niño)")
         if 2026 in piv:
             ax.plot(x, piv[2026], color=C_TEXT, lw=2.2, label="2026")
         ax.axhline(-1, color="#7A4E22", lw=0.9, ls=(0, (4, 3)))
-        ax.text(len(x) - 0.5, -1.05, "ASAP warning threshold", fontsize=7, color="#7A4E22", ha="right", va="top")
+        ax.text(len(x) - 0.5, -1.05, _t("ASAP warning threshold", "seuil d'alerte ASAP"), fontsize=7, color="#7A4E22", ha="right", va="top")
         ax.axhline(0, color="#9aa3ad", lw=0.7)
-        labs = [f"{pd.Timestamp('2001-' + k):%d %b}" if k.endswith("-01") else "" for k in piv.index]
-        ax.set_xticks(x[[i for i, l in enumerate(labs) if l]], [l for l in labs if l], fontsize=8)
-        ax.set_title(f"Extrême-Nord: {ttl}", fontsize=9.5, color=C_TEXT, loc="left")
-        ax.set_ylabel("z-score", fontsize=8.5, color=C_MUTED)
-        edd._style_ax(ax)
+        pos = [i for i, k in enumerate(piv.index) if k.endswith("-01")]
+        ax.set_xticks(x[pos], [(f"01 {_mon(int(piv.index[i][:2]))}" if LANG == "en" else f"1er {_mon(int(piv.index[i][:2]))}") for i in pos], fontsize=8)
+        ax.set_title(f"Extrême-Nord{_t(':', ' :')} {ttl}", fontsize=9.5, color=C_TEXT, loc="left")
+        ax.set_ylabel(_t("z-score", "score z"), fontsize=8.5, color=C_MUTED)
+        edd._style_ax(ax); _ax_numbers(ax)
     h, l = axes[0].get_legend_handles_labels()
     fig.legend(h, l, frameon=False, fontsize=8, loc="lower center", ncol=4, bbox_to_anchor=(0.5, -0.06))
     fig.tight_layout(rect=(0, 0.05, 1, 1)); _save(fig, "vegetation.png")
@@ -763,17 +839,18 @@ def fig_floods(a: dict) -> None:
         piv = piv.loc[152:365]
         base = piv[[c for c in piv.columns if c <= 2025]]
         x = piv.index.values
-        ax.fill_between(x, base.quantile(0.1, axis=1) * 100, base.quantile(0.9, axis=1) * 100, color="#dce8f3", lw=0, label="1998–2025, 10th–90th percentile")
-        ax.plot(x, base.median(axis=1) * 100, color="#7fa6c9", lw=1.2, label="median")
+        ax.fill_between(x, base.quantile(0.1, axis=1) * 100, base.quantile(0.9, axis=1) * 100, color="#dce8f3", lw=0,
+                        label=_t("1998–2025, 10th–90th percentile", "1998–2025, 10e–90e centile"))
+        ax.plot(x, base.median(axis=1) * 100, color="#7fa6c9", lw=1.2, label=_t("median", "médiane"))
         if 2024 in piv:
-            ax.plot(x, piv[2024] * 100, color=C_NEU, lw=1, ls=(0, (3, 2)), label="2024 (record floods)")
+            ax.plot(x, piv[2024] * 100, color=C_NEU, lw=1, ls=(0, (3, 2)), label=_t("2024 (record floods)", "2024 (inondations record)"))
         ax.plot(x, piv[2026] * 100, color="#1F5F96", lw=2.2, label="2026")
         ticks = [152, 182, 213, 244, 274, 305, 335]
-        ax.set_xticks(ticks, ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"], fontsize=8.5)
+        ax.set_xticks(ticks, [_mon(m) for m in range(6, 13)], fontsize=8.5)
         ax.set_xlim(152, 365)
-        ax.set_ylabel("% of the department flooded", fontsize=8.5, color=C_MUTED)
-        ax.set_title(f"{nm}: flooded area (FloodScan SFED)", fontsize=9.5, color=C_TEXT, loc="left")
-        edd._style_ax(ax)
+        ax.set_ylabel(_t("% of the department flooded", "% du département inondé"), fontsize=8.5, color=C_MUTED)
+        ax.set_title(_t(f"{nm}: flooded area (FloodScan SFED)", f"{nm} : surface inondée (FloodScan SFED)"), fontsize=9.5, color=C_TEXT, loc="left")
+        edd._style_ax(ax); _ax_numbers(ax)
     axes[0].legend(frameon=False, fontsize=7.5, loc="upper left")
     fig.tight_layout(); _save(fig, "floods.png")
 
@@ -790,11 +867,13 @@ def fig_heat(a: dict) -> None:
         if r.nino >= 1.0 or r.an >= 0.8 or y in (1992,):
             ax.text(r.nino + 0.04, r.an, str(y), fontsize=7.5, color=C_TEXT, va="center")
     ax.axhline(0, color="#9aa3ad", lw=0.7); ax.axvline(0, color="#9aa3ad", lw=0.7)
-    ax.set_xlabel("Niño3.4 the winter before (November–January, °C)", fontsize=8.5, color=C_MUTED)
-    ax.set_ylabel("March–May temperature anomaly\n(°C, trend removed)", fontsize=8.5, color=C_MUTED)
+    ax.set_xlabel(_t("Niño3.4 the winter before (November–January, °C)", "Niño3.4 de l'hiver précédent (novembre–janvier, °C)"), fontsize=8.5, color=C_MUTED)
+    ax.set_ylabel(_t("March–May temperature anomaly\n(°C, trend removed)", "Anomalie de température de mars–mai\n(°C, tendance retirée)"), fontsize=8.5, color=C_MUTED)
     h = a["heat"]
-    ax.set_title(f"Extrême-Nord hot season after El Niño: ERA5, {df.index.min()}–{df.index.max()} (r = {h['r']:+.2f})", fontsize=9.5, color=C_TEXT, loc="left")
-    edd._style_ax(ax)
+    ax.set_title(_t(f"Extrême-Nord hot season after El Niño: ERA5, {df.index.min()}–{df.index.max()} (r = {_r(h['r'])})",
+                    f"Extrême-Nord, saison chaude après El Niño : ERA5, {df.index.min()}–{df.index.max()} (r = {_r(h['r'])})"),
+                 fontsize=9.5, color=C_TEXT, loc="left")
+    edd._style_ax(ax); _ax_numbers(ax, x=True)
     fig.tight_layout(); _save(fig, "heat.png")
 
 
@@ -802,61 +881,85 @@ def fig_ch(a: dict) -> None:
     ch = a["ch"]
     fig, ax = plt.subplots(figsize=(9.6, 3.3))
     cur = ch[ch.period_type == "current"]; pro = ch[ch.period_type != "current"]
-    ax.plot(cur.start, cur.population / 1e6, "o", color="#E67800", ms=7, label="current, at the time of the analysis")
+    ax.plot(cur.start, cur.population / 1e6, "o", color="#E67800", ms=7, label=_t("current, at the time of the analysis", "situation courante, au moment de l'analyse"))
     oct_ = pro[pro.analysis_date.dt.month >= 9]; mar = pro[pro.analysis_date.dt.month < 9]
     ax.plot(oct_.start - pd.Timedelta(days=12), oct_.population / 1e6, "s", mfc="white", mec="#E67800", mew=1.6, ms=7,
-            label="June–August projection made the previous Oct/Nov")
+            label=_t("June–August projection made the previous Oct/Nov", "projection juin–août faite en oct./nov. précédent"))
     ax.plot(mar.start + pd.Timedelta(days=12), mar.population / 1e6, "D", mfc="white", mec="#9a5200", mew=1.4, ms=6,
-            label="June–August projection updated in March")
+            label=_t("June–August projection updated in March", "projection juin–août mise à jour en mars"))
     ax.set_ylim(0, 1.4)
-    ax.set_ylabel("people in Phase 3+ (millions)", fontsize=8.5, color=C_MUTED)
-    ax.set_title("Extrême-Nord: Cadre Harmonisé, people in Crisis or worse (Phase 3+)",
+    ax.set_ylabel(_t("people in Phase 3+ (millions)", "personnes en phase 3+ (millions)"), fontsize=8.5, color=C_MUTED)
+    ax.set_title(_t("Extrême-Nord: Cadre Harmonisé, people in Crisis or worse (Phase 3+)",
+                    "Extrême-Nord : Cadre Harmonisé, personnes en Crise ou pire (phase 3+)"),
                  fontsize=9.5, color=C_TEXT, loc="left")
     ax.legend(frameon=False, fontsize=8, loc="lower right")
-    edd._style_ax(ax)
+    edd._style_ax(ax); _ax_numbers(ax)
     fig.tight_layout(); _save(fig, "cadre_harmonise.png")
 
 
 # --------------------------------------------------------------------------- #
 # Render
 # --------------------------------------------------------------------------- #
+def _nan(v) -> bool:
+    return v is None or (isinstance(v, float) and np.isnan(v))
+
+
 def _r(v) -> str:
-    return "—" if v is None or (isinstance(v, float) and np.isnan(v)) else f"{v:+.2f}".replace("-", "−")
+    return "—" if _nan(v) else _num(f"{v:+.2f}")
 
 
 def _p(v) -> str:
-    return "—" if v is None or np.isnan(v) else ("< 0.001" if v < 0.001 else f"{v:.3f}" if v < 0.01 else f"{v:.2f}")
+    if _nan(v):
+        return "—"
+    return _num("< 0.001" if v < 0.001 else f"{v:.3f}" if v < 0.01 else f"{v:.2f}")
 
 
 def _sg(v: float, nd: int) -> str:
-    return f"{v:+.{nd}f}".replace("-", "−")
+    return _num(f"{v:+.{nd}f}")
 
 
-def _pc(v) -> str:
-    return "—" if v is None or (isinstance(v, float) and np.isnan(v)) else f"{v:.0f}%"
+def _f(v: float, nd: int) -> str:
+    return _num(f"{v:.{nd}f}")
+
+
+def _pc(v, nd: int = 0) -> str:
+    return "—" if _nan(v) else _num(f"{v:.{nd}f}") + (f"{NNBSP}%" if LANG == "fr" else "%")
 
 
 def _n(v) -> str:
-    return f"{v:,.0f}".replace(",", " ")
+    return f"{v:,.0f}".replace(",", NNBSP if LANG == "fr" else " ")
 
 
-def _m(v) -> str:
-    return f"{v / 1e6:.2f}".rstrip("0").rstrip(".") + " million"
+def _of(a_, b_) -> str:
+    return f"{a_} {_t('of', 'sur')} {b_}"
 
 
-MONTHS = {5: "May", 6: "Jun", 7: "Jul", 8: "Aug", 9: "Sep"}
+def _thirds(c: list[int], n: int) -> str:
+    return f'{" / ".join(map(str, c))} {_t("of", "sur")} {n}'
 
 
 def render(spec: dict, a: dict) -> str:
     T = spec.get("titles", {}).get
-    o = [edd.HEAD.format(title=html.escape(spec["page_title"]), desc=html.escape(spec["assessment"]["one_line"]),
-                         css=edd.CSS + ".cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}"
-                         ".card .big{font-size:16px}.watch td:first-child{white-space:nowrap}"
-                         "table{display:block;max-width:100%;overflow-x:auto}.wrap{overflow-wrap:anywhere}",
-                         home="../", home_label="ENSO deep dives")]
-    o.append('<p class="eyebrow">Teleconnections · ENSO deep dive</p>')
+    fr = LANG == "fr"
+    up = "../" if fr else ""                         # the French page sits one level down
+    head = edd.HEAD.format(title=html.escape(spec["page_title"]), desc=html.escape(spec["assessment"]["one_line"]),
+                           css=edd.CSS + ".cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:16px 0}"
+                           ".card .big{font-size:16px}.watch td:first-child{white-space:nowrap}"
+                           "table{display:block;max-width:100%;overflow-x:auto}td.num{white-space:nowrap}.wrap{overflow-wrap:break-word}"
+                           ".lang{display:inline-block;margin:0 0 14px;padding:5px 11px;font-size:13px;font-weight:500;border:1px solid var(--b1);border-radius:4px;background:var(--b05);text-decoration:none}",
+                           home=up + "../", home_label=_t("ENSO deep dives", "Analyses ENSO par pays"))
+    if fr:
+        head = head.replace('<html lang="en">', '<html lang="fr">')
+    o = [head]
+    o.append(_t('<p class="eyebrow">Teleconnections · ENSO deep dive</p>', '<p class="eyebrow">Téléconnexions · analyse ENSO</p>'))
     o.append(f'<h1>{html.escape(spec["name"])}</h1>')
-    o.append(f'<p class="meta">{html.escape(spec["subtitle"])}. Data to {a["imerg_last"]:%d %B %Y}; built {pd.Timestamp.now():%d %B %Y}.</p>')
+    o.append(f'<p class="meta">{html.escape(spec["subtitle"])}. '
+             + _t(f'Data to {_date(a["imerg_last"])}; built {_date(pd.Timestamp.now())}.',
+                  f'Données jusqu\'au {_date(a["imerg_last"])} ; page produite le {_date(pd.Timestamp.now())}.') + '</p>')
+    if fr:
+        o.append('<a class="lang" href="../" lang="en">English version</a>')
+    elif FR_SPEC.exists():
+        o.append('<a class="lang" href="fr/" lang="fr">Version française</a>')
     o.append(f'<div class="summary">{spec.get("summary_html", "")}</div>')
     o.append('<div class="cards">' + "".join(
         f'<div class="card"><p class="lbl">{html.escape(c["label"])}</p><p class="big">{html.escape(c["big"])}</p>'
@@ -870,133 +973,179 @@ def render(spec: dict, a: dict) -> str:
     # 2. the relationship
     o.append(f'<h2>{T("enso", "2. How much El Niño matters for the rains")}</h2>')
     o.append(spec.get("enso_html", ""))
-    o.append('<figure><img src="history.png" alt="June–September rainfall by ENSO phase, 1950–2025"><figcaption>Bars: GPCC '
-             'gauge analysis, area-weighted over the region, standardised over 1950–2025. Dots: CHIRPS v3 over the region, '
-             'standardised over 1981–2025. Colour: Niño3.4 averaged over July–September (NOAA PSL, ERSST v5 basis). El Niño '
-             'seasons are labelled.</figcaption></figure>')
-    o.append('<table><thead><tr><th>Record</th><th>Years</th><th class="num">r</th><th class="num">r, trend removed</th><th class="num">p</th>'
-             '<th class="num">El Niño seasons: driest / middle / wettest third</th><th class="num">La Niña: driest / middle / wettest</th>'
-             '<th class="num">Trend, mm per decade</th></tr></thead><tbody>')
+    o.append('<figure><img src="history.png" alt="' + _t("June–September rainfall by ENSO phase, 1950–2025", "Pluies de juin–septembre selon la phase ENSO, 1950–2025")
+             + '"><figcaption>' + _t(
+                 'Bars: GPCC gauge analysis, area-weighted over the region, standardised over 1950–2025. Dots: CHIRPS v3 over the region, '
+                 'standardised over 1981–2025. Colour: Niño3.4 averaged over July–September (NOAA PSL, ERSST v5 basis). El Niño seasons are labelled.',
+                 'Barres : analyse de stations GPCC, moyenne pondérée sur la région, standardisée sur 1950–2025. Points : CHIRPS v3 sur la région, '
+                 'standardisé sur 1981–2025. Couleur : Niño3.4 moyen de juillet–septembre (NOAA PSL, base ERSST v5). Les saisons El Niño sont indiquées.')
+             + '</figcaption></figure>')
+    o.append('<table><thead><tr><th>' + _t("Record", "Jeu de données") + '</th><th>' + _t("Years", "Années") + '</th><th class="num">r</th>'
+             '<th class="num">' + _t("r, trend removed", "r, tendance retirée") + '</th><th class="num">p</th>'
+             '<th class="num">' + _t("El Niño seasons: driest / middle / wettest third", "Saisons El Niño : tiers le plus sec / moyen / le plus humide") + '</th>'
+             '<th class="num">' + _t("La Niña: driest / middle / wettest", "La Niña : plus sec / moyen / plus humide") + '</th>'
+             '<th class="num">' + _t("Trend, mm per decade", "Tendance, mm par décennie") + '</th></tr></thead><tbody>')
     for r in a["rel"]:
         flag = ' class="hl"' if r["src"] == "ERA5" else ""
         o.append(f'<tr{flag}><td>{r["src"]}</td><td>{r["y0"]}–{r["y1"]}</td><td class="num">{_r(r["r"])}</td><td class="num">{_r(r["rd"])}</td>'
-                 f'<td class="num">{_p(r["pd"])}</td><td class="num">{" / ".join(map(str, r["en"]))} of {r["n_en"]}</td>'
-                 f'<td class="num">{" / ".join(map(str, r["ln"]))} of {r["n_ln"]}</td><td class="num">{f"{r['trend']:+.0f}".replace("-", "−")}</td></tr>')
+                 f'<td class="num">{_p(r["pd"])}</td><td class="num">{_thirds(r["en"], r["n_en"])}</td>'
+                 f'<td class="num">{_thirds(r["ln"], r["n_ln"])}</td><td class="num">{_sg(r["trend"], 0)}</td></tr>')
     gl = a["gpcc_long"]
-    o.append(f'<tr><td>GPCC, full record</td><td>{gl["y0"]}–{gl["y1"]}</td><td class="num">{_r(gl["r"])}</td><td class="num">{_r(gl["rd"])}</td>'
-             f'<td class="num">{_p(gl["pd"])}</td><td class="num">{" / ".join(map(str, gl["en"]))} of {gl["n_en"]}</td>'
-             f'<td class="num">{" / ".join(map(str, gl["ln"]))} of {gl["n_ln"]}</td><td class="num">{f"{gl['trend']:+.0f}".replace("-", "−")}</td></tr>')
+    o.append(f'<tr><td>{_t("GPCC, full record", "GPCC, série longue")}</td><td>{gl["y0"]}–{gl["y1"]}</td><td class="num">{_r(gl["r"])}</td><td class="num">{_r(gl["rd"])}</td>'
+             f'<td class="num">{_p(gl["pd"])}</td><td class="num">{_thirds(gl["en"], gl["n_en"])}</td>'
+             f'<td class="num">{_thirds(gl["ln"], gl["n_ln"])}</td><td class="num">{_sg(gl["trend"], 0)}</td></tr>')
     o.append('</tbody></table>')
-    o.append('<p class="small">June–September totals over the region against July–September Niño3.4 (concurrent). Thirds are taken on '
-             'the detrended series, so the post-1980s recovery of Sahel rainfall does not pile the early years into the driest third. '
-             'El Niño and La Niña: Niño3.4 ≥ +0.5 and ≤ −0.5. p is for the detrended r. The highlighted ERA5 row is discussed in the text.</p>')
+    o.append('<p class="small">' + _t(
+        'June–September totals over the region against July–September Niño3.4 (concurrent). Thirds are taken on the detrended series, so the '
+        'post-1980s recovery of Sahel rainfall does not pile the early years into the driest third. El Niño and La Niña: Niño3.4 ≥ +0.5 and ≤ −0.5. '
+        'p is for the detrended r. The highlighted ERA5 row is discussed in the text.',
+        'Cumuls de juin–septembre sur la région comparés au Niño3.4 de juillet–septembre (simultané). Les tiers sont calculés sur la série sans '
+        'tendance, pour que la remontée des pluies au Sahel depuis les années 1980 ne concentre pas les premières années dans le tiers le plus sec. '
+        'El Niño et La Niña : Niño3.4 ≥ +0,5 et ≤ −0,5. p porte sur le r sans tendance. La ligne ERA5 en surbrillance est discutée dans le texte.') + '</p>')
     o.append(spec.get("enso_after_table_html", ""))
-    o.append('<figure><img src="running.png" alt="31-year running correlation, GPCC vs Niño3.4"><figcaption>Each point is the correlation '
-             'over the 31 seasons centred on that year (1950–2025): negative throughout, but in most single windows too weak to '
-             'pass a significance test on its own.</figcaption></figure>')
+    o.append('<figure><img src="running.png" alt="' + _t("31-year running correlation, GPCC vs Niño3.4", "Corrélation glissante sur 31 ans, GPCC et Niño3.4")
+             + '"><figcaption>' + _t(
+                 'Each point is the correlation over the 31 seasons centred on that year (1950–2025): negative throughout, but in most single '
+                 'windows too weak to pass a significance test on its own.',
+                 'Chaque point est la corrélation sur les 31 saisons centrées sur l\'année (1950–2025) : toujours négative, mais trop faible '
+                 'dans la plupart des fenêtres pour être significative à elle seule.') + '</figcaption></figure>')
     o.append(f'<h3>{T("strong", "Strong El Niño seasons")}</h3>{spec.get("strong_html", "")}')
-    o.append('<table><thead><tr><th>Season</th><th class="num">ONI Jun–Aug</th><th class="num">Jul–Sep Niño3.4</th><th class="num">GPCC</th><th class="num">CHIRPS v3</th>'
-             '<th class="num">IMERG</th><th class="num">ERA5</th><th>Notes</th></tr></thead><tbody>')
+    o.append('<table><thead><tr><th>' + _t("Season", "Saison") + '</th><th class="num">' + _t("ONI Jun–Aug", "ONI juin–août") + '</th>'
+             '<th class="num">' + _t("Jul–Sep Niño3.4", "Niño3.4 juil.–sept.") + '</th><th class="num">GPCC</th><th class="num">CHIRPS v3</th>'
+             '<th class="num">IMERG</th><th class="num">ERA5</th><th>' + _t("Notes", "Remarques") + '</th></tr></thead><tbody>')
     for s in a["strong"]:
         note = spec.get("strong_notes", {}).get(str(s["year"]), "")
         oj = a["oni_jja"].get(s["year"])
-        o.append(f'<tr><td>{s["year"]}</td><td class="num">{_sg(oj, 1) if oj is not None else "—"}</td><td class="num">{s["nino"]:+.1f}</td>' +
+        o.append(f'<tr><td>{s["year"]}</td><td class="num">{_sg(oj, 1) if oj is not None else "—"}</td><td class="num">{_sg(s["nino"], 1)}</td>' +
                  "".join(f'<td class="num">{_pc(s[k])}</td>' for k in ["GPCC", "CHIRPS v3", "IMERG", "ERA5"]) +
                  f'<td class="small">{note}</td></tr>')
     o26 = a["oni_2026"]
-    jja = o26.get("JJA")
-    jas26 = o26.get("JAS")
+    jja, jas26 = o26.get("JJA"), o26.get("JAS")
     o.append(f'<tr class="hl"><td>2026</td><td class="num">{_sg(jja, 1) if jja is not None else "—"}</td>'
-             f'<td class="num">{_sg(jas26, 1) + "*" if jas26 is not None else "not yet"}</td>'
-             f'<td colspan="4" class="small">see section 3</td><td class="small">{spec.get("strong_notes", {}).get("2026", "")}</td></tr>')
+             f'<td class="num">{_sg(jas26, 1) + "*" if jas26 is not None else _t("not yet", "pas encore")}</td>'
+             f'<td colspan="4" class="small">{_t("see section 3", "voir la section 3")}</td><td class="small">{spec.get("strong_notes", {}).get("2026", "")}</td></tr>')
     o.append('</tbody></table>')
-    o.append(f'<p class="small">Percentile of the June–September total within each record (0 = driest, 100 = wettest): GPCC within 1950–2025, '
-             f'the others within their own years (CHIRPS and ERA5 from 1981, IMERG from 2001). Niño3.4: NOAA PSL, ERSST v5. '
-             f'ONI: CPC\'s official three-month index (ERSST v5), shown so that 2026 can be compared on the same basis; the pinned monthly '
-             f'series behind the July–September column ends in {a["nino_last"][0]:%B %Y}.</p>')
+    o.append('<p class="small">' + _t(
+        'Percentile of the June–September total within each record (0 = driest, 100 = wettest): GPCC within 1950–2025, the others within their own '
+        'years (CHIRPS and ERA5 from 1981, IMERG from 2001). Niño3.4: NOAA PSL, ERSST v5. ONI: CPC\'s official three-month index (ERSST v5), shown so '
+        f'that 2026 can be compared on the same basis; the pinned monthly series behind the July–September column ends in {_date(a["nino_last"][0], day=False)}.',
+        'Centile du cumul de juin–septembre dans chaque jeu de données (0 = le plus sec, 100 = le plus humide) : GPCC sur 1950–2025, les autres sur '
+        'leurs propres années (CHIRPS et ERA5 depuis 1981, IMERG depuis 2001). Niño3.4 : NOAA PSL, ERSST v5. ONI : indice officiel du CPC sur trois mois '
+        f'(ERSST v5), donné pour comparer 2026 sur la même base ; la série mensuelle utilisée pour la colonne juillet–septembre s\'arrête en {_date(a["nino_last"][0], day=False)}.') + '</p>')
 
     o.append(f'<h3>{T("gauges", "The rain gauges behind the records")}</h3>{spec.get("gauges_html", "")}')
     gd = a["gauges"].groupby((a["gauges"].index // 10) * 10).mean()
     gd = gd[gd.index >= 1920]
-    o.append('<table><thead><tr><th></th>' + "".join(f'<th class="num">{d}s</th>' for d in gd.index) + '</tr></thead><tbody>'
-             '<tr><td>Gauges per month, June–September</td>' + "".join(f'<td class="num">{v:.1f}</td>' for v in gd.values) + '</tr></tbody></table>')
-    o.append('<p class="small">GPCC Full Data v2022 (DWD), number of gauges in the 1° cells that make up the region, averaged over '
-             'June–September months and over each decade (the 2020s: 2020 only, the last year of the product).</p>')
+    o.append('<table><thead><tr><th></th>' + "".join(f'<th class="num">{_t(f"{d}s", f"années {d}")}</th>' for d in gd.index) + '</tr></thead><tbody>'
+             '<tr><td>' + _t("Gauges per month, June–September", "Stations par mois, juin–septembre") + '</td>'
+             + "".join(f'<td class="num">{_f(v, 1)}</td>' for v in gd.values) + '</tr></tbody></table>')
+    o.append('<p class="small">' + _t(
+        'GPCC Full Data v2022 (DWD), number of gauges in the 1° cells that make up the region, averaged over June–September months and over each '
+        'decade (the 2020s: 2020 only, the last year of the product).',
+        'GPCC Full Data v2022 (DWD) : nombre de stations dans les mailles de 1° qui couvrent la région, moyenné sur les mois de juin à septembre et '
+        'sur chaque décennie (années 2020 : 2020 seulement, dernière année du produit).') + '</p>')
 
     # 3. the 2026 season
     o.append(f'<h2>{T("season", "3. What the 2026 season delivered")}</h2>')
     o.append(spec.get("season_html", ""))
-    o.append('<figure><img src="season2026.png" alt="June–August 2026 rainfall by product, and IMERG cumulative rainfall"><figcaption>Left: '
-             f'June–August 2026 over the region as a share of each product\'s own {BASE[0]}–{BASE[1]} mean (paler bars: CHIRPS v2, '
-             'and GPCC 2026 products interpolated from gauges outside the region). Right: IMERG late run, daily, region mean.</figcaption></figure>')
-    o.append('<table><thead><tr><th>Product</th><th>What it is</th>' + "".join(f'<th class="num">{MONTHS[m]}</th>' for m in [5] + RAINS) +
-             f'<th class="num">Jun–Aug</th><th class="num">Rank, driest = 1</th></tr></thead><tbody>')
+    o.append('<figure><img src="season2026.png" alt="' + _t("June–August 2026 rainfall by product, and IMERG cumulative rainfall",
+                                                          "Pluies de juin–août 2026 selon le produit, et cumul IMERG") + '"><figcaption>' + _t(
+        f'Left: June–August 2026 over the region as a share of each product\'s own {BASE[0]}–{BASE[1]} mean (paler bars: CHIRPS v2, and GPCC 2026 '
+        'products interpolated from gauges outside the region). Right: IMERG late run, daily, region mean.',
+        f'À gauche : juin–août 2026 sur la région, en part de la moyenne {BASE[0]}–{BASE[1]} de chaque produit (barres pâles : CHIRPS v2, et produits '
+        'GPCC 2026 interpolés à partir de stations hors de la région). À droite : IMERG (late run), journalier, moyenne régionale.') + '</figcaption></figure>')
+    o.append('<table><thead><tr><th>' + _t("Product", "Produit") + '</th><th>' + _t("What it is", "Nature") + '</th>'
+             + "".join(f'<th class="num">{_mon(m)}</th>' for m in [5] + RAINS)
+             + '<th class="num">' + _t("Jun–Aug", "juin–août") + '</th><th class="num">' + _t("Rank, driest = 1", "Rang, plus sec = 1") + '</th></tr></thead><tbody>')
     what = spec.get("product_notes", {})
     for r in a["y2026"]:
         cells = "".join(f'<td class="num">{_pc(r["months"].get(m))}</td>' for m in [5] + RAINS)
-        rank = f'{r["jja_rank"]} of {r["jja_n"]}' if "jja_rank" in r else "—"
+        rank = _of(r["jja_rank"], r["jja_n"]) if "jja_rank" in r else "—"
         g = ""
         if r.get("gauges"):
-            g = f' Gauges in the 1° cells overlapping the region (two of them mostly in Chad): {", ".join(f"{MONTHS[m]} {v}" for m, v in r["gauges"].items())}.'
-        o.append(f'<tr><td>{r["src"]}</td><td class="small">{what.get(r["src"], "")}{g}</td>{cells}'
+            lst = ", ".join(f"{_mon(m)} {v}" for m, v in r["gauges"].items())
+            g = _t(f' Gauges in the 1° cells overlapping the region (two of them mostly in Chad): {lst}.',
+                   f' Stations dans les mailles de 1° qui recoupent la région (dont deux surtout au Tchad) : {lst}.')
+        o.append(f'<tr><td>{_src(r["src"])}</td><td class="small">{what.get(r["src"], "")}{g}</td>{cells}'
                  f'<td class="num"><strong>{_pc(r.get("jja"))}</strong></td><td class="num">{rank}</td></tr>')
     o.append('</tbody></table>')
-    o.append(f'<p class="small">Each month and season as a share of the same product\'s {BASE[0]}–{BASE[1]} mean (one baseline for all, '
-             f'set by IMERG\'s start). Rank among {BASE[0]}–2026. Blank: not yet published.</p>')
+    o.append('<p class="small">' + _t(
+        f'Each month and season as a share of the same product\'s {BASE[0]}–{BASE[1]} mean (one baseline for all, set by IMERG\'s start). '
+        f'Rank among {BASE[0]}–2026. Blank: not yet published.',
+        f'Chaque mois et chaque saison en part de la moyenne {BASE[0]}–{BASE[1]} du même produit (une seule période de référence pour tous, '
+        f'fixée par le début d\'IMERG). Rang parmi {BASE[0]}–2026. Tiret : pas encore publié.') + '</p>')
     o.append(f'<h3>{T("depts", "By department")}</h3>{spec.get("depts_html", "")}')
-    o.append('<table><thead><tr><th>Department</th><th class="num">CHIRPS v3, Jun–Aug</th><th class="num">IMERG, Jun–Aug</th>'
-             '<th class="num">IMERG, Jun–Sep</th><th class="num">IMERG Jun–Sep rank, driest = 1</th></tr></thead><tbody>')
+    o.append('<table><thead><tr><th>' + _t("Department", "Département") + '</th><th class="num">' + _t("CHIRPS v3, Jun–Aug", "CHIRPS v3, juin–août")
+             + '</th><th class="num">' + _t("IMERG, Jun–Aug", "IMERG, juin–août") + '</th><th class="num">' + _t("IMERG, Jun–Sep", "IMERG, juin–sept.")
+             + '</th><th class="num">' + _t("IMERG Jun–Sep rank, driest = 1", "Rang IMERG juin–sept., plus sec = 1") + '</th></tr></thead><tbody>')
     for d in a["dept2026"]:
         o.append(f'<tr><td>{d["name"]}</td><td class="num">{_pc(d["c3"])}</td><td class="num">{_pc(d["im"])}</td><td class="num">{_pc(d["im4"])}</td>'
-                 f'<td class="num">{d["im4_rank"]} of {d["n"]}</td></tr>')
+                 f'<td class="num">{_of(d["im4_rank"], d["n"])}</td></tr>')
     o.append('</tbody></table>')
     o.append(f'<h3>{T("veg", "What the vegetation shows")}</h3>{spec.get("veg_html", "")}')
-    o.append('<figure><img src="vegetation.png" alt="ASAP cropland biomass and SPI-3, 2026"><figcaption>JRC ASAP, Extrême-Nord, '
-             'dekadal. Left: z-score of cumulative fAPAR on cropland during the growing cycle (biomass compared with the same point '
-             'in past seasons). Right: 3-month standardised precipitation index on cropland. Grey: range of past seasons.</figcaption></figure>')
+    o.append('<figure><img src="vegetation.png" alt="' + _t("ASAP cropland biomass and SPI-3, 2026", "Biomasse des cultures et SPI-3 (ASAP), 2026")
+             + '"><figcaption>' + _t(
+                 'JRC ASAP, Extrême-Nord, dekadal. Left: z-score of cumulative fAPAR on cropland during the growing cycle (biomass compared with the '
+                 'same point in past seasons). Right: 3-month standardised precipitation index on cropland. Grey: range of past seasons.',
+                 'JRC ASAP, Extrême-Nord, par décade. À gauche : score z du fAPAR cumulé sur les cultures pendant le cycle de croissance (biomasse '
+                 'comparée au même moment des saisons passées). À droite : indice de précipitations normalisé sur 3 mois (SPI-3), sur les cultures. '
+                 'Gris : plage des saisons passées.') + '</figcaption></figure>')
     o.append(f'<h3>{T("reports", "What regional and field reports say")}</h3>{spec.get("reports_html", "")}')
 
     # 4. floods
     o.append(f'<h2>{T("floods", "4. Floods")}</h2>')
     o.append(spec.get("floods_html", ""))
-    o.append('<figure><img src="floods.png" alt="FloodScan flooded area, Logone-et-Chari and Mayo-Danay"><figcaption>AER FloodScan SFED '
-             '(standard flood extent depiction), daily share of the department flagged as flooded.</figcaption></figure>')
-    o.append('<table><thead><tr><th>Unit</th><th class="num">Peak flooded share to ' + f'{a["fs_last"]:%d %b}' + ', 2026</th>'
-             '<th class="num">Median of past years to that date</th><th class="num">2026 rank (1 = most flooded)</th>'
-             '<th>Largest whole-season peaks, 1998–2025</th></tr></thead><tbody>')
+    o.append('<figure><img src="floods.png" alt="' + _t("FloodScan flooded area, Logone-et-Chari and Mayo-Danay", "Surface inondée FloodScan, Logone-et-Chari et Mayo-Danay")
+             + '"><figcaption>' + _t('AER FloodScan SFED (standard flood extent depiction), daily share of the department flagged as flooded.',
+                                     'AER FloodScan SFED (étendue standard des inondations) : part journalière du département détectée comme inondée.')
+             + '</figcaption></figure>')
+    cut = (f'{_jour(a["fs_last"].day)} {MONTH_FR_ABBR[a["fs_last"].month - 1]}' if fr else f'{a["fs_last"]:%d %b}')
+    o.append('<table><thead><tr><th>' + _t("Unit", "Unité") + '</th><th class="num">' + _t(f"Peak flooded share to {cut}, 2026", f"Pic de surface inondée au {cut} 2026")
+             + '</th><th class="num">' + _t("Median of past years to that date", "Médiane des années passées à la même date")
+             + '</th><th class="num">' + _t("2026 rank (1 = most flooded)", "Rang 2026 (1 = le plus inondé)")
+             + '</th><th>' + _t("Largest whole-season peaks, 1998–2025", "Plus grands pics sur la saison entière, 1998–2025") + '</th></tr></thead><tbody>')
     for f in a["floods"]:
-        top = ", ".join(f"{y} ({v * 100:.0f}%)" for y, v in f["top"][:4])
-        o.append(f'<tr><td>{f["name"]}</td><td class="num">{f["ytd"] * 100:.1f}%</td><td class="num">{f["med"] * 100:.1f}%</td>'
-                 f'<td class="num">{f["rank"]} of {f["n"]}</td><td class="small">{top}</td></tr>')
+        top = ", ".join(f"{y} ({_pc(v * 100)})" for y, v in f["top"][:4])
+        o.append(f'<tr><td>{f["name"]}</td><td class="num">{_pc(f["ytd"] * 100, 1)}</td><td class="num">{_pc(f["med"] * 100, 1)}</td>'
+                 f'<td class="num">{_of(f["rank"], f["n"])}</td><td class="small">{top}</td></tr>')
     o.append('</tbody></table>')
     fe = a["flood_enso"]
+    ph = (lambda v: PHASE_FR[phase(v)]) if fr else phase
     o.append(spec.get("floods_after_html", "").format(r=_r(fe["r"]), p=_p(fe["p"]), n=fe["n"],
-             top=", ".join(f'{y} ({phase(n_)})' for y, _, n_ in fe["top"][:5]),
-             r_lc=_r(a["flood_enso_lc"]["r"])))
+             top=", ".join(f'{y} ({ph(n_)})' for y, _, n_ in fe["top"][:5]), r_lc=_r(a["flood_enso_lc"]["r"])))
 
     # 5. heat
     o.append(f'<h2>{T("heat", "5. The hot season after El Niño")}</h2>')
     o.append(spec.get("heat_html", ""))
-    o.append('<figure><img src="heat.png" alt="March–May temperature against the previous winter\'s Niño3.4"><figcaption>ERA5 monthly 2 m '
-             'temperature, mean over the 0.25° cells touching the region, March–May, linear trend removed '
-             f'({a["heat"]["trend"]:+.2f} °C per decade). Red: winters with Niño3.4 ≥ +1.0; blue: ≤ −1.0.</figcaption></figure>')
-    o.append('<table><thead><tr><th>El Niño winter</th><th class="num">Nov–Jan Niño3.4</th><th class="num">March–May after: anomaly, trend removed</th>'
-             '<th class="num">Rank, hottest = 1</th></tr></thead><tbody>')
+    o.append('<figure><img src="heat.png" alt="' + _t("March–May temperature against the previous winter's Niño3.4", "Température de mars–mai et Niño3.4 de l'hiver précédent")
+             + '"><figcaption>' + _t(
+                 f'ERA5 monthly 2 m temperature, mean over the 0.25° cells touching the region, March–May, linear trend removed ({_sg(a["heat"]["trend"], 2)} °C per '
+                 'decade). Red: winters with Niño3.4 ≥ +1.0; blue: ≤ −1.0.',
+                 f'Température mensuelle à 2 m d\'ERA5, moyenne des mailles de 0,25° qui touchent la région, mars–mai, tendance linéaire retirée '
+                 f'({_sg(a["heat"]["trend"], 2)} °C par décennie). Rouge : hivers avec Niño3.4 ≥ +1,0 ; bleu : ≤ −1,0.') + '</figcaption></figure>')
+    o.append('<table><thead><tr><th>' + _t("El Niño winter", "Hiver El Niño") + '</th><th class="num">' + _t("Nov–Jan Niño3.4", "Niño3.4 nov.–janv.")
+             + '</th><th class="num">' + _t("March–May after: anomaly, trend removed", "Mars–mai suivant : anomalie, tendance retirée")
+             + '</th><th class="num">' + _t("Rank, hottest = 1", "Rang, plus chaud = 1") + '</th></tr></thead><tbody>')
     for r in [r for r in a["after"] if r["mam"] is not None]:
-        o.append(f'<tr><td>{r["event"]}</td><td class="num">{r["ndj"]:+.1f}</td><td class="num">{_sg(r["mam"], 2)} °C</td>'
-                 f'<td class="num">{r["mam_rank"]} of {a["heat"]["n"]}</td></tr>')
+        o.append(f'<tr><td>{r["event"]}</td><td class="num">{_sg(r["ndj"], 1)}</td><td class="num">{_sg(r["mam"], 2)} °C</td>'
+                 f'<td class="num">{_of(r["mam_rank"], a["heat"]["n"])}</td></tr>')
     o.append('</tbody></table>')
     o.append(spec.get("heat_after_html", ""))
 
     # 6. food security
     o.append(f'<h2>{T("food", "6. Food security")}</h2>')
     o.append(spec.get("food_html", ""))
-    o.append('<figure><img src="cadre_harmonise.png" alt="Cadre Harmonisé Phase 3+ in Extrême-Nord"><figcaption>Cadre Harmonisé '
-             'results for Extrême-Nord via HDX/HAPI (the team\'s mirror). Hollow markers are projections for the June–August lean '
-             'season: squares from the October/November analysis the year before, diamonds from the March update.</figcaption></figure>')
-    piv, fr, lastd = a["ch_dept"]
-    o.append(f'<table><thead><tr><th>Department</th><th class="num">Phase 3+, current (Oct–Dec 2025)</th><th class="num">Phase 3+, '
-             f'projected Jun–Aug 2026</th><th class="num">of whom Phase 4</th><th class="num">Share in Phase 3+</th></tr></thead><tbody>')
+    o.append('<figure><img src="cadre_harmonise.png" alt="' + _t("Cadre Harmonisé Phase 3+ in Extrême-Nord", "Cadre Harmonisé, phase 3+ dans l'Extrême-Nord")
+             + '"><figcaption>' + _t(
+                 'Cadre Harmonisé results for Extrême-Nord via HDX/HAPI (the team\'s mirror). Hollow markers are projections for the June–August lean '
+                 'season: squares from the October/November analysis the year before, diamonds from the March update.',
+                 'Résultats du Cadre Harmonisé pour l\'Extrême-Nord via HDX/HAPI (copie de l\'équipe). Symboles creux : projections pour la soudure de '
+                 'juin–août ; carrés pour l\'analyse d\'octobre/novembre de l\'année précédente, losanges pour la mise à jour de mars.') + '</figcaption></figure>')
+    piv, frac, lastd = a["ch_dept"]
+    o.append('<table><thead><tr><th>' + _t("Department", "Département") + '</th><th class="num">' + _t("Phase 3+, current (Oct–Dec 2025)", "Phase 3+, situation courante (oct.–déc. 2025)")
+             + '</th><th class="num">' + _t("Phase 3+, projected Jun–Aug 2026", "Phase 3+, projection juin–août 2026")
+             + '</th><th class="num">' + _t("of whom Phase 4", "dont phase 4") + '</th><th class="num">' + _t("Share in Phase 3+", "Part en phase 3+")
+             + '</th></tr></thead><tbody>')
     for nm in sorted({i[0] for i in piv.index}):
         cur = piv.loc[(nm, "current")] if (nm, "current") in piv.index else None
         pro = piv.loc[(nm, "first projection")] if (nm, "first projection") in piv.index else None
@@ -1004,44 +1153,66 @@ def render(spec: dict, a: dict) -> str:
             continue
         o.append(f'<tr><td>{nm.replace("-chari", "-Chari").replace("-danay", "-Danay").replace("-kani", "-Kani").replace("-sava", "-Sava").replace("-tsanaga", "-Tsanaga").replace("Diamare", "Diamaré")}</td>'
                  f'<td class="num">{_n(cur["3+"]) if cur is not None else "—"}</td><td class="num">{_n(pro["3+"])}</td>'
-                 f'<td class="num">{_n(pro.get("4", 0))}</td><td class="num">{fr.get((nm, "first projection"), np.nan) * 100:.0f}%</td></tr>')
+                 f'<td class="num">{_n(pro.get("4", 0))}</td><td class="num">{_pc(frac.get((nm, "first projection"), np.nan) * 100)}</td></tr>')
     o.append('</tbody></table>')
-    o.append(f'<p class="small">From the Cadre Harmonisé analysis of {lastd:%B %Y}, the latest in the HDX/HAPI record for Cameroon.</p>')
+    o.append('<p class="small">' + _t(f'From the Cadre Harmonisé analysis of {_date(lastd, day=False)}, the latest in the HDX/HAPI record for Cameroon.',
+                                      f'Analyse du Cadre Harmonisé {_de(_date(lastd, day=False))}, la plus récente dans les données HDX/HAPI pour le Cameroun.') + '</p>')
     o.append(spec.get("food_after_html", ""))
 
     # 7. 2027
     o.append(f'<h2>{T("next", "7. The 2027 rains")}</h2>')
     o.append(spec.get("next_html", ""))
-    o.append('<table><thead><tr><th>El Niño winter</th><th class="num">Nov–Jan Niño3.4</th><th class="num">Jul–Sep Niño3.4, next year</th>'
-             '<th class="num">Next June–September rain: GPCC</th><th class="num">CHIRPS v3</th><th class="num">ERA5</th></tr></thead><tbody>')
+    o.append('<table><thead><tr><th>' + _t("El Niño winter", "Hiver El Niño") + '</th><th class="num">' + _t("Nov–Jan Niño3.4", "Niño3.4 nov.–janv.")
+             + '</th><th class="num">' + _t("Jul–Sep Niño3.4, next year", "Niño3.4 juil.–sept., année suivante")
+             + '</th><th class="num">' + _t("Next June–September rain: GPCC", "Pluies de juin–septembre suivantes : GPCC")
+             + '</th><th class="num">CHIRPS v3</th><th class="num">ERA5</th></tr></thead><tbody>')
     for r in a["after"]:
-        o.append(f'<tr><td>{r["event"]}</td><td class="num">{r["ndj"]:+.1f}</td><td class="num">{_sg(r["jas"], 1)}</td>' +
+        o.append(f'<tr><td>{r["event"]}</td><td class="num">{_sg(r["ndj"], 1)}</td><td class="num">{_sg(r["jas"], 1)}</td>' +
                  "".join(f'<td class="num">{_pc(r[k])}</td>' for k in ["GPCC", "CHIRPS v3", "ERA5"]) + '</tr>')
     o.append('</tbody></table>')
     ar = a["after_r"]
-    o.append(f'<p class="small">Percentile of the following June–September (0 = driest): GPCC within 1950–2025, CHIRPS v3 and ERA5 within 1981–2025. Across all years since 1982, the correlation '
-             f'between a winter\'s Niño3.4 and the next rainy season (trend removed) is {_r(ar["GPCC"][0])} in GPCC, '
-             f'{_r(ar["CHIRPS v3"][0])} in CHIRPS v3 and {_r(ar["ERA5"][0])} in ERA5, none significant.</p>')
+    o.append('<p class="small">' + _t(
+        'Percentile of the following June–September (0 = driest): GPCC within 1950–2025, CHIRPS v3 and ERA5 within 1981–2025. Across all years since '
+        f'1982, the correlation between a winter\'s Niño3.4 and the next rainy season (trend removed) is {_r(ar["GPCC"][0])} in GPCC, '
+        f'{_r(ar["CHIRPS v3"][0])} in CHIRPS v3 and {_r(ar["ERA5"][0])} in ERA5, none significant.',
+        'Centile de la saison juin–septembre suivante (0 = la plus sèche) : GPCC sur 1950–2025, CHIRPS v3 et ERA5 sur 1981–2025. Sur toutes les '
+        f'années depuis 1982, la corrélation entre le Niño3.4 d\'un hiver et la saison des pluies suivante (tendance retirée) est de {_r(ar["GPCC"][0])} '
+        f'dans GPCC, {_r(ar["CHIRPS v3"][0])} dans CHIRPS v3 et {_r(ar["ERA5"][0])} dans ERA5, aucune n\'étant significative.') + '</p>')
     if a["skill"]:
         o.append(f'<h3>{T("skill", "When seasonal forecasts start to help")}</h3>{spec.get("skill_html", "")}')
-        mname = {3: "March", 4: "April", 5: "May", 6: "June", 7: "July"}
-        o.append('<table><thead><tr><th>SEAS5 issued in</th>' + "".join(f'<th class="num">{mname[s["month"]]}</th>' for s in a["skill"]) +
-                 '</tr></thead><tbody><tr><td>Median r, July–September, Extrême-Nord cells</td>' +
-                 "".join(f'<td class="num">{edd.skill_chip(edd.skill_cat(s["r"]))}{_r(np.floor(s["r"] * 100) / 100)}</td>' for s in a["skill"]) + '</tr></tbody></table>')
-        o.append('<p class="small">From the team\'s SEAS5 skill cube (ensemble mean against ERA5, 1981–2025, detrended): low &lt; 0.30, '
-                 'moderate 0.30–0.50. The reference is ERA5, whose weaknesses over this region are discussed in section 2.</p>')
+        mname = {m: (MONTH_FR[m - 1] if fr else pd.Timestamp(2001, m, 1).strftime("%B")) for m in range(1, 13)}
+        cat_fr = {"low": "faible", "moderate": "modérée", "high": "élevée", "negative": "négative"}
+
+        def chip(r_):
+            c = edd.skill_chip(edd.skill_cat(r_))
+            if fr:
+                for k_, v_ in cat_fr.items():
+                    c = c.replace(f">{k_}<", f">{v_}<")
+            return c
+        o.append('<table><thead><tr><th>' + _t("SEAS5 issued in", "SEAS5 émis en") + '</th>' + "".join(f'<th class="num">{mname[s["month"]]}</th>' for s in a["skill"])
+                 + '</tr></thead><tbody><tr><td>' + _t("Median r, July–September, Extrême-Nord cells", "r médian, juillet–septembre, mailles de l'Extrême-Nord") + '</td>'
+                 + "".join(f'<td class="num">{chip(s["r"])}{_r(np.floor(s["r"] * 100) / 100)}</td>' for s in a["skill"]) + '</tr></tbody></table>')
+        o.append('<p class="small">' + _t(
+            'From the team\'s SEAS5 skill cube (ensemble mean against ERA5, 1981–2025, detrended): low &lt; 0.30, moderate 0.30–0.50. The reference is '
+            'ERA5, whose weaknesses over this region are discussed in section 2.',
+            'D\'après le cube de performance (skill) SEAS5 de l\'équipe (moyenne d\'ensemble comparée à ERA5, 1981–2025, tendance retirée) : faible &lt; 0,30, '
+            'modérée 0,30–0,50. La référence est ERA5, dont les faiblesses sur cette région sont discutées à la section 2.') + '</p>')
 
     # 8. watch list
     o.append(f'<h2>{T("watch", "8. What to watch, and when")}</h2>')
-    o.append('<table class="watch"><thead><tr><th>When</th><th>What</th><th>Why it matters here</th></tr></thead><tbody>' +
+    o.append('<table class="watch"><thead><tr><th>' + _t("When", "Quand") + '</th><th>' + _t("What", "Quoi") + '</th><th>'
+             + _t("Why it matters here", "Pourquoi c'est important ici") + '</th></tr></thead><tbody>' +
              "".join(f'<tr><td>{w["when"]}</td><td>{w["what_html"]}</td><td class="small">{w["why_html"]}</td></tr>' for w in spec.get("watch", [])) +
              '</tbody></table>')
     for sec in spec.get("sections_after", []):
         o.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
     if spec.get("references"):
-        o.append('<h2>References</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in spec["references"]) + '</ul>')
-    o.append('<p class="small">Generated by <code>extreme_nord_deep_dive.py</code> from <code>deep_dives/extreme-nord.toml</code>. '
-             'Niño3.4 series as in the <a href="../../survey/">global survey</a>.</p>')
+        o.append(f'<h2>{_t("References", "Références")}</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in spec["references"]) + '</ul>')
+    o.append('<p class="small">' + _t(
+        'Generated by <code>extreme_nord_deep_dive.py</code> from <code>deep_dives/extreme-nord.toml</code>. '
+        f'Niño3.4 series as in the <a href="{up}../../survey/">global survey</a>.',
+        'Produit par <code>extreme_nord_deep_dive.py</code> à partir de <code>deep_dives/i18n/extreme-nord.fr.toml</code>. '
+        f'Série Niño3.4 identique à celle de la <a href="{up}../../survey/">synthèse mondiale</a> (en anglais).') + '</p>')
     o.append(edd.FOOT)
     return "\n".join(o)
 
@@ -1051,10 +1222,21 @@ def render(spec: dict, a: dict) -> str:
 # --------------------------------------------------------------------------- #
 def build(spec: dict, grid, ne, indices: pd.DataFrame) -> dict:
     """Called by enso_deep_dive.main() for a TOML with builder = "extreme_nord" (grid and ne unused:
-    this page reads its own records, not the survey's ERA5 pixel stack)."""
+    this page reads its own records, not the survey's ERA5 pixel stack). Writes the English page, then
+    the French one (OUT/fr/) from the same analysis if deep_dives/i18n/<slug>.fr.toml exists."""
+    set_lang("en")
     a = analyse(spec, indices)
     report(a)
     (OUT / "index.html").write_text(render(spec, a), encoding="utf-8")
+    if FR_SPEC.exists():
+        try:
+            set_lang("fr")
+            figures(a)
+            spec_fr = tomllib.loads(FR_SPEC.read_text()) | {"slug": SLUG}
+            (OUTDIR / "index.html").write_text(render(spec_fr, a), encoding="utf-8")
+            print(f"  wrote {OUTDIR}/index.html")
+        finally:
+            set_lang("en")
     return a
 
 
