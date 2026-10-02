@@ -119,7 +119,8 @@ def imerg_daily(im: pd.DataFrame, pcode: str = PCODE) -> pd.Series:
 
 def imerg_monthly(im: pd.DataFrame, pcode: str = PCODE) -> pd.Series:
     d = imerg_daily(im, pcode)
-    m = d.resample("MS").sum(min_count=25)
+    tot, n = d.resample("MS").sum(), d.resample("MS").count()
+    m = (tot * tot.index.days_in_month / n).where(n >= 25)   # a month missing a day or two is scaled up, not left low
     return m[m.index >= "2001-01-01"]          # 1998–2000 are partial in the DB
 
 
@@ -170,7 +171,7 @@ def gpcc_2026(year: int = 2026) -> list[dict]:
     rows = []
     for kind, stem in [("first guess", "first_guess/{y}/first_guess_monthly_{y}_{m:02d}.nc"),
                        ("monitoring", "monitoring_v2022/{y}/monitoring_v2022_10_{y}_{m:02d}.nc")]:
-        for m in RAINS:
+        for m in [5] + RAINS:
             path = CACHE / Path(stem.format(y=year, m=m)).name
             if not path.exists():
                 try:
@@ -473,6 +474,7 @@ def analyse(spec: dict, indices: pd.DataFrame) -> dict:
     a["strong"] = strong
     oni = oni_table()
     a["oni_2026"] = {r.seas: r.anom for r in oni[oni.year == 2026].itertuples()}
+    a["oni_jja"] = {int(r.year): float(r.anom) for r in oni[oni.seas == "JJA"].itertuples()}
     a["oni_last"] = oni.iloc[-1].to_dict()
 
     # 2. the 2026 season, every product against 2001–2025
@@ -629,7 +631,7 @@ def analyse(spec: dict, indices: pd.DataFrame) -> dict:
         import xarray as xr
         with xr.open_dataset(path) as ds:
             sub = ds.pearson_r.sel(y=slice(13.1, 10.0), x=slice(13.4, 15.7))
-            for im_ in [1, 2, 3, 4, 5, 6, 7]:
+            for im_ in [3, 4, 5, 6, 7]:                  # leads 4..0; Jan/Feb issuances do not reach September
                 v = sub.sel(issued_month=im_, trimester="JAS").values
                 v = v[np.isfinite(v)]
                 sk.append(dict(month=im_, lead=7 - im_, r=float(np.median(v)) if v.size else np.nan))
@@ -791,7 +793,7 @@ def fig_heat(a: dict) -> None:
     ax.set_xlabel("Niño3.4 the winter before (November–January, °C)", fontsize=8.5, color=C_MUTED)
     ax.set_ylabel("March–May temperature anomaly\n(°C, trend removed)", fontsize=8.5, color=C_MUTED)
     h = a["heat"]
-    ax.set_title(f"Extrême-Nord hot season after El Niño: ERA5, 1982–{df.index.max()} (r = {h['r']:+.2f})", fontsize=9.5, color=C_TEXT, loc="left")
+    ax.set_title(f"Extrême-Nord hot season after El Niño: ERA5, {df.index.min()}–{df.index.max()} (r = {h['r']:+.2f})", fontsize=9.5, color=C_TEXT, loc="left")
     edd._style_ax(ax)
     fig.tight_layout(); _save(fig, "heat.png")
 
@@ -893,22 +895,25 @@ def render(spec: dict, a: dict) -> str:
              'over the 31 seasons centred on that year (1950–2025): negative throughout, but in most single windows too weak to '
              'pass a significance test on its own.</figcaption></figure>')
     o.append(f'<h3>{T("strong", "Strong El Niño seasons")}</h3>{spec.get("strong_html", "")}')
-    o.append('<table><thead><tr><th>Season</th><th class="num">Jul–Sep Niño3.4</th><th class="num">GPCC</th><th class="num">CHIRPS v3</th>'
+    o.append('<table><thead><tr><th>Season</th><th class="num">ONI Jun–Aug</th><th class="num">Jul–Sep Niño3.4</th><th class="num">GPCC</th><th class="num">CHIRPS v3</th>'
              '<th class="num">IMERG</th><th class="num">ERA5</th><th>Notes</th></tr></thead><tbody>')
     for s in a["strong"]:
         note = spec.get("strong_notes", {}).get(str(s["year"]), "")
-        o.append(f'<tr><td>{s["year"]}</td><td class="num">{s["nino"]:+.1f}</td>' +
+        oj = a["oni_jja"].get(s["year"])
+        o.append(f'<tr><td>{s["year"]}</td><td class="num">{_sg(oj, 1) if oj is not None else "—"}</td><td class="num">{s["nino"]:+.1f}</td>' +
                  "".join(f'<td class="num">{_pc(s[k])}</td>' for k in ["GPCC", "CHIRPS v3", "IMERG", "ERA5"]) +
                  f'<td class="small">{note}</td></tr>')
     o26 = a["oni_2026"]
     jja = o26.get("JJA")
-    o.append(f'<tr class="hl"><td>2026</td><td class="num">{"+%.1f" % jja if jja is not None else "—"}*</td>'
+    jas26 = o26.get("JAS")
+    o.append(f'<tr class="hl"><td>2026</td><td class="num">{_sg(jja, 1) if jja is not None else "—"}</td>'
+             f'<td class="num">{_sg(jas26, 1) + "*" if jas26 is not None else "not yet"}</td>'
              f'<td colspan="4" class="small">see section 3</td><td class="small">{spec.get("strong_notes", {}).get("2026", "")}</td></tr>')
     o.append('</tbody></table>')
     o.append(f'<p class="small">Percentile of the June–September total within each record (0 = driest, 100 = wettest): GPCC within 1950–2025, '
              f'the others within their own years (CHIRPS and ERA5 from 1981, IMERG from 2001). Niño3.4: NOAA PSL, ERSST v5. '
-             f'*2026: CPC\'s official ONI for June–August (ERSST v5); the pinned monthly series behind the rest of the table ends in '
-             f'{a["nino_last"][0]:%B %Y}.</p>')
+             f'ONI: CPC\'s official three-month index (ERSST v5), shown so that 2026 can be compared on the same basis; the pinned monthly '
+             f'series behind the July–September column ends in {a["nino_last"][0]:%B %Y}.</p>')
 
     o.append(f'<h3>{T("gauges", "The rain gauges behind the records")}</h3>{spec.get("gauges_html", "")}')
     gd = a["gauges"].groupby((a["gauges"].index // 10) * 10).mean()
@@ -1019,7 +1024,7 @@ def render(spec: dict, a: dict) -> str:
              f'{_r(ar["CHIRPS v3"][0])} in CHIRPS v3 and {_r(ar["ERA5"][0])} in ERA5, none significant.</p>')
     if a["skill"]:
         o.append(f'<h3>{T("skill", "When seasonal forecasts start to help")}</h3>{spec.get("skill_html", "")}')
-        mname = {1: "January", 2: "February", 3: "March", 4: "April", 5: "May", 6: "June", 7: "July"}
+        mname = {3: "March", 4: "April", 5: "May", 6: "June", 7: "July"}
         o.append('<table><thead><tr><th>SEAS5 issued in</th>' + "".join(f'<th class="num">{mname[s["month"]]}</th>' for s in a["skill"]) +
                  '</tr></thead><tbody><tr><td>Median r, July–September, Extrême-Nord cells</td>' +
                  "".join(f'<td class="num">{edd.skill_chip(edd.skill_cat(s["r"]))}{_r(np.floor(s["r"] * 100) / 100)}</td>' for s in a["skill"]) + '</tr></tbody></table>')
@@ -1060,6 +1065,8 @@ def report(a: dict) -> None:
     print("  GPCC by period:", [(p["y0"], p["y1"], round(p["rd"], 2), round(p["pd"], 3), p["en"]) for p in a["gpcc_periods"]])
     print("  strong:", [(s["year"], round(s["nino"], 2), {k: (round(s[k]) if s[k] is not None else None) for k in ["GPCC", "CHIRPS v3", "IMERG", "ERA5"]}) for s in a["strong"]])
     print("  2026:", [(r["src"], {m: round(v) for m, v in r["months"].items()}, round(r["jja"]) if "jja" in r else None, r.get("jja_rank")) for r in a["y2026"]])
+    jjas = seasonal(imerg_monthly(db_series()["imerg"]), RAINS, BASE[0], 2026)
+    print("  IMERG Jun–Sep region:", round(jjas[2026] / jjas.loc[BASE[0]:BASE[1]].mean() * 100), "% rank", int(jjas.rank()[2026]), "of", len(jjas))
     print("  depts:", [(d["name"], round(d["c3"]), round(d["im"]), d["im4"], d["im4_rank"]) for d in a["dept2026"]])
     print("  veg:", a["veg_last"], "spi", a["spi_last"], "june min", round(a["veg_june"], 2), "veg~enso", {k: (round(v, 2) if isinstance(v, float) else v) for k, v in a["veg_enso"].items()})
     print("  floods:", [(f["name"], round(f["ytd"] * 100, 1), f["rank"], f["n"]) for f in a["floods"]], "enso", {k: v for k, v in a["flood_enso"].items()})
