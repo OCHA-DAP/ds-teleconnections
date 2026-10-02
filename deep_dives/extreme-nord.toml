@@ -83,7 +83,7 @@ floods_html = '''
 
 floods_after_html = '''
 <p>Flood years do not follow ENSO here. Across 1998–2025, the correlation between the region's peak flooded share and July–September Niño3.4 is {r} (p = {p}, n = {n}). The five largest flood years were {top}. 2024, the largest, was neutral. The Logone's floods depend on rain over its whole basin in Cameroon, Chad and the Central African Republic, and on local storms, not only on the season's total at home.</p>
-<p>A weak flood has costs of its own. The floodplains of the Logone (the yaérés) carry dry-season pasture, fishing and flood-recession cropping. In the great drought of 1972–73, flows were too low to flood the Chad plain at all (Suchel 1983). FEWS NET and PREGEC report lower Logone and Chari flows in 2026 than in 2025. Whether that matters this year depends on October–November, and on assessments we have not seen.</p>
+<p>A weak flood has costs of its own. The floodplains of the Logone (the yaérés) carry dry-season pasture, fishing and flood-recession cropping. In the great drought of 1972–73, flows were too low to flood the Chad plain at all (Suchel 1983). AGRHYMET reports Logone and Chari flows in August 2026 well below a year earlier, and PREGEC lower Lake Chad basin levels. Whether that matters this year depends on October–November, and on assessments we have not seen.</p>
 '''
 
 heat_html = '''
@@ -107,7 +107,7 @@ food_html = '''
 '''
 
 food_after_html = '''
-<p>What El Niño adds to this is a harvest shock in the departments already worst off. FEWS NET's September 2026 assessment expects a below-average harvest, and places Logone-et-Chari, Mayo-Sava and Mayo-Tsanaga in Crisis. Those are the three departments with the highest projected Phase 3+ shares in the table above. Rainfall in Sudano-Sahelian Cameroon matters for yields mostly through the end of the season and dry spells (Nenwala et al. 2025), which are the two features of 2026 that every record agrees on.</p>
+<p>What El Niño adds to this is a harvest shock in the departments already worst off. FEWS NET's September 2026 assessment expects a below-average harvest, and places Logone-et-Chari, Mayo-Sava and Mayo-Tsanaga in Crisis. Those are the three departments with the highest projected Phase 3+ shares in the table above. Rainfall in Sudano-Sahelian Cameroon matters for yields mostly through the end of the season and dry spells (Nenwala et al. 2025), and the dry September in IMERG is that kind of signal.</p>
 '''
 
 next_html = '''
