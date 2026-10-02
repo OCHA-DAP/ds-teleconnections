@@ -15,6 +15,7 @@ summary_html = '''
 <p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. Two gauge-based records and a reanalysis correlate at +0.55 to +0.67 with winter Niño3.4, and 9 of the 14 El Niño winters fell in Gaza's wettest third, against 2 (GPCC) or none (ERA5) in the driest. That moves the chance of a wettest-third winter from about one in three to about two in three, with a wide range (roughly 40–85%) on 14 cases. But the same records show no positive link before 1979. And the strong El Niños, the relevant analogues for this year, have been the least reliable: three of six were wet, one normal, and two normal to dry, including 2023/24, the first winter of the war. The two wettest, 1982/83 and 1991/92, both followed major volcanic eruptions, which makes them doubtful analogues for a winter forecast to be warm. El Niño shifts the odds towards a wet winter, mostly in its first half; it does not forecast one.</p>
 <p><strong>3. What changes in an El Niño winter.</strong> Mostly the number of rainy days (about ten more per winter than in a La Niña winter) and, in two of the three daily records, of days with 10 mm or more. The biggest single storms are only loosely tied to El Niño, and cold nights not at all.</p>
 <p><strong>4. What winter weather does in Gaza now.</strong> Every winter since October 2023 has flooded tents, including the very dry 2024/25. Damage followed ordinary rain (on several occasions no more than about 16 mm in a day; Byron's wettest day was about 66 mm), high tides with almost no rain, wind, and cold nights. Last winter the Shelter Cluster counted more than 42,000 tents damaged in Storm Byron alone, 71% of households were flooded at least once, and at least 11 children died of hypothermia (Ministry of Health). In September 2026, 451 sites holding about 464,000 people are rated high flood risk.</p>
+<p><strong>5. What this winter could bring.</strong> About half of winters bring a storm with a day of 50 mm or more, as Byron had, El Niño or not. El Niño may bring the first storm of 20 mm or more earlier (before December in 5 of 8 El Niño winters, which is within chance). Last winter's alert-based counts total about 80,000–100,000 household-impacts (a household counted once per storm), about 58,500 tents and shelters damaged and 35–36 deaths reported; Byron alone accounts for 55,000 households and 42,000 tents. Those counts understate last winter: a household survey suggests about 250,000 households were flooded at least once. Exposure is higher this winter. None of this is a forecast.</p>
 '''
 
 before_html = '''
@@ -79,7 +80,7 @@ impacts_intro_html = '''
 <p>As of September 2026 about 1.7 million people live in roughly 1,600 displacement sites, and 65% of households live in tents or makeshift shelters. Last winter 71% of households were flooded at least once, and 83% of those in tents (Shelter Cluster). The inter-agency flood-exposure outlook for 2026/27 puts 989 of 1,764 assessed sites in medium- or high-risk areas, and 451 sites holding about 464,000 people in high-risk areas (IOM, Site Management Cluster and Shelter Cluster, September 2026; OCHA). That exposure map uses terrain and past flooding, not rainfall. No published analysis links rainfall amounts to tent flooding in Gaza, and no rain gauge inside Gaza reports internationally. The table below is a first pass at that link: every dated winter impact in UN reporting since October 2023, with the weather over Gaza on those days.</p>
 <p>Three things stand out.</p>
 <ul>
-<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over Gaza. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over Gaza every winter. Byron (about 150 mm over a week in IMERG) was large, but the pre-war benchmark, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
+<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over Gaza. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over Gaza every winter. Byron (rain from 8 December, the storm proper from 10 December; about 150 mm in IMERG) was large, but the pre-war benchmark, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
 <li><strong>Several damaging events came with little or no rain.</strong> These were the coastal flooding of 24–25 November 2024 (about 3 mm; high tides), the wind storms of 5–6 February 2025 and 14 March 2026, and the cold spells in which newborns died of hypothermia (ERA5 minimum 9 °C on 24–29 December 2024, 4 °C on 24–25 February 2025). A seasonal rainfall forecast says nothing about these.</li>
 <li><strong>Reporting changed between winters</strong>, from descriptive in 2023/24 to authority counts in 2024/25 and daily cluster alerts in 2025/26. So impact counts cannot be compared across winters; the dates can.</li>
 </ul>
@@ -90,6 +91,85 @@ prewar_html = '''
 '''
 
 strong_notes = { "1982" = "El Chichón erupted in April 1982; 1982/83 is in Dogar et al.'s (2017) composite of volcanically cooled Middle East winters.", "1991" = "Pinatubo erupted in June 1991; snow in Jerusalem and the Negev; about twice the average rainfall in Israel (IMS).", "2009" = "IMS: southern coastal plain 50–75% of normal.", "2015" = "IMS: Be'eri, next to Gaza, 153% of normal; nationally a dry year.", "2023" = "IMS: 70–90% of normal along the Gaza border while northern Israel had 130–165%; about 2 °C warmer than average." }
+
+range_intro_html = '''
+<p>The question for planners is what this winter could do. The record cannot answer that with a forecast: there is one well-documented winter, reporting that changed every year, and a population whose exposure keeps changing. What it can do is bound the answer. This section separates the weather (how many storms, how big, how early, and what El Niño does or does not change) from what each kind of storm did last winter, and then uses last winter as two reference points.</p>
+'''
+
+first_storm_html = '''
+<p>This is where El Niño may matter, though not by much more than chance on eight winters. In 5 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more came before 1 December, against 12 of 28 winters overall, and the September forecasts put this year's wet anomaly in October and November. Damage does not wait for a big storm, though. In each of the last three winters the first weather damage was reported in mid to late November (13–14 November 2023, 24–25 November 2024, 14–15 November 2025), and in two of them that came before the winter's first 20 mm storm. Last winter's first storm, with 22 mm, damaged about 13,000 tents.</p>
+'''
+
+storm_kinds_intro_html = '''
+<p>Each row is one real event, mostly from 2025/26, with how its numbers were counted. None is an average: every row is a single case, and counts made at the sites assessed are floors.</p>
+'''
+
+reference_intro_html = '''
+<p>Last winter's observed totals, split into Byron and everything else. About half of winters bring a storm with a day of 50 mm or more, as Byron had; that held across IMERG's 28 winters, and El Niño did not change it. So the split shows what last winter's counts looked like with and without the one storm that dominated them.</p>
+<p>All of these numbers understate last winter. They come from alerts raised by the sites that were reached. In June 2026 the Shelter Cluster's household survey found 71% of households had been flooded at least once; applied to the roughly 355,000 households in displacement sites, that is about 250,000 households. So the alert-based totals probably caught a third or less of the households flooded. Exposure is also higher this winter. About 1.7 million people live in roughly 1,600 sites, against about 1.5 million in about 940 sites last December (counted differently). 65% of households are in tents or makeshift shelters, and more than half of those tents are in poor or very poor condition after a year's use. Last winter was a weak La Niña, not an El Niño. None of this is a forecast.</p>
+'''
+
+range_after_html = '''
+<h3>Exposure then and now</h3>
+<table><thead><tr><th></th><th>Early winter 2025/26</th><th>September 2026</th></tr></thead><tbody>
+<tr><td>People in displacement sites</td><td>about 1.5 million in 942 sites (early December 2025)</td><td>about 1.7 million in 1,591 verified sites</td></tr>
+<tr><td>Sites and people in flood-prone areas</td><td>761 sites, about 795,000 people (pre-winter mapping)</td><td>989 of 1,764 sites at medium or high risk; 451 sites with about 464,000 people at high risk</td></tr>
+<tr><td>Households in tents or makeshift shelters</td><td>—</td><td>65%; 54% of tents in poor or very poor condition</td></tr>
+<tr><td>Shelter and site-management funding (2026 Flash Appeal)</td><td>—</td><td>Shelter 26%, Site Management 2% (18 September)</td></tr>
+</tbody></table>
+<p class="small">Site Management Cluster, Shelter Cluster and IOM figures via OCHA (SitRep 40, December 2025; HSU #353, January 2026; Humanitarian Situation Report, 25 September 2026); Shelter Cluster household survey, June 2026. The 2025 and 2026 site counts use different methods.</p>
+<h3>Deaths</h3>
+<table><thead><tr><th>Winter</th><th>Cold and hypothermia</th><th>Building collapse</th><th>Source</th></tr></thead><tbody>
+<tr><td>2023/24</td><td>none reported by the UN</td><td>none reported</td><td>reporting on weather deaths was almost absent</td></tr>
+<tr><td>2024/25</td><td><em>at least 8 by 6 January; 6 newborns on 24–25 February</em></td><td>none reported</td><td><em>Ministry of Health; health officials quoted in media</em>, both via OCHA</td></tr>
+<tr><td>2025/26</td><td><em>11 children (by 27 January)</em></td><td><em>25 (mid-December to 14 January)</em></td><td><em>Ministry of Health</em> via OCHA (its storm-related total was 31 by 14 January: 24 collapse and 7 cold); Byron's 12 storm deaths (11 collapse, 1 cold) were confirmed by the Health Cluster</td></tr>
+</tbody></table>
+<p>No range is given for deaths. Cold deaths followed shelter more than temperature: last winter had only 2 nights at or below 8 °C in ERA5 over Gaza and 11 child deaths; the winter before had 8 such nights. Collapse deaths came with Byron, when rain soaked buildings already damaged in the war. Almost every death count comes from Gaza authorities, and OCHA does not systematically monitor deaths unrelated to the conflict.</p>
+'''
+
+[[storm_kinds]]
+kind = "First storm of the season of 20 mm or more"
+example = "14–15 Nov 2025"
+event_id = "GZ-2526-01"
+hh_prefix = "> "
+tents_prefix = "~ "
+deaths_html = "—"
+read_html = "Gaza-wide count from OCHA (no named source). The Shelter Cluster's tent figure is also 13,000, so the two may be one number. A single case."
+[[storm_kinds]]
+kind = "Byron-class storm (50 mm or more in a day)"
+example = "Byron, 8–17 Dec 2025"
+event_id = "GZ-2526-04"
+hh_prefix = "≥ "
+tents_prefix = "> "
+deaths_html = "12 (Health Cluster: 11 in collapsing buildings, 1 of cold)"
+read_html = "Site Management Cluster flood alerts to 16 December, which the cluster says understate the impact; at least 235,000 people. A single case."
+[[storm_kinds]]
+kind = "Later storm of 20–50 mm"
+example = "9–10 Jan 2026"
+event_id = "GZ-2526-07"
+hh_prefix = "> "
+deaths_html = "—"
+read_html = "Only the 34 northern sites that raised alerts: a floor, not a Gaza-wide count. The other later 20–50 mm storm (21–22 January, 26 mm) has only an assistance count."
+[[storm_kinds]]
+kind = "Wind and cold with little rain"
+example = "12–16 Jan 2026"
+event_id = "GZ-2526-08"
+deaths_html = "7 at the sites assessed, including 3 children who died of cold"
+read_html = "106 sites assessed; the cluster later reported about 4,000 more households at 89 further sites, not added here. IMERG saw almost no rain; ERA5 had 12 mm."
+[[storm_kinds]]
+kind = "High tide on the coast"
+example = "24–25 Nov 2024"
+event_id = "GZ-2425-01"
+hh_prefix = "~ "
+deaths_html = "—"
+read_html = "Shoreline only, preliminary. Tents: 60 destroyed and 120 damaged at two Deir al Balah sites; more than 600 hit by the tide at Al Qarara. <em>The Government Media Office said about 10,000 tents.</em>"
+[[storm_kinds]]
+kind = "Small rain storm"
+example = "25–26 Mar 2026"
+event_id = "GZ-2526-18"
+hh_prefix = "about "
+deaths_html = "—"
+read_html = "Displacement sites; assessments were still under way."
 
 [catalogue]
 direction = "wetter"
@@ -110,6 +190,7 @@ skill = "SEAS5 for Gaza: skill and the September 2026 forecast"
 enso = "2. How much El Niño matters for a Gaza winter"
 daily = "3. What changes in an El Niño winter, and what does not"
 impacts = "4. What winter weather does in Gaza"
+range = "5. What this winter could bring"
 
 # ---- Impacts, war winters (numbered in the timeline figure). Public UN sources only; figures from
 # Gaza authorities are italicised and attributed. Dates are the reported event dates.

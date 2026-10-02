@@ -98,22 +98,24 @@ def _cds_client():
     return cdsapi.Client(url="https://cds.climate.copernicus.eu/api", key=key, quiet=True)
 
 
-def era5_cell(key: str, end: str | None = None) -> pd.DataFrame:
+def era5_cell(key: str, end: str | None = None, cells: dict | None = None, cache: Path | None = None) -> pd.DataFrame:
     """Daily series for one ERA5 cell from the CDS ERA5 hourly time-series dataset (1950–).
 
     pr: mm, 00–24 UTC (ERA5's hourly tp is the accumulation over the hour ending at the stamp,
     so it is shifted back one hour before summing); tmin/tmax: °C; wmax: highest hourly 10 m
     wind, m/s. Re-fetched when the cache is more than 20 days behind today.
     """
-    path = CACHE / f"era5_{key}.parquet"
+    cells, cache = cells or ERA5_CELLS, cache or CACHE
+    path = cache / f"era5_{key}.parquet"
     if path.exists():
         d = pd.read_parquet(path)
         if d.index[-1] >= pd.Timestamp.now().normalize() - pd.Timedelta(days=20):
             return d
-    la, lo = ERA5_CELLS[key]
+    la, lo = cells[key]
     end = end or (pd.Timestamp.now().normalize() - pd.Timedelta(days=6)).strftime("%Y-%m-%d")
     print(f"  fetching ERA5 hourly time series for cell {key} ({la}, {lo}) 1950–{end} from CDS…", flush=True)
-    tmp = CACHE / f"era5_{key}.zip"
+    cache.mkdir(parents=True, exist_ok=True)
+    tmp = cache / f"era5_{key}.zip"
     _cds_client().retrieve("reanalysis-era5-single-levels-timeseries", {
         "variable": ["total_precipitation", "2m_temperature", "10m_u_component_of_wind", "10m_v_component_of_wind"],
         "location": {"longitude": lo, "latitude": la}, "date": [f"1950-01-01/{end}"], "data_format": "csv"}, str(tmp))
@@ -168,14 +170,15 @@ def ghcn_daily(station: str) -> pd.DataFrame:
     return pd.DataFrame({"pr": d.PRCP / 10.0, "tmin": d.TMIN / 10.0})
 
 
-def imerg_daily(weights_fn) -> pd.DataFrame:
-    """IMERG late run v7 daily (mm/day) from the prod raster blob, windowed COG reads over IMERG_BOX,
-    cached as a small cube and topped up with new days on each run. Returns Gaza's area-weighted
-    daily mean plus its northern (Gaza City, North Gaza) and southern (Khan Younis, Rafah) halves."""
+def imerg_daily(weights_fn, box: tuple = IMERG_BOX, path: Path | None = None, split_lat: tuple | None = (31.45, 31.35)) -> pd.DataFrame:
+    """IMERG late run v7 daily (mm/day) from the prod raster blob, windowed COG reads over `box`,
+    cached as a small cube (`path`) and topped up with new days on each run. Returns the area-weighted
+    daily mean and, if `split_lat` is given, the means north of its first and south of its second
+    latitude (for Gaza: Gaza City and North Gaza vs Khan Younis and Rafah)."""
     import ocha_stratus as stratus
     import rasterio
     from rasterio.windows import from_bounds
-    path = CACHE / "imerg_box.npz"
+    path = path or CACHE / "imerg_box.npz"
     have = np.load(path) if path.exists() else None
     done = set(pd.to_datetime(have["dates"]).strftime("%Y-%m-%d")) if have is not None else set()
     try:
@@ -191,7 +194,7 @@ def imerg_daily(weights_fn) -> pd.DataFrame:
 
         def one(n):
             with rasterio.Env(**env), rasterio.open(cc.get_blob_client(n).url) as src:
-                w = from_bounds(*IMERG_BOX, src.transform).round_offsets().round_lengths()
+                w = from_bounds(*box, src.transform).round_offsets().round_lengths()
                 return re.search(r"(\d{4}-\d{2}-\d{2})", n).group(1), src.read(1, window=w), src.window_transform(w)
         with ThreadPoolExecutor(32) as ex:
             res = list(ex.map(one, sorted(todo)))
@@ -202,14 +205,16 @@ def imerg_daily(weights_fn) -> pd.DataFrame:
             assert np.allclose(have["x"], x) and np.allclose(have["y"], y), "IMERG window moved"
             pr = np.concatenate([have["pr"], pr]); dates = pd.to_datetime(have["dates"]).append(dates)
         o = np.argsort(dates.values)
-        CACHE.mkdir(parents=True, exist_ok=True)
+        path.parent.mkdir(parents=True, exist_ok=True)
         np.savez_compressed(path, pr=pr[o], dates=dates.values[o].astype("datetime64[D]"), x=x, y=y)
         have = np.load(path)
     pr = np.where(have["pr"] < 0, np.nan, have["pr"]); x, y = have["x"], have["y"]
     W = weights_fn(x, y)
-    north = W * (y[:, None] >= 31.45); south = W * (y[:, None] <= 31.35)
     f = lambda M: np.nansum(pr * M, axis=(1, 2)) / M.sum()
-    return pd.DataFrame({"pr": f(W), "north": f(north), "south": f(south)}, index=pd.to_datetime(have["dates"]))
+    out = pd.DataFrame({"pr": f(W)}, index=pd.to_datetime(have["dates"]))
+    if split_lat:
+        out["north"] = f(W * (y[:, None] >= split_lat[0])); out["south"] = f(W * (y[:, None] <= split_lat[1]))
+    return out
 
 
 def nino_long() -> pd.Series:
@@ -520,6 +525,18 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     events = spec.get("impacts", [])
     fig_winters(imerg, events, spec.get("timeline_winters", [2023, 2024, 2025]), OUT / "winters.png")
 
+    # Storm statistics, the event catalogue and last winter as reference points
+    st = storm_stats(imerg.pr, era5.pr, djf_pin)
+    cold = cold_stats(era5.tmin, djf_pin)
+    data_dir = edd.DEEP_DIR / "data"
+    ev = load_events(data_dir / f"{SLUG}_events.csv", imerg, era5) if (data_dir / f"{SLUG}_events.csv").exists() else None
+    totals = pd.read_csv(data_dir / f"{SLUG}_season_totals.csv") if (data_dir / f"{SLUG}_season_totals.csv").exists() else None
+    ref = reference_winters(ev, totals, st["ei"]) if (ev is not None and totals is not None) else None
+    fig_storm_tiers(st, djf_pin, OUT / "storm_tiers.png")
+    fig_first_storm(st, djf_pin, OUT / "first_storm.png")
+    if ev is not None:
+        fig_event_impacts(ev, OUT / "event_impacts.png", st["ei"])
+
     # Rainfall on the dates of reported impacts, and how often such days occur
     ev_rows = impact_rain(events, imerg, era5)
     pre_rows = impact_rain(spec.get("prewar", []), imerg, era5)
@@ -529,7 +546,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     nn = edd.NINO_LATEST.dropna() if edd.NINO_LATEST is not None else n_pin
     nn = nn[nn > -90]
     return dict(wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
-                wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
+                wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, st=st, cold=cold, ev=ev, ref=ref, seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
                 end_era5=end_era5, end_imerg=imerg.index[-1], n_grid=(int(sy.min()), int(sy.max())), n_en_grid=int(en.sum()),
                 comp_gaza=float(np.nanmean(comp[gz_cells])), hit_gaza=float(np.nanmean(hit[gz_cells])),
                 hit_region=float(np.nanmedian(hit[ok_wet])), comp_region_pos=float((comp[ok_wet] > 0).mean()),
@@ -604,6 +621,34 @@ def seas5_monthly(sr: dict, era5_monthly: pd.Series) -> list[dict]:
     return rows
 
 
+def reference_winters(ev: pd.DataFrame, totals: pd.DataFrame, storms_im: pd.DataFrame) -> dict:
+    """Last winter (2025/26) as two reference points: as it happened, and without its one storm of 50 mm
+    or more (Byron). Household-impacts are given two ways because the sources disagree: the sum of the
+    per-event rows, and the Shelter Cluster's monthly snapshots (first storm + December + January) plus
+    the February–March event rows. A household is counted once per storm that affected it."""
+    e = ev[ev.winter == "2025/26"]
+    byron_ids = []
+    for _, sr in storms_im[(storms_im.sy == 2025) & (storms_im["max"] >= 50)].iterrows():
+        m = (e.start - pd.Timedelta(days=1) <= sr.end) & (e.end >= sr.start) & e.hh_affected_un.notna()
+        byron_ids += list(e[m].sort_values("hh_affected_un").tail(1).event_id)
+    b = e[e.event_id.isin(byron_ids)]
+    tv = lambda pat: totals[(totals.winter == "2025/26") & totals.metric.str.contains(pat, case=False, regex=True)]
+    dec = float(tv(r"^Families affected, December").value.iloc[0]); jan = float(tv(r"^Families affected, January").value.iloc[0])
+    first = float(e[e.start == e.start.min()].hh_affected_un.iloc[0])
+    late = float(e[e.start >= "2026-02-01"].hh_affected_un.sum())
+    rows_all = float(e.hh_affected_un.sum()); snaps_all = first + dec + jan + late
+    hh_b = float(b.hh_affected_un.sum()); tents_all = float(e.tents_damaged_un.sum()); tents_b = float(b.tents_damaged_un.sum())
+    storm_deaths = tv(r"^Storm-related deaths").sort_values("as_of").iloc[-1]
+    cold = tv(r"^Child hypothermia deaths").sort_values(["as_of", "value"])
+    cold_at = cold[cold.as_of <= storm_deaths.as_of].value.max(); cold_final = cold.value.max()
+    collapse_max = float(tv(r"^Building-collapse deaths").value.max())
+    return dict(rows_all=rows_all, snaps_all=snaps_all, rows_wo=rows_all - hh_b, snaps_wo=snaps_all - hh_b,
+                tents_all=tents_all, tents_wo=tents_all - tents_b, byron_hh=hh_b, byron_tents=tents_b,
+                deaths=float(storm_deaths.value + (cold_final - cold_at)), deaths_hi=collapse_max + float(cold_final),
+                deaths_asof=storm_deaths.as_of, cold_final=float(cold_final),
+                dec=dec, jan=jan, first=first, late=late)
+
+
 def impact_rain(events: list[dict], imerg: pd.DataFrame, era5: pd.DataFrame) -> list[dict]:
     """For each dated impact, over the window [start − 1 day, end]: the largest IMERG daily total over
     Gaza (and its northern and southern halves), the IMERG window total, the lowest ERA5 daily
@@ -617,6 +662,85 @@ def impact_rain(events: list[dict], imerg: pd.DataFrame, era5: pd.DataFrame) -> 
                          era5_sum=float(x.pr.sum()) if len(x) else np.nan, era5_max=float(x.pr.max()) if len(x) else np.nan,
                          tmin=float(x.tmin.min()) if len(x) else np.nan, wmax=float(x.wmax.max()) if len(x) else np.nan))
     return rows
+
+
+# --------------------------------------------------------------------------- #
+# Storm events: counts per winter by tier, first damaging storm, cold nights
+# --------------------------------------------------------------------------- #
+TIERS = [10, 20, 50]                          # IMERG wettest day of a storm over Gaza (mm)
+TIER_LABEL = {10: "10–20 mm", 20: "20–50 mm", 50: "≥ 50 mm (Byron-class)"}
+
+
+def storms(d: pd.Series, wet: float = 1.0, gap: int = 2) -> pd.DataFrame:
+    """Rain spells in the rainy season: runs of days with ≥ `wet` mm, merged across lulls of up to
+    `gap` dry days (so Byron, 8–17 December 2025, is one storm). One row per storm: start, end,
+    wettest day, total, season year."""
+    d = d[d.index.month.isin(WET)].dropna()
+    out, cur, last = [], None, None
+    for t, v in d.items():
+        if v < wet:
+            continue
+        if cur is not None and (t - last).days <= gap + 1:
+            cur[1] = t; cur[2] = max(cur[2], v); cur[3] += v
+        else:
+            if cur is not None:
+                out.append(cur)
+            cur = [t, t, v, v]
+        last = t
+    if cur is not None:
+        out.append(cur)
+    e = pd.DataFrame(out, columns=["start", "end", "max", "total"])
+    e["sy"] = season_year(pd.DatetimeIndex(e.start))
+    return e
+
+
+def storm_counts(e: pd.DataFrame, years, thresholds: dict[int, float]) -> pd.DataFrame:
+    """Storms per winter at or above each tier's threshold (tier key → threshold in this record's mm)."""
+    return pd.DataFrame({t: e[e["max"] >= thr].groupby("sy").size().reindex(years, fill_value=0)
+                         for t, thr in thresholds.items()})
+
+
+def matched_thresholds(e_ref: pd.DataFrame, e_other: pd.DataFrame, lo: int, hi: int) -> dict[int, float]:
+    """Thresholds in `e_other` (ERA5) that give the same number of storms over [lo, hi] as each IMERG
+    tier does in `e_ref` (frequency matching: ERA5 spreads rain over 25 km cells and runs lower)."""
+    r = e_ref[(e_ref.sy >= lo) & (e_ref.sy <= hi)]; o = np.sort(e_other[(e_other.sy >= lo) & (e_other.sy <= hi)]["max"].values)[::-1]
+    return {t: float(o[int((r["max"] >= t).sum()) - 1]) for t in TIERS}
+
+
+def storm_stats(imerg: pd.Series, era5: pd.Series, djf: pd.Series) -> dict:
+    ei, ee = storms(imerg), storms(era5)
+    thr_e = matched_thresholds(ei, ee, 1998, 2025)
+    ci = storm_counts(ei, range(1998, 2026), {t: float(t) for t in TIERS})
+    ce = storm_counts(ee, range(1950, 2026), thr_e)
+    rows = []
+    for name, c, lo in [("IMERG", ci, 1998), ("ERA5", ce, SPLIT)]:
+        c = c.loc[lo:2025].copy(); ph = pd.Series(phase_of(djf.reindex(c.index)), index=c.index)
+        for t in TIERS:
+            for label, m in [("all", ph.notna()), ("El Niño", ph == "El Niño"), ("La Niña", ph == "La Niña")]:
+                v = c.loc[m, t]
+                rows.append(dict(src=name, tier=t, group=label, n=int(m.sum()), mean=float(v.mean()), p10=float(v.quantile(.1)),
+                                 p90=float(v.quantile(.9)), p_any=float((v >= 1).mean())))
+    # first storm of 20 mm class, and storms of that class in October–November
+    first = []
+    for name, e, thr, lo in [("IMERG", ei, 20.0, 1998), ("ERA5", ee, thr_e[20], SPLIT)]:
+        f = e[e["max"] >= thr].groupby("sy").start.min().reindex(range(lo, 2026))
+        days = pd.Series({y: (d - pd.Timestamp(y, 10, 1)).days if pd.notna(d) else np.nan for y, d in f.items()})
+        on = e[(e["max"] >= thr) & pd.DatetimeIndex(e.start).month.isin([10, 11])].groupby("sy").size().reindex(days.index, fill_value=0)
+        ph = pd.Series(phase_of(djf.reindex(days.index)), index=days.index)
+        for label, m in [("all", ph.notna()), ("El Niño", ph == "El Niño"), ("La Niña", ph == "La Niña")]:
+            dd = days[m]
+            first.append(dict(src=name, group=label, n=int(m.sum()), median_day=float(dd.median()),
+                              p_before_dec=float((dd < 61).mean()), p_octnov=float((on[m] >= 1).mean())))
+    return dict(ei=ei, ee=ee, thr_e=thr_e, ci=ci, ce=ce, rows=rows, first=first)
+
+
+def cold_stats(tmin: pd.Series, djf: pd.Series, lo: int = SPLIT, hi: int = 2025) -> dict:
+    t = tmin[tmin.index.month.isin(WET)].dropna(); sy = season_year(t.index)
+    c8 = (t <= 8).groupby(sy).sum().loc[lo:hi]; mn = t.groupby(sy).min().loc[lo:hi]
+    r, p, _ = corr(djf.reindex(c8.index), c8)
+    return dict(median8=float(c8.median()), p10=float(c8.quantile(.1)), p90=float(c8.quantile(.9)), r=r, p=p,
+                trend=float(np.polyfit(c8.index, c8.values, 1)[0] * 10), recent={int(y): int(c8[y]) for y in c8.index[-3:]},
+                coldest_median=float(mn.median()))
 
 
 # --------------------------------------------------------------------------- #
@@ -815,6 +939,130 @@ def fig_seas5_monthly(rows: list[dict], year: int, im: int, out: Path) -> None:
     _save(fig, out)
 
 
+def fig_storm_tiers(st: dict, djf: pd.Series, out: Path) -> None:
+    """Storms per winter by tier (stacked, exclusive bins), IMERG 1998–, El Niño winters marked."""
+    cols = {10: "#BFD9EE", 20: "#5E9FD2", 50: "#1F5F96"}
+    c = st["ci"].loc[1998:2025]
+    x = np.array(c.index)
+    fig, ax = plt.subplots(figsize=(9.6, 3.9), dpi=150)
+    b10 = (c[10] - c[20]).values; b20 = (c[20] - c[50]).values; b50 = c[50].values
+    ax.bar(x, b10, 0.8, color=cols[10], edgecolor="white", linewidth=0.5, label=TIER_LABEL[10])
+    ax.bar(x, b20, 0.8, bottom=b10, color=cols[20], edgecolor="white", linewidth=0.5, label=TIER_LABEL[20])
+    ax.bar(x, b50, 0.8, bottom=b10 + b20, color=cols[50], edgecolor="white", linewidth=0.5, label=TIER_LABEL[50])
+    en = (djf.reindex(c.index) >= ENSO_THRESH).values
+    ax.plot(x[en], c[10].values[en] + 0.5, "v", color=C_EN, ms=5.5, mec="white", mew=0.6, ls="", label="El Niño winter")
+    ax.set_xlim(x.min() - 0.8, x.max() + 0.8); ax.set_ylim(0, c[10].max() + 2)
+    ticks = [y for y in x if y % 3 == 1]
+    ax.set_xticks(ticks, [f"{y}/{str(y + 1)[2:]}" for y in ticks], fontsize=8)
+    ax.yaxis.set_major_locator(matplotlib.ticker.MaxNLocator(integer=True))
+    ax.set_ylabel("storms per winter", fontsize=9, color=C_MUTED)
+    ax.legend(frameon=False, fontsize=8, loc="upper left", ncol=4)
+    ax.set_title("Gaza: rain storms per October–April season, by the storm's wettest day (IMERG)", fontsize=10, color=C_TEXT, loc="left")
+    ax.grid(axis="y", color="#eceff0", lw=0.8); ax.set_axisbelow(True)
+    edd._style_ax(ax)
+    _save(fig, out)
+
+
+def fig_first_storm(st: dict, djf: pd.Series, out: Path) -> None:
+    """Date of each winter's first storm with a wettest day of 20 mm or more (IMERG), by ENSO phase."""
+    e = st["ei"]; f = e[e["max"] >= 20].groupby("sy").start.min().reindex(range(1998, 2026))
+    ph = pd.Series(phase_of(djf.reindex(f.index)), index=f.index)
+    order = ["El Niño", "Neutral", "La Niña"]; colc = {"El Niño": C_EN, "Neutral": C_NEU, "La Niña": C_LN}
+    fig, ax = plt.subplots(figsize=(9.6, 3.4), dpi=150)
+    for i, p_ in enumerate(order):
+        yrs = f.index[ph == p_]
+        days = np.array([(f[y] - pd.Timestamp(y, 10, 1)).days if pd.notna(f[y]) else np.nan for y in yrs])
+        jit = (np.arange(len(yrs)) % 3 - 1) * 0.12
+        ax.plot(days, np.full(len(yrs), i) + jit, "o", color=colc[p_], ms=8, mec="white", mew=0.8, ls="")
+        for y, d_, j in zip(yrs, days, jit):
+            if y >= 2023 and np.isfinite(d_):
+                ax.annotate(f"{y}/{str(y + 1)[2:]}", (d_, i + j), xytext=(0, 9), textcoords="offset points", ha="center", fontsize=7, color=C_TEXT)
+        n_before = int(np.nansum(days < 61)); ax.text(183, i, f"{n_before} of {len(yrs)} before 1 Dec", va="center", fontsize=8, color=C_MUTED)
+    ax.axvline(61, color=C_TEXT, lw=1, ls=(0, (4, 3)))
+    ax.text(62, 2.45, "1 December", fontsize=8, color=C_TEXT)
+    ticks = [0, 31, 61, 92, 123, 151, 182]
+    ax.set_xticks(ticks, ["1 Oct", "1 Nov", "1 Dec", "1 Jan", "1 Feb", "1 Mar", "1 Apr"], fontsize=8.5)
+    ax.set_yticks(range(3), order, fontsize=9); ax.set_ylim(-0.6, 2.7); ax.set_xlim(-3, 225)
+    ax.invert_yaxis()
+    ax.set_title("Gaza: date of each winter's first storm of 20 mm or more (IMERG, 1998/99–2025/26)", fontsize=10, color=C_TEXT, loc="left")
+    ax.grid(axis="x", color="#eceff0", lw=0.8); ax.set_axisbelow(True)
+    edd._style_ax(ax)
+    _save(fig, out)
+
+
+def load_events(path: Path, imerg: pd.DataFrame, era5: pd.DataFrame) -> pd.DataFrame:
+    """The curated event catalogue (deep_dives/data/*_events.csv) with the weather over each event's
+    window [start − 1 day, end]: IMERG and ERA5 wettest day, ERA5 coldest night and strongest wind."""
+    ev = pd.read_csv(path)
+    ev["start"] = pd.to_datetime(ev["start"].fillna(ev["end"])); ev["end"] = pd.to_datetime(ev["end"])
+    rows = []
+    for _, r in ev.iterrows():
+        a, b = r.start - pd.Timedelta(days=1), r.end
+        w, x = imerg.loc[a:b], era5.loc[a:b]
+        rows.append(dict(im_max=float(w.pr.max()) if len(w) else np.nan, era5_max=float(x.pr.max()) if len(x) else np.nan,
+                         tmin=float(x.tmin.min()) if len(x) else np.nan, wmax=float(x.wmax.max()) if len(x) else np.nan))
+    ev = pd.concat([ev, pd.DataFrame(rows, index=ev.index)], axis=1)
+    scope = ev["hh_affected_scope"].fillna("").str.lower()
+    ev["hh_complete"] = scope.str.contains("strip-wide")
+    return ev
+
+
+def fig_event_impacts(ev: pd.DataFrame, out: Path, storms_im: pd.DataFrame | None = None) -> None:
+    """Households affected per event vs the event's wettest day over Gaza, 2024/25 and 2025/26.
+    Filled = Gaza-wide alert counts; hollow = partial-site floors or response counts. A horizontal
+    line joins the ERA5 and IMERG estimates of the wettest day (they disagree)."""
+    scope = ev["hh_affected_scope"].fillna("").str.lower()
+    dated = ~(scope.str.contains("response count") | scope.str.contains("rain date not stated") | scope.str.contains("mixed causes") | scope.str.contains("receiving packages")
+              | scope.str.contains("carried over"))
+    d = ev[ev.hh_affected_un.notna() & ev.winter.isin(["2024/25", "2025/26"]) & dated].copy()
+    fig, ax = plt.subplots(figsize=(9.6, 5.0), dpi=150)
+    col = {"2025/26": "#1F5F96", "2024/25": "#C0782F"}
+    for _, r in d.iterrows():
+        lo, hi = sorted([r.era5_max, r.im_max])
+        ax.plot([lo, hi], [r.hh_affected_un] * 2, color=col[r.winter], lw=1.4, alpha=0.6, solid_capstyle="round")
+        rain = "R" in r.hazard and r.im_max >= 10
+        mk = "o" if rain else ("^" if "S" in r.hazard and "W" not in r.hazard else "s")
+        ax.plot(r.im_max, r.hh_affected_un, mk, ms=8, color=col[r.winter], mfc=col[r.winter] if r.hh_complete else "white", mew=1.6)
+    # storms of 20 mm or more in the three war winters with no dated UN household count: drawn at the floor
+    if storms_im is not None:
+        big = storms_im[(storms_im.sy >= 2023) & (storms_im["max"] >= 20)]
+        k = 0
+        for _, sr in big.sort_values("max").iterrows():
+            hit = ((d.start - pd.Timedelta(days=1) <= sr.end) & (d.end >= sr.start)).any()
+            if not hit:
+                ax.plot(sr["max"], 115, "x", color=C_TEXT, ms=8, mew=1.8)
+                ax.annotate(f"{sr.start:%b %Y}", (sr["max"], 115), xytext=(0, 8 + 10 * (k % 2)), textcoords="offset points",
+                            ha="center", fontsize=7, color=C_MUTED)
+                k += 1
+    lab = {"GZ-2526-01": "first storm, 14–15 Nov 2025 (Gaza-wide)", "GZ-2526-04": "Byron, 8–17 Dec 2025 (Gaza-wide)",
+           "GZ-2526-08": "12–16 Jan 2026: wind, cold (106 sites)",
+           "GZ-2526-07": "9–10 Jan 2026 (34 northern sites)", "GZ-2526-18": "25–26 Mar 2026", "GZ-2526-16": "14 Mar 2026: sandstorm, wind",
+           "GZ-2425-01": "24–25 Nov 2024: high tides", "GZ-2425-06": "5–6 Feb 2025: wind"}
+    off = {"GZ-2425-06": (-6, -24), "GZ-2526-18": (8, -12)}
+    for _, r in d.iterrows():
+        if r.event_id in lab:
+            ax.annotate(lab[r.event_id], (r.im_max, r.hh_affected_un), xytext=off.get(r.event_id, (7, 4)), textcoords="offset points",
+                        fontsize=7.5, color=C_TEXT)
+    ax.set_yscale("log"); ax.set_xlim(0, 72); ax.set_ylim(90, 150000)
+    ax.set_yticks([100, 300, 1000, 3000, 10000, 30000, 100000], ["100", "300", "1,000", "3,000", "10,000", "30,000", "100,000"])
+    ax.set_xlabel("wettest day of the event over Gaza, mm (dot: IMERG; line extends to ERA5)", fontsize=9, color=C_MUTED)
+    ax.set_ylabel("households affected (log scale)", fontsize=9, color=C_MUTED)
+    ax.axvline(20, color="#b8bfbf", lw=0.8, ls=(0, (3, 3))); ax.axvline(50, color="#b8bfbf", lw=0.8, ls=(0, (3, 3)))
+    handles = [plt.Line2D([], [], marker="o", color=col["2025/26"], ls="", ms=7, label="2025/26"),
+               plt.Line2D([], [], marker="o", color=col["2024/25"], ls="", ms=7, label="2024/25"),
+               plt.Line2D([], [], marker="o", color=C_MUTED, mfc="white", ls="", ms=7, mew=1.4, label="hollow: partial-site floor or response count"),
+               plt.Line2D([], [], marker="s", color=C_MUTED, ls="", ms=7, label="square: wind/cold with little rain"),
+               plt.Line2D([], [], marker="^", color=C_MUTED, ls="", ms=7, label="triangle: high tide"),
+               plt.Line2D([], [], marker="x", color=C_TEXT, ls="", ms=7, mew=1.6, label="storm ≥ 20 mm with no dated UN count")]
+    ax.legend(handles=handles, frameon=False, fontsize=7.5, loc="lower right")
+    ax.text(0.99, 0.30, "events counted only as assistance delivered,\nwith no rain date, are left out", transform=ax.transAxes,
+            ha="right", va="bottom", fontsize=7, color=C_MUTED)
+    ax.set_title("Gaza: households affected per weather event vs that event's heaviest rain", fontsize=10, color=C_TEXT, loc="left")
+    ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True)
+    edd._style_ax(ax)
+    _save(fig, out)
+
+
 def fig_wet_composite(c: edd.Country, comp: np.ndarray, hit: np.ndarray, ok: np.ndarray, n_en: int,
                       y0: int, y1: int, out: Path) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(9.6, 5.2), dpi=150)
@@ -878,6 +1126,88 @@ def impact_table(rows: list[dict], numbered: bool) -> str:
                  f'<td>{html.escape(e.get("hazard", ""))}</td><td>{e["what_html"]}</td><td class="num">{rain}</td>'
                  f'<td class="num" style="white-space:nowrap">{_mm(e["im_sum"])} · {_mm(e["era5_sum"])}</td><td class="num" style="white-space:nowrap">{met}</td><td class="small">{e["source_html"]}</td></tr>')
     o.append('</tbody></table></div>')
+    return "\n".join(o)
+
+
+def _round_to(v: float, step: int) -> str:
+    return f"{int(round(v / step) * step):,}"
+
+
+def render_range(spec: dict, a: dict) -> str:
+    """Section 5: how many storms a winter brings (IMERG), when the first damaging one comes, what one
+    storm of each kind did last winter, and last winter as two reference points. No forecast totals."""
+    st, ref, ev = a["st"], a.get("ref"), a.get("ev")
+    T = spec.get("titles", {})
+    row = {(r["src"], r["tier"], r["group"]): r for r in st["rows"]}
+    fs = {(r["src"], r["group"]): r for r in st["first"]}
+    o = [f'<h2>{html.escape(T.get("range", "5. What this winter could bring"))}</h2>', spec.get("range_intro_html", "")]
+    # how many storms
+    i10, i20, i50 = row[("IMERG", 10, "all")], row[("IMERG", 20, "all")], row[("IMERG", 50, "all")]
+    e50, l50 = row[("IMERG", 50, "El Niño")], row[("IMERG", 50, "La Niña")]
+    o.append('<h3>How many storms a winter brings</h3>')
+    o.append(f'<p>Over the 28 winters of IMERG (1998/99–2025/26), a Gaza winter brought on average {i10["mean"]:.0f} storms whose wettest day '
+             f'reached 10 mm (in most winters {i10["p10"]:.0f}–{i10["p90"]:.0f}), {i20["mean"]:.0f} that reached 20 mm ({i20["p10"]:.0f}–{i20["p90"]:.0f}), '
+             f'and a storm of 50 mm or more, like Byron, in {100 * i50["p_any"]:.0f}% of winters. El Niño winters brought slightly more of the '
+             f'smaller storms ({row[("IMERG", 10, "El Niño")]["mean"]:.0f} of 10 mm or more, against {row[("IMERG", 10, "La Niña")]["mean"]:.0f} in La Niña winters) '
+             f'but not more of the largest: {round(e50["p_any"] * e50["n"])} of {e50["n"]} El Niño winters had a Byron-class storm, against '
+             f'{round(l50["p_any"] * l50["n"])} of {l50["n"]} La Niña winters. Last winter, with {int(st["ci"].loc[2025, 10])}, {int(st["ci"].loc[2025, 20])} and '
+             f'{int(st["ci"].loc[2025, 50])}, was among the more active.</p>')
+    o.append('<figure><img src="storm_tiers.png" alt="Rain storms per winter by size"><figcaption>A storm is a run of rainy days (1 mm or more), '
+             'merged across lulls of up to two dry days, sized by its wettest day over Gaza (IMERG, area-weighted). Byron, 8–17 December 2025, '
+             'counts as one storm (rain from 8 December, the storm proper from 10 December). ERA5 is not used for the largest storms: its 25 km '
+             'cells smooth them so much that it gives Byron a wettest day of 18 mm, which would not place it among the record\'s 14 largest '
+             'storms.</figcaption></figure>')
+    # first storm
+    fe, fa = fs[("IMERG", "El Niño")], fs[("IMERG", "all")]
+    o.append('<h3>When the first storm of 20 mm or more comes</h3>')
+    o.append(spec.get("first_storm_html", ""))
+    o.append(f'<figure><img src="first_storm.png" alt="Date of the first storm of 20 mm or more, by ENSO phase"><figcaption>Each dot is one winter: '
+             f'the start date of its first storm with a wettest day of 20 mm or more over Gaza (IMERG). Before 1 December in '
+             f'{round(fe["p_before_dec"] * fe["n"])} of {fe["n"]} El Niño winters and {round(fa["p_before_dec"] * fa["n"])} of {fa["n"]} winters overall. '
+             'Eight El Niño winters is a small sample: the El Niño share is within chance (Fisher exact test, p ≈ 0.2). 2007/08, a La Niña '
+             'winter, had no storm of 20 mm or more and has no dot.</figcaption></figure>')
+    # what one storm of each kind did
+    if ev is not None and spec.get("storm_kinds"):
+        e = ev.set_index("event_id")
+        o.append('<h3>What one storm of each kind did last winter</h3>' + spec.get("storm_kinds_intro_html", ""))
+        o.append('<div style="overflow-x:auto"><table><thead><tr><th>Kind of storm</th><th>Example</th><th class="num">Wettest day<br>'
+                 '<span class="small">IMERG · ERA5</span></th><th class="num">Households affected</th><th class="num">Tents and shelters damaged</th>'
+                 '<th>Deaths</th><th>How to read the numbers</th></tr></thead><tbody>')
+        for k in spec["storm_kinds"]:
+            r = e.loc[k["event_id"]]
+            hh = "—" if pd.isna(r.hh_affected_un) else f'{k.get("hh_prefix", "")}{int(r.hh_affected_un):,}'
+            tn = "—" if pd.isna(r.tents_damaged_un) else f'{k.get("tents_prefix", "")}{int(r.tents_damaged_un):,}'
+            o.append(f'<tr><td><strong>{html.escape(k["kind"])}</strong></td><td style="white-space:nowrap">{html.escape(k["example"])}</td>'
+                     f'<td class="num">{r.im_max:.0f} · {r.era5_max:.0f} mm</td><td class="num">{hh}</td><td class="num">{tn}</td>'
+                     f'<td>{k.get("deaths_html", "")}</td><td class="small">{k["read_html"]}</td></tr>')
+        o.append('</tbody></table></div>')
+        o.append('<figure><img src="event_impacts.png" alt="Households affected per event against the event\'s heaviest rain"><figcaption>'
+                 'Every event of 2024/25 and 2025/26 with a dated UN or cluster household count. Filled markers are Gaza-wide counts; hollow ones '
+                 'cover only the sites assessed, so they are floors. Crosses at the bottom are storms of 20 mm or more since October 2023 for which no dated '
+                 'household count was published. Impacts at the same rainfall differ tenfold between events: exposure, shelter condition and '
+                 'what was counted matter as much as the rain.</figcaption></figure>')
+    # reference points
+    if ref:
+        o.append('<h3>Last winter in numbers</h3>' + spec.get("reference_intro_html", ""))
+        o.append('<table><thead><tr><th></th><th class="num">Household-impacts</th><th class="num">Tents and shelters damaged</th><th class="num">Deaths</th></tr></thead><tbody>')
+        o.append(f'<tr><td>Byron alone (8–17 December 2025)</td><td class="num">≥ {ref["byron_hh"]:,.0f}</td>'
+                 f'<td class="num">&gt; {ref["byron_tents"]:,.0f}</td><td class="num">12 (Health Cluster)</td></tr>')
+        o.append(f'<tr><td>All other events</td><td class="num">about {_round_to(ref["rows_wo"], 5000)}–{_round_to(ref["snaps_wo"], 5000)}</td>'
+                 f'<td class="num">about {_round_to(ref["tents_wo"], 500)}</td><td class="num">—</td></tr>')
+        o.append(f'<tr class="hl"><td>Whole winter</td><td class="num">about {_round_to(ref["rows_all"], 5000)}–{_round_to(ref["snaps_all"], 5000)}</td>'
+                 f'<td class="num">about {_round_to(ref["tents_all"], 500)}</td><td class="num">{ref["deaths"]:.0f}–{ref["deaths_hi"]:.0f}</td></tr>')
+        o.append('</tbody></table>')
+        o.append(f'<p class="small">Household-impacts count a household once for every storm that affected it; the same households were hit '
+                 f'repeatedly. The lower figure sums the per-event counts; the higher one uses the Shelter Cluster\'s monthly snapshots '
+                 f'(December {ref["dec"]:,.0f} families, January {ref["jan"]:,.0f}) with the first storm and the February–March events. '
+                 f'“All other events” takes Byron\'s own counts ({ref["byron_hh"]:,.0f} households, {ref["byron_tents"]:,.0f} tents) out of both; '
+                 f'for December that subtracts a Site Management Cluster count (132 sites) from a Shelter Cluster snapshot (537 sites), two sources '
+                 f'with different coverage, so the remainder is approximate. '
+                 f'Tents are the sum of the UN and cluster counts by event. Deaths: {ref["deaths"]:.0f} is the Ministry of Health\'s '
+                 f'storm-related total to {pd.Timestamp(ref["deaths_asof"]):%-d %B %Y} (relayed by OCHA) plus the child cold deaths it reported afterwards '
+                 f'({ref["cold_final"]:.0f} in all); the higher figure uses its other count of 25 collapse deaths for the same period. '
+                 f'Neither is UN-verified.</p>')
+    o.append(spec.get("range_after_html", ""))
     return "\n".join(o)
 
 
@@ -1078,6 +1408,8 @@ def render(spec: dict, a: dict) -> str:
         o.append(f'<h3>Before the war</h3>{spec.get("prewar_html", "")}')
         o.append(impact_table(a["pre_rows"], numbered=False))
     o.append(spec.get("impacts_after_html", ""))
+    if a.get("st"):
+        o.append(render_range(spec, a))
     for sec in spec.get("sections_after", []):
         o.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
     if spec.get("references"):
