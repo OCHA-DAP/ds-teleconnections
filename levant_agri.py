@@ -115,21 +115,20 @@ MODIS_SAS = "https://planetarycomputer.microsoft.com/api/sas/v1/token/modiseuwes
 SPRING_DOY = (33, 49, 65, 81, 97)              # MOD13Q1 16-day composites starting 2 Feb – 7 Apr (to 22 April)
 
 
-def modis_zone_ndvi(govs, zones: list[dict]) -> pd.DataFrame:
-    """Mean NDVI per zone for each spring MOD13Q1 composite (Terra, 250 m, collection 6.1), read from the
-    Microsoft Planetary Computer's public COGs with windowed reads; fill values dropped. Cached and topped
-    up with new composites. Columns: one per zone plus "West Bank"; index: composite start date."""
+WORLDCOVER_SAS = "https://planetarycomputer.microsoft.com/api/sas/v1/token/esa-worldcover"
+WORLDCOVER = {10: "Tree cover", 20: "Shrubland", 30: "Grassland", 40: "Cropland", 50: "Built-up", 60: "Bare or sparse"}
+
+
+def modis_cube(govs) -> dict:
+    """Spring MOD13Q1 NDVI (Terra, 250 m, collection 6.1) over the West Bank, raw windows per MODIS tile, read with
+    windowed COG reads from the Microsoft Planetary Computer (STAC search + anonymous SAS token) and cached as
+    npz per tile, topped up with new composites. Returns {tile: dict(dates, ndvi (int16, fill -3000), transform, crs)}."""
     import geopandas as gpd
     import rasterio
     from concurrent.futures import ThreadPoolExecutor
-    from rasterio.features import rasterize
     from rasterio.windows import from_bounds
-    path = L.CACHE / "modis_ndvi_zones.parquet"
-    have = pd.read_parquet(path) if path.exists() else None
-    shapes = {z["name"]: govs[govs.ADM2_EN.isin(z["governorates"])].union_all() for z in zones}
-    shapes["West Bank"] = govs.union_all()
     w, s_, e, n = govs.total_bounds
-    items = []
+    items = {}
     for y in range(2000, pd.Timestamp.now().year + 1):
         r = requests.post(MODIS_STAC, json={"collections": ["modis-13Q1-061"], "bbox": [w, s_, e, n],
                                             "datetime": f"{y}-01-25/{y}-04-30", "limit": 200}, timeout=120)
@@ -137,40 +136,124 @@ def modis_zone_ndvi(govs, zones: list[dict]) -> pd.DataFrame:
         for f in r.json()["features"]:
             prod, a_, tile = f["id"].split(".")[:3]
             if prod == "MOD13Q1" and int(a_[5:8]) in SPRING_DOY and int(a_[1:5]) == y:
-                items.append((pd.Timestamp(f"{y}-01-01") + pd.Timedelta(days=int(a_[5:8]) - 1), tile, f["assets"]["250m_16_days_NDVI"]["href"]))
-    done = set(have.index) if have is not None else set()
-    todo = [it for it in items if it[0] not in done]
-    if todo:
-        print(f"  reading {len(todo)} MODIS NDVI tile-composites…", flush=True)
-        token = requests.get(MODIS_SAS, timeout=60).json()["token"]
-        env = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="4", GDAL_HTTP_RETRY_DELAY="2")
-        masks = {}
-
-        def one(it):
-            date, tile, href = it
-            with rasterio.Env(**env), rasterio.open(f"{href}?{token}") as src:
-                g = gpd.GeoSeries(list(shapes.values()), crs=4326).to_crs(src.crs)
+                items.setdefault(tile, []).append((pd.Timestamp(f"{y}-01-01") + pd.Timedelta(days=int(a_[5:8]) - 1),
+                                                   f["assets"]["250m_16_days_NDVI"]["href"]))
+    token = None
+    env = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="4", GDAL_HTTP_RETRY_DELAY="2")
+    out = {}
+    for tile, its in sorted(items.items()):
+        path = L.CACHE / f"modis_ndvi_{tile}.npz"
+        have = dict(np.load(path, allow_pickle=False)) if path.exists() else None
+        done = set(pd.to_datetime(have["dates"])) if have is not None else set()
+        todo = sorted(it for it in its if it[0] not in done)
+        if todo:
+            print(f"  reading {len(todo)} MODIS NDVI composites for tile {tile}…", flush=True)
+            token = token or requests.get(MODIS_SAS, timeout=60).json()["token"]
+            with rasterio.Env(**env), rasterio.open(f"{todo[0][1]}?{token}") as src:
+                g = gpd.GeoSeries([govs.union_all()], crs=4326).to_crs(src.crs)
                 win = from_bounds(*g.total_bounds, src.transform).round_offsets().round_lengths()
                 win = win.intersection(rasterio.windows.Window(0, 0, src.width, src.height))
-                a = src.read(1, window=win).astype("float32")
-                tr = src.window_transform(win)
-                key = (tile, win.col_off, win.row_off, win.width, win.height)
-                if key not in masks:
-                    masks[key] = {k: rasterize([(geom, 1)], out_shape=a.shape, transform=tr, fill=0, all_touched=False).astype(bool)
-                                  for k, geom in zip(shapes, g)}
-            ok = a > -2000
-            return date, {k: (float(a[m & ok].sum()) * 1e-4, int((m & ok).sum())) for k, m in masks[key].items()}
-        with ThreadPoolExecutor(16) as ex:
-            res = list(ex.map(one, todo))
-        acc = {}
-        for date, d in res:
-            for k, (sm, ct) in d.items():
-                a0 = acc.setdefault((date, k), [0.0, 0])
-                a0[0] += sm; a0[1] += ct
-        new = pd.Series({k: v[0] / v[1] if v[1] else np.nan for k, v in acc.items()}).unstack()
-        have = new if have is None else pd.concat([have, new]).groupby(level=0).last()
-        have = have.sort_index(); have.to_parquet(path)
-    return have
+                tr, crs = src.window_transform(win), src.crs.to_wkt()
+
+            def one(it):
+                with rasterio.Env(**env), rasterio.open(f"{it[1]}?{token}") as src:
+                    return it[0], src.read(1, window=win)
+            with ThreadPoolExecutor(16) as ex:
+                res = list(ex.map(one, todo))
+            dates = np.array([r_[0] for r_ in res], dtype="datetime64[D]"); arr = np.stack([r_[1] for r_ in res]).astype("int16")
+            if have is not None:
+                assert np.allclose(have["transform"], np.array(tr)[:6]), "MODIS window moved"
+                dates = np.concatenate([have["dates"], dates]); arr = np.concatenate([have["ndvi"], arr])
+            o = np.argsort(dates)
+            np.savez_compressed(path, dates=dates[o], ndvi=arr[o], transform=np.array(tr)[:6], crs=np.array(crs))
+            have = dict(np.load(path, allow_pickle=False))
+        if have is not None:
+            out[tile] = have
+    return out
+
+
+def _cube_masks(cube: dict, shapes: dict) -> dict:
+    """Boolean masks of each shape on each tile's window grid."""
+    import geopandas as gpd
+    from affine import Affine
+    from rasterio.features import rasterize
+    m = {}
+    for tile, c in cube.items():
+        tr = Affine(*c["transform"]); crs = str(c["crs"]); shp = c["ndvi"].shape[1:]
+        g = gpd.GeoSeries(list(shapes.values()), crs=4326).to_crs(crs)
+        m[tile] = {k: rasterize([(geom, 1)], out_shape=shp, transform=tr, fill=0).astype(bool) for k, geom in zip(shapes, g)}
+    return m
+
+
+def worldcover_fractions(cube: dict) -> dict:
+    """Share of each ESA WorldCover 2021 class (10 m) inside every MODIS pixel of each tile's window: {tile: {class: array}}."""
+    import rasterio
+    from affine import Affine
+    from rasterio.warp import Resampling, reproject
+    path = L.CACHE / "worldcover_fractions.npz"
+    if path.exists():
+        z = np.load(path)
+        return {t: {c: z[f"{t}_{c}"] for c in WORLDCOVER} for t in cube}
+    r = requests.post(MODIS_STAC.replace("search", "search"), json={"collections": ["esa-worldcover"], "bbox": [34.9, 31.3, 35.6, 32.6], "limit": 10}, timeout=120)
+    href = next(f["assets"]["map"]["href"] for f in r.json()["features"] if "2021_v200" in f["id"])
+    token = requests.get(WORLDCOVER_SAS, timeout=60).json()["token"]
+    out, flat = {}, {}
+    with rasterio.open(f"{href}?{token}") as src:
+        win = rasterio.windows.from_bounds(34.8, 31.2, 35.7, 32.7, src.transform).round_offsets().round_lengths()
+        lc = src.read(1, window=win, out_shape=(int(win.height) // 2, int(win.width) // 2))      # 20 m
+        lc_tr = src.window_transform(win) * Affine.scale(2, 2)
+        lc_crs = src.crs
+    for tile, c in cube.items():
+        tr = Affine(*c["transform"]); shp = c["ndvi"].shape[1:]
+        out[tile] = {}
+        for cl in WORLDCOVER:
+            dst = np.zeros(shp, dtype="float32")
+            reproject((lc == cl).astype("float32"), dst, src_transform=lc_tr, src_crs=lc_crs, dst_transform=tr, dst_crs=str(c["crs"]),
+                      resampling=Resampling.average)
+            out[tile][cl] = dst; flat[f"{tile}_{cl}"] = dst
+    np.savez_compressed(path, **flat)
+    return out
+
+
+def cube_means(cube: dict, masks: dict) -> pd.DataFrame:
+    """Mean NDVI per mask and composite date over all tiles (fill values dropped)."""
+    acc = {}
+    for tile, c in cube.items():
+        a = c["ndvi"].astype("float32"); ok = a > -2000
+        for k, m in masks[tile].items():
+            mm = ok & m[None]
+            sm = np.where(mm, a, 0).sum(axis=(1, 2)) * 1e-4; ct = mm.sum(axis=(1, 2))
+            for d, s1, c1 in zip(pd.to_datetime(c["dates"]), sm, ct):
+                a0 = acc.setdefault((d, k), [0.0, 0]); a0[0] += float(s1); a0[1] += int(c1)
+    return pd.Series({k: v[0] / v[1] if v[1] else np.nan for k, v in acc.items()}).unstack().sort_index()
+
+
+def modis_zone_ndvi(govs, zones: list[dict]) -> pd.DataFrame:
+    """Mean spring NDVI per zone (plus "West Bank") for each MOD13Q1 composite."""
+    shapes = {z["name"]: govs[govs.ADM2_EN.isin(z["governorates"])].union_all() for z in zones}
+    shapes["West Bank"] = govs.union_all()
+    cube = modis_cube(govs)
+    return cube_means(cube, _cube_masks(cube, shapes))
+
+
+def modis_cover_ndvi(govs, zones: list[dict], groups: dict, purity: float = 0.6) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Mean spring NDVI per (zone, land-cover group) for MODIS pixels at least `purity` of one WorldCover group,
+    and the number of such pixels. groups: {label: [WorldCover class codes]}."""
+    shapes = {z["name"]: govs[govs.ADM2_EN.isin(z["governorates"])].union_all() for z in zones}
+    shapes["West Bank"] = govs.union_all()
+    cube = modis_cube(govs)
+    zm = _cube_masks(cube, shapes); fr = worldcover_fractions(cube)
+    masks, npx = {}, {}
+    for tile in cube:
+        masks[tile] = {}
+        for gl, codes in groups.items():
+            pure = sum(fr[tile][c] for c in codes) >= purity
+            for zn, m in zm[tile].items():
+                masks[tile][(zn, gl)] = m & pure
+                npx[(zn, gl)] = npx.get((zn, gl), 0) + int((m & pure).sum())
+    means = cube_means(cube, masks)
+    means.columns = pd.MultiIndex.from_tuples(means.columns)
+    return means, pd.Series(npx)
 
 
 def zone_rain(govs, zones: list[dict]) -> pd.DataFrame:
@@ -330,6 +413,22 @@ def analyse(spec: dict, a: dict) -> dict:
             zz.update(olive=o, olive_ab=ab, olive_r=L.corr(zrain.reindex(ab.index), ab), olive_e=L.corr(crop_nino.reindex(ab.index), ab),
                       olive_ph=by_phase(ab, crop_phase), olive_share=float((o / olv_pal.reindex(o.index)).mean()))
         zones.append(zz)
+    # By land cover (ESA WorldCover 2021 groups, MODIS pixels at least 60% one group)
+    groups = {k: v for k, v in ag.get("cover_groups", {"Cropland": [40], "Tree cover": [10], "Shrubland and grassland": [20, 30]}).items()}
+    cm, cn = modis_cover_ndvi(govs, ag["zones"], groups)
+    csp = spring_ndvi(cm)
+    cube = modis_cube(govs); fr = worldcover_fractions(cube); wbm = _cube_masks(cube, {"WB": govs.union_all()})
+    lc_tot = {c: sum(float((fr[t][c] * wbm[t]["WB"]).sum()) for t in cube) for c in WORLDCOVER}
+    lc_share = {gl: sum(lc_tot[c] for c in codes) / sum(lc_tot.values()) for gl, codes in groups.items()}
+    cover = []
+    for (zn, gl) in csp.columns:
+        v = csp[(zn, gl)].dropna()
+        if len(v) < 20 or cn[(zn, gl)] < 300:
+            continue
+        cover.append(dict(zone=zn, group=gl, n_px=int(cn[(zn, gl)]), s=v, sd=float(v.std()),
+                          r=L.corr(crop_rain.reindex(v.index), v), e=L.corr(crop_nino.reindex(v.index), v), ph=by_phase(v, crop_phase),
+                          share=lc_share.get(gl) if zn == "West Bank" else None))
+
     wbz = ndvi["West Bank"].dropna()
     ndvi_wb = dict(s=wbz, r=L.corr(crop_rain.reindex(wbz.index), wbz), e=L.corr(crop_nino.reindex(wbz.index), wbz), ph=by_phase(wbz, crop_phase))
     olive_wb_share = float((olv["West Bank total"].loc[2003:2019] / olv_pal).mean())
@@ -350,7 +449,7 @@ def analyse(spec: dict, a: dict) -> dict:
     fig_zone_ndvi(zones, crop_phase, L_out / "agri_zone_ndvi.png")
     fig_zone_olives(zones, crop_phase, L_out / "agri_zone_olives.png")
     en_rain_modis = {int(y): float(crop_rain.get(y, np.nan)) for y in wbz.index if crop_phase.get(y) == "El Niño"}
-    return dict(excluded=excluded, field_r99=field_r99, field_e99=field_e99, field_fisher=field_fisher, field_mw=field_mw,
+    return dict(cover=cover, cover_groups=list(groups), excluded=excluded, field_r99=field_r99, field_e99=field_e99, field_fisher=field_fisher, field_mw=field_mw,
                 field_low=field_low, windows=windows, en_rain_modis=en_rain_modis, zones=zones, ndvi_wb=ndvi_wb, olive_wb_share=olive_wb_share, wb_cereal_share=wb_area / float(area["Palestine total"]),
                 zr=zr, zrows=zrows, z_min_r=z_min_r, field=field, field_r=field_r, field_e=field_e, field_ph=field_ph,
                 fy=fy, pulses=pulses, oprod=oprod, oab=oab, ol_r=ol_r, ol_e=ol_e, ol_ph=ol_ph, ol_ac=ol_ac, veg=veg,
@@ -571,6 +670,33 @@ def render(spec: dict, a: dict) -> str:
              + f' of {_ph(zs[0]["ndvi_ph_d"], "El Niño")["n"]} (La Niña: ' + ", ".join(f'{_ph(z["ndvi_ph_d"], "La Niña")["above"]}' for z in zs)
              + f' of {_ph(zs[0]["ndvi_ph_d"], "La Niña")["n"]}), in the order above.'
              '</figcaption></figure>')
+
+    # By land cover
+    cv = g["cover"]
+    if cv:
+        o.append('<h3>Field crops, trees and rangeland</h3>' + ag.get("cover_html", ""))
+        o.append('<div style="overflow-x:auto"><table><thead><tr><th>Land cover</th><th>Where</th><th class="num">MODIS pixels</th>'
+                 '<th class="num">r with rain</th><th class="num">r with Niño3.4</th><th class="num">El Niño springs above normal</th>'
+                 '<th class="num">La Niña springs above normal</th><th class="num">Year-to-year spread</th></tr></thead><tbody>')
+        order = {z["name"]: i for i, z in enumerate(ag["zones"])} | {"West Bank": -1}
+        for gl in g["cover_groups"]:
+            for c in sorted([c for c in cv if c["group"] == gl], key=lambda c: order.get(c["zone"], 9)):
+                e_, l_ = _ph(c["ph"], "El Niño"), _ph(c["ph"], "La Niña")
+                wb = c["zone"] == "West Bank"
+                lab = (f'<strong>{html.escape(gl)}</strong>' + (f'<br><span class="small">{100 * c["share"]:.0f}% of the West Bank</span>' if c["share"] else '')) if wb else ''
+                o.append(f'<tr{" class=\"hl\"" if wb else ""}><td>{lab}</td><td>{html.escape(pr.get(c["zone"], "whole West Bank") if not wb else "whole West Bank")}</td>'
+                         f'<td class="num">{c["n_px"]:,}</td><td class="num">{L._r(c["r"][0])}</td><td class="num">{L._r(c["e"][0])}<br><span class="small">p {L._p(c["e"][1])}</span></td>'
+                         f'<td class="num">{e_["above"]} of {e_["n"]}<br><span class="small">median {_signed(e_["median"])}</span></td>'
+                         f'<td class="num">{l_["above"]} of {l_["n"]}<br><span class="small">median {_signed(l_["median"])}</span></td>'
+                         f'<td class="num">±{c["sd"]:.0f}%</td></tr>')
+        o.append('</tbody></table></div>')
+        o.append('<p class="small">Spring (February–April) MODIS NDVI as above, averaged over the 250 m pixels that are at least 60% one land-cover group '
+                 'in ESA WorldCover 2021 (10 m): cropland (class 40), tree cover (10), shrubland and grassland (20, 30). Built-up and bare land are left '
+                 'out. Shares of the West Bank are of all land, including built-up and bare. r with rain: against the October–April ERA5 total over '
+                 'the whole West Bank. “Year-to-year spread” is the standard deviation of the spring anomaly, 2001–2026. The 2021 map is applied to '
+                 'every year. WorldCover has no orchard class, and how an olive grove is classed depends on how dense its canopy is, so the shrubland '
+                 'and grassland group mixes rangeland with sparse groves, and tree cover is the denser orchards, groves and woodland. Greenhouses '
+                 'cannot be told apart in these maps.</p>')
 
     # National: cereals, olives, long vegetation record, by phase
     fe, fl, fn = (_ph(g["field_ph"], p) for p in ("El Niño", "La Niña", "Neutral"))
