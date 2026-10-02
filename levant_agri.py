@@ -289,7 +289,7 @@ def analyse(spec: dict, a: dict) -> dict:
         v = ndvi[nm].dropna()
         zz = dict(name=nm, ndvi=v, ndvi_r=L.corr(zrain.reindex(v.index), v), ndvi_e=L.corr(crop_nino.reindex(v.index), v),
                   ndvi_rd=L.corr(_detr(zrain.reindex(v.index).dropna()), _detr(v.loc[zrain.reindex(v.index).dropna().index])),
-                  ndvi_ed=L.corr(crop_nino.reindex(v.index), _detr(v)), ndvi_ph=by_phase(v, crop_phase),
+                  ndvi_ed=L.corr(crop_nino.reindex(v.index), _detr(v)), ndvi_ph=by_phase(v, crop_phase), ndvi_ph_d=by_phase(_detr(v), crop_phase),
                   ndvi_trend=float(np.polyfit(v.index, v.values, 1)[0] * 10), zrain=zrain,
                   cereal_share=float(sum(area.get(g, 0) for g in z.get("pcbs_area", [])) / wb_area))
         if z.get("pcbs_olive"):
@@ -526,7 +526,10 @@ def render(spec: dict, a: dict) -> str:
              + "; ".join(f'{html.escape(z["name"])} r = {L._r(z["ndvi_r"][0])} and {L._r(z["ndvi_e"][0])} (p {L._p(z["ndvi_e"][1])})' for z in zs)
              + f' ({len(zs[0]["ndvi"])} springs). The Jordan Valley\'s governorates take in the dry eastern slopes as well as irrigated land, so its '
              'swings are mostly rangeland. Greenness has risen since 2001 in the Highlands and the Jordan Valley ('
-             + ", ".join(f'{_signed(z["ndvi_trend"])} a decade' for z in zs[1:]) + '); the correlations are much the same with the trend removed.'
+             + ", ".join(f'{_signed(z["ndvi_trend"])} a decade' for z in zs[1:]) + '). With the trend removed the correlations are much the same, and '
+             'El Niño springs above normal number ' + ", ".join(f'{_ph(z["ndvi_ph_d"], "El Niño")["above"]}' for z in zs)
+             + f' of {_ph(zs[0]["ndvi_ph_d"], "El Niño")["n"]} (La Niña: ' + ", ".join(f'{_ph(z["ndvi_ph_d"], "La Niña")["above"]}' for z in zs)
+             + f' of {_ph(zs[0]["ndvi_ph_d"], "La Niña")["n"]}), in the order above.'
              '</figcaption></figure>')
 
     # National: cereals, olives, long vegetation record, by phase
@@ -538,7 +541,7 @@ def render(spec: dict, a: dict) -> str:
     wph = [g["crop_phase"].get(y, "") for y in worst.index]
     worst_txt = ", ".join(f"{y} ({_signed(v)})" for y, v in worst.items())
     o.append('<h3>Harvests after El Niño winters</h3>')
-    o.append(f'<p>Yields are published only for Palestine as a whole, but the West Bank holds {100 * g["wb_cereal_share"]:.0f}% of its wheat and '
+    o.append(f'<p>Cereal yields are published only for Palestine as a whole, but the West Bank holds {100 * g["wb_cereal_share"]:.0f}% of its wheat and '
              f'barley area and presses {100 * g["olive_wb_share"]:.0f}% of its olives. Rainfed wheat and barley yields were above trend in '
              f'{fe["above"]} of {fe["n"]} crop years after El Niño winters, against {fl["above"]} of {fl["n"]} after La Niña winters. The '
              f'{_nw(len(worst))} worst harvests since 1994, {worst_txt}, '
