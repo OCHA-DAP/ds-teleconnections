@@ -57,6 +57,7 @@ class Area:
     in each 0.25° cell, computed at run time; GPCC cells are weighted the same way at 1°."""
     slug: str = "gaza"
     name: str = "Gaza"
+    ref: str = "Gaza"                                          # the name in running prose ("the West Bank")
     pcode: str = "PS02"
     cache: str = "cache/gaza"
     era5_cells: dict = field(default_factory=lambda: {"n": (31.50, 34.50), "s": (31.25, 34.25), "nw": (31.50, 34.25)})
@@ -241,8 +242,8 @@ def ghcn_daily(station: str) -> pd.DataFrame:
     if not path.exists():
         r = requests.get(f"https://www.ncei.noaa.gov/data/global-historical-climatology-network-daily/access/{station}.csv", timeout=120)
         r.raise_for_status(); path.write_bytes(r.content)
-    d = pd.read_csv(path, usecols=["DATE", "PRCP", "TMIN"], parse_dates=["DATE"]).set_index("DATE")
-    return pd.DataFrame({"pr": d.PRCP / 10.0, "tmin": d.TMIN / 10.0})
+    d = pd.read_csv(path, usecols=lambda c: c in ("DATE", "PRCP", "TMIN"), parse_dates=["DATE"]).set_index("DATE")
+    return pd.DataFrame({"pr": d.PRCP / 10.0, "tmin": d.TMIN / 10.0 if "TMIN" in d else np.nan}, index=d.index)
 
 
 def imerg_daily(weights_fn, box: tuple | None = None, path: Path | None = None, split_lat: tuple | None = None) -> pd.DataFrame:
@@ -295,7 +296,7 @@ def imerg_daily(weights_fn, box: tuple | None = None, path: Path | None = None, 
 
 def nino_long() -> pd.Series:
     """HadISST1 Niño3.4 anomaly, 1870– (NOAA PSL). Used only where the record starts before 1950."""
-    path = CACHE / "nino34_long_hadisst.data"
+    path = COD_CACHE / "nino34_long_hadisst.data"     # shared, not per area
     if not path.exists():
         r = requests.get("https://psl.noaa.gov/data/timeseries/month/data/nino34.long.anom.data", timeout=60)
         r.raise_for_status(); path.write_text(r.text)
@@ -734,7 +735,8 @@ def impact_rain(events: list[dict], imerg: pd.DataFrame, era5: pd.DataFrame) -> 
         a = pd.Timestamp(e["start"]) - pd.Timedelta(days=1); b = pd.Timestamp(e.get("end", e["start"]))
         w, x = imerg.loc[a:b], era5.loc[a:b]
         rows.append(dict(e, im_max=float(w.pr.max()) if len(w) else np.nan, im_sum=float(w.pr.sum()) if len(w) else np.nan,
-                         im_max_n=float(w.north.max()) if len(w) else np.nan, im_max_s=float(w.south.max()) if len(w) else np.nan,
+                         im_max_n=float(w.north.max()) if (len(w) and "north" in w) else np.nan,
+                         im_max_s=float(w.south.max()) if (len(w) and "south" in w) else np.nan,
                          era5_sum=float(x.pr.sum()) if len(x) else np.nan, era5_max=float(x.pr.max()) if len(x) else np.nan,
                          tmin=float(x.tmin.min()) if len(x) else np.nan, wmax=float(x.wmax.max()) if len(x) else np.nan))
     return rows
@@ -866,12 +868,18 @@ def fig_stationarity(run: dict[str, pd.Series], per: dict, out: Path) -> None:
     ax.axhline(0, color="#b8bfbf", lw=0.8)
     ax.axvline(SPLIT, color=C_TEXT, lw=1, ls=(0, (4, 3)))
     ax.text(SPLIT + 0.8, -0.52, f"{SPLIT}", fontsize=8, color=C_TEXT)
+    ends = []
     for k in ("GPCC", "gauge", "ERA5"):
         s = run.get(k)
         if s is None or s.empty:
             continue
         ax.plot(s.index, s.values, color=SRC_COL[k], lw=2, label=SRC_LABEL[k])
-        ax.text(s.index[-1] + 0.6, s.values[-1], _short(k), fontsize=8, color=C_TEXT, va="center")
+        ends.append([s.values[-1], s.index[-1], _short(k)])
+    ends.sort(key=lambda e: e[0])                      # nudge end labels apart (at least 0.05 in r)
+    for i in range(1, len(ends)):
+        ends[i][0] = max(ends[i][0], ends[i - 1][0] + 0.05)
+    for yv, xv, lab in ends:
+        ax.text(xv + 0.6, yv, lab, fontsize=8, color=C_TEXT, va="center")
     ax.set_xlim(1900, 2014); ax.set_ylim(-0.6, 0.85)
     ax.set_ylabel("Pearson r, Oct–Apr rain vs DJF Niño3.4", fontsize=9, color=C_MUTED)
     ax.set_xlabel("centre year of the 31-year window", fontsize=9, color=C_MUTED)
@@ -982,7 +990,7 @@ def fig_winters(imerg: pd.DataFrame, events: list[dict], winters: list[int], out
         ax.tick_params(labelsize=8)
         edd._style_ax(ax)
     axes[len(winters) // 2].set_ylabel(f"mm per day ({A.name} mean)", fontsize=9, color=C_MUTED)
-    axes[0].set_title(f"Daily rainfall over {A.name} (IMERG) and dated reports of winter-weather impacts (▼, numbered as in the table)\n"
+    axes[0].set_title(f"Daily rainfall over {A.ref} (IMERG) and dated reports of winter-weather impacts (▼, numbered as in the table)\n"
                       "dotted line: 20 mm/day", fontsize=9.5, color=C_TEXT, loc="left", pad=22)
     fig.tight_layout()
     _save(fig, out)
@@ -1019,7 +1027,7 @@ def fig_seas5_monthly(rows: list[dict], year: int, im: int, out: Path) -> None:
     sx.axhline(0, color="#8a9495", lw=0.8)
     sx.set_ylim(-0.3, 0.8)
     sx.set_ylabel("skill (r)", fontsize=9, color=C_MUTED)
-    sx.set_title(f"Skill of the {edd.MONTH_NAMES[im - 1]} issuance for each month: detrended r with ERA5 over {A.name}, 1981–{year - 1}",
+    sx.set_title(f"Skill of the {edd.MONTH_NAMES[im - 1]} issuance for each month: detrended r with ERA5 over {A.ref}, 1981–{year - 1}",
                  fontsize=9.5, color=C_TEXT, loc="left")
     sx.set_xticks(x, labels, fontsize=9)
     edd._style_ax(sx)
@@ -1035,7 +1043,8 @@ def fig_storm_tiers(st: dict, djf: pd.Series, out: Path) -> None:
     b10 = (c[10] - c[20]).values; b20 = (c[20] - c[50]).values; b50 = c[50].values
     ax.bar(x, b10, 0.8, color=cols[10], edgecolor="white", linewidth=0.5, label=TIER_LABEL[10])
     ax.bar(x, b20, 0.8, bottom=b10, color=cols[20], edgecolor="white", linewidth=0.5, label=TIER_LABEL[20])
-    ax.bar(x, b50, 0.8, bottom=b10 + b20, color=cols[50], edgecolor="white", linewidth=0.5, label=TIER_LABEL[50])
+    ax.bar(x, b50, 0.8, bottom=b10 + b20, color=cols[50], edgecolor="white", linewidth=0.5,
+           label=TIER_LABEL[50] if A.byron else "≥ 50 mm")
     en = (djf.reindex(c.index) >= ENSO_THRESH).values
     ax.plot(x[en], c[10].values[en] + 0.5, "v", color=C_EN, ms=5.5, mec="white", mew=0.6, ls="", label="El Niño winter")
     ax.set_xlim(x.min() - 0.8, x.max() + 0.8); ax.set_ylim(0, c[10].max() + 2)
@@ -1132,7 +1141,7 @@ def fig_event_impacts(ev: pd.DataFrame, out: Path, storms_im: pd.DataFrame | Non
                         fontsize=7.5, color=C_TEXT)
     ax.set_yscale("log"); ax.set_xlim(0, 72); ax.set_ylim(90, 150000)
     ax.set_yticks([100, 300, 1000, 3000, 10000, 30000, 100000], ["100", "300", "1,000", "3,000", "10,000", "30,000", "100,000"])
-    ax.set_xlabel(f"wettest day of the event over {A.name}, mm (dot: IMERG; line extends to ERA5)", fontsize=9, color=C_MUTED)
+    ax.set_xlabel(f"wettest day of the event over {A.ref}, mm (dot: IMERG; line extends to ERA5)", fontsize=9, color=C_MUTED)
     ax.set_ylabel("households affected (log scale)", fontsize=9, color=C_MUTED)
     ax.axvline(20, color="#b8bfbf", lw=0.8, ls=(0, (3, 3))); ax.axvline(50, color="#b8bfbf", lw=0.8, ls=(0, (3, 3)))
     handles = [plt.Line2D([], [], marker="o", color=col["2025/26"], ls="", ms=7, label="2025/26"),
@@ -1207,7 +1216,8 @@ def impact_table(rows: list[dict], numbered: bool) -> str:
          '<th class="num">Window total<br><span class="small">IMERG · ERA5</span></th><th class="num">ERA5 coldest night · strongest wind</th><th>Source</th></tr></thead><tbody>']
     for i, e in enumerate(rows, 1):
         d = e["start"] if e.get("end", e["start"]) == e["start"] else f'{e["start"]} to {e["end"]}'
-        rain = ("—" if np.isnan(e["im_max"]) else f'{e["im_max"]:.0f} mm<br><span class="small">{e["im_max_n"]:.0f} · {e["im_max_s"]:.0f}</span>')
+        rain = ("—" if np.isnan(e["im_max"]) else f'{e["im_max"]:.0f} mm'
+                + ("" if np.isnan(e["im_max_n"]) else f'<br><span class="small">{e["im_max_n"]:.0f} · {e["im_max_s"]:.0f}</span>'))
         met = "—" if np.isnan(e["tmin"]) else f'{e["tmin"]:.0f} °C · {e["wmax"]:.0f} m/s'
         o.append('<tr>' + (f'<td>{i}</td>' if numbered else '') + f'<td style="white-space:nowrap">{html.escape(d)}</td>'
                  f'<td>{html.escape(e.get("hazard", ""))}</td><td>{e["what_html"]}</td><td class="num">{rain}</td>'
@@ -1244,19 +1254,29 @@ def render_range(spec: dict, a: dict) -> str:
              f'{round(l50["p_any"] * l50["n"])} of {l50["n"]} La Niña winters. Last winter, with {int(st["ci"].loc[2025, 10])}, {int(st["ci"].loc[2025, 20])} and '
              f'{int(st["ci"].loc[2025, 50])}, was among the more active.</p>')
     o.append('<figure><img src="storm_tiers.png" alt="Rain storms per winter by size"><figcaption>A storm is a run of rainy days (1 mm or more), '
-             f'merged across lulls of up to two dry days, sized by its wettest day over {A.name} (IMERG, area-weighted). ' + ('Byron, 8–17 December 2025, '
+             f'merged across lulls of up to two dry days, sized by its wettest day over {A.ref} (IMERG, area-weighted). ' + ('Byron, 8–17 December 2025, '
              'counts as one storm (rain from 8 December, the storm proper from 10 December). ERA5 is not used for the largest storms: its 25 km '
              'cells smooth them so much that it gives Byron a wettest day of 18 mm, which would not place it among the record\'s 14 largest '
              'storms.' if A.byron else '') + '</figcaption></figure>')
     # first storm
     fe, fa = fs[("IMERG", "El Niño")], fs[("IMERG", "all")]
+    e_ = st["ei"]; f_ = e_[e_["max"] >= 20].groupby("sy").start.min().reindex(range(1998, 2026))
+    ph_ = pd.Series(phase_of(a["djf"].reindex(f_.index)), index=f_.index)
+    early = pd.Series({y: pd.notna(d) and d < pd.Timestamp(y, 12, 1) for y, d in f_.items()})
+    en_ = ph_ == "El Niño"
+    p_fish = stats.fisher_exact([[int(early[en_].sum()), int((~early[en_]).sum())],
+                                 [int(early[~en_].sum()), int((~early[~en_]).sum())]])[1]
+    none_ = [f"{y}/{str(y + 1)[2:]} ({ph_[y]})" for y in f_.index if pd.isna(f_[y])]
     o.append('<h3>When the first storm of 20 mm or more comes</h3>')
     o.append(spec.get("first_storm_html", ""))
     o.append(f'<figure><img src="first_storm.png" alt="Date of the first storm of 20 mm or more, by ENSO phase"><figcaption>Each dot is one winter: '
-             f'the start date of its first storm with a wettest day of 20 mm or more over {A.name} (IMERG). Before 1 December in '
+             f'the start date of its first storm with a wettest day of 20 mm or more over {A.ref} (IMERG). Before 1 December in '
              f'{round(fe["p_before_dec"] * fe["n"])} of {fe["n"]} El Niño winters and {round(fa["p_before_dec"] * fa["n"])} of {fa["n"]} winters overall. '
-             'Eight El Niño winters is a small sample: the El Niño share is within chance (Fisher exact test, p ≈ 0.2). 2007/08, a La Niña '
-             'winter, had no storm of 20 mm or more and has no dot.</figcaption></figure>')
+             + (f'Eight El Niño winters is a small sample: against the other winters the difference is within chance (Fisher exact test, p = {p_fish:.2f}).'
+                if p_fish >= 0.05 else
+                f'Against the other winters the difference is unlikely to be chance alone (Fisher exact test, p = {p_fish:.2f}), though eight El Niño winters is a small sample.')
+             + (f' {", ".join(none_)} had no storm of 20 mm or more and {"has" if len(none_) == 1 else "have"} no dot.' if none_ else '')
+             + '</figcaption></figure>')
     # what one storm of each kind did
     if ev is not None and spec.get("storm_kinds"):
         e = ev.set_index("event_id")
@@ -1339,15 +1359,16 @@ def render(spec: dict, a: dict) -> str:
         o.append(spec.get("forecast_table_note", ""))
     if a.get("skill"):
         sk_html = (edd.render_skill(spec, a, "OND", spec.get("titles", {}).get("skill", f"SEAS5 for {A.name}: skill and the September forecast"))
-                 .replace("whole country (bars) and zones (lines)", f"the cells over {A.name} (bars)")
-                 .replace("for the whole country", f"for the cells over {A.name}")
-                 .replace("of the's annual rain", f"of {A.name}'s annual rain")
+                 .replace("whole country (bars) and zones (lines)", f"the cells over {A.ref} (bars)")
+                 .replace("for the whole country", f"for the cells over {A.ref}")
+                 .replace("of the's annual rain", f"of {A.ref}'s annual rain")
                    )
         # the shared auto-summary names the zone before each window ("Gaza SON, Gaza OND"): drop it
         o.append(re.sub(rf"\b{re.escape(A.name)} (?=[A-Z]{{3}}\b)", "", sk_html))
     sr = a.get("seas5_raw")
     if sr:
-        o.append(f'<p class="small">Cross-check from the raw ensemble-mean files (box 31.0–31.8°N, 34.0–34.8°E), {edd.MONTH_NAMES[sr["month"] - 1]} issuances '
+        o.append(f'<p class="small">Cross-check from the raw ensemble-mean files (box {A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, '
+                 f'{A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), {edd.MONTH_NAMES[sr["month"] - 1]} issuances '
                  f'1981–{sr["year"]}: where the {sr["year"]} forecast ranks among all {sr["rows"][0]["n"]} (1 = wettest), its ratio to the hindcast mean, '
                  'and the three wettest hindcast years.</p>')
         o.append('<table><thead><tr><th>Window</th><th class="num">Rank</th><th class="num">Ratio to mean</th><th>Wettest hindcasts (issuance year)</th></tr></thead><tbody>'
@@ -1358,10 +1379,10 @@ def render(spec: dict, a: dict) -> str:
     if sm:
         o.append(f'<h3>The same forecast, month by month</h3>{spec.get("monthly_html", "")}')
         o.append('<figure><img src="seas5_monthly.png" alt="SEAS5 forecast and skill by month"><figcaption>Top: the SEAS5 ensemble-mean '
-                 f'rainfall for each month of the September issuance, averaged over a box on {A.name} ({A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, {A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), against the mean of '
+                 f'rainfall for each month of the September issuance, averaged over a box on {A.ref} ({A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, {A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), against the mean of '
                  'the same month in the 1981–2025 September hindcasts; labels give the forecast as a percentage above or below that mean and its '
                  'rank among all 46 September issuances (1 = wettest). Bottom: the skill of that month\'s forecast, the correlation between the '
-                 f'detrended hindcast ensemble mean and detrended ERA5 rainfall over {A.name}, on the app\'s low / moderate / high bands. A single month '
+                 f'detrended hindcast ensemble mean and detrended ERA5 rainfall over {A.ref}, on the app\'s low / moderate / high bands. A single month '
                  'is noisier than a three-month window, so monthly skill is lower than in the figure above. September gets about 3 mm in an '
                  'average year, so its skill says little.</figcaption></figure>')
         o.append('<table><thead><tr><th>Month</th><th class="num">Hindcast mean</th><th class="num">Forecast</th><th class="num">vs mean</th>'
@@ -1371,7 +1392,7 @@ def render(spec: dict, a: dict) -> str:
                            f'<td class="num">{_r(r["r"])} {edd.skill_chip(edd.skill_cat(r["r"]))}</td><td class="num">{r["obs_clim"]:.0f} mm</td></tr>' for r in sm)
                  + '</tbody></table>')
         o.append('<p class="small">SEAS5 ensemble-mean totals are smoother than any single year, so compare the forecast with the hindcast mean and '
-                 f'rank, not with observed rainfall. ERA5 mean: the {_nword(len(a["wts"]))} cells over {A.name}, same years, for scale.</p>')
+                 f'rank, not with observed rainfall. ERA5 mean: the {_nword(len(a["wts"]))} cells over {A.ref}, same years, for scale.</p>')
 
     # 2. ENSO and the rainy season
     o.append(f'<h2>{T("enso", f"2. How much El Niño matters for a {A.name} winter")}</h2>')
@@ -1379,9 +1400,9 @@ def render(spec: dict, a: dict) -> str:
     nw = len(a["wts"])
     o.append(f'<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology for {A.name}"><figcaption>Monthly climatology from three '
              f'records. {A.gpcc_desc}'
-             f'ERA5 is the mean of the {_nword(nw)} 0.25° cells over {A.name}, weighted by the share of {A.name} in each'
+             f'ERA5 is the mean of the {_nword(nw)} 0.25° cells over {A.ref}, weighted by the share of {A.ref} in each'
              + (f' ({", ".join(f"{100 * v:.0f}%" for v in a["wts"].values())})' if nw <= 4 else '')
-             + f'; IMERG is the area-weighted mean of the 0.1° cells over {A.name}.'
+             + f'; IMERG is the area-weighted mean of the 0.1° cells over {A.ref}.'
              '</figcaption></figure>')
     o.append(f'<h3>The link switched on in the late 1970s</h3>{spec.get("stationarity_html", "")}')
     o.append(f'<figure><img src="stationarity.png" alt="Running correlation between {A.name} rainfall and Niño3.4"><figcaption>Pearson r between the '
@@ -1451,10 +1472,10 @@ def render(spec: dict, a: dict) -> str:
     o.append(f'<h3>Across the region</h3>{spec.get("maps_html", "")}')
     o.append('<figure><img src="corr_maps.png" alt="Pixel correlation maps, southern Levant"><figcaption>Pearson r between three-month rainfall and '
              'Niño3.4 for each ERA5 0.25° cell, keeping the lag (0–3 months, index leading) with the largest |r| as the survey does. '
-             f'Blue = wetter under El Niño. Grey cells hold under a quarter of their annual rain in that window. {A.name} is outlined.</figcaption></figure>')
+             f'Blue = wetter under El Niño. Grey cells hold under a quarter of their annual rain in that window. {A.ref[0].upper() + A.ref[1:]} is outlined.</figcaption></figure>')
     o.append(f'<figure><img src="composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean standardised '
              f'October–April anomaly over the {a["n_en_grid"]} El Niño winters of {_yr(a["n_grid"][0])}–{_yr(a["n_grid"][1])} '
-             f'(cells over {A.name}: {a["comp_gaza"]:+.2f} SD; positive in {100 * a["comp_region_pos"]:.0f}% of analysed cells). '
+             f'(cells over {A.ref}: {a["comp_gaza"]:+.2f} SD; positive in {100 * a["comp_region_pos"]:.0f}% of analysed cells). '
              f'Right: the share of those winters in each cell\'s wettest third ({A.name}: {100 * a["hit_gaza"]:.0f}%; regional median '
              f'{100 * a["hit_region"]:.0f}%; chance is 33%).</figcaption></figure>')
 
@@ -1484,9 +1505,9 @@ def render(spec: dict, a: dict) -> str:
     o.append(spec.get("impacts_intro_html", ""))
     fr = a["freq"]
     o.append(f'<p class="small">How often the rain that has caused these impacts comes: over 1998–2025, IMERG puts an average of '
-             f'{fr[10]:.1f} days of ≥ 10 mm, {fr[20]:.1f} of ≥ 20 mm, {fr[30]:.1f} of ≥ 30 mm and {fr[50]:.1f} of ≥ 50 mm over {A.name} in each October–April.</p>')
-    o.append(f'<figure><img src="winters.png" alt="Daily rainfall over {A.name}, 2023/24 to 2025/26, with impacts"><figcaption>IMERG late run, '
-             f'area-weighted mean over {A.name}. Markers are the start dates of the reported impacts in the table below.</figcaption></figure>')
+             f'{fr[10]:.1f} days of ≥ 10 mm, {fr[20]:.1f} of ≥ 20 mm, {fr[30]:.1f} of ≥ 30 mm and {fr[50]:.1f} of ≥ 50 mm over {A.ref} in each October–April.</p>')
+    o.append(f'<figure><img src="winters.png" alt="Daily rainfall over {A.ref}, 2023/24 to 2025/26, with impacts"><figcaption>IMERG late run, '
+             f'area-weighted mean over {A.ref}. Markers are the start dates of the reported impacts in the table below.</figcaption></figure>')
     o.append(impact_table(a["ev_rows"], numbered=True))
     o.append(f'<p class="small">{A.impact_caption}</p>')
     if a.get("pre_rows"):
