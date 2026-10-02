@@ -687,8 +687,17 @@ def _mon(m: int) -> str:
 
 def _date(t: pd.Timestamp, day: bool = True) -> str:
     if LANG == "fr":
-        return (f"{t.day} " if day else "") + f"{MONTH_FR[t.month - 1]} {t.year}"
+        return (f"{_jour(t.day)} " if day else "") + f"{MONTH_FR[t.month - 1]} {t.year}"
     return t.strftime("%d %B %Y" if day else "%B %Y")
+
+
+def _jour(d: int) -> str:
+    return "1er" if d == 1 else str(d)
+
+
+def _de(w: str) -> str:
+    """French "de" with elision: d'octobre, de mars."""
+    return ("d'" if w[:1].lower() in "aeiouyhéè" else "de ") + w
 
 
 def _ax_numbers(ax, x: bool = False) -> None:
@@ -770,7 +779,7 @@ def fig_2026(a: dict) -> None:
         ax1.text(v + 2, yi, _pc(v), va="center", fontsize=8.5, color=C_TEXT)
     ax1.set_yticks(y, labels, fontsize=8.5); ax1.invert_yaxis(); ax1.set_xlim(0, 135)
     ax1.set_xlabel(_t(f"June–August 2026, % of the {BASE[0]}–{BASE[1]} mean", f"Juin–août 2026, en % de la moyenne {BASE[0]}–{BASE[1]}"), fontsize=8.5, color=C_MUTED)
-    ax1.set_title(_t("Five rainfall products, one season", "Cinq produits de pluie, une seule saison"), fontsize=9.5, color=C_TEXT, loc="left")
+    ax1.set_title(_t("Five rainfall products, one season", "Cinq produits de précipitations, une seule saison"), fontsize=9.5, color=C_TEXT, loc="left")
     edd._style_ax(ax1); ax1.xaxis.grid(True, color="#e6eaea"); ax1.yaxis.grid(False)
     cum = a["imerg_cum"]
     base = cum[[c for c in cum.columns if c <= BASE[1]]]
@@ -794,7 +803,7 @@ def fig_2026(a: dict) -> None:
 def fig_vegetation(a: dict) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(10.4, 3.4))
     panels = [(axes[0], "zfparc_crop", _t("Cropland biomass (ASAP zFPARc)", "biomasse des cultures (ASAP zFPARc)")),
-              (axes[1], "spi3_crop", _t("3-month rainfall index (ASAP SPI-3, cropland)", "indice de pluie sur 3 mois (ASAP SPI-3, cultures)"))]
+              (axes[1], "spi3_crop", _t("3-month rainfall index (ASAP SPI-3, cropland)", "indice de précipitations normalisé sur 3 mois (ASAP SPI-3, cultures)"))]
     for ax, key, ttl in panels:
         s = a["veg"][key]
         s = s[s.index.month.isin([5, 6, 7, 8, 9, 10])]
@@ -1079,7 +1088,7 @@ def render(spec: dict, a: dict) -> str:
                  'JRC ASAP, Extrême-Nord, dekadal. Left: z-score of cumulative fAPAR on cropland during the growing cycle (biomass compared with the '
                  'same point in past seasons). Right: 3-month standardised precipitation index on cropland. Grey: range of past seasons.',
                  'JRC ASAP, Extrême-Nord, par décade. À gauche : score z du fAPAR cumulé sur les cultures pendant le cycle de croissance (biomasse '
-                 'comparée au même moment des saisons passées). À droite : indice de précipitations standardisé sur 3 mois, sur les cultures. '
+                 'comparée au même moment des saisons passées). À droite : indice de précipitations normalisé sur 3 mois (SPI-3), sur les cultures. '
                  'Gris : plage des saisons passées.') + '</figcaption></figure>')
     o.append(f'<h3>{T("reports", "What regional and field reports say")}</h3>{spec.get("reports_html", "")}')
 
@@ -1090,7 +1099,7 @@ def render(spec: dict, a: dict) -> str:
              + '"><figcaption>' + _t('AER FloodScan SFED (standard flood extent depiction), daily share of the department flagged as flooded.',
                                      'AER FloodScan SFED (étendue standard des inondations) : part journalière du département détectée comme inondée.')
              + '</figcaption></figure>')
-    cut = (f'{a["fs_last"].day} {MONTH_FR_ABBR[a["fs_last"].month - 1]}' if fr else f'{a["fs_last"]:%d %b}')
+    cut = (f'{_jour(a["fs_last"].day)} {MONTH_FR_ABBR[a["fs_last"].month - 1]}' if fr else f'{a["fs_last"]:%d %b}')
     o.append('<table><thead><tr><th>' + _t("Unit", "Unité") + '</th><th class="num">' + _t(f"Peak flooded share to {cut}, 2026", f"Pic de surface inondée au {cut} 2026")
              + '</th><th class="num">' + _t("Median of past years to that date", "Médiane des années passées à la même date")
              + '</th><th class="num">' + _t("2026 rank (1 = most flooded)", "Rang 2026 (1 = le plus inondé)")
@@ -1147,7 +1156,7 @@ def render(spec: dict, a: dict) -> str:
                  f'<td class="num">{_n(pro.get("4", 0))}</td><td class="num">{_pc(frac.get((nm, "first projection"), np.nan) * 100)}</td></tr>')
     o.append('</tbody></table>')
     o.append('<p class="small">' + _t(f'From the Cadre Harmonisé analysis of {_date(lastd, day=False)}, the latest in the HDX/HAPI record for Cameroon.',
-                                      f'Analyse du Cadre Harmonisé d\'{_date(lastd, day=False)}, la plus récente dans les données HDX/HAPI pour le Cameroun.') + '</p>')
+                                      f'Analyse du Cadre Harmonisé {_de(_date(lastd, day=False))}, la plus récente dans les données HDX/HAPI pour le Cameroun.') + '</p>')
     o.append(spec.get("food_after_html", ""))
 
     # 7. 2027
@@ -1186,7 +1195,7 @@ def render(spec: dict, a: dict) -> str:
         o.append('<p class="small">' + _t(
             'From the team\'s SEAS5 skill cube (ensemble mean against ERA5, 1981–2025, detrended): low &lt; 0.30, moderate 0.30–0.50. The reference is '
             'ERA5, whose weaknesses over this region are discussed in section 2.',
-            'D\'après le cube de compétence SEAS5 de l\'équipe (moyenne d\'ensemble comparée à ERA5, 1981–2025, tendance retirée) : faible &lt; 0,30, '
+            'D\'après le cube de performance (skill) SEAS5 de l\'équipe (moyenne d\'ensemble comparée à ERA5, 1981–2025, tendance retirée) : faible &lt; 0,30, '
             'modérée 0,30–0,50. La référence est ERA5, dont les faiblesses sur cette région sont discutées à la section 2.') + '</p>')
 
     # 8. watch list
@@ -1203,7 +1212,7 @@ def render(spec: dict, a: dict) -> str:
         'Generated by <code>extreme_nord_deep_dive.py</code> from <code>deep_dives/extreme-nord.toml</code>. '
         f'Niño3.4 series as in the <a href="{up}../../survey/">global survey</a>.',
         'Produit par <code>extreme_nord_deep_dive.py</code> à partir de <code>deep_dives/i18n/extreme-nord.fr.toml</code>. '
-        f'Série Niño3.4 identique à celle de l\'<a href="{up}../../survey/">enquête mondiale</a> (en anglais).') + '</p>')
+        f'Série Niño3.4 identique à celle de la <a href="{up}../../survey/">synthèse mondiale</a> (en anglais).') + '</p>')
     o.append(edd.FOOT)
     return "\n".join(o)
 

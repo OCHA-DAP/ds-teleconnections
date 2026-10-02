@@ -8,11 +8,11 @@ page_title = "El Niño et l'Extrême-Nord"
 subtitle = "Ce que l'El Niño de 2026 a fait à l'Extrême-Nord du Cameroun, ce qu'il peut encore faire, et quelle confiance accorder à chaque jeu de données"
 
 summary_html = '''
-<p><strong>1. El Niño fait pencher la balance vers une saison des pluies sèche, sans la décider.</strong> Sur les neuf saisons El Niño depuis 1981, cinq à sept (selon le jeu de données) se sont classées dans le tiers le plus sec des cumuls de juin–septembre, et au plus une dans le tiers le plus humide. La probabilité d'une saison sèche passe ainsi d'environ une sur trois à environ deux sur trois. Dans les relevés de stations, la corrélation est d'environ −0,3 : El Niño explique environ un dixième de la variabilité d'une année à l'autre. Les épisodes forts ont différé : 1987 et 1997 ont été secs, 2015 proche de la normale dans les relevés de stations.</p>
-<p><strong>2. La saison 2026 a été tardive, inégale et plus sèche au nord. Les données divergent sur l'ampleur.</strong> Pour juin–août 2026, les cinq produits de pluie vont de 46 % à 109 % de leur moyenne 2001–2025. Pour IMERG, c'est la saison la plus sèche depuis 2001, et FEWS NET estime les pluies de juin–septembre inférieures de 20 à 50 % à la moyenne dans le Logone-et-Chari. CHIRPS place la région proche de la normale. La biomasse des cultures a pris du retard en juin et était revenue à la normale mi-septembre. Les produits satellitaires et la réanalyse montrent tous un mois de mai sec, et IMERG, le seul qui couvre déjà septembre, une fin de saison sèche. Aucune station de l'Extrême-Nord n'apparaît dans les archives internationales pour 2025 ou 2026 : seules les données des stations nationales permettront de trancher.</p>
+<p><strong>1. El Niño fait pencher la balance vers une saison des pluies sèche, sans la décider.</strong> Sur les neuf saisons El Niño depuis 1981, cinq à sept (selon le jeu de données) se sont classées dans le tiers le plus sec des cumuls de juin–septembre, et au plus une dans le tiers le plus humide. La probabilité d'une saison sèche passe ainsi d'environ une sur trois à environ deux sur trois. Dans les produits calés sur les stations (GPCC, CHIRPS), la corrélation est d'environ −0,3 : El Niño explique environ un dixième de la variabilité d'une année à l'autre. Les épisodes forts ont différé : 1987 et 1997 ont été secs, 2015 proche de la normale dans GPCC et CHIRPS.</p>
+<p><strong>2. La saison 2026 a été tardive, inégale et plus sèche au nord. Les données divergent sur l'ampleur.</strong> Pour juin–août 2026, les cinq produits de précipitations vont de 46 % à 109 % de leur moyenne 2001–2025. Pour IMERG, c'est la saison la plus sèche depuis 2001, et FEWS NET estime les pluies de juin–septembre inférieures de 20 à 50 % à la moyenne dans le Logone-et-Chari. CHIRPS place la région proche de la normale. La biomasse des cultures a pris du retard en juin et était revenue à la normale mi-septembre. Les produits satellitaires et la réanalyse montrent tous un mois de mai sec, et IMERG, le seul qui couvre déjà septembre, une fin de saison sèche. Aucune station de l'Extrême-Nord n'apparaît dans les archives internationales pour 2025 ou 2026 : seules les données des stations nationales permettront de trancher.</p>
 <p><strong>3. Les inondations ne suivent pas El Niño ici.</strong> Les plus grandes années d'inondation depuis 1998 (2024, 2010, 2022, 2019) étaient neutres ou La Niña. Au 30 septembre, 2026 présente la plus petite surface inondée de la série FloodScan. Mais 26 mm de pluie sont tombés sur la région le 29 septembre, et les hautes eaux du Logone arrivent normalement en octobre–novembre.</p>
 <p><strong>4. L'effet d'El Niño le plus net encore à venir est la chaleur.</strong> La température de mars–mai dans l'Extrême-Nord suit l'El Niño de l'hiver précédent (r = +0,51). Après l'El Niño 2023/24 est venue la saison mars–mai la plus chaude jamais enregistrée. L'El Niño actuel, qui approche de son pic, est plus fort : un mars–mai 2027 plus chaud que la normale est probable. C'est la saison chaude qui précède la soudure.</p>
-<p><strong>5. Pour les pluies de 2027, El Niño ne donne aucune indication.</strong> Par le passé, la saison qui suit un El Niño fort est allée de très sèche (1983) à très humide (2024, la plus humide du relevé de stations). Ce qui comptera, c'est l'état de l'ENSO en juillet–septembre 2027, qu'aucune prévision n'atteint encore. Les prévisions saisonnières pour ces mois ne deviennent utiles qu'à partir de l'édition de juin 2027.</p>
+<p><strong>5. Pour les pluies de 2027, El Niño ne donne aucune indication.</strong> Par le passé, la saison qui suit un El Niño fort est allée de très sèche (1983) à très humide (2024, la plus humide dans GPCC). Ce qui comptera, c'est l'état de l'ENSO en juillet–septembre 2027, qu'aucune prévision n'atteint encore. Les prévisions saisonnières pour ces mois ne deviennent utiles qu'à partir de la prévision émise en juin 2027.</p>
 '''
 
 forecast_html = '''
@@ -28,9 +28,9 @@ forecast_html = '''
 '''
 
 enso_html = '''
-<p>Le nord du Cameroun appartient au régime de mousson du Sahel, où El Niño est associé à une mousson ouest-africaine plus faible et à moins de pluies en juillet–septembre. Ce lien est bien documenté pour le Sahel dans son ensemble. Il s'est renforcé après 1970 environ (Janicot et al. 1996 ; Losada et al. 2012) et reste modeste : l'ENSO explique environ un dixième de la variance des pluies au Sahel, moins que les températures de surface de l'Atlantique et de la Méditerranée (Diatta &amp; Fink 2014). Le catalogue de l'enquête classe le Cameroun « modéré, El Niño plus sec, juin–septembre ». Cette section le vérifie pour le seul Extrême-Nord, dans cinq jeux de données.</p>
+<p>Le nord du Cameroun appartient au régime de mousson du Sahel, où El Niño est associé à une mousson ouest-africaine plus faible et à moins de pluies en juillet–septembre. Ce lien est bien documenté pour le Sahel dans son ensemble. Il s'est renforcé après 1970 environ (Janicot et al. 1996 ; Losada et al. 2012) et reste modeste : l'ENSO explique environ un dixième de la variance des pluies au Sahel, moins que les températures de surface de l'Atlantique et de la Méditerranée (Diatta &amp; Fink 2014). Le catalogue de la synthèse mondiale classe le Cameroun « modéré, El Niño plus sec, juin–septembre ». Cette section le vérifie pour le seul Extrême-Nord, dans cinq jeux de données.</p>
 <p>Le résultat est cohérent d'un jeu de données à l'autre quant au sens de l'effet et à son poids sur les probabilités, mais pas quant à son intensité. Dans tous les jeux de données, les saisons El Niño se concentrent dans le tiers le plus sec et n'atteignent presque jamais le tiers le plus humide. Les corrélations sans tendance vont de −0,23 à −0,36, à l'exception d'ERA5 (−0,47).</p>
-<p>ERA5 appelle une réserve. Il ne montre pas la remontée des pluies au Sahel depuis les années 1980 que montrent tous les jeux de données de stations et satellitaires : environ −1 mm par décennie, contre +30 à +38. Il donne aussi à 2026 un déficit que ni la végétation ni CHIRPS ne confirment (section 3). Le même défaut, un assèchement artificiel sur l'Afrique centrale, a été constaté dans ERA5 sur la République centrafricaine. La corrélation plus forte d'ERA5 est à lire comme une borne haute.</p>
+<p>ERA5 appelle une réserve. Il ne montre pas la remontée des pluies au Sahel depuis les années 1980 que montrent tous les jeux de données de stations et satellitaires : environ −1 mm par décennie, contre +30 à +38. Il donne aussi à 2026 un déficit que ni la végétation ni CHIRPS ne confirment (section 3). Le même défaut, un assèchement artificiel sur l'Afrique centrale, a été constaté dans ERA5 sur la République centrafricaine. La corrélation plus forte d'ERA5 est à lire comme une borne supérieure.</p>
 '''
 
 enso_after_table_html = '''
@@ -38,7 +38,7 @@ enso_after_table_html = '''
 '''
 
 strong_html = '''
-<p>Quatre saisons depuis 1950 ont eu un Niño3.4 de juillet–septembre de +1,3 °C ou plus. Sur l'ONI de juin–août du CPC, seul indice disponible pour 2026 à ce stade, aucune n'atteignait les +1,8 de 2026 (1997 : +1,5 ; 2015 : +1,4). 1987 et 1997 figurent parmi les saisons les plus sèches des relevés de stations. 2015 était proche de la médiane dans GPCC et CHIRPS (ERA5 : 22e centile). Pour 2023, les jeux de données divergent : IMERG la place dans son dixième le plus sec, CHIRPS au-dessus de la médiane.</p>
+<p>Quatre saisons depuis 1950 ont eu un Niño3.4 de juillet–septembre de +1,3 °C ou plus. Sur l'ONI de juin–août du CPC, seul indice disponible pour 2026 à ce stade, aucune n'atteignait les +1,8 de 2026 (1997 : +1,5 ; 2015 : +1,4). 1987 et 1997 figurent parmi les saisons les plus sèches dans les produits calés sur les stations. 2015 était proche de la médiane dans GPCC et CHIRPS (ERA5 : 22e centile). Pour 2023, les jeux de données divergent : IMERG la place dans son dixième le plus sec, CHIRPS au-dessus de la médiane.</p>
 '''
 
 gauges_html = '''
@@ -50,28 +50,28 @@ season_html = '''
 <p>Cinq produits, une seule saison, et un écart de 46 % à 109 % de la normale pour juin–août. Ce qu'ils ont en commun :</p>
 <ul>
 <li>Mai a été sec dans les quatre produits satellitaires et de réanalyse (22 à 78 %) : le démarrage a été tardif. GPCC, qui n'a aucune station dans la région, place mai proche de la normale.</li>
-<li>Les pluies ont de nouveau baissé en septembre. IMERG, le seul produit qui couvre déjà ce mois, donne 80 %, et l'indice de pluie sur 3 mois de l'ASAP était mi-septembre au 5e rang le plus bas depuis 1989.</li>
+<li>Les pluies ont de nouveau baissé en septembre. IMERG, le seul produit qui couvre déjà ce mois, donne 80 %, et l'indice de précipitations normalisé sur 3 mois (SPI-3) de l'ASAP était mi-septembre au 5e rang le plus bas depuis 1989.</li>
 </ul>
 <p>Ils divergent sur juillet et août. CHIRPS les place proches de la normale. IMERG les situe à 62–71 %, ce qui fait de juin–septembre sa saison la plus sèche depuis 2001 pour la région et pour trois des six départements (Logone-et-Chari, Mayo-Danay et Mayo-Kani). ERA5 est plus bas encore, à 46 %, mais sa série présente les problèmes décrits à la section 2.</p>
 '''
 
 depts_html = '''
-<p>CHIRPS v3 place tous les départements à ±6 % de la normale pour juin–août. IMERG place tous les départements sous la normale, de 63 % (Logone-et-Chari) à 81 % (Mayo-Sava). Le classement d'IMERG concorde avec l'évaluation de terrain de FEWS NET, qui distingue le Logone-et-Chari (voir plus bas).</p>
+<p>CHIRPS v3 place tous les départements à ±6 % de la normale pour juin–août. IMERG place tous les départements sous la normale, de 63 % (Logone-et-Chari) à 81 % (Mayo-Sava). Le classement d'IMERG concorde avec l'évaluation de terrain de FEWS NET, qui pointe le Logone-et-Chari (voir plus bas).</p>
 '''
 
 veg_html = '''
 <p>La végétation est mesurée par satellite, indépendamment de tout produit de pluie. Sur les cultures, la biomasse dans l'Extrême-Nord est restée sous la normale de mai à août, au plus bas mi-mai (score z −0,8) et en juillet (environ −0,3). Elle n'a jamais atteint le seuil d'alerte de l'ASAP et était revenue à la médiane mi-septembre (−0,02, 13e sur 26 saisons). Ce n'est pas le profil de 2015, quand la biomasse des cultures est restée sous le seuil de juin à septembre.</p>
-<p>Sur 2001–2025, la biomasse de fin de saison n'est que faiblement liée à El Niño (r = −0,21, non significatif). Trois des cinq années El Niño étaient sous la normale (2002, 2009, 2015) et deux au-dessus (2004, 2023). L'indice de pluie sur 3 mois de l'ASAP, alimenté par une estimation de type CHIRPS, est resté positif jusqu'en août puis est devenu négatif en septembre.</p>
+<p>Sur 2001–2025, la biomasse de fin de saison n'est que faiblement liée à El Niño (r = −0,21, non significatif). Trois des cinq années El Niño étaient sous la normale (2002, 2009, 2015) et deux au-dessus (2004, 2023). L'indice de précipitations normalisé sur 3 mois (SPI-3) de l'ASAP, alimenté par une estimation de type CHIRPS, est resté positif jusqu'en août puis est devenu négatif en septembre.</p>
 '''
 
 reports_html = '''
 <ul>
-<li><strong>PREGEC (évaluation régionale préliminaire des récoltes, CILSS), septembre 2026.</strong> Il décrit une saison « influencée par El Niño », avec des pluies proches de la normale à déficitaires et de longues séquences sèches au Sahel, en Afrique de l'Ouest et au Cameroun. Les niveaux du bassin du lac Tchad étaient inférieurs à ceux de 2025, qu'il qualifie d'année excédentaire.</li>
+<li><strong>Concertation du PREGEC (dispositif régional de prévention et de gestion des crises alimentaires, CILSS), septembre 2026.</strong> Il décrit une saison « influencée par El Niño », avec des pluies proches de la normale à déficitaires et de longues séquences sèches au Sahel, en Afrique de l'Ouest et au Cameroun. Les niveaux du bassin du lac Tchad étaient inférieurs à ceux de 2025, qu'il qualifie d'année excédentaire.</li>
 <li><strong>FEWS NET, Key Message Update de septembre 2026.</strong> Les pluies de juin–septembre ont été inférieures de 20 à 50 % à la moyenne dans le Logone-et-Chari, et une récolte inférieure à la moyenne est attendue. Il classe le Mayo-Sava, le Mayo-Tsanaga et le Logone-et-Chari en Crise (phase 3 de l'IPC) jusqu'en septembre.</li>
 <li><strong>AGRHYMET, bulletin d'août 2026.</strong> Le débit du Logone à Bongor était inférieur de 21 % à celui d'août 2025, et celui du Chari à N'Djamena de 35 %.</li>
-<li><strong>Notes pays du JRC ASAP.</strong> En juin, environ 70 % des cultures de l'Extrême-Nord présentaient une anomalie de verdure négative (démarrage tardif). En août, les cultures du nord étaient « proches de la moyenne ». Le Cameroun n'a pas été signalé comme point chaud en 2026.</li>
+<li><strong>Notes pays du JRC ASAP.</strong> En juin, environ 70 % des cultures de l'Extrême-Nord présentaient une anomalie de végétation négative (démarrage tardif). En août, les cultures du nord étaient « proches de la moyenne ». Le Cameroun n'a pas été signalé comme point chaud (hotspot) en 2026.</li>
 </ul>
-<p>Au total : une saison tardive et sous la normale par endroits, avec un déficit concentré au nord, mais pas un échec généralisé. Les évaluations de récolte du ministère de l'Agriculture (MINADER) et le cycle du Cadre Harmonisé d'octobre–novembre 2026 diront ce qu'elle a produit.</p>
+<p>Au total : une saison tardive et sous la normale par endroits, avec un déficit concentré au nord, mais pas une saison ratée à l'échelle de la région. Les évaluations de récolte du ministère de l'Agriculture (MINADER) et le cycle du Cadre Harmonisé d'octobre–novembre 2026 diront quel en a été l'effet sur la production.</p>
 '''
 
 floods_html = '''
@@ -90,18 +90,18 @@ heat_html = '''
 <ul>
 <li>2009/10 : 3e plus chaud.</li>
 <li>2015/16 : 4e plus chaud.</li>
-<li>2023/24 : le plus chaud. Tendance incluse, mars–mai 2024 a atteint 34,5 °C en moyenne, 1,3 °C de plus que l'année suivante au classement (2016).</li>
+<li>2023/24 : le plus chaud. Tendance incluse, mars–mai 2024 a atteint 34,5 °C en moyenne, 1,3 °C de plus que la deuxième année la plus chaude (2016).</li>
 </ul>
 <p>Après 1997/98, il était le 6e plus chaud. Deux des neuf épisodes du tableau ont été suivis d'une saison chaude plus fraîche que la tendance : 1992, après l'éruption du Pinatubo, et 2003.</p>
 '''
 
 heat_after_html = '''
-<p>L'El Niño actuel, qui approche de son pic, est plus fort que celui de 2023/24 : un mars–mai 2027 plus chaud que la normale est donc l'issue la plus probable. Il surviendrait en fin de saison sèche, quand l'eau est la plus rare et que la soudure commence. 2026 a déjà été chaud : juillet et août ont dépassé de 1,3 à 1,5 °C leurs moyennes 1991–2020. Les prévisions saisonnières couvriront mars–mai 2027 à partir de leurs éditions de novembre–décembre.</p>
+<p>L'El Niño actuel, qui approche de son pic, est plus fort que celui de 2023/24 : un mars–mai 2027 plus chaud que la normale est donc l'issue la plus probable. Il surviendrait en fin de saison sèche, quand l'eau est la plus rare et que la soudure commence. 2026 a déjà été chaud : juillet et août ont dépassé de 1,3 à 1,5 °C leurs moyennes 1991–2020. Les prévisions saisonnières couvriront mars–mai 2027 à partir des prévisions émises en novembre–décembre.</p>
 '''
 
 food_html = '''
 <p>L'insécurité alimentaire dans l'Extrême-Nord est élevée et en hausse, et son principal moteur est le conflit dans le bassin du lac Tchad, pas le climat. Le nombre de personnes en phase 3 ou pire au moment des récoltes (octobre–décembre) est passé de 0,72 million en 2021 à 0,86 million en 2025. Les analyses d'octobre/novembre ont projeté chaque soudure suivante à un niveau plus élevé : 0,90 million (2022), 0,96 million (2023), 0,99 million (2024), 1,06 million (2025) et 1,16 million (2026). Cette dernière projection, d'octobre 2025, est l'analyse la plus récente dans les données HDX/HAPI : 1,16 million de personnes (23 %) en phase 3+ pour juin–août 2026, dont 170 000 en phase 4. Nous n'avons trouvé aucune mise à jour de mars 2026.</p>
-<p>La récolte 2026 n'apparaît donc encore dans aucun chiffre du Cadre Harmonisé. Le cycle d'octobre–novembre 2026 sera le premier à en tenir compte, et sa projection pour juin–août 2027 est celle qui compte ici. La série est trop courte (depuis 2020) pour montrer à elle seule un effet d'El Niño sur le Cadre Harmonisé. En 2015, le SMIAR (GIEWS) attribuait la baisse de production dans l'Extrême-Nord à des « pluies irrégulières et à l'insécurité civile ». En 2023, il signalait des pluies inférieures à la moyenne ayant affecté les rendements « dans des zones localisées ».</p>
+<p>La récolte 2026 n'apparaît donc encore dans aucun chiffre du Cadre Harmonisé. Le cycle d'octobre–novembre 2026 sera le premier à en tenir compte, et sa projection pour juin–août 2027 est celle qui compte ici. La série est trop courte (depuis 2020) pour montrer à elle seule un effet d'El Niño sur le Cadre Harmonisé. En 2015, le SMIAR (GIEWS) attribuait la baisse de production dans l'Extrême-Nord à des « pluies irrégulières » et à l'« insécurité civile ». En 2023, il signalait des pluies inférieures à la moyenne ayant affecté les rendements « dans des zones localisées ».</p>
 '''
 
 food_after_html = '''
@@ -114,7 +114,7 @@ next_html = '''
 '''
 
 skill_html = '''
-<p>Les prévisions SEAS5 du CEPMMT pour les pluies de juillet–septembre sur l'Extrême-Nord ont une faible compétence jusqu'à l'édition de juin. Une prévision émise en avril ou en mai, quand se prennent les décisions de semis, est un guide peu fiable. Le forum régional PRESASS (avril–mai) et les mises à jour de juin–juillet sont les premiers signaux utiles pour 2027.</p>
+<p>Les prévisions SEAS5 du CEPMMT (ECMWF) pour les pluies de juillet–septembre sur l'Extrême-Nord ont une faible performance jusqu'à la prévision émise en juin. Une prévision émise en avril ou en mai, quand se prennent les décisions de semis, est un guide peu fiable. Le forum régional PRESASS (avril–mai) et les mises à jour de juin–juillet sont les premiers signaux utiles pour 2027.</p>
 '''
 
 [assessment]
@@ -139,7 +139,7 @@ watch = "8. Ce qu'il faut suivre, et quand"
 [[cards]]
 label = "El Niño et les pluies"
 big = "Risque sec accru, modéré"
-note_html = "5 à 7 des 9 saisons El Niño depuis 1981 dans le tiers le plus sec, au plus 1 dans le plus humide ; r ≈ −0,3 dans les relevés de stations."
+note_html = "5 à 7 des 9 saisons El Niño depuis 1981 dans le tiers le plus sec, au plus 1 dans le plus humide ; r ≈ −0,3 dans les produits calés sur les stations (GPCC, CHIRPS)."
 [[cards]]
 label = "La saison 2026"
 big = "Tardive, inégale, nord plus sec"
@@ -192,11 +192,11 @@ why_html = "Révise la projection de soudure à la lumière de la saison sèche.
 [[watch]]
 when = "Avril–mai 2027"
 what_html = "PRESASS 2027 (forum régional de prévision saisonnière)"
-why_html = "Première prévision consensuelle pour les pluies de 2027 ; compétence encore faible à cette échéance."
+why_html = "Première prévision consensuelle pour les pluies de 2027 ; performance encore faible à cette échéance."
 [[watch]]
 when = "Juin–juillet 2027"
-what_html = "Éditions de juin et juillet de SEAS5 ; état de l'ENSO en été"
-why_html = "Premières prévisions avec une compétence modérée pour juillet–septembre sur l'Extrême-Nord."
+what_html = "Prévisions SEAS5 émises en juin et juillet ; état de l'ENSO en été"
+why_html = "Premières prévisions avec une performance modérée pour juillet–septembre sur l'Extrême-Nord."
 
 [[sections_after]]
 title = "Données et méthodes"
@@ -210,12 +210,12 @@ html = '''
 <li><strong>IMERG</strong> (late run v7) et <strong>ERA5</strong> : moyennes par unité administrative tirées de la base de données de l'équipe (ds-raster-stats).</li>
 </ul></p>
 <p><strong>Saison et périodes de référence.</strong> Le cumul de la saison des pluies porte sur juin–septembre. La relation avec l'ENSO porte sur 1981–2025 (IMERG 2001–2025), tendance retirée avant le calcul des tiers. Les comparaisons 2026 utilisent une même période de référence pour tous les produits, 2001–2025, fixée par le début d'IMERG.</p>
-<p><strong>ENSO.</strong> Niño3.4 de la NOAA PSL, base ERSST v5 : la série figée de l'enquête, qui s'arrête en juin 2026. El Niño : ≥ +0,5 °C ; La Niña : ≤ −0,5 °C, en moyenne sur juillet–septembre. Pour 2026, l'ONI officiel du CPC. Les chiffres de prévision proviennent du CPC de la NOAA (discussion de septembre 2026 et perspectives de l'indice relatif) et de l'IRI (septembre 2026).</p>
+<p><strong>ENSO.</strong> Niño3.4 de la NOAA PSL, base ERSST v5 : la série figée de la synthèse mondiale, qui s'arrête en juin 2026. El Niño : ≥ +0,5 °C ; La Niña : ≤ −0,5 °C, en moyenne sur juillet–septembre. Pour 2026, l'ONI officiel du CPC. Les chiffres de prévision proviennent du CPC de la NOAA (discussion de septembre 2026 et perspectives de l'indice relatif) et de l'IRI (septembre 2026).</p>
 <p><strong>Végétation.</strong> Indicateurs décadaires du JRC ASAP par région (zFPARc et SPI-3 sur les cultures), comme dans ds-asap-trends.</p>
 <p><strong>Inondations.</strong> AER FloodScan SFED, part journalière de chaque unité détectée comme inondée, 1998–2026, tirée de la base de données de l'équipe. FloodScan ne détecte que les étendues d'eau assez grandes.</p>
 <p><strong>Température.</strong> Température mensuelle moyenne à 2 m d'ERA5 (CDS), moyenne des mailles de 0,25° qui touchent la région.</p>
 <p><strong>Sécurité alimentaire.</strong> Résultats du Cadre Harmonisé via HDX/HAPI (copie IPC de l'équipe).</p>
-<p><strong>Compétence des prévisions.</strong> Compétence de SEAS5 d'après le cube seas5-skill de l'équipe : moyenne d'ensemble comparée à ERA5, 1981–2025, tendance retirée.</p>
+<p><strong>Performance des prévisions.</strong> Performance (skill) de SEAS5 d'après le cube seas5-skill de l'équipe : moyenne d'ensemble comparée à ERA5, 1981–2025, tendance retirée.</p>
 <p><strong>Rapports externes</strong> (FEWS NET, PREGEC, AGRHYMET, notes ASAP, SMIAR, ONACC, NOAA, IRI) cités tels que publiés ; nous n'avons pas vu les données du MINADER ni de la DNM.</p>
 <p><strong>Traduction.</strong> Cette page est la version française de la page anglaise, produite à partir des mêmes calculs. Les citations de sources anglophones (FEWS NET, SMIAR, notes ASAP) sont traduites par nos soins ; les titres des références sont laissés dans leur langue d'origine.</p>
 '''
