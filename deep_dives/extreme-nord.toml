@@ -1,0 +1,254 @@
+# Cameroon, Extrême-Nord — ENSO deep dive. Built by extreme_nord_deep_dive.py (builder = "extreme_nord"),
+# not the generic analyse(): one admin-1 region, and the question is what the 2026 El Niño has done and
+# what is left (the 2026 season, the Logone floods, the 2027 hot season, the 2027 rains).
+# Figures and tables are recomputed on every run; the narrative here must be reconciled against the
+# numbers the build prints (report()) after every rebuild. External facts are from public sources only.
+iso3 = "CMR"
+name = "Cameroon: Extrême-Nord"
+page_title = "El Niño and Extrême-Nord"
+builder = "extreme_nord"
+subtitle = "What the 2026 El Niño has done to Cameroon's Far North, what it may still do, and how far each record can be trusted"
+
+summary_html = '''
+<p><strong>1. El Niño tilts the odds towards a dry rainy season here, without deciding it.</strong> Of the nine El Niño seasons since 1981, five to seven (depending on the record) fell in the driest third of June–September totals, and at most one in the wettest. That roughly doubles the chance of a dry season, from one in three to about two in three. In the gauge-based records the correlation is about −0.3, so El Niño explains a tenth of the year-to-year variation. Strong events have differed: 1987 and 1997 were dry, 2015 was near normal in the gauge-based records.</p>
+<p><strong>2. The 2026 season was late and patchy, and drier in the north. The records disagree on how dry.</strong> For June–August 2026, the five rainfall products range from 46% to 109% of their 2001–2025 means. IMERG makes it the driest since 2001, and FEWS NET puts June–September 20–50% below average in Logone-et-Chari. CHIRPS puts the region near normal. Crop biomass fell behind in June and was back to normal by mid-September. The satellite and reanalysis products all show a dry May, and IMERG, the only one that already covers September, shows a dry finish. No gauge inside Extrême-Nord has reported to the international archives in 2025 or 2026, so national station data are the only way to settle the question.</p>
+<p><strong>3. Floods do not follow El Niño here.</strong> The largest flood years since 1998 (2024, 2010, 2022, 2019) were neutral or La Niña. To 30 September, 2026 had the smallest flooded area in the FloodScan record. But 26 mm of rain fell across the region on 29 September, and the Logone's high water normally comes in October–November.</p>
+<p><strong>4. The clearest El Niño effect still to come is heat.</strong> March–May temperature in Extrême-Nord tracks the El Niño of the winter before (r = +0.51). After the 2023/24 El Niño came the hottest March–May on record. The El Niño now peaking is stronger, so a hotter-than-normal March–May 2027 is likely. That is the hot season just before the lean season.</p>
+<p><strong>5. For the 2027 rains, the El Niño gives no guidance.</strong> In the past, the season after a strong El Niño has ranged from very dry (1983) to very wet (2024, the wettest in the gauge record). What matters is the ENSO state during July–September 2027, which no forecast reaches yet. Seasonal forecasts for those months gain useful skill only from the June 2027 issuance.</p>
+'''
+
+forecast_html = '''
+<p><strong>The event.</strong> NOAA's official Oceanic Niño Index for June–August 2026 is +1.8 °C, the highest June–August value since the record starts in 1950, above 1997 (+1.5) and 2015 (+1.4). So 2026 is a stronger summer El Niño than any of the analogues below. NOAA's September outlook gives El Niño 100% odds through January–March 2027, with a peak in October–December at a median of +2.67 °C on its relative index. It then weakens: El Niño 82% for March–May, and neutral favoured (55%) for April–June 2027. La Niña stays at 3% or less in every outlook through May–July 2027. IRI's outlook, on the traditional index, keeps El Niño more likely than not into May–July (61%). Both agree on one thing: no published ENSO forecast reaches the 2027 rainy season.</p>
+<p><strong>Where the calendar stands.</strong> Extrême-Nord gets its rain from May to October, most of it in July–September, with the peak in August. The 2026 rains, the part of the year El Niño acts on most directly, are over. What remains is:</p>
+<ul>
+<li>the harvest of rain-fed cereals (September–November);</li>
+<li>the high water of the Logone (October–November in Logone-et-Chari);</li>
+<li>the dry-season sorghum (muskuwaari) grown on the clay plains on residual moisture;</li>
+<li>the hot season (March–May);</li>
+<li>the lean season (June–August 2027), which is the window the Cadre Harmonisé projects to.</li>
+</ul>
+'''
+
+enso_html = '''
+<p>Northern Cameroon belongs to the Sahel's monsoon regime, where El Niño is associated with a weaker West African monsoon and less July–September rain. The link is well documented for the Sahel as a whole. It strengthened after about 1970 (Janicot et al. 1996; Losada et al. 2012) and is modest in size: ENSO explains about a tenth of Sahel rainfall variance, less than Atlantic and Mediterranean sea temperatures (Diatta &amp; Fink 2014). The survey's catalogue grades Cameroon as "moderate, El Niño drier, June–September". This section tests that for Extrême-Nord alone, in five records.</p>
+<p>The result is consistent across records in direction and in its effect on the odds, but not in strength. In every record, El Niño seasons cluster in the driest third and almost never reach the wettest. Detrended correlations are −0.23 to −0.36, except ERA5's −0.47.</p>
+<p>ERA5 needs a flag. It has none of the recovery in Sahel rainfall since the 1980s that every gauge-based and satellite record shows: about −1 mm per decade, against +30 to +38. It also gives 2026 a deficit that neither the vegetation nor CHIRPS supports (section 3). The same pattern, a spurious drying over central Africa, has been found in ERA5 over the Central African Republic. Read ERA5's stronger correlation as an upper bound.</p>
+'''
+
+enso_after_table_html = '''
+<p>For 1950–2025, GPCC (the only gauge analysis long enough) gives a detrended correlation of −0.26: 7 of 13 El Niño seasons in the driest third and 2 in the wettest. The correlation was weaker in 1950–1980 (−0.19, four El Niño seasons, not significant) than in 1981–2025 (−0.30), as the Sahel literature would predict.</p>
+'''
+
+strong_html = '''
+<p>Four seasons since 1950 had July–September Niño3.4 of +1.3 °C or more. On CPC's June–August ONI, the one index available for 2026 so far, none reached 2026's +1.8 (1997: +1.5, 2015: +1.4). 1987 and 1997 were among the driest seasons in the gauge-based records. 2015 was close to the median in GPCC and CHIRPS (ERA5: 22nd percentile). In 2023 the records split: IMERG has it in its driest tenth, CHIRPS above the median.</p>
+'''
+
+gauges_html = '''
+<p>Every record on this page leans on gauges, and here the gauges have thinned out. GPCC's cells over the region held six to nine gauges a month in the rainy season from the 1950s to the 1980s and about five in the 1990s. That dropped to one or two until 2004, and none in the rainy months since (a single gauge in 2020 reported only in the dry season). Before 1927 there were none at all, and GPCC's values for 1891–1903 are its climatology repeated.</p>
+<p>The Maroua-Salak synoptic station does appear in NOAA's daily archive (GSOD) in most years up to 2024, but patchily: 360 days in 2020, 129 in 2024. Nothing appears for 2025 or 2026. So the 2026 gauge input to GPCC and CHIRPS comes from Chad and Nigeria, which explains part of the disagreement. It also means the records of Cameroon's national meteorological service (DNM) and ONACC are worth more than any further satellite comparison.</p>
+'''
+
+season_html = '''
+<p>Five products, one season, and a spread from 46% to 109% of normal for June–August. What they share:</p>
+<ul>
+<li>May was dry in all four satellite and reanalysis products (22–78%), so the start was late. GPCC, which has no gauge in the region, has May near normal.</li>
+<li>Rain fell off again in September. IMERG, the only product that covers it so far, has 80%, and ASAP's 3-month index was the fifth lowest since 1989 for mid-September.</li>
+</ul>
+<p>They disagree on July and August. CHIRPS has them close to normal. IMERG has them at 62–71%, which makes June–September its driest since 2001 for the region and for three of the six departments (Logone-et-Chari, Mayo-Danay and Mayo-Kani). ERA5 is lower still, at 46%, but its record has the problems set out in section 2.</p>
+'''
+
+depts_html = '''
+<p>CHIRPS v3 puts every department within 6% of normal for June–August. IMERG puts every department below normal, from 63% (Logone-et-Chari) to 81% (Mayo-Sava). The IMERG ranking matches FEWS NET's field-based assessment, which singles out Logone-et-Chari (see below).</p>
+'''
+
+veg_html = '''
+<p>Vegetation is measured from space, independently of any rainfall product. On cropland, biomass in Extrême-Nord was below normal from May through August, lowest in mid-May (z-score −0.8) and in July (about −0.3). It never reached ASAP's warning threshold, and it recovered to the median by mid-September (−0.02, 13th of 26 seasons). That is not the profile of 2015, when cropland biomass stayed below the threshold from June to September.</p>
+<p>Across 2001–2025, end-of-season biomass is only weakly related to El Niño (r = −0.21, not significant). Three of the five El Niño years were below normal (2002, 2009, 2015) and two above (2004, 2023). ASAP's 3-month rainfall index, which is driven by a CHIRPS-type estimate, ran positive through August and turned negative in September.</p>
+'''
+
+reports_html = '''
+<ul>
+<li><strong>PREGEC (regional pre-harvest assessment, CILSS), September 2026.</strong> It describes a season "influenced by El Niño", with rainfall close to normal to below normal and long dry spells across the Sahel, West Africa and Cameroon. Lake Chad basin levels were below 2025, which it calls a surplus year.</li>
+<li><strong>FEWS NET Key Message Update, September 2026.</strong> June–September rainfall was 20 to 50 percent below average in Logone-et-Chari, and a below-average harvest is expected. It classifies Mayo-Sava, Mayo-Tsanaga and Logone-et-Chari as Crisis (IPC Phase 3) through September.</li>
+<li><strong>AGRHYMET, August 2026 bulletin.</strong> The Logone at Bongor was 21% below August 2025 and the Chari at N'Djamena 35% below.</li>
+<li><strong>JRC ASAP country notes.</strong> In June, about 70% of Extrême-Nord's cropland had a negative greenness anomaly (a delayed start). By August, northern crops were "close to average". Cameroon was not flagged as a hotspot in 2026.</li>
+</ul>
+<p>Taken together: below normal in parts and late, with the deficit concentrated in the north, but not a region-wide failure. The harvest assessments of the agriculture ministry (MINADER) and the Cadre Harmonisé cycle of October–November 2026 will say what it did to production.</p>
+'''
+
+floods_html = '''
+<p>Floods are the hazard that has brought the large humanitarian responses here. In 2024, OCHA counted 198,000 people affected in Mayo-Danay and 156,000 in Logone-et-Chari by early October, and IFRC more than 500,000 across the region. In the FloodScan record since 1998, the flood season of 2026 has been small so far. Logone-et-Chari's flooded share has been below its median on almost every day since August. The region as a whole has its smallest peak to 30 September in 29 years.</p>
+<p>It is not over. On 29 September, IMERG put 26 mm over the region (31–35 mm in Diamaré, Mayo-Danay and Logone-et-Chari), the second-wettest day of 2026, and flooded area jumped the next day. ONACC's dekadal bulletin for 1–10 October names floods as the main national risk. Logone-et-Chari's high water normally comes in October–November.</p>
+'''
+
+floods_after_html = '''
+<p>Flood years do not follow ENSO here. Across 1998–2025, the correlation between the region's peak flooded share and July–September Niño3.4 is {r} (p = {p}, n = {n}). The five largest flood years were {top}. 2024, the largest, was neutral. The Logone's floods depend on rain over its whole basin in Cameroon, Chad and the Central African Republic, and on local storms, not only on the season's total at home.</p>
+<p>A weak flood has costs of its own. The floodplains of the Logone (the yaérés) carry dry-season pasture, fishing and flood-recession cropping. In the great drought of 1972–73, flows were too low to flood the Chad plain at all (Suchel 1983). FEWS NET and PREGEC report lower Logone and Chari flows in 2026 than in 2025. Whether that matters this year depends on October–November, and on assessments we have not seen.</p>
+'''
+
+heat_html = '''
+<p>Temperature is where El Niño's effect on Extrême-Nord is clearest. The tropical atmosphere warms for several months after an El Niño peaks, and the region's hot season (March–May, mean temperatures above 31 °C) falls in that window. With the warming trend removed (+0.38 °C per decade), March–May temperature correlates with the previous November–January Niño3.4 at r = +0.51 (p &lt; 0.001, 46 years, ERA5). ERA5's temperature does not have the problems of its rainfall: its temperatures assimilate surface observations and are generally reliable at this scale.</p>
+<p>After each of the last three strong El Niños, March–May was among the four hottest of the 46 years (trend removed):</p>
+<ul>
+<li>2009/10: 3rd hottest.</li>
+<li>2015/16: 4th hottest.</li>
+<li>2023/24: the hottest. With the trend left in, March–May 2024 averaged 34.5 °C, 1.3 °C above the next-hottest year (2016).</li>
+</ul>
+<p>After 1997/98 it was the 6th hottest. Two of the nine events in the table were followed by springs cooler than the trend: 1992, after the Pinatubo eruption, and 2003.</p>
+'''
+
+heat_after_html = '''
+<p>The El Niño now peaking is stronger than 2023/24, so a hotter-than-normal March–May 2027 is the most likely outcome. It would come at the end of the dry season, when water is shortest and the lean season is starting. 2026 has already been warm: July and August were 1.3–1.5 °C above their 1991–2020 means. Seasonal forecasts will cover March–May 2027 from their November–December issuances.</p>
+'''
+
+food_html = '''
+<p>Food insecurity in Extrême-Nord is high and rising, and its main driver is the conflict in the Lake Chad basin, not the weather. The number of people in Phase 3 or worse at harvest time (October–December) went from 0.72 million in 2021 to 0.86 million in 2025. The October/November analyses projected each following lean season higher: 0.90 million (2022), 0.96 million (2023), 0.99 million (2024), 1.06 million (2025) and 1.16 million (2026). That last projection, from October 2025, is the latest analysis in the HDX/HAPI record: 1.16 million people (23%) in Phase 3+ for June–August 2026, 170,000 of them in Phase 4. We found no March 2026 update.</p>
+<p>The 2026 harvest is therefore not in any Cadre Harmonisé figure yet. The October–November 2026 cycle will be the first to reflect it, and its projection for June–August 2027 is the one that matters here. The record is too short (since 2020) to show an El Niño effect on the Cadre Harmonisé on its own terms. In 2015, GIEWS attributed reduced Far North production to "erratic rainfall and civil insecurity". In 2023, it reported below-average rainfall hurting yields "in localized areas".</p>
+'''
+
+food_after_html = '''
+<p>What El Niño adds to this is a harvest shock in the departments already worst off. FEWS NET's September 2026 assessment expects a below-average harvest, and places Logone-et-Chari, Mayo-Sava and Mayo-Tsanaga in Crisis. Those are the three departments with the highest projected Phase 3+ shares in the table above. Rainfall in Sudano-Sahelian Cameroon matters for yields mostly through the end of the season and dry spells (Nenwala et al. 2025), which are the two features of 2026 that every record agrees on.</p>
+'''
+
+next_html = '''
+<p>The season after a strong El Niño has no consistent character here. The table below lists every season since 1950 that followed a winter with Niño3.4 of +1.0 °C or more. Some were very dry: 1983, in the middle of the Sahel drought, and 1987, when El Niño persisted for a second year. Others were wet, up to 2024: the wettest season in GPCC and the third-wettest in CHIRPS and ERA5, followed by the record floods. What matters is the ENSO state during the 2027 season itself, and the Atlantic and Mediterranean sea temperatures that the literature finds matter as much.</p>
+<p>The current outlooks point to a decaying El Niño by mid-2027 and almost no chance of La Niña by May–July. That leaves the July–September 2027 state open. If El Niño lingered, the odds would tilt dry again, as in 1987. If the Pacific turned cool, they would tilt wet and towards flooding.</p>
+'''
+
+skill_html = '''
+<p>ECMWF's SEAS5 forecasts for July–September rainfall over Extrême-Nord have low skill until the June issuance. A forecast made in April or May, when planting decisions are taken, is a weak guide. The regional forum PRESASS (April–May) and the June–July updates are the earliest useful signals for 2027.</p>
+'''
+
+[catalogue]
+evidence = "moderate"
+
+[assessment]
+direction = "drier, Jun–Sep"
+season = "Jun–Sep; hot season after El Niño"
+evidence = "moderate"
+one_line = "A strong El Niño has made a dry rainy season about twice as likely here; 2026 was late, patchy and drier in the north, but the records disagree on how dry. Floods do not follow El Niño. A hot March–May 2027 is the clearest effect still to come."
+
+[titles]
+forecast = "1. Where things stand"
+enso = "2. How much El Niño matters for the rains"
+strong = "Strong El Niño seasons"
+gauges = "The rain gauges behind the records"
+season = "3. What the 2026 season delivered"
+depts = "By department"
+veg = "What the vegetation shows"
+reports = "What regional and field reports say"
+floods = "4. Floods"
+heat = "5. The hot season after El Niño"
+food = "6. Food security"
+next = "7. The 2027 rains"
+skill = "When seasonal forecasts start to help"
+watch = "8. What to watch, and when"
+
+[[cards]]
+label = "El Niño and the rains"
+big = "Drier odds, moderate"
+note_html = "5–7 of 9 El Niño seasons since 1981 in the driest third, at most 1 in the wettest; r ≈ −0.3 in gauge-based records."
+[[cards]]
+label = "The 2026 season"
+big = "Late, patchy, drier north"
+note_html = "June–August from 46% to 109% of normal depending on the product; a late start, a dry September and a deficit in the north."
+[[cards]]
+label = "Floods"
+big = "No ENSO link"
+note_html = "Big flood years were neutral or La Niña. 2026: smallest flooded area to 30 September since 1998; Oct–Nov still ahead."
+[[cards]]
+label = "March–May 2027"
+big = "Likely hotter"
+note_html = "Hot-season temperature tracks the previous winter's El Niño (r = +0.51); March–May 2024 was the hottest on record."
+
+[product_notes]
+"GPCC" = "Gauge analysis (NOAA PSL combined product); the record ends in December 2025."
+"CHIRPS v3" = "Satellite infrared blended with gauges; CHC, monthly."
+"CHIRPS v2" = "The previous CHIRPS version, still produced (IRI Data Library)."
+"IMERG" = "Satellite microwave and infrared, late run (no gauge adjustment); daily."
+"ERA5" = "Reanalysis (no rain gauges assimilated); flagged in section 2."
+"GPCC first guess" = "Gauge analysis from the first gauge reports of the month (DWD)."
+"GPCC monitoring" = "GPCC's later monitoring product, with more gauges (DWD); to July so far."
+
+[strong_notes]
+"1987" = "A government drought inventory lists food and water shortages in Logone-et-Chari, Mora and Maroua in early 1987, before that season's rains; we found no report on the season itself."
+"1997" = "Driest of the four in GPCC; no 1997 impact report found."
+"2015" = "GIEWS: reduced Far North production from erratic rainfall and civil insecurity."
+"2023" = "GIEWS: below-average rainfall hurt yields in localised areas of the Far North."
+
+[[watch]]
+when = "8 October, 12 November, 10 December 2026"
+what_html = "NOAA CPC ENSO outlook"
+why_html = "Peak strength and the timing of the decay; the first outlooks to reach June–August 2027 arrive in early 2027."
+[[watch]]
+when = "October–November 2026"
+what_html = "Logone high water; ONACC dekadal bulletins"
+why_html = "The flood peak in Logone-et-Chari usually falls here; the late-September rains have restarted flooding."
+[[watch]]
+when = "October–November 2026"
+what_html = "Cadre Harmonisé national cycle; MINADER harvest results; PREGEC validation (late November)"
+why_html = "The first food-security numbers to reflect the 2026 harvest, and the first projection for the June–August 2027 lean season."
+[[watch]]
+when = "November–December 2026"
+what_html = "Seasonal forecasts (C3S, SEAS5) reaching March–May 2027"
+why_html = "Temperature outlook for the hot season, where the El Niño signal is strongest."
+[[watch]]
+when = "March 2027"
+what_html = "Cadre Harmonisé update"
+why_html = "Revises the lean-season projection with the dry-season picture."
+[[watch]]
+when = "April–May 2027"
+what_html = "PRESASS 2027 (regional seasonal forecast forum)"
+why_html = "The first consensus outlook for the 2027 rains; still low skill at that lead."
+[[watch]]
+when = "June–July 2027"
+what_html = "SEAS5 June and July issuances; the ENSO state in summer"
+why_html = "The first forecasts with moderate skill for July–September over Extrême-Nord."
+
+[[sections_after]]
+title = "Data and methods"
+html = '''
+<p><strong>Region.</strong> Extrême-Nord as the CODAB admin-1 polygon (CM004); departments from CODAB admin-2.</p>
+<p><strong>Rainfall.</strong>
+<ul>
+<li><strong>GPCC</strong>, 1°, NOAA PSL combined product: Full Data v2020 to 2019, then Monitoring. Area-weighted over the region. The 2026 first guess and monitoring products are from DWD, and gauge counts from Full Data v2022.</li>
+<li><strong>CHIRPS v3</strong>: CHC Africa monthly files, read in windows over the region.</li>
+<li><strong>CHIRPS v2</strong>: IRI Data Library.</li>
+<li><strong>IMERG</strong> (late run v7) and <strong>ERA5</strong>: admin-level means from the team's database (ds-raster-stats).</li>
+</ul></p>
+<p><strong>Season and baselines.</strong> The rainy-season total is June–September. The ENSO relationship uses 1981–2025 (IMERG 2001–2025), detrended before taking thirds. The 2026 comparisons use one baseline for all products, 2001–2025, set by IMERG's start.</p>
+<p><strong>ENSO.</strong> Niño3.4 from NOAA PSL on the ERSST v5 basis: the survey's pinned series, which ends in June 2026. El Niño is ≥ +0.5 °C and La Niña ≤ −0.5 °C, averaged over July–September. For 2026, CPC's official ONI. The forecast figures are from NOAA CPC (September 2026 discussion and relative-index outlook) and IRI (September 2026).</p>
+<p><strong>Vegetation.</strong> JRC ASAP per-region dekadal indicators (zFPARc and SPI-3 on cropland), as in ds-asap-trends.</p>
+<p><strong>Floods.</strong> AER FloodScan SFED, daily share of each unit flagged as flooded, 1998–2026, from the team's database. FloodScan sees larger standing water only.</p>
+<p><strong>Temperature.</strong> ERA5 monthly-mean 2 m temperature (CDS), mean of the 0.25° cells touching the region.</p>
+<p><strong>Food security.</strong> Cadre Harmonisé results via HDX/HAPI (the team's IPC mirror).</p>
+<p><strong>Forecast skill.</strong> SEAS5 skill from the team's seas5-skill cube: ensemble mean against ERA5, 1981–2025, detrended.</p>
+<p><strong>External reports</strong> (FEWS NET, PREGEC, AGRHYMET, ASAP notes, GIEWS, ONACC, NOAA, IRI) are cited as published; we have not seen MINADER or DNM data.</p>
+'''
+
+[[references]]
+html = "Diatta, S. &amp; Fink, A. H. (2014). Statistical relationship between remote climate indices and West African monsoon variability. <em>International Journal of Climatology</em> 34, 3348–3367. <a href=\"https://doi.org/10.1002/joc.3912\">doi:10.1002/joc.3912</a>"
+[[references]]
+html = "Giannini, A., Saravanan, R. &amp; Chang, P. (2003). Oceanic forcing of Sahel rainfall on interannual to interdecadal time scales. <em>Science</em> 302, 1027–1030. <a href=\"https://doi.org/10.1126/science.1089357\">doi:10.1126/science.1089357</a>"
+[[references]]
+html = "Janicot, S., Moron, V. &amp; Fontaine, B. (1996). Sahel droughts and ENSO dynamics. <em>Geophysical Research Letters</em> 23, 515–518. <a href=\"https://doi.org/10.1029/96GL00246\">doi:10.1029/96GL00246</a>"
+[[references]]
+html = "Losada, T., Rodríguez-Fonseca, B., Mohino, E., Bader, J., Janicot, S. &amp; Mechoso, C. R. (2012). Tropical SST and Sahel rainfall: a non-stationary relationship. <em>Geophysical Research Letters</em> 39, L12705. <a href=\"https://doi.org/10.1029/2012GL052423\">doi:10.1029/2012GL052423</a>"
+[[references]]
+html = "Rowell, D. P. (2001). Teleconnections between the tropical Pacific and the Sahel. <em>Quarterly Journal of the Royal Meteorological Society</em> 127, 1683–1706. <a href=\"https://doi.org/10.1002/qj.49712757512\">doi:10.1002/qj.49712757512</a>"
+[[references]]
+html = "Nenwala et al. (2025). Rainfall onset, cessation and dry spells and crop yields in Sudano-Sahelian Cameroon. <em>Theoretical and Applied Climatology</em>. <a href=\"https://doi.org/10.1007/s00704-025-05603-y\">doi:10.1007/s00704-025-05603-y</a>"
+[[references]]
+html = "Suchel, J.-B. (1983). La sécheresse de 1972-73 dans le Nord-Cameroun. <em>Hommes et Terres du Nord</em>. <a href=\"https://www.persee.fr/doc/htn_0018-439x_1983_num_3_1_1881\">Persée</a>"
+[[references]]
+html = "FEWS NET (2026). Cameroon Key Message Update, September 2026. <a href=\"https://fews.net/west-africa/cameroon/key-message-update/september-2026\">fews.net</a>"
+[[references]]
+html = "CILSS/AGRHYMET (2026). PREGEC press release, September 2026; monthly bulletin, August 2026. <a href=\"https://agrhymet.cilss.int/wp-content/uploads/2026/09/PRESS-RELEASE-PREGEC-SEPTEMBER-2026-ON-LINE.pdf\">PREGEC</a>, <a href=\"https://agrhymet.cilss.int/wp-content/uploads/2026/09/bulletin-mensuel_Aout2026.pdf\">bulletin</a>"
+[[references]]
+html = "NOAA CPC (2026). ENSO diagnostic discussion, September 2026, and relative Niño3.4 outlook. <a href=\"https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_disc_sep2026/ensodisc.shtml\">cpc.ncep.noaa.gov</a>"
+[[references]]
+html = "IRI (2026). ENSO forecast, September 2026 quick look. <a href=\"https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/\">iri.columbia.edu</a>"
+[[references]]
+html = "FAO GIEWS. Country briefs, Cameroon (archive). <a href=\"https://www.fao.org/giews/countrybrief/country/CMR/pdf_archive/CMR_Archive.pdf\">fao.org</a>"
+[[references]]
+html = "OCHA (2024). Cameroon: floods, Extrême-Nord, 2024 (ReliefWeb disaster page). <a href=\"https://reliefweb.int/disaster/fl-2024-000162-cmr\">reliefweb.int</a>"

@@ -1852,6 +1852,11 @@ def main() -> None:
             import gaza_deep_dive
             gaza_deep_dive.build(spec, grid, gdf, indices)
             continue
+        if spec.get("builder") == "extreme_nord":
+            # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack
+            import extreme_nord_deep_dive
+            extreme_nord_deep_dive.build(spec, grid, gdf, indices)
+            continue
         a = analyse(spec, grid, gdf, indices, cfg, OUT_DIR / spec["slug"])
         (OUT_DIR / spec["slug"] / "index.html").write_text(render_country(spec, a, int(grid.years[-1])), encoding="utf-8")
         for s in a["summaries"]:
