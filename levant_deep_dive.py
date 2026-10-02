@@ -1,4 +1,4 @@
-"""Gaza and West Bank — ENSO deep dives (builder for deep_dives/gaza.toml and west-bank.toml).
+"""Gaza and the West Bank — ENSO deep dive (builder for deep_dives/gaza-west-bank.toml and its parts).
 
 The generic builder in enso_deep_dive.py works on a country's ERA5 cells and a drought framing.
 Gaza and the West Bank do not fit either: both are a handful of 0.25° ERA5 cells, and the winter
@@ -15,10 +15,10 @@ series' page chrome, SEAS5 skill figure and pixel correlation maps, and adds:
 * for the West Bank ([agri] in its TOML), crop years against rain and El Niño by agro-ecological zone
   (levant_agri.py: FAOSTAT, PCBS, NOAA STAR vegetation health, MODIS NDVI).
 
-What differs between the pages sits in each TOML's [area] table (Area dataclass; Gaza defaults).
+Both areas share one page, deep_dives/gaza-west-bank.toml (builder "levant-combined"); each area is a part,
+deep_dives/parts/<slug>.toml, whose [area] table overrides the Area dataclass (Gaza defaults).
 
-    uv run python levant_deep_dive.py gaza   # or: uv run python enso_deep_dive.py --only gaza
-    uv run python levant_deep_dive.py west-bank
+    uv run python levant_deep_dive.py gaza-west-bank   # or: uv run python enso_deep_dive.py --only gaza-west-bank
 
 Downloads are cached under the area's cache directory. CDS needs a key in ~/.cdsapirc (any ECMWF
 data store URL; the CDS endpoint is forced here); IMERG and the COD-AB need the team's blob credentials.
@@ -117,7 +117,7 @@ def set_area(spec: dict) -> None:
         if k in kw and kw[k] is not None:
             kw[k] = tuple(kw[k]) if kw[k] else None
     A = Area(**({"slug": spec["slug"]} | kw))
-    OUT = edd.OUT_DIR / A.slug
+    OUT = Path(spec["out_dir"]) if spec.get("out_dir") else edd.OUT_DIR / A.slug
     CACHE = Path(A.cache)
     SRC_LABEL.update({"GPCC": A.gpcc_label, "ERA5": A.era5_label, "IMERG": A.imerg_label, "gauge": A.gauge_label})
 
@@ -558,7 +558,11 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
                                    ln=float(by.get("La Niña", np.nan))))
 
     # 5. Grid: pixel correlation maps + El Niño wet composite over the southern Levant
-    c = region_country(grid, gaza, ne)
+    outline = gaza                                 # the maps outline this area, or every area of a combined page
+    if spec.get("map_outline"):
+        a1 = gpd.read_parquet(COD_CACHE / "pse_adm1.parquet")
+        outline = a1[a1.ADM1_PCODE.isin(spec["map_outline"])]
+    c = region_country(grid, outline, ne)
     gz_cells = gaza_cells(c, gaza)
     annual = sum(edd.season_stack(c, grid, edd.season_months(t))[0].mean(0) for t in ["DJF", "MAM", "JAS", "OND"])
 
@@ -585,7 +589,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     pct_ = (S.argsort(0).argsort(0) + 1) / S.shape[0]
     comp = Z[en].mean(0); hit = (pct_[en] > 2 / 3).mean(0)
     ok_wet = c.mask & (S.mean(0) >= ts.PIXEL_MIN_TRI_MM_DAY)
-    fig_wet_composite(c, comp, hit, ok_wet, int(en.sum()), int(sy.min()), int(sy.max()), OUT / "composite_maps.png")
+    fig_wet_composite(c, comp, hit, ok_wet, int(en.sum()), int(sy.min()), int(sy.max()), OUT / "composite_maps.png", spec.get("map_label"))
 
     # 6. SEAS5: skill + current forecast for the cells over Gaza
     gc = edd.Country(iso3="GAZ", geom=gaza.geometry, lat=c.lat, lon=c.lon, mask=gz_cells, sub=c.sub, neighbours=c.neighbours)
@@ -1194,7 +1198,7 @@ def fig_event_impacts(ev: pd.DataFrame, out: Path, storms_im: pd.DataFrame | Non
 
 
 def fig_wet_composite(c: edd.Country, comp: np.ndarray, hit: np.ndarray, ok: np.ndarray, n_en: int,
-                      y0: int, y1: int, out: Path) -> None:
+                      y0: int, y1: int, out: Path, label: str | None = None) -> None:
     fig, axes = plt.subplots(1, 2, figsize=(9.6, 5.2), dpi=150)
     fig.subplots_adjust(top=0.8, bottom=0.03, left=0.02, right=0.98, wspace=0.18)
     ext = edd._extent(c)
@@ -1211,7 +1215,7 @@ def fig_wet_composite(c: edd.Country, comp: np.ndarray, hit: np.ndarray, ok: np.
         cb = fig.colorbar(m, ax=ax, shrink=0.75, pad=0.02, fraction=0.05); cb.ax.tick_params(labelsize=8, colors=C_MUTED)
         cb.set_label(lab, fontsize=9, color=C_MUTED)
     fig.suptitle(f"Southern Levant: what El Niño (DJF Niño3.4 ≥ +{ENSO_THRESH}) did to the rainy season,\nper ERA5 cell, {y0}/{str(y0 + 1)[2:]}–{y1}/{str(y1 + 1)[2:]}; "
-                 f"{A.name} outlined; grey = too dry to analyse", fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
+                 f"{label or A.name} outlined; grey = too dry to analyse", fontsize=10, color=C_TEXT, x=0.01, ha="left", y=0.995, va="top")
     _save(fig, out)
 
 
@@ -1268,14 +1272,14 @@ def _round_to(v: float, step: int) -> str:
     return f"{int(round(v / step) * step):,}"
 
 
-def render_range(spec: dict, a: dict) -> str:
+def render_range(spec: dict, a: dict, heading: bool = True) -> str:
     """Section 5: how many storms a winter brings (IMERG), when the first damaging one comes, what one
     storm of each kind did last winter, and last winter as two reference points. No forecast totals."""
     st, ref, ev = a["st"], a.get("ref"), a.get("ev")
     T = spec.get("titles", {})
     row = {(r["src"], r["tier"], r["group"]): r for r in st["rows"]}
     fs = {(r["src"], r["group"]): r for r in st["first"]}
-    o = [f'<h2>{html.escape(T.get("range", "5. What this winter could bring"))}</h2>', spec.get("range_intro_html", "")]
+    o = ([f'<h2>{html.escape(T.get("range", "5. What this winter could bring"))}</h2>'] if heading else []) + [spec.get("range_intro_html", "")]
     # how many storms
     i10, i20, i50 = row[("IMERG", 10, "all")], row[("IMERG", 20, "all")], row[("IMERG", 50, "all")]
     e50, l50 = row[("IMERG", 50, "El Niño")], row[("IMERG", 50, "La Niña")]
@@ -1390,41 +1394,38 @@ def render_range(spec: dict, a: dict) -> str:
     return "\n".join(o)
 
 
-def render(spec: dict, a: dict) -> str:
+def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[str]]:
+    """The page in named blocks (lists of HTML chunks), without the section headings, so a page can be
+    assembled for one area (render) or interleaved with another area's (render_combined)."""
     ours, cat = spec["assessment"], spec["catalogue"]
     T = lambda k, d: html.escape(spec.get("titles", {}).get(k, d))
-    o = [edd.HEAD.format(title=f"{A.name} — ENSO deep dive", desc=html.escape(ours["one_line"]), css=edd.CSS,
-                         home="../", home_label="ENSO country deep dives")]
-    o.append(f'<p class="eyebrow">ENSO country deep dive</p><h1>{html.escape(A.name)}</h1>')
-    o.append(f'<p class="meta">{html.escape(spec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{a["end_era5"]:%Y}, '
-             f'IMERG 1998–{a["end_imerg"]:%Y}, {A.meta_gauge} &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
+    B: dict[str, list[str]] = {k: [] for k in ['verdict', 'summary', 'before', 'forecast_lead', 'forecast_text', 'forecast_area', 'enso', 'daily', 'impacts', 'range', 'agri', 'after', 'refs']}
     # verdict
-    o.append('<div class="verdict">')
-    o.append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
+    B["verdict"].append('<div class="verdict">')
+    B["verdict"].append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
              f'<p>{edd.chip(cat["evidence"])} <span class="small">source: {cat["source_html"]}</span></p></div>')
-    o.append(f'<div class="card"><p class="lbl">This review assesses</p><p class="big">El Niño → {html.escape(ours["direction"])}, {html.escape(ours["season"])}</p>'
+    B["verdict"].append(f'<div class="card"><p class="lbl">This review assesses</p><p class="big">El Niño → {html.escape(ours["direction"])}, {html.escape(ours["season"])}</p>'
              f'<p>{edd.chip(ours["evidence"])} <span class="small">{html.escape(ours["evidence_note"])}</span></p></div>')
-    o.append('</div>')
-    o.append(f'<div class="summary">{spec["summary_html"]}</div>')
+    B["verdict"].append('</div>')
+    B["summary"].append(f'<div class="summary">{spec["summary_html"]}</div>')
     if spec.get("before_html"):
-        o.append(spec["before_html"])
+        B["before"].append(spec["before_html"])
 
     # 1. Forecasts
     nn = a["nino_now"]
-    o.append(f'<h2>{T("forecast", "1. What the forecasts say for this winter")}</h2>')
-    o.append(f'<p class="small">Latest Niño3.4 in NOAA PSL\'s current series: {nn["value"]:+.2f} °C for {nn["date"]:%B %Y} '
+    B["forecast_lead"].append(f'<p class="small">Latest Niño3.4 in NOAA PSL\'s current series: {nn["value"]:+.2f} °C for {nn["date"]:%B %Y} '
              f'(three-month mean {nn["mean3"]:+.2f}). The historical analysis on this page uses the series\' pinned Niño3.4 '
              f'(ERSST v5 basis, about 0.2 °C cooler than the current ERSST v6 series), and HadISST only where a record starts before 1950.</p>')
-    o.append(spec.get("forecast_html", ""))
+    B["forecast_text"].append(spec.get("forecast_html", ""))
     fc = spec.get("forecasts", [])
     if fc:
-        o.append('<div style="overflow-x:auto"><table><thead><tr><th>Forecast</th><th>Issued</th><th>Oct–Dec</th><th>Nov–Jan</th>'
+        B["forecast_text"].append('<div style="overflow-x:auto"><table><thead><tr><th>Forecast</th><th>Issued</th><th>Oct–Dec</th><th>Nov–Jan</th>'
                  '<th>Dec–Feb</th><th>Temperature</th></tr></thead><tbody>')
         for f in fc:
-            o.append(f'<tr><td>{f["source_html"]}</td><td style="white-space:nowrap">{html.escape(f.get("issued", ""))}</td>'
+            B["forecast_text"].append(f'<tr><td>{f["source_html"]}</td><td style="white-space:nowrap">{html.escape(f.get("issued", ""))}</td>'
                      f'<td>{f.get("ond", "")}</td><td>{f.get("ndj", "")}</td><td>{f.get("djf", "")}</td><td>{f.get("temp", "")}</td></tr>')
-        o.append('</tbody></table></div>')
-        o.append(spec.get("forecast_table_note", ""))
+        B["forecast_text"].append('</tbody></table></div>')
+        B["forecast_text"].append(spec.get("forecast_table_note", ""))
     if a.get("skill"):
         sk_html = (edd.render_skill(spec, a, "OND", spec.get("titles", {}).get("skill", f"SEAS5 for {A.name}: skill and the September forecast"))
                  .replace("whole country (bars) and zones (lines)", f"the cells over {A.ref} (bars)")
@@ -1432,51 +1433,50 @@ def render(spec: dict, a: dict) -> str:
                  .replace("of the's annual rain", f"of {A.ref}'s annual rain")
                    )
         # the shared auto-summary names the zone before each window ("Gaza SON, Gaza OND"): drop it
-        o.append(re.sub(rf"\b{re.escape(A.name)} (?=[A-Z]{{3}}\b)", "", sk_html))
+        B["forecast_area"].append(re.sub(rf"\b{re.escape(A.name)} (?=[A-Z]{{3}}\b)", "", sk_html))
     sr = a.get("seas5_raw")
     if sr:
-        o.append(f'<p class="small">Cross-check from the raw ensemble-mean files (box {A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, '
+        B["forecast_area"].append(f'<p class="small">Cross-check from the raw ensemble-mean files (box {A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, '
                  f'{A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), {edd.MONTH_NAMES[sr["month"] - 1]} issuances '
                  f'1981–{sr["year"]}: where the {sr["year"]} forecast ranks among all {sr["rows"][0]["n"]} (1 = wettest), its ratio to the hindcast mean, '
                  'and the three wettest hindcast years.</p>')
-        o.append('<table><thead><tr><th>Window</th><th class="num">Rank</th><th class="num">Ratio to mean</th><th>Wettest hindcasts (issuance year)</th></tr></thead><tbody>'
+        B["forecast_area"].append('<table><thead><tr><th>Window</th><th class="num">Rank</th><th class="num">Ratio to mean</th><th>Wettest hindcasts (issuance year)</th></tr></thead><tbody>'
                  + "".join(f'<tr><td>{r["code"]}</td><td class="num">{r["rank"]} of {r["n"]}</td><td class="num">{r["ratio"]:.2f}</td>'
                            f'<td>{", ".join(str(y) for y in r["top"])}</td></tr>' for r in sr["rows"])
                  + '</tbody></table>')
     sm = a.get("seas5_mon")
     if sm:
-        o.append(f'<h3>The same forecast, month by month</h3>{spec.get("monthly_html", "")}')
-        o.append('<figure><img src="seas5_monthly.png" alt="SEAS5 forecast and skill by month"><figcaption>Top: the SEAS5 ensemble-mean '
+        B["forecast_area"].append(f'<h3>The same forecast, month by month</h3>{spec.get("monthly_html", "")}')
+        B["forecast_area"].append('<figure><img src="seas5_monthly.png" alt="SEAS5 forecast and skill by month"><figcaption>Top: the SEAS5 ensemble-mean '
                  f'rainfall for each month of the September issuance, averaged over a box on {A.ref} ({A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, {A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), against the mean of '
                  'the same month in the 1981–2025 September hindcasts; labels give the forecast as a percentage above or below that mean and its '
                  'rank among all 46 September issuances (1 = wettest). Bottom: the skill of that month\'s forecast, the correlation between the '
                  f'detrended hindcast ensemble mean and detrended ERA5 rainfall over {A.ref}, on the app\'s low / moderate / high bands. A single month '
                  'is noisier than a three-month window, so monthly skill is lower than in the figure above. September gets about 3 mm in an '
                  'average year, so its skill says little.</figcaption></figure>')
-        o.append('<table><thead><tr><th>Month</th><th class="num">Hindcast mean</th><th class="num">Forecast</th><th class="num">vs mean</th>'
+        B["forecast_area"].append('<table><thead><tr><th>Month</th><th class="num">Hindcast mean</th><th class="num">Forecast</th><th class="num">vs mean</th>'
                  f'<th class="num">Rank (1 = wettest)</th><th class="num">Skill r</th><th class="num">ERA5 mean, {A.name}</th></tr></thead><tbody>'
                  + "".join(f'<tr><td>{edd.MONTH_NAMES[r["month"] - 1]}</td><td class="num">{r["hind"]:.0f} mm</td><td class="num">{r["fc"]:.0f} mm</td>'
                            f'<td class="num">{_pct_signed(r["pct"])}</td><td class="num">{r["rank"]} of {r["n"]}</td>'
                            f'<td class="num">{_r(r["r"])} {edd.skill_chip(edd.skill_cat(r["r"]))}</td><td class="num">{r["obs_clim"]:.0f} mm</td></tr>' for r in sm)
                  + '</tbody></table>')
-        o.append('<p class="small">SEAS5 ensemble-mean totals are smoother than any single year, so compare the forecast with the hindcast mean and '
+        B["forecast_area"].append('<p class="small">SEAS5 ensemble-mean totals are smoother than any single year, so compare the forecast with the hindcast mean and '
                  f'rank, not with observed rainfall. ERA5 mean: the {_nword(len(a["wts"]))} cells over {A.ref}, same years, for scale.</p>')
 
     # 2. ENSO and the rainy season
-    o.append(f'<h2>{T("enso", f"2. How much El Niño matters for a {A.name} winter")}</h2>')
-    o.append(spec.get("enso_intro_html", ""))
+    B["enso"].append(spec.get("enso_intro_html", ""))
     nw = len(a["wts"])
-    o.append(f'<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology for {A.name}"><figcaption>Monthly climatology from three '
+    B["enso"].append(f'<figure><img src="seasonal_cycle.png" alt="Monthly rainfall climatology for {A.name}"><figcaption>Monthly climatology from three '
              f'records. {A.gpcc_desc}'
              f'ERA5 is the mean of the {_nword(nw)} 0.25° cells over {A.ref}, weighted by the share of {A.ref} in each'
              + (f' ({", ".join(f"{100 * v:.0f}%" for v in a["wts"].values())})' if nw <= 4 else '')
              + f'; IMERG is the area-weighted mean of the 0.1° cells over {A.ref}.'
              '</figcaption></figure>')
-    o.append(f'<h3>The link switched on in the late 1970s</h3>{spec.get("stationarity_html", "")}')
-    o.append(f'<figure><img src="stationarity.png" alt="Running correlation between {A.name} rainfall and Niño3.4"><figcaption>Pearson r between the '
+    B["enso"].append(f'<h3>The link switched on in the late 1970s</h3>{spec.get("stationarity_html", "")}')
+    B["enso"].append(f'<figure><img src="stationarity.png" alt="Running correlation between {A.name} rainfall and Niño3.4"><figcaption>Pearson r between the '
              'October–April total and December–February Niño3.4 (HadISST) in centred 31-year windows. ' + A.stationarity_records + '</figcaption></figure>')
     per = a["per"]
-    o.append('<table><thead><tr><th>Record</th><th>Winters</th><th>Niño3.4</th><th class="num">r</th><th class="num">p</th>'
+    B["enso"].append('<table><thead><tr><th>Record</th><th>Winters</th><th>Niño3.4</th><th class="num">r</th><th class="num">p</th>'
              '<th class="num">r, detrended</th></tr></thead><tbody>')
     for k in ("GPCC", "gauge", "ERA5", "IMERG"):
         for tag in ("pre", "post", "recent", "full"):
@@ -1484,34 +1484,34 @@ def render(spec: dict, a: dict) -> str:
             if not v or (k == "IMERG" and tag != "recent") or (tag == "recent" and k == "gauge"):
                 continue
             cls = ' class="hl"' if tag == "post" else ""
-            o.append(f'<tr{cls}><td>{html.escape(SRC_LABEL[k])}</td><td>{_yr(v["first"])} – {_yr(v["last"])}</td><td class="small">{v["index"]}</td>'
+            B["enso"].append(f'<tr{cls}><td>{html.escape(SRC_LABEL[k])}</td><td>{_yr(v["first"])} – {_yr(v["last"])}</td><td class="small">{v["index"]}</td>'
                      f'<td class="num">{_r(v["r"])}</td><td class="num">{_p(v["p"])}</td><td class="num">{_r(v["r_detr"])}</td></tr>')
-    o.append('</tbody></table>')
+    B["enso"].append('</tbody></table>')
     dd = a["diff"]
-    o.append('<p class="small">Is the change real? A Fisher z-test for the difference between the correlations before and after '
+    B["enso"].append('<p class="small">Is the change real? A Fisher z-test for the difference between the correlations before and after '
              f'{SPLIT}: ' + "; ".join(f'{html.escape(_disp(k))} z = {v["z"]:.1f}, p {"&lt; 0.001" if v["p"] < 0.001 else "= " + _p(v["p"])}' for k, v in dd.items()) + '. '
              f'The {SPLIT} break was not chosen blind: it is where the literature places the change (Price et al. 1998; Alpert et al. 2005) '
              'and the start of the satellite era. p-values for the period after the break are conditional on choosing it; '
              'the full-record rows show what an unsplit analysis gives.</p>')
-    o.append(f'<h3>What El Niño winters have looked like since {SPLIT}</h3>{spec.get("history_html", "")}')
-    o.append('<figure><img src="phase_history.png" alt="Rainy-season totals by ENSO phase"><figcaption>October–April GPCC totals as a percentage above or below '
+    B["enso"].append(f'<h3>What El Niño winters have looked like since {SPLIT}</h3>{spec.get("history_html", "")}')
+    B["enso"].append('<figure><img src="phase_history.png" alt="Rainy-season totals by ENSO phase"><figcaption>October–April GPCC totals as a percentage above or below '
              'the 1991–2020 mean, coloured by the ENSO phase of the same winter (December–February Niño3.4, pinned ERSST v5 series throughout, so '
              'a few 1950s–70s winters are classed differently from the HadISST-based table below). Winters with Niño3.4 ≥ +1.5 °C are labelled; '
              f'the dashed line marks {SPLIT}.</figcaption></figure>')
-    o.append('<table><thead><tr><th>Record, period</th><th>ENSO phase</th><th class="num">Winters</th><th class="num">Wettest third</th>'
+    B["enso"].append('<table><thead><tr><th>Record, period</th><th>ENSO phase</th><th class="num">Winters</th><th class="num">Wettest third</th>'
              '<th class="num">Middle third</th><th class="num">Driest third</th></tr></thead><tbody>')
     for (k, lo, hi), rows in a["ptab"].items():
         for r in rows:
             cls = ' class="hl"' if (r["phase"] == "El Niño" and lo == SPLIT) else ""
-            o.append(f'<tr{cls}><td>{html.escape(k)}, {_yr(lo)} – {_yr(min(hi, int(a["tot"][k].index.max())))}</td><td>{r["phase"]}</td><td class="num">{r["n"]}</td>'
+            B["enso"].append(f'<tr{cls}><td>{html.escape(k)}, {_yr(lo)} – {_yr(min(hi, int(a["tot"][k].index.max())))}</td><td>{r["phase"]}</td><td class="num">{r["n"]}</td>'
                      f'<td class="num">{r["wet"]}</td><td class="num">{r["mid"]}</td><td class="num">{r["dry"]}</td></tr>')
-    o.append('</tbody></table>')
-    o.append('<p class="small">Terciles are computed within each period, so each period is judged against its own climate. '
+    B["enso"].append('</tbody></table>')
+    B["enso"].append('<p class="small">Terciles are computed within each period, so each period is judged against its own climate. '
              f'Phase from December–February Niño3.4 (±0.5 °C): HadISST before {SPLIT}, the pinned ERSST v5 series from {SPLIT}. '
              f'On HadISST, {a["en_had"]["n"]} winters since {SPLIT} count as El Niño rather than 14, and {a["en_had"]["wet"]} of them '
              'were in the GPCC wettest third.</p>')
-    o.append('<h3>Every strong El Niño winter since 1950</h3>' + spec.get("strong_html", ""))
-    o.append('<table><thead><tr><th>Winter</th><th class="num">Niño3.4 DJF</th>'
+    B["enso"].append('<h3>Every strong El Niño winter since 1950</h3>' + spec.get("strong_html", ""))
+    B["enso"].append('<table><thead><tr><th>Winter</th><th class="num">Niño3.4 DJF</th>'
              + "".join(f'<th class="num">{_short(k)}</th>' for k in ("GPCC", "ERA5", "gauge", "IMERG"))
              + '<th>Note</th></tr></thead><tbody>')
     for s_ in a["strong"]:
@@ -1521,76 +1521,100 @@ def render(spec: dict, a: dict) -> str:
             cells.append('<td class="num">—</td>' if not v else
                          f'<td class="num">{v["mm"]:.0f} mm<br><span class="small">{_ord(v["pct"])} pct · {v["third"]}</span></td>')
         note = spec.get("strong_notes", {}).get(str(s_["year"]), "")
-        o.append(f'<tr><td>{_yr(s_["year"])}</td><td class="num">{s_["nino"]:+.1f}</td>{"".join(cells)}<td class="small">{note}</td></tr>')
-    o.append('</tbody></table>')
-    o.append(f'<p class="small">Niño3.4 ≥ +1.5 °C in December–February on the pinned series. Percentiles are within {SPLIT}–2025 for winters '
+        B["enso"].append(f'<tr><td>{_yr(s_["year"])}</td><td class="num">{s_["nino"]:+.1f}</td>{"".join(cells)}<td class="small">{note}</td></tr>')
+    B["enso"].append('</tbody></table>')
+    B["enso"].append(f'<p class="small">Niño3.4 ≥ +1.5 °C in December–February on the pinned series. Percentiles are within {SPLIT}–2025 for winters '
              f'from {SPLIT}, within 1950–{SPLIT - 1} before.</p>')
-    o.append(f'<h3>Which part of the winter</h3>{spec.get("trimester_html", "")}')
-    o.append('<table><thead><tr><th>Record</th><th>Window</th><th class="num">r, concurrent Niño3.4</th><th class="num">p</th>'
+    B["enso"].append(f'<h3>Which part of the winter</h3>{spec.get("trimester_html", "")}')
+    B["enso"].append('<table><thead><tr><th>Record</th><th>Window</th><th class="num">r, concurrent Niño3.4</th><th class="num">p</th>'
              '<th class="num">r, Aug–Oct Niño3.4</th><th class="num">p</th></tr></thead><tbody>')
     for t in a["tri_rows"]:
         if t["src"] == "IMERG":
             continue
         cls = ' class="hl"' if t["season"] == "Oct–Apr" else ""
-        o.append(f'<tr{cls}><td>{t["src"]}</td><td>{t["season"]}</td><td class="num">{_r(t["r"])}</td><td class="num">{_p(t["p"])}</td>'
+        B["enso"].append(f'<tr{cls}><td>{t["src"]}</td><td>{t["season"]}</td><td class="num">{_r(t["r"])}</td><td class="num">{_p(t["p"])}</td>'
                  f'<td class="num">{_r(t["r_aso"])}</td><td class="num">{_p(t["p_aso"])}</td></tr>')
-    o.append('</tbody></table>')
-    o.append(f'<p class="small">{SPLIT}–2025. Concurrent = Niño3.4 averaged over the same three months (December–February for October–April). '
+    B["enso"].append('</tbody></table>')
+    B["enso"].append(f'<p class="small">{SPLIT}–2025. Concurrent = Niño3.4 averaged over the same three months (December–February for October–April). '
              'August–October Niño3.4 is the value known when the season starts.</p>')
-    o.append(f'<h3>Across the region</h3>{spec.get("maps_html", "")}')
-    o.append('<figure><img src="corr_maps.png" alt="Pixel correlation maps, southern Levant"><figcaption>Pearson r between three-month rainfall and '
+    B["enso"].append(f'<h3>Across the region</h3>{spec.get("maps_html", "")}')
+    B["enso"].append('<figure><img src="corr_maps.png" alt="Pixel correlation maps, southern Levant"><figcaption>Pearson r between three-month rainfall and '
              'Niño3.4 for each ERA5 0.25° cell, keeping the lag (0–3 months, index leading) with the largest |r| as the survey does. '
              f'Blue = wetter under El Niño. Grey cells hold under a quarter of their annual rain in that window. {A.ref[0].upper() + A.ref[1:]} is outlined.</figcaption></figure>')
-    o.append(f'<figure><img src="composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean standardised '
+    B["enso"].append(f'<figure><img src="composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean standardised '
              f'October–April anomaly over the {a["n_en_grid"]} El Niño winters of {_yr(a["n_grid"][0])}–{_yr(a["n_grid"][1])} '
              f'(cells over {A.ref}: {a["comp_gaza"]:+.2f} SD; positive in {100 * a["comp_region_pos"]:.0f}% of analysed cells). '
              f'Right: the share of those winters in each cell\'s wettest third ({A.name}: {100 * a["hit_gaza"]:.0f}%; regional median '
              f'{100 * a["hit_region"]:.0f}%; chance is 33%).</figcaption></figure>')
 
     # 3. Daily weather
-    o.append(f'<h2>{T("daily", "3. What changes in an El Niño winter, and what does not")}</h2>')
-    o.append(spec.get("daily_html", ""))
-    o.append('<figure><img src="daily_by_phase.png" alt="Correlation of winter weather metrics with Niño3.4"><figcaption>Each dot is the '
+    B["daily"].append(spec.get("daily_html", ""))
+    B["daily"].append('<figure><img src="daily_by_phase.png" alt="Correlation of winter weather metrics with Niño3.4"><figcaption>Each dot is the '
              'correlation between one October–April metric and December–February Niño3.4 across the winters since '
              f'{SPLIT} (IMERG from 1998, {A.gauge_short} to {a["gauge_last"]}); lines are 95% intervals. Windy days: days whose highest hourly ERA5 10 m wind reaches '
              f'the top 5% of winter days ({a["wind95"]:.1f} m/s; ERA5 winds are cell averages and understate gusts). {_metric_label("cold")}: '
              + A.daily_cold_note + '</figcaption></figure>')
-    o.append('<table><thead><tr><th>Metric</th><th>Record</th><th class="num">El Niño</th><th class="num">Neutral</th><th class="num">La Niña</th>'
+    B["daily"].append('<table><thead><tr><th>Metric</th><th>Record</th><th class="num">El Niño</th><th class="num">Neutral</th><th class="num">La Niña</th>'
              '<th class="num">r</th><th class="num">p</th></tr></thead><tbody>')
     unit = {"total": " mm", "rx1": " mm"}
     for mt in ["total", "d1", "d10", "d20", "rx1", "cold", "windy"]:
         for r in [r for r in a["daily_rows"] if r["metric"] == mt]:
             u = unit.get(mt, "")
-            o.append(f'<tr><td>{_metric_label(mt)}</td><td>{html.escape(_disp(r["src"]))} {r["first"]}–{r["last"]}</td>'
+            B["daily"].append(f'<tr><td>{_metric_label(mt)}</td><td>{html.escape(_disp(r["src"]))} {r["first"]}–{r["last"]}</td>'
                      f'<td class="num">{r["en"]:.1f}{u}</td><td class="num">{r["neu"]:.1f}{u}</td><td class="num">{r["ln"]:.1f}{u}</td>'
                      f'<td class="num">{_r(r["r"])}</td><td class="num">{_p(r["p"])}</td></tr>')
-    o.append('</tbody></table>')
-    o.append('<p class="small">Means per winter, by ENSO phase. The records differ in level: '
+    B["daily"].append('</tbody></table>')
+    B["daily"].append('<p class="small">Means per winter, by ENSO phase. The records differ in level: '
              + A.daily_note + ' Compare phases within a record, not across records.</p>')
 
     # 4. Impacts
-    o.append(f'<h2>{T("impacts", f"4. What winter weather does in {A.name}")}</h2>')
-    o.append(spec.get("impacts_intro_html", ""))
+    B["impacts"].append(spec.get("impacts_intro_html", ""))
     fr = a["freq"]
-    o.append(f'<p class="small">How often the rain that has caused these impacts comes: over 1998–2025, IMERG puts an average of '
+    B["impacts"].append(f'<p class="small">How often the rain that has caused these impacts comes: over 1998–2025, IMERG puts an average of '
              f'{fr[10]:.1f} days of ≥ 10 mm, {fr[20]:.1f} of ≥ 20 mm, {fr[30]:.1f} of ≥ 30 mm and {fr[50]:.1f} of ≥ 50 mm over {A.ref} in each October–April.</p>')
-    o.append(f'<figure><img src="winters.png" alt="Daily rainfall over {A.ref}, 2023/24 to 2025/26, with impacts"><figcaption>IMERG late run, '
+    B["impacts"].append(f'<figure><img src="winters.png" alt="Daily rainfall over {A.ref}, 2023/24 to 2025/26, with impacts"><figcaption>IMERG late run, '
              f'area-weighted mean over {A.ref}. Markers are the start dates of the reported impacts in the table below.</figcaption></figure>')
-    o.append(impact_table(a["ev_rows"], numbered=True))
-    o.append(f'<p class="small">{A.impact_caption}</p>')
+    B["impacts"].append(impact_table(a["ev_rows"], numbered=True))
+    B["impacts"].append(f'<p class="small">{A.impact_caption}</p>')
     if a.get("pre_rows"):
-        o.append(f'<h3>Before the war</h3>{spec.get("prewar_html", "")}')
-        o.append(impact_table(a["pre_rows"], numbered=False))
-    o.append(spec.get("impacts_after_html", ""))
+        B["impacts"].append(f'<h3>Before the war</h3>{spec.get("prewar_html", "")}')
+        B["impacts"].append(impact_table(a["pre_rows"], numbered=False))
+    B["impacts"].append(spec.get("impacts_after_html", ""))
     if a.get("st"):
-        o.append(render_range(spec, a))
+        B["range"].append(render_range(spec, a, headings))
     if a.get("agri"):
         import levant_agri
-        o.append(levant_agri.render(spec, a))
+        B["agri"].append(levant_agri.render(spec, a, headings))
     for sec in spec.get("sections_after", []):
-        o.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
+        B["after"].append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
     if spec.get("references"):
-        o.append('<h2>References</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in spec["references"]) + '</ul>')
+        B["refs"].append('<h2>References</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in spec["references"]) + '</ul>')
+    return B
+
+
+def render(spec: dict, a: dict) -> str:
+    ours, cat = spec["assessment"], spec["catalogue"]
+    T = lambda k, d: html.escape(spec.get("titles", {}).get(k, d))
+    o = [edd.HEAD.format(title=f"{A.name} — ENSO deep dive", desc=html.escape(ours["one_line"]), css=edd.CSS,
+                         home="../", home_label="ENSO country deep dives")]
+    o.append(f'<p class="eyebrow">ENSO country deep dive</p><h1>{html.escape(A.name)}</h1>')
+    o.append(f'<p class="meta">{html.escape(spec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{a["end_era5"]:%Y}, '
+             f'IMERG 1998–{a["end_imerg"]:%Y}, {A.meta_gauge} &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
+    B = render_blocks(spec, a)
+    for k in ("verdict", "summary", "before"):
+        o.extend(B[k])
+
+    o.append(f'<h2>{T("forecast", "1. What the forecasts say for this winter")}</h2>')
+    o.extend(B["forecast_lead"] + B["forecast_text"] + B["forecast_area"])
+
+    o.append(f'<h2>{T("enso", f"2. How much El Niño matters for a {A.name} winter")}</h2>')
+    o.extend(B["enso"])
+
+    o.append(f'<h2>{T("daily", "3. What changes in an El Niño winter, and what does not")}</h2>')
+    o.extend(B["daily"])
+
+    o.append(f'<h2>{T("impacts", f"4. What winter weather does in {A.name}")}</h2>')
+    o.extend(B["impacts"] + B["range"] + B["agri"] + B["after"] + B["refs"])
     o.append(f'<p class="small">Generated by <code>levant_deep_dive.py</code> from <code>deep_dives/{A.slug}.toml</code>. '
              'Grid method and Niño3.4 series as in the <a href="../../survey/">global survey</a>.</p>')
     o.append(edd.FOOT)
@@ -1614,15 +1638,151 @@ def build(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFram
     return a
 
 
+PARTS_DIR = edd.DEEP_DIR / "parts"                 # area TOMLs that are built only as parts of a combined page
+COMBINED_CSS = ("h3.area{font-size:17px;margin:28px 0 8px;padding:2px 0 2px 10px;border-left:4px solid var(--b5)}"
+                "h4{font-size:14.5px;margin:20px 0 6px}h5{font-size:13.5px;margin:16px 0 4px}")
+
+
+def _demote(chunks: list[str]) -> str:
+    """Headings inside an area's block, nested under the area heading: h4 → h5, and h3 and the SEAS5 block's own h2 → h4."""
+    t = "\n".join(chunks)
+    t = re.sub(r"<(/?)h4\b", r"<\1h5", t)
+    return re.sub(r"<(/?)h[23]\b", r"<\1h4", t)
+
+
+def _prefix_src(t: str, sub: str) -> str:
+    """Point an area block's relative figure paths at its subfolder."""
+    return re.sub(r'(src=")(?![a-z]+:|/|\.\./)', rf"\g<1>{sub}/", t)
+
+
+def build_combined(cspec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFrame) -> list[dict]:
+    """One page for several areas (builder = "levant-combined"): each part in `parts` is a TOML under
+    deep_dives/parts/, analysed as its own area with figures in docs/enso/<slug>/<part>/, then the pages are
+    interleaved section by section. The combined TOML supplies the summary, the shared forecast text and
+    table, the regional-maps text, the caveats and the verdict for the index card."""
+    edd.END_YEAR = int(grid.years[-1])
+    latest = ts.CONFIG["cache_dir"] / "nino34_latest.data"
+    edd.NINO_LATEST = ts._parse_psl(latest.read_text()) if latest.exists() else None
+    shared = {k: cspec[k] for k in ("forecast_html", "forecasts", "forecast_table_note") if k in cspec}
+    parts = []
+    for slug in cspec["parts"]:
+        pspec = tomllib.loads((PARTS_DIR / f"{slug}.toml").read_text()) | {"slug": slug} | shared | {
+            "out_dir": str(edd.OUT_DIR / cspec["slug"] / slug), "map_outline": cspec.get("map_outline"),
+            "map_label": cspec["name"]}
+        set_area(pspec)
+        print(f"  part: {A.name}", flush=True)
+        a = analyse(pspec, grid, ne, indices)
+        parts.append(dict(slug=slug, spec=pspec, a=a, area=A, B=render_blocks(pspec, a, headings=False)))
+    out = edd.OUT_DIR / cspec["slug"]
+    (out / "index.html").write_text(render_combined(cspec, parts), encoding="utf-8")
+    for p in parts[1:]:                                      # the regional maps are shown once, from the first part
+        for f in ("corr_maps.png", "composite_maps.png"):
+            (out / p["slug"] / f).unlink(missing_ok=True)
+    for old in cspec.get("redirect_from", []):               # the areas' former standalone pages
+        d = edd.OUT_DIR / old
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.html").write_text(
+            f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Moved: {html.escape(cspec["name"])}</title>'
+            f'<meta http-equiv="refresh" content="0; url=../{cspec["slug"]}/"><link rel="canonical" href="../{cspec["slug"]}/"></head>'
+            f'<body><p>This page is now part of <a href="../{cspec["slug"]}/">{html.escape(cspec["name"])}</a>.</p></body></html>\n',
+            encoding="utf-8")
+    return parts
+
+
+def render_combined(cspec: dict, parts: list[dict]) -> str:
+    ours, cat = cspec["assessment"], cspec["catalogue"]
+    T = lambda k, d: html.escape(cspec.get("titles", {}).get(k, d))
+    p0 = parts[0]
+    o = [edd.HEAD.format(title=f'{cspec["name"]} — ENSO deep dive', desc=html.escape(ours["one_line"]), css=edd.CSS + COMBINED_CSS,
+                         home="../", home_label="ENSO country deep dives")]
+    o.append(f'<p class="eyebrow">ENSO country deep dive</p><h1>{html.escape(cspec["name"])}</h1>')
+    o.append(f'<p class="meta">{html.escape(cspec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{p0["a"]["end_era5"]:%Y}, '
+             f'IMERG 1998–{p0["a"]["end_imerg"]:%Y}, ' + ", ".join(f'{p["area"].meta_gauge} ({p["area"].name})' for p in parts)
+             + ' &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
+    # verdict: the survey's catalogue row once, then this review's grade for each area
+    o.append('<div class="verdict">')
+    o.append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
+             f'<p>{edd.chip(cat["evidence"])} <span class="small">source: {cat["source_html"]}</span></p></div>')
+    for p in parts:
+        po = p["spec"]["assessment"]
+        o.append(f'<div class="card"><p class="lbl">This review assesses: {html.escape(p["area"].name)}</p><p class="big">El Niño → '
+                 f'{html.escape(po["direction"])}, {html.escape(po["season"])}</p>'
+                 f'<p>{edd.chip(po["evidence"])} <span class="small">{html.escape(po["evidence_note"])}</span></p></div>')
+    o.append('</div>')
+    o.append(f'<div class="summary">{cspec["summary_html"]}</div>')
+    o.append(cspec.get("before_html", ""))
+
+    def area_block(p: dict, chunks: list[str], anchor: str) -> str:
+        return (f'<h3 class="area" id="{p["slug"]}-{anchor}">{html.escape(p["area"].name)}</h3>\n'
+                + _prefix_src(_demote(chunks), p["slug"]))
+
+    # 1. Forecasts: shared text and table once (built with the first area), then each area's SEAS5
+    o.append(f'<h2>{T("forecast", "1. What the forecasts say for this winter")}</h2>')
+    o.extend(p0["B"]["forecast_lead"] + p0["B"]["forecast_text"])
+    for p in parts:
+        o.append(area_block(p, p["B"]["forecast_area"], "forecast"))
+
+    # 2. El Niño link: each area, then the regional maps once (both areas outlined)
+    o.append(f'<h2>{T("enso", "2. How much El Niño matters")}</h2>')
+    o.append(cspec.get("enso_intro_html", ""))
+    for p in parts:
+        ch = p["B"]["enso"]
+        cut = next(i for i, c in enumerate(ch) if c.startswith("<h3>Across the region</h3>"))
+        p["maps"] = ch[cut + 1:]
+        o.append(area_block(p, ch[:cut], "enso"))
+    o.append(f'<h3>Across the region</h3>{cspec.get("maps_html", "")}')
+    o.append(_prefix_src(p0["maps"][0], p0["slug"]).replace(f'{p0["area"].ref[0].upper() + p0["area"].ref[1:]} is outlined.',
+                                                             f'{html.escape(cspec["name"])} are outlined.'))
+    a0 = p0["a"]
+    o.append(f'<figure><img src="{p0["slug"]}/composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean '
+             f'standardised October–April anomaly over the {a0["n_en_grid"]} El Niño winters of {_yr(a0["n_grid"][0])}–{_yr(a0["n_grid"][1])} '
+             f'(positive in {100 * a0["comp_region_pos"]:.0f}% of analysed cells). Right: the share of those winters in each cell\'s wettest '
+             f'third (regional median {100 * a0["hit_region"]:.0f}%; chance is 33%). '
+             + "Cells over " + "; over ".join(f'{p["area"].ref}: {p["a"]["comp_gaza"]:+.2f} SD and {100 * p["a"]["hit_gaza"]:.0f}% in the wettest third' for p in parts)
+             + '.</figcaption></figure>')
+
+    # 3–5. Each area in turn
+    for key, title, blocks in (("daily", "3. What changes in an El Niño winter, and what does not", ("daily",)),
+                               ("impacts", "4. What winter weather does", ("impacts",)),
+                               ("range", "5. What this winter could bring", ("range",))):
+        o.append(f'<h2>{T(key, title)}</h2>')
+        for p in parts:
+            ch = sum((p["B"][b] for b in blocks), [])
+            if any(c.strip() for c in ch):
+                o.append(area_block(p, ch, key))
+    # 6. Farming: the areas that have it, under their own headings
+    for p in parts:
+        if p["B"]["agri"]:
+            o.append(f'<h2>{T("agri", "6. Farming")}</h2>')
+            o.append(_prefix_src("\n".join(p["B"]["agri"]), p["slug"]))
+    for sec in cspec.get("sections_after", []):
+        o.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
+    refs, seen = [], set()
+    for r in [r for p in parts for r in p["spec"].get("references", [])] + cspec.get("references", []):
+        if r["html"] not in seen:
+            seen.add(r["html"]); refs.append(r)
+    o.append('<h2>References</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in refs) + '</ul>')
+    o.append(f'<p class="small">Generated by <code>levant_deep_dive.py</code> from <code>deep_dives/{cspec["slug"]}.toml</code> and '
+             + ", ".join(f'<code>deep_dives/parts/{p["slug"]}.toml</code>' for p in parts)
+             + '. Grid method and Niño3.4 series as in the <a href="../../survey/">global survey</a>.</p>')
+    o.append(edd.FOOT)
+    return "\n".join(o)
+
+
 def main() -> None:
     import sys
-    slug = sys.argv[1] if len(sys.argv) > 1 else "gaza"
+    slug = sys.argv[1] if len(sys.argv) > 1 else "gaza-west-bank"
     cfg = dict(ts.CONFIG, max_lag=3)
-    spec = tomllib.loads((edd.DEEP_DIR / f"{slug}.toml").read_text()) | {"slug": slug}
+    path = edd.DEEP_DIR / f"{slug}.toml"
+    spec = tomllib.loads((path if path.exists() else PARTS_DIR / f"{slug}.toml").read_text()) | {"slug": slug}
     edd.extend_pixel_cache(cfg)
     grid = edd.load_grid(cfg)
-    build(spec, grid, ts.load_admin0_gdf(cfg), ts.load_indices(cfg))
-    print(f"wrote {OUT}/index.html")
+    if spec.get("builder") == "levant-combined":
+        build_combined(spec, grid, ts.load_admin0_gdf(cfg), ts.load_indices(cfg))
+        print(f"wrote {edd.OUT_DIR / slug}/index.html")
+    else:
+        build(spec, grid, ts.load_admin0_gdf(cfg), ts.load_indices(cfg))
+        print(f"wrote {OUT}/index.html")
 
 
 if __name__ == "__main__":

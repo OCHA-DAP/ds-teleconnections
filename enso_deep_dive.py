@@ -1847,6 +1847,11 @@ def main() -> None:
         if args.only and spec["slug"] != args.only:
             continue
         print(f"{spec['iso3']}: {spec['name']}")
+        if spec.get("builder") == "levant-combined":
+            # Gaza and the West Bank on one page, interleaved by section (parts in deep_dives/parts/)
+            import levant_deep_dive
+            levant_deep_dive.build_combined(spec, grid, gdf, indices)
+            continue
         if spec.get("builder") in ("gaza", "levant"):
             # Gaza and the West Bank: wet-season hazards on a few ERA5 cells: own module (reuses this one's pieces)
             import levant_deep_dive

@@ -158,10 +158,14 @@ identical to the PSL series the survey was built on); the live PSL series (ERSST
 fetched weekly into `cache/nino34_latest.data` and used only for the current-ENSO-state line. Top-level keys must sit above the first
 `[table]` header or TOML swallows them.
 
-**Gaza and the West Bank** (`deep_dives/gaza.toml`, `deep_dives/west-bank.toml`, `builder = "levant"`) are built by their own
-module, `levant_deep_dive.py`, which `enso_deep_dive.py` dispatches to (or run it directly: `uv run python levant_deep_dive.py gaza`).
-What differs between the two pages (COD-AB polygon, ERA5 cells, GPCC cells, rain gauge, IMERG and SEAS5 boxes, labels) sits in
-each TOML's `[area]` table; Gaza's values are the defaults. Gaza is three ERA5 cells and
+**Gaza and the West Bank** share one page, `/enso/gaza-west-bank/` (`deep_dives/gaza-west-bank.toml`, `builder = "levant-combined"`),
+built by their own module, `levant_deep_dive.py`, which `enso_deep_dive.py` dispatches to (or run it directly:
+`uv run python levant_deep_dive.py gaza-west-bank`). Each area is analysed from its own TOML in `deep_dives/parts/` (`gaza.toml`,
+`west-bank.toml`; the dispatcher does not build files there as pages), with figures in `docs/enso/gaza-west-bank/<area>/`, and the
+page interleaves the two section by section (`render_blocks` → `render_combined`). The combined TOML holds what they share: the
+summary, the forecast text, the regional-maps text (maps drawn once, both areas outlined), the caveats and the index-card verdict.
+The former `/enso/gaza/` and `/enso/west-bank/` URLs redirect (`redirect_from`). What differs between the two areas (COD-AB polygon,
+ERA5 cells, GPCC cells, rain gauge, IMERG and SEAS5 boxes, labels) sits in each part's `[area]` table; Gaza's values are the defaults. Gaza is three ERA5 cells and
 its winter hazard is rain, wind, sea and cold rather than drought, so the page reuses the series' chrome, SEAS5 skill figure and
 pixel correlation maps but adds: four independent rainfall records (ERA5 hourly point series for the three cells from the CDS
 `reanalysis-era5-single-levels-timeseries` dataset, 1950–; the GPCC 1° combined product via NOAA PSL NCSS, 1891–; IMERG late v7

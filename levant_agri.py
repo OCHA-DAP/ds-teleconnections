@@ -621,10 +621,10 @@ def _signed(v: float, unit: str = "%") -> str:
     return f"0{unit}" if round(abs(v)) == 0 else f"{'+' if v > 0 else '−'}{abs(v):.0f}{unit}"
 
 
-def render(spec: dict, a: dict) -> str:
+def render(spec: dict, a: dict, heading: bool = True) -> str:
     ag, g = spec["agri"], a["agri"]
     T = spec.get("titles", {})
-    o = [f'<h2>{html.escape(T.get("agri", "6. Farming"))}</h2>', ag.get("intro_html", "")]
+    o = ([f'<h2>{html.escape(T.get("agri", "6. Farming"))}</h2>'] if heading else []) + [ag.get("intro_html", "")]
     zr = {r["zone"]: r for r in g["zrows"]}
     zd = {z["name"]: z for z in g["zones"]}
 

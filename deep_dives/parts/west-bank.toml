@@ -30,7 +30,7 @@ before_html = '''
 
 forecast_html = '''
 <p>NOAA's September outlook gives El Niño 100% odds for every season through January–March 2027. It has the event peaking in October–December, with a median relative Niño3.4 of +2.67 °C and a 75% chance of exceeding +2.5 °C, which no event since 1950 has done. It then weakens to about +1.8 °C by January–March. A positive Indian Ocean Dipole is developing and is expected to fade by early 2027. The coming winter is likely to be a stronger El Niño than any the relationships below were fitted on.</p>
-<p>The multi-model forecasts below are the same southern-Levant readings as on the <a href="../gaza/">Gaza page</a>. They show wet odds for October–December, weaker for November–January, no wet signal for December–February (NMME leans dry), and a warm winter throughout. A warm winter makes snow on the hills less likely, but it does not stop cold spells.</p>
+<p>The multi-model forecasts below are the same southern-Levant readings as for Gaza. They show wet odds for October–December, weaker for November–January, no wet signal for December–February (NMME leans dry), and a warm winter throughout. A warm winter makes snow on the hills less likely, but it does not stop cold spells.</p>
 '''
 
 forecast_table_note = '''
