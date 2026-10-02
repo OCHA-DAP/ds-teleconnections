@@ -81,9 +81,9 @@ def detrended_pct(s: pd.Series) -> pd.Series:
 
 def olive_bearing(s: pd.Series) -> pd.Series:
     """Olive production with alternate bearing taken out: % above or below what last year's crop
-    predicts (log production regressed on the previous year's)."""
-    ly = np.log(s); prev = ly.shift(1)
-    d = pd.DataFrame({"y": ly, "p": prev}).dropna()
+    predicts (log production regressed on the previous year's, over consecutive years both present)."""
+    ly = np.log(s.reindex(range(int(s.index.min()), int(s.index.max()) + 1)))   # gaps stay gaps: only consecutive years pair
+    d = pd.DataFrame({"y": ly, "p": ly.shift(1)}).dropna()
     b = np.polyfit(d.p, d.y, 1)
     return pd.Series(100 * (np.exp(d.y - np.polyval(b, d.p)) - 1), index=d.index)
 
@@ -219,6 +219,14 @@ def _detr(s: pd.Series) -> pd.Series:
 # --------------------------------------------------------------------------- #
 # Analysis
 # --------------------------------------------------------------------------- #
+def wilson(k: int, n: int, z: float = 1.96) -> tuple[float, float]:
+    if n == 0:
+        return (np.nan, np.nan)
+    p = k / n; d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d; h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return (c - h, c + h)
+
+
 def by_phase(v: pd.Series, phase: pd.Series) -> list[dict]:
     rows = []
     for p in PHASES:
@@ -258,23 +266,44 @@ def analyse(spec: dict, a: dict) -> dict:
     field_r = L.corr(crop_rain.reindex(field.index), field)
     field_e = L.corr(crop_nino.reindex(field.index), field)
     field_ph = by_phase(field, crop_phase)
-    pulses = {i: detrended_pct(fao_series(fao, i, official=True)) for i in PULSES}
+    excluded = [y for y in range(int(field.index.min()), int(field.index.max()) + 1) if y not in field.index]
+    no99 = field.index != 1999
+    field_r99 = L.corr(crop_rain.reindex(field.index)[no99], field[no99])
+    field_e99 = L.corr(crop_nino.reindex(field.index)[no99], field[no99])
+    en_f, ln_f = field[crop_phase.reindex(field.index) == "El Niño"], field[crop_phase.reindex(field.index) == "La Niña"]
+    field_fisher = float(stats.fisher_exact([[int((en_f > 0).sum()), int((en_f <= 0).sum())], [int((ln_f > 0).sum()), int((ln_f <= 0).sum())]])[1])
+    field_mw = float(stats.mannwhitneyu(en_f, ln_f, alternative="two-sided")[1])
+    field_low = dict(en=int((en_f < -15).sum()), en_n=len(en_f), ln=int((ln_f < -15).sum()), ln_n=len(ln_f))
+    # which part of the season matters: windows of the ERA5 West Bank series (four tested)
+    mon = a["era5"].pr.resample("MS").sum()
+    windows = {}
+    for code, mm in {"Oct–Dec": [10, 11, 12], "Nov–Jan": [11, 12, 1], "Jan–Mar": [1, 2, 3], "Feb–Apr": [2, 3, 4]}.items():
+        w_ = L.seasonal(mon, mm); w_ = pd.Series(w_.values, index=w_.index + 1)
+        windows[code] = L.corr(w_.reindex(field.index), field)
+    pulses = {}
+    for i in PULSES:
+        v = detrended_pct(fao_series(fao, i, official=True))
+        pulses[i] = dict(s=v, r=L.corr(crop_rain.reindex(v.index), v), e=L.corr(crop_nino.reindex(v.index), v), ph=by_phase(v, crop_phase))
 
-    # Olives: national production, alternate bearing out
+    # Olives: national production (all years for the chart), alternate bearing out on official years only
     oprod = fao_series(fao, "Olives", "Production")
     oflag = fao[(fao.item == "Olives") & (fao.element == "Production")].set_index("year").flag
-    oab = olive_bearing(oprod)
+    oprod_a = fao_series(fao, "Olives", "Production", official=True)
+    oab = olive_bearing(oprod_a)
     ol_r = L.corr(crop_rain.reindex(oab.index), oab)
     ol_e = L.corr(crop_nino.reindex(oab.index), oab)
     ol_ph = by_phase(oab, crop_phase)
-    ol_ac = float(np.corrcoef(np.log(oprod).values[1:], np.log(oprod).values[:-1])[0, 1])
+    la = np.log(oprod_a.reindex(range(int(oprod_a.index.min()), int(oprod_a.index.max()) + 1)))
+    pr_ = pd.DataFrame({"y": la, "p": la.shift(1)}).dropna()
+    ol_ac = float(np.corrcoef(pr_.y, pr_.p)[0, 1])
 
     # Spring vegetation (VCI), cropland and all land
     veg = {}
     for tag in ("crop", "land"):
         s = spring_vci(vhp(tag))
         veg[tag] = dict(s=s, r_rain=L.corr(crop_rain.reindex(s.index), s), r_nino=L.corr(crop_nino.reindex(s.index), s),
-                        ph=by_phase(s - s.median(), crop_phase))
+                        ph=by_phase(s - s.median(), crop_phase), ph_d=by_phase(_detr(s - s.median()), crop_phase),
+                        trend=float(np.polyfit(s.index, s.values, 1)[0] * 10))
 
     # By zone: spring greenness (MODIS), olives pressed (PCBS) and where the cereals are (2021 census)
     ndvi = spring_ndvi(modis_zone_ndvi(govs, ag["zones"]))
@@ -290,7 +319,7 @@ def analyse(spec: dict, a: dict) -> dict:
         zz = dict(name=nm, ndvi=v, ndvi_r=L.corr(zrain.reindex(v.index), v), ndvi_e=L.corr(crop_nino.reindex(v.index), v),
                   ndvi_rd=L.corr(_detr(zrain.reindex(v.index).dropna()), _detr(v.loc[zrain.reindex(v.index).dropna().index])),
                   ndvi_ed=L.corr(crop_nino.reindex(v.index), _detr(v)), ndvi_ph=by_phase(v, crop_phase), ndvi_ph_d=by_phase(_detr(v), crop_phase),
-                  ndvi_trend=float(np.polyfit(v.index, v.values, 1)[0] * 10), zrain=zrain,
+                  ndvi_trend=float(np.polyfit(v.index, v.values, 1)[0] * 10), zrain=zrain, ndvi_sd=float(v.std()),
                   cereal_share=float(sum(area.get(g, 0) for g in z.get("pcbs_area", [])) / wb_area))
         if z.get("pcbs_olive"):
             o = olv[z["pcbs_olive"]].loc[2003:2019].sum(axis=1, min_count=len(z["pcbs_olive"])).dropna()
@@ -320,7 +349,9 @@ def analyse(spec: dict, a: dict) -> dict:
     fig_vci(veg, crop_phase, L_out / "agri_vci.png")
     fig_zone_ndvi(zones, crop_phase, L_out / "agri_zone_ndvi.png")
     fig_zone_olives(zones, crop_phase, L_out / "agri_zone_olives.png")
-    return dict(zones=zones, ndvi_wb=ndvi_wb, olive_wb_share=olive_wb_share, wb_cereal_share=wb_area / float(area["Palestine total"]),
+    en_rain_modis = {int(y): float(crop_rain.get(y, np.nan)) for y in wbz.index if crop_phase.get(y) == "El Niño"}
+    return dict(excluded=excluded, field_r99=field_r99, field_e99=field_e99, field_fisher=field_fisher, field_mw=field_mw,
+                field_low=field_low, windows=windows, en_rain_modis=en_rain_modis, zones=zones, ndvi_wb=ndvi_wb, olive_wb_share=olive_wb_share, wb_cereal_share=wb_area / float(area["Palestine total"]),
                 zr=zr, zrows=zrows, z_min_r=z_min_r, field=field, field_r=field_r, field_e=field_e, field_ph=field_ph,
                 fy=fy, pulses=pulses, oprod=oprod, oab=oab, ol_r=ol_r, ol_e=ol_e, ol_ph=ol_ph, ol_ac=ol_ac, veg=veg,
                 strong=rows, crop_rain=crop_rain, crop_nino=crop_nino, crop_phase=crop_phase)
@@ -336,14 +367,17 @@ def _strip(ax, v: pd.Series, phase: pd.Series, label_years=(), unit="%", zero=0.
         ax.plot(np.full(len(x), i) + jit, x.values, "o", color=PCOL[p], ms=7, mec="white", mew=0.8, ls="")
         if len(x):
             ax.plot([i - 0.28, i + 0.28], [x.median()] * 2, color=L.C_TEXT, lw=1.6)
-            ax.text(i + 0.32, x.median(), f"median {x.median():+.0f}{unit}" if unit == "%" else f"median {x.median():.0f}",
-                    va="center", fontsize=7.5, color=L.C_MUTED)
         for y, xx, j in zip(x.index, x.values, jit):
             if y in label_years:
-                ax.annotate(str(y), (i + j, xx), xytext=(-6, 0), textcoords="offset points", ha="right", va="center", fontsize=7, color=L.C_TEXT)
+                ax.annotate(str(y), (i + j, xx), xytext=(-7, 0), textcoords="offset points", ha="right", va="center", fontsize=7, color=L.C_TEXT)
     ax.axhline(zero, color=L.C_MUTED, lw=0.8)
-    ax.set_xticks(range(3), [f"{p}\n(n = {int((phase.reindex(v.dropna().index) == p).sum())})" for p in PHASES], fontsize=8.5)
-    ax.set_xlim(-0.6, 2.9)
+    labs = []
+    for p in PHASES:
+        x = v[phase.reindex(v.index) == p].dropna()
+        med = _signed(float(x.median()), unit) if unit == "%" else f"{x.median():.0f}"
+        labs.append(f"{p}\n(n = {len(x)})\nmedian {med}")
+    ax.set_xticks(range(3), labs, fontsize=8)
+    ax.set_xlim(-0.6, 2.6)
     ax.grid(axis="y", color="#eceff0", lw=0.8); ax.set_axisbelow(True)
     edd._style_ax(ax)
 
@@ -352,10 +386,10 @@ def fig_by_phase(field: pd.Series, oab: pd.Series, vci: pd.Series, phase: pd.Ser
     fig, axs = plt.subplots(1, 3, figsize=(11.5, 3.9), dpi=150)
     _strip(axs[0], field, phase, label_years=(1999, 2008, 2009, 1998, 2003, 2016))
     axs[0].set_title("Wheat and barley yield\n(% above or below trend)", fontsize=9.5, color=L.C_TEXT, loc="left")
-    _strip(axs[1], oab, phase, label_years=(1998, 2016, 2019))
-    axs[1].set_title("Olive crop, alternate bearing taken out\n(% above or below what last year predicts)", fontsize=9.5, color=L.C_TEXT, loc="left")
+    _strip(axs[1], oab, phase, label_years=(1998, 2019))
+    axs[1].set_title("Olive crop, alternate bearing taken out\n(% vs what last year predicts; official years)", fontsize=9.5, color=L.C_TEXT, loc="left")
     _strip(axs[2], vci, phase, label_years=(1983, 1998, 2016, 2024, 1999, 2000, 2025), unit="", zero=50)
-    axs[2].set_title("Spring vegetation condition, cropland\n(VCI, March–April; 50 = mid-range)", fontsize=9.5, color=L.C_TEXT, loc="left")
+    axs[2].set_title("Spring vegetation condition, cropland\n(VCI, March–April; 0–100, 50 = mid-range)", fontsize=9.5, color=L.C_TEXT, loc="left")
     axs[2].set_ylim(0, 100)
     fig.suptitle("West Bank crop years by the ENSO phase of the winter before the harvest", fontsize=10.5, color=L.C_TEXT, x=0.01, ha="left", y=1.03)
     fig.tight_layout()
@@ -369,7 +403,8 @@ def fig_field_rain(field: pd.Series, rain: pd.Series, phase: pd.Series, out: Pat
         x = d[d.p == p]
         ax.plot(x.r, x.f, "o", color=PCOL[p], ms=7, mec="white", mew=0.8, ls="", label=p)
     for y, r_ in d.iterrows():
-        ax.annotate(str(y), (r_.r, r_.f), xytext=(5, 3), textcoords="offset points", fontsize=7, color=L.C_MUTED)
+        if abs(r_.f) >= 15 or abs(r_.r) >= 20 or y in (1998, 2016):
+            ax.annotate(str(y), (r_.r, r_.f), xytext=(5, 3), textcoords="offset points", fontsize=7, color=L.C_MUTED)
     b = np.polyfit(d.r, d.f, 1); xx = np.linspace(d.r.min(), d.r.max(), 10)
     ax.plot(xx, np.polyval(b, xx), color=L.C_MUTED, lw=1, ls=(0, (4, 3)))
     ax.axhline(0, color=L.C_MUTED, lw=0.8); ax.axvline(0, color=L.C_MUTED, lw=0.8)
@@ -497,14 +532,16 @@ def render(spec: dict, a: dict) -> str:
                  f'<td class="num">{L._r(r["r"])}</td><td class="num">{r["en_wet"]} of {r["en_n"]}</td>'
                  f'<td class="num">{e["above"]} of {e["n"]} above normal<br><span class="small">median {_signed(e["median"])}</span></td></tr>')
     o.append('</tbody></table></div>')
-    o.append('<p class="small">Wheat and barley area: PCBS Agricultural Census 2021, by governorate (Tubas includes the northern valleys). '
-             f'Olives pressed: PCBS Olive Presses Survey, share of all olives pressed in Palestine, 2003–2019 mean (PCBS merges Jenin and Tubas; '
-             f'the West Bank as a whole pressed {100 * g["olive_wb_share"]:.0f}%; Jericho has no presses). Rain: October–April ERA5 over each '
+    o.append('<p class="small">Wheat and barley area: PCBS Agricultural Census 2021, by governorate. The Jordan Valley\'s share is almost all '
+             'Tubas governorate (which PCBS reports with the northern valleys), much of it on the governorate\'s hills and plains above the valley floor. '
+             f'Olives pressed: PCBS Olive Presses Survey, share of all olives pressed in Palestine, 2003–2019 mean (the West Bank as a whole pressed '
+             f'{100 * g["olive_wb_share"]:.0f}%). PCBS merges Jenin and Tubas, so Tubas\'s olives sit in the semi-coastal row; Jericho has no presses; '
+             'Jerusalem is reported only from 2008 and left out (about 3% of the highland pressings since). Rain: October–April ERA5 over each '
              f'zone\'s governorates, {L.SPLIT}/{str(L.SPLIT + 1)[2:]}–2025/26, against December–February Niño3.4 (pinned series). Spring greenness: '
-             'MODIS NDVI, February–April, 2001–2026, against the 2001–2020 normal (see below). The three zones\' winters move together (r ≥ '
-             f'{g["z_min_r"]:.2f} between any two) and carry the same El Niño tilt; the zones differ in what they grow. ERA5\'s 25 km cells smooth '
-             f'the West Bank\'s steep rain gradient (its Jordan Valley mean is about {g["zr"].loc[1991:2020, "Jordan Valley"].mean():.0f} mm, against '
-             '100–200 mm at the valley floor), so only anomalies are used.</p>')
+             'MODIS NDVI, February–April, 2001–2026, against the 2001–2020 normal (see below). The zones share ERA5 cells and their winters move '
+             f'together (r ≥ {g["z_min_r"]:.2f} between any two), so ERA5 cannot tell their El Niño responses apart: on it they are the same. '
+             f'Its 25 km cells also smooth the steep rain gradient (its Jordan Valley mean is about {round(g["zr"].loc[1991:2020, "Jordan Valley"].mean(), -1):.0f} mm, '
+             'against 100–200 mm on the valley floor), so only anomalies are used.</p>')
     o.append(ag.get("zones_after_html", ""))
 
     # Spring greenness by zone
@@ -516,9 +553,12 @@ def render(spec: dict, a: dict) -> str:
     o.append('<p>The one yearly measure available for every zone is satellite greenness. In the spring after an El Niño winter, it was above '
              'normal in ' + ", ".join(f'{by(k, "El Niño")["above"]} of {by(k, "El Niño")["n"]} years in the {html.escape(pr[k])}' for k in names)
              + '; after La Niña winters, in ' + ", ".join(f'{by(k, "La Niña")["above"]} of {by(k, "La Niña")["n"]}' for k in names) + '. '
+             'Several of those El Niño springs were only slightly above normal, and most El Niño winters of the MODIS years brought close to '
+             'normal rain (' + ", ".join(f'{y - 1}/{str(y)[2:]} {_signed(v)}' for y, v in g["en_rain_modis"].items()) + ' across the West Bank). '
              'The drier the zone, the larger the swing: the median El Niño spring was '
-             + ", ".join(f'{_signed(by(k, "El Niño")["median"])} in the {html.escape(pr[k])}' for k in names) + '. '
-             + ag.get("ndvi_html", "") + '</p>')
+             + ", ".join(f'{_signed(by(k, "El Niño")["median"])} in the {html.escape(pr[k])}' for k in names)
+             + ', though the drier zones also vary more in every year (standard deviation ' + ", ".join(f'{zd[k]["ndvi_sd"]:.0f}%' for k in names)
+             + ' in the same order). ' + ag.get("ndvi_html", "") + '</p>')
     o.append('<figure><img src="agri_zone_ndvi.png" alt="Spring greenness by zone and year"><figcaption>MODIS Terra 16-day NDVI at 250 m '
              '(MOD13Q1, collection 6.1), mean over each zone\'s governorates for the five composites from 2 February to 22 April; each composite '
              'is compared with its own 2001–2020 mean and the year\'s value is the average of those percentages (2023 and 2026 miss one and '
@@ -550,7 +590,16 @@ def render(spec: dict, a: dict) -> str:
              'What an El Niño winter has done is make a bad cereal year less likely. The longer vegetation record, which also covers pasture, '
              f'tells the same story: spring vegetation was above its median in {ve["above"]} of {ve["n"]} El Niño years on cropland and '
              f'{le_["above"]} of {le_["n"]} on all land, against {vl["above"]} of {vl["n"]} and {ll_["above"]} of {ll_["n"]} after La Niña winters. '
-             f'Olives show no El Niño signal ({oe["above"]} of {oe["n"]} El Niño years above what the previous crop predicts).</p>')
+             f'Olives show no clear El Niño signal ({oe["above"]} of {oe["n"]} El Niño years above what the previous crop predicts, '
+             f'{_ph(g["ol_ph"], "La Niña")["above"]} of {_ph(g["ol_ph"], "La Niña")["n"]} La Niña years; r with Niño3.4 {L._r(g["ol_e"][0])}).</p>')
+    lo1, hi1 = wilson(fe["above"], fe["n"]); lo2, hi2 = wilson(fl["above"], fl["n"])
+    fl_ = g["field_low"]
+    o.append(f'<p>These are small samples. With {fe["n"]} and {fl["n"]} years, the true share of good cereal years could plausibly lie anywhere '
+             f'from {100 * lo1:.0f}% to {100 * hi1:.0f}% after El Niño winters and from {100 * lo2:.0f}% to {100 * hi2:.0f}% after La Niña winters '
+             f'(95% intervals), and the El Niño–La Niña contrast is only borderline significant (Fisher exact test p = {g["field_fisher"]:.2f}; '
+             f'Mann–Whitney p = {g["field_mw"]:.2f}). The clearest part is the bad tail: no El Niño year fell more than 15% below trend, against '
+             f'{fl_["ln"]} of {fl_["ln_n"]} La Niña years. The correlation with the season\'s rain also leans on one year: without 1999 it drops from '
+             f'{L._r(g["field_r"][0])} to {L._r(g["field_r99"][0])}.</p>')
     o.append(ag.get("phase_html", ""))
     o.append('<figure><img src="agri_by_phase.png" alt="Cereal yields, olive crop and spring vegetation by ENSO phase"><figcaption>Each dot is one crop '
              'year, coloured by the ENSO phase of the winter before the harvest (December–February Niño3.4, ±0.5 °C); bars are medians. '
@@ -568,7 +617,11 @@ def render(spec: dict, a: dict) -> str:
                 f'<td class="num">{L._r(rr[0])}<br><span class="small">p {L._p(rr[1])}</span></td><td class="num">{L._r(re_[0])}<br><span class="small">p {L._p(re_[1])}</span></td></tr>')
     fi, oi = g["field"].index, g["oab"].index
     o.append(row("Wheat and barley yield", f"{fi.min()}–{fi.max()}", g["field_ph"], g["field_r"], g["field_e"]))
-    o.append(row("Olive crop, alternate bearing out", f"{oi.min()}–{oi.max()}", g["ol_ph"], g["ol_r"], g["ol_e"], base="above what the previous crop predicts"))
+    for nm_, pu in g["pulses"].items():
+        if nm_.startswith("Lentils"):
+            li = pu["s"].index
+            o.append(row("Lentil yield", f"{li.min()}–{li.max()} ({len(li)} official years)", pu["ph"], pu["r"], pu["e"]))
+    o.append(row("Olive crop, alternate bearing out", f"{oi.min()}–{oi.max()} ({len(oi)} official pairs)", g["ol_ph"], g["ol_r"], g["ol_e"], base="above what the previous crop predicts"))
     for t, nm in (("crop", "Spring VCI, cropland"), ("land", "Spring VCI, all land")):
         v = g["veg"][t]
         o.append(row(nm, f'{v["s"].index.min()}–{v["s"].index.max()}', v["ph"], v["r_rain"], v["r_nino"], base="above the record's median", unit=" pts"))
@@ -580,18 +633,30 @@ def render(spec: dict, a: dict) -> str:
              'record\'s median. All of these years fall after 1979, inside the period in which the El Niño link to West Bank rain exists.</p>')
 
     # Cereals
-    o.append('<h3>Rainfed cereals</h3>' + ag.get("field_html", ""))
+    lt = next(v for k, v in g["pulses"].items() if k.startswith("Lentils")); ck = next(v for k, v in g["pulses"].items() if k.startswith("Chick"))
+    o.append('<h3>Rainfed cereals and pulses</h3>' + ag.get("field_html", ""))
+    o.append(f'<p>Lentils, the pulse with the most official figures ({len(lt["s"])} years), follow the winter\'s rain more closely than the cereals '
+             f'(r = {L._r(lt["r"][0])}, with Niño3.4 {L._r(lt["e"][0])}; {_ph(lt["ph"], "El Niño")["above"]} of {_ph(lt["ph"], "El Niño")["n"]} El Niño '
+             f'years above trend, {_ph(lt["ph"], "La Niña")["above"]} of {_ph(lt["ph"], "La Niña")["n"]} La Niña years). Chickpeas show no clear link '
+             f'(r = {L._r(ck["r"][0])} with rain).</p>')
     o.append('<figure><img src="agri_field_rain.png" alt="Wheat and barley yield against rainfall"><figcaption>Wheat and barley yields (official '
              'FAOSTAT figures for Palestine; percentage above or below trend) against the rainfall of the winter before the harvest. '
-             f'r = {L._r(g["field_r"][0])} (p {L._p(g["field_r"][1])}, {g["field_r"][2]} years). FAOSTAT repeats its 2013 figures as 2014 and gives '
-             'estimated or imputed figures for 2009, 2017 and (barley) 2022; those years are left out.</figcaption></figure>')
+             f'r = {L._r(g["field_r"][0])} (p {L._p(g["field_r"][1])}, {g["field_r"][2]} years); without 1999, {L._r(g["field_r99"][0])}. '
+             'FAOSTAT repeats its 2013 figures as 2014 and gives only estimated or imputed figures for '
+             + " and ".join(str(y) for y in g["excluded"] if y != 2014) + '; those years are left out. Harvested area halves in FAOSTAT from 2010 '
+             '(for wheat and barley as for olives), which yields absorb: a step at 2010 changes none of the counts.</figcaption></figure>')
+    wn = g["windows"]
+    o.append('<p class="small">Which part of the winter matters (four windows tried, so read loosely): yields correlate with rain in '
+             + ", ".join(f'{k} r = {L._r(v[0])}' for k, v in wn.items())
+             + '. The early part of the season, around sowing and establishment, carries the link, and that is the part the forecasts favour as wet.</p>')
 
     # Olives
     oz = [z for z in zs if "olive_ab" in z]
     o.append('<h3>Olives</h3>' + ag.get("olive_html", ""))
     o.append('<figure><img src="agri_olives.png" alt="Olive production by year"><figcaption>Olive production (FAOSTAT, Palestine; for 2017–2019 '
-             'it equals the olives pressed in the PCBS survey). Big and small crops alternate (r between one year and the next: '
-             f'{g["ol_ac"]:+.2f}); the colour is the ENSO phase of the winter before the harvest. FAOSTAT\'s harvested area halves from 2010 '
+             'it equals the olives pressed in the PCBS survey). Big and small crops alternate (r between one year and the next, official years: '
+             f'{g["ol_ac"]:+.2f}); the colour is the ENSO phase of the winter before the harvest. Hollow bars are FAO estimates, left out of '
+             'the alternate-bearing model and the tables. FAOSTAT\'s harvested area halves from 2010 '
              'without a matching change in production, so production is used rather than yield.</figcaption></figure>')
     o.append('<figure><img src="agri_zone_olives.png" alt="Olives pressed by zone against rainfall"><figcaption>Olives pressed in each zone\'s '
              'governorates (PCBS Olive Presses Survey, 2003–2019), as a percentage above or below what the previous year\'s crop predicts, '
@@ -605,7 +670,11 @@ def render(spec: dict, a: dict) -> str:
              'Vegetation Condition Index (VCI): where each week\'s NDVI sits between the lowest (0) and highest (100) on record for that week and '
              'place, averaged by NOAA over the West Bank. Bars: cropland; dots: all land, which adds the rangeland of the eastern slopes. '
              f'March–April mean; 2004 has a data gap. r with Niño3.4: cropland {L._r(g["veg"]["crop"]["r_nino"][0])}, all land '
-             f'{L._r(g["veg"]["land"]["r_nino"][0])}.</figcaption></figure>')
+             f'{L._r(g["veg"]["land"]["r_nino"][0])}. Both drift down over the record ({_signed(g["veg"]["crop"]["trend"], " points")} and '
+             f'{_signed(g["veg"]["land"]["trend"], " points")} a decade), with La Niña winters clustered late; with the trend removed, El Niño springs above '
+             f'the median number {_ph(g["veg"]["crop"]["ph_d"], "El Niño")["above"]} and {_ph(g["veg"]["land"]["ph_d"], "El Niño")["above"]} of '
+             f'{_ph(g["veg"]["crop"]["ph_d"], "El Niño")["n"]}, La Niña springs {_ph(g["veg"]["crop"]["ph_d"], "La Niña")["above"]} and '
+             f'{_ph(g["veg"]["land"]["ph_d"], "La Niña")["above"]} of {_ph(g["veg"]["crop"]["ph_d"], "La Niña")["n"]}.</figcaption></figure>')
 
     # Strong El Niño crop years
     o.append('<h3>Every strong El Niño crop year since 1983</h3>' + ag.get("strong_html", ""))
