@@ -1,22 +1,25 @@
-"""Gaza — ENSO deep dive (bespoke builder for deep_dives/gaza.toml).
+"""Gaza and West Bank — ENSO deep dives (builder for deep_dives/gaza.toml and west-bank.toml).
 
 The generic builder in enso_deep_dive.py works on a country's ERA5 cells and a drought framing.
-Gaza does not fit either: Gaza is 365 km², three 0.25° ERA5 cells, and the winter hazard is
-too much rain, not too little. This module reuses the series' page chrome, SEAS5 skill figure and
-pixel correlation maps, and adds what a Gaza page needs:
+Gaza and the West Bank do not fit either: both are a handful of 0.25° ERA5 cells, and the winter
+hazard is too much rain (and sea, wind, cold or snow), not too little. This module reuses the
+series' page chrome, SEAS5 skill figure and pixel correlation maps, and adds:
 
-* four independent rainfall records, because one reanalysis cell is not enough evidence —
-  ERA5 hourly point series for the three cells over Gaza (CDS time-series dataset, 1950–),
-  GPCC gauge analysis (1° cell over Gaza and the southern coastal plain, 1891–), IMERG late
-  v7 daily at 0.1° (team blob, 1998–), and the Beer Sheva rain gauge (GHCN-Daily, 1921–2016);
+* independent rainfall records, because a few reanalysis cells are not enough evidence: ERA5
+  hourly point series for the cells over the area (CDS time-series dataset, 1950–), GPCC gauge
+  analysis (1° cells, 1891–), IMERG late v7 daily at 0.1° (team blob, 1998–), and a long rain
+  gauge (GHCN-Daily: Beer Sheva for Gaza, Jerusalem for the West Bank);
 * a stationarity test, because the El Niño link in this region is known to switch on and off;
 * daily metrics (rain days, heavy-rain days, wettest day, cold nights, wind) by ENSO phase;
-* the last three winters' daily rainfall over Gaza against reported impacts (curated in the TOML).
+* storm counts, first-storm timing and the last winters' rainfall against reported impacts.
+
+What differs between the pages sits in each TOML's [area] table (Area dataclass; Gaza defaults).
 
     uv run python levant_deep_dive.py gaza   # or: uv run python enso_deep_dive.py --only gaza
+    uv run python levant_deep_dive.py west-bank
 
-Downloads are cached under cache/gaza/. CDS needs a key in ~/.cdsapirc (any ECMWF data store
-URL; the CDS endpoint is forced here); IMERG and the COD-AB need the team's blob credentials.
+Downloads are cached under the area's cache directory. CDS needs a key in ~/.cdsapirc (any ECMWF
+data store URL; the CDS endpoint is forced here); IMERG and the COD-AB need the team's blob credentials.
 """
 from __future__ import annotations
 
@@ -903,7 +906,7 @@ def fig_history(tot: dict[str, pd.Series], djf: pd.Series, out: Path) -> None:
     for y in g.index[(n.values >= 1.5)]:
         ax.text(y, anom[y] + (4 if anom[y] >= 0 else -4), f"{y}/{str(y + 1)[2:]}", ha="center",
                 va="bottom" if anom[y] >= 0 else "top", fontsize=7, color=C_TEXT, rotation=90)
-    ax.set_ylabel("% of the 1991–2020 mean", fontsize=9, color=C_MUTED)
+    ax.set_ylabel("% above or below the 1991–2020 mean", fontsize=9, color=C_MUTED)
     ax.set_title(f"{A.gpcc_title}: rainy-season totals by ENSO phase (GPCC, Oct–Apr)", fontsize=10, color=C_TEXT, loc="left")
     ax.legend(handles=[edd.Patch(color=C_EN, label=f"El Niño (DJF Niño3.4 ≥ +{ENSO_THRESH})"), edd.Patch(color=C_NEU, label="Neutral"),
                        edd.Patch(color=C_LN, label=f"La Niña (≤ −{ENSO_THRESH})")], frameon=False, fontsize=8,
@@ -1426,8 +1429,8 @@ def render(spec: dict, a: dict) -> str:
              'and the start of the satellite era. p-values for the period after the break are conditional on choosing it; '
              'the full-record rows show what an unsplit analysis gives.</p>')
     o.append(f'<h3>What El Niño winters have looked like since {SPLIT}</h3>{spec.get("history_html", "")}')
-    o.append('<figure><img src="phase_history.png" alt="Rainy-season totals by ENSO phase"><figcaption>October–April GPCC totals as a percentage '
-             'of the 1991–2020 mean, coloured by the ENSO phase of the same winter (December–February Niño3.4, pinned ERSST v5 series throughout, so '
+    o.append('<figure><img src="phase_history.png" alt="Rainy-season totals by ENSO phase"><figcaption>October–April GPCC totals as a percentage above or below '
+             'the 1991–2020 mean, coloured by the ENSO phase of the same winter (December–February Niño3.4, pinned ERSST v5 series throughout, so '
              'a few 1950s–70s winters are classed differently from the HadISST-based table below). Winters with Niño3.4 ≥ +1.5 °C are labelled; '
              f'the dashed line marks {SPLIT}.</figcaption></figure>')
     o.append('<table><thead><tr><th>Record, period</th><th>ENSO phase</th><th class="num">Winters</th><th class="num">Wettest third</th>'
@@ -1485,7 +1488,7 @@ def render(spec: dict, a: dict) -> str:
     o.append('<figure><img src="daily_by_phase.png" alt="Correlation of winter weather metrics with Niño3.4"><figcaption>Each dot is the '
              'correlation between one October–April metric and December–February Niño3.4 across the winters since '
              f'{SPLIT} (IMERG from 1998, {A.gauge_short} to {a["gauge_last"]}); lines are 95% intervals. Windy days: days whose highest hourly ERA5 10 m wind reaches '
-             f'the top 5% of winter days ({a["wind95"]:.1f} m/s; ERA5 winds are cell averages and understate gusts). Nights below 5 °C: '
+             f'the top 5% of winter days ({a["wind95"]:.1f} m/s; ERA5 winds are cell averages and understate gusts). {_metric_label("cold")}: '
              + A.daily_cold_note + '</figcaption></figure>')
     o.append('<table><thead><tr><th>Metric</th><th>Record</th><th class="num">El Niño</th><th class="num">Neutral</th><th class="num">La Niña</th>'
              '<th class="num">r</th><th class="num">p</th></tr></thead><tbody>')

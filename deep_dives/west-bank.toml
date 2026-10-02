@@ -11,12 +11,12 @@ timeline_winters = [2023, 2024, 2025]
 
 summary_html = '''
 <p><strong>1. What the forecasts say.</strong> A very strong El Niño is under way. Every multi-model forecast checked favours above-normal rain over the southern Levant in October–December (40–70% for the wet tercile), with weaker odds in November–January and no wet signal for December–February. All favour a warm winter. Over the West Bank, SEAS5's September forecast puts October–December at a 23-year wet return period with high skill, and October alone is the 3rd-wettest of 46 September forecasts. After December both the signal and the skill fade.</p>
-<p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. The GPCC gauge analysis, the long Jerusalem gauge and ERA5 correlate at +0.57 to +0.59 with winter Niño3.4. 9 of the 14 El Niño winters fell in the West Bank's wettest third, against none (GPCC) or one (ERA5) in the driest. Before 1979 the same records show no positive link. None of the six strong El Niños since 1979 was dry. But the two wettest, 1982/83 and 1991/92, followed major volcanic eruptions, and the other four were near normal.</p>
+<p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. The GPCC gauge analysis, the long Jerusalem gauge and ERA5 correlate at +0.57 to +0.59 with winter Niño3.4. 9 of the 14 El Niño winters fell in the West Bank's wettest third, against none (GPCC) or one (ERA5) in the driest. Before 1979 the same records show no positive link. None of the six strong El Niños since 1979 was in the driest third in GPCC or at Jerusalem, though ERA5 puts 2009/10 just inside its driest third and IMERG puts 2015/16 there. The two wettest, 1982/83 and 1991/92, followed major volcanic eruptions; 1997/98 was wet, and the other three near normal.</p>
 <p><strong>3. What changes in an El Niño winter.</strong> More rain days: about 14 more than in a La Niña winter in ERA5, and 10 more at the Jerusalem gauge. There are also more days of 10 mm or more, and at Jerusalem more days of 20 mm or more. The single wettest day and cold nights show no consistent link.</p>
 <p><strong>4. What winter weather does in the West Bank.</strong> Far less than in Gaza, and it is poorly counted. The worst pre-war winters brought floods (January 2013: about 1,000 homes damaged, 4 deaths) and snow (Storm Alexa, December 2013). In three winters since October 2023, the UN has quantified one West Bank weather event: on 28–30 December 2025, at least 66 households in 18 herding communities lost tents and animal shelters or had them damaged. Winter deaths there have come from flash floods and heating fires; no hypothermia death was found.</p>
 <p><strong>5. What this winter could bring.</strong> A wet first half is the most likely El Niño outcome: a storm of 20 mm or more came before December in 7 of 8 El Niño winters. The most exposed groups are:</p>
 <ul>
-<li>about 216,000 people in Area C herding communities, more than 2,200 of whose shelters need urgent repair;</li>
+<li>herding and Bedouin communities in Area C, part of the 315 Area C communities (about 216,000 people) the Shelter Cluster assessed, where more than 2,200 shelters need urgent repair;</li>
 <li>more than 33,000 people displaced from the northern refugee camps, most of them renting.</li>
 </ul>
 <p>Snow is less likely in a warm winter but not ruled out. No West Bank-specific winter plan had been published by early October.</p>
@@ -36,18 +36,18 @@ forecast_table_note = '''
 '''
 
 skill_html = '''
-<p>Over the West Bank, the September 2026 SEAS5 issuance forecasts a wet start to the season. September–November is at a 15-year wet return period, October–December at 23 years with high skill (r = 0.53), and November–January at 7 years. December–February is only slightly wet (2 years, moderate skill), and January–March slightly dry with low skill. The raw ensemble-mean files give the same picture independently of the app's cube: September–November and October–December are each the 5th-wettest of 46 September forecasts since 1981. SEAS5's wettest September–November hindcasts for the area are 1997, 2015 and 1982, the strongest El Niños in its record.</p>
+<p>Over the West Bank, the September 2026 SEAS5 issuance forecasts a wet start to the season. September–November is at a 15-year wet return period, October–December at 23 years with high skill (r = 0.53), and November–January at 7 years. December–February is only slightly wet (2 years, moderate skill), and January–March slightly dry with low skill. The raw ensemble-mean files give the same picture independently of the app's cube: September–November and October–December are each the 5th-wettest of 46 September forecasts since 1981. SEAS5's wettest September–November hindcasts for the area are 1997, 2015 and 1982, the strongest El Niños in its record. (The skill table counts 17 cells, every 0.25° cell touching the West Bank; the ERA5 series uses the 16 that cover more than 0.5% of it.)</p>
 '''
 
 monthly_html = '''
-<p>By month, the wet signal sits in October (about double the hindcast mean, the 3rd-wettest of 46 September forecasts) and November (+22%, the 10th). December is slightly wet and January–March slightly dry. Skill for single months is low except in November, so read the monthly split as a guide to where the three-month signal sits.</p>
+<p>By month, the wet signal sits in October (about double the hindcast mean, the 3rd-wettest of 46 September forecasts) and November (+22%, the 10th). December is slightly wet and January–March slightly dry. Skill for single months is low in the rainy months except November, so read the monthly split as a guide to where the three-month signal sits.</p>
 '''
 
 enso_intro_html = '''
 <p>The West Bank's rain falls between October and April, mostly from December to February. The hills rise to 700–1,000 m and drop steeply east to the Jordan Valley, about 300 m below sea level, and rainfall more than halves from the western slopes to the valley. This section uses four records:</p>
 <ul>
 <li>the GPCC gauge analysis;</li>
-<li>the Jerusalem rain gauge (St Anne to 1947, Jerusalem Central from 1948 to 2015), which is one of GPCC's inputs;</li>
+<li>the Jerusalem rain gauge (St Anne to spring 1948, Jerusalem Central from autumn 1948 to 2015), which is one of GPCC's inputs;</li>
 <li>ERA5 over the 16 cells covering the West Bank, a reanalysis that assimilates no rain gauges;</li>
 <li>IMERG.</li>
 </ul>
@@ -63,7 +63,7 @@ history_html = '''
 '''
 
 strong_html = '''
-<p>None of the six strong El Niños since 1979 was dry in any of the long records, a stronger result than in Gaza. But the two wettest both followed major volcanic eruptions: 1982/83, and 1991/92, Jerusalem's wettest winter on record, with heavy snow in February 1992. That makes them doubtful analogues for a winter forecast to be warm. 1997/98 was wet in GPCC and ERA5 but normal at Jerusalem; 2009/10, 2015/16 and 2023/24 were near normal. The two strong events before 1979 were dry or normal.</p>
+<p>None of the six strong El Niños since 1979 was in the driest third in GPCC or at the Jerusalem gauge, a stronger result than in Gaza. Two of the other records disagree for single winters: ERA5 puts 2009/10 just inside its driest third (32nd percentile), and IMERG puts 2015/16, the strongest event in the record, there too (21st percentile). The Israel Meteorological Service says a dry 2026/27 “like 2015/16” cannot be ruled out. The two wettest strong events both followed major volcanic eruptions: 1982/83, and 1991/92, Jerusalem's wettest winter on record, with heavy snow in February 1992. That makes them doubtful analogues for a winter forecast to be warm. 1997/98 was wet in GPCC and ERA5 but normal at Jerusalem; 2009/10, 2015/16 and 2023/24 were near normal in GPCC. The two strong events before 1979 were dry or normal.</p>
 '''
 
 trimester_html = '''
@@ -84,7 +84,7 @@ impacts_intro_html = '''
 <li>the floods of 7–10 January 2013: about 1,000 homes damaged, more than 260 mm in 48 hours in parts of the north, 4 deaths;</li>
 <li>Storm Alexa's snow in December 2013: 7,128 Civil Defence operations, communities cut off for days, more than 300 herders displaced.</li>
 </ul>
-<p>Since October 2023, UN reporting on the West Bank has been dominated by the conflict, and the UN has quantified one weather event in three winters. Most other figures come from the Palestinian Civil Defence via the media. That gap shows in the timeline below. Storm Byron gave the West Bank its wettest day in IMERG's 28-year record, about 97 mm averaged over the whole territory on 11 December 2025, yet no West Bank impact from it was found in public reporting. That says more about what gets counted than about what happened.</p>
+<p>Since October 2023, UN reporting on the West Bank has been dominated by the conflict, and the UN has quantified one weather event in three winters. Most other figures come from the Palestinian Civil Defence via the media. That gap shows in the timeline below. Storm Byron gave the West Bank its wettest day in IMERG's 28-year record, about 97 mm averaged over the whole territory on 11 December 2025, yet no West Bank impact from it was found in public reporting. Whether that reflects little damage or little counting cannot be told from what is published.</p>
 <p>The impacts fall on three groups:</p>
 <ul>
 <li>herding and Bedouin communities in Area C living in tents and tin structures, who lose shelters, animal pens and fodder in every storm;</li>
@@ -103,7 +103,7 @@ range_intro_html = '''
 '''
 
 first_storm_html = '''
-<p>In 7 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more over the West Bank came before 1 December, against 14 of 28 winters overall. Against the other winters that is unlikely to be chance alone (p ≈ 0.03), though eight winters is a small sample. Last winter's most damaging West Bank event, on 28–30 December 2025, came in a December that gave Jerusalem more than 237 mm, its wettest December since 2013.</p>
+<p>In 7 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more over the West Bank came before 1 December, against 14 of 28 winters overall. Against the other winters that is unlikely to be chance alone (p ≈ 0.03), though eight winters is a small sample. Last winter's most damaging West Bank event, on 28–30 December 2025, came in a December that gave Jerusalem more than 237 mm, its wettest December since 2013 according to the Palestinian Meteorological Department (via Al Jazeera).</p>
 '''
 
 range_after_html = '''
@@ -120,7 +120,7 @@ range_after_html = '''
 <p>Snow with impacts has come in every ENSO phase; over the last 15 years, more often in neutral and La Niña winters than in El Niño ones. The Israel Meteorological Service finds a slight, non-significant tilt towards more Jerusalem snow days in strong El Niño winters, from seven cases. With every forecast pointing to a warm winter, a snowstorm like Alexa is less likely than usual this year but not ruled out. The ERA5 cells are too smooth to see the hill-town snow, so this page does not estimate snow odds.</p>
 <h3>Who is exposed</h3>
 <table><thead><tr><th>Group</th><th>Size</th><th>Main winter risks</th></tr></thead><tbody>
-<tr><td>Herding and Bedouin communities in Area C</td><td>304–315 communities, about 216,000 people; more than 2,200 shelters need urgent repair; 49 communities fully and 83 partly displaced by settler violence since 2023</td><td>Tents, animal pens and fodder stores flattened or flooded; flash floods; cold. The only group with a UN impact count since 2023.</td></tr>
+<tr><td>Herding and Bedouin communities in Area C</td><td>A subset of the 304–315 Area C communities (about 216,000 people, about 30,000 residential shelters) the Shelter Cluster assessed, where more than 2,200 shelters need urgent repair. No current count of people in tents exists; in 2022 REACH found 0.6% of Area C households in tents and 1.3% in makeshift shelters. 49 communities fully and 83 partly displaced by settler violence since 2023.</td><td>Tents, animal pens and fodder stores flattened or flooded; flash floods; cold. The only group with a UN impact count since 2023.</td></tr>
 <tr><td>People displaced from the Jenin, Tulkarm and Nur Shams camps</td><td>34,176 displaced (of 41,951 in the West Bank since January 2025); more than 33,000 still out; over 80% now rent</td><td>Heating costs and indoor wood burning; sub-standard and overcrowded rented rooms; buildings without doors or windows. Not tent flooding.</td></tr>
 <tr><td>Towns and camps with blocked or destroyed drainage</td><td>167 of 845 communities flooded at least once in the three years to 2022 (10,173 households, most of them in Jerusalem governorate); northern-camp networks destroyed since 2023</td><td>Urban flooding in heavy rain; contaminated water</td></tr>
 <tr><td>Hill towns above about 700 m</td><td>Hebron, Bethlehem, Ramallah, Jerusalem, Nablus</td><td>Snow cutting roads and power; heating fires</td></tr>
@@ -142,7 +142,7 @@ range_after_html = '''
 <p>Funding is reported only for the oPt as a whole.</p>
 '''
 
-strong_notes = { "1991" = "Pinatubo erupted in June 1991; Jerusalem's wettest winter on record, heavy snow in February 1992.", "2023" = "Palestinian Meteorological Department: wet north (Tulkarm 144%), drier south (Jerusalem 86%, Hebron 75%)." }
+strong_notes = { "1991" = "Pinatubo erupted in June 1991; Jerusalem's wettest winter on record, heavy snow in February 1992.", "2023" = "<em>Palestinian Meteorological Department, season to 21 March: wet north (Tulkarm 144%), drier south (Jerusalem 86%, Hebron 75%).</em>" }
 
 [[forecasts]]
 source_html = '<a href="https://charts.ecmwf.int/products/c3s_seasonal_spatial_mm_rain_3m?area=area11&amp;base_time=202609010000&amp;type=tsum&amp;valid_time=202610010000">C3S multi-system</a> (9 models)'
@@ -192,9 +192,9 @@ gpcc_title = "West Bank"
 gpcc_label = "GPCC gauge analysis (1° cells)"
 era5_label = "ERA5 (16 cells over the West Bank)"
 imerg_label = "IMERG late v7 (West Bank, 0.1°)"
-gauges = [["ISE00100480", "", "1947-12-31"], ["IS000006771", "1948-01-01", ""]]
+gauges = [["ISE00100480", "", "1948-09-29"], ["IS000006771", "1948-09-30", ""]]
 gauge_name = "Jerusalem gauge"
-gauge_label = "Jerusalem rain gauge (St Anne to 1947, Central from 1948)"
+gauge_label = "Jerusalem rain gauge (St Anne to spring 1948, Central from autumn 1948)"
 gauge_short = "Jerusalem"
 meta_gauge = "Jerusalem gauge 1908–2015"
 imerg_box = [34.85, 31.30, 35.65, 32.60]
@@ -249,7 +249,7 @@ source_html = '<a href="https://www.wafa.ps/Pages/Details/92133">WAFA</a> (Civil
 start = "2025-02-20"
 end = "2025-02-25"
 hazard = "C S"
-what_html = "Light snow on the evening of 23 February; schools opened late on 23–25 February; no damage reported."
+what_html = "<em>Light snow on the evening of 23 February; schools opened late on 23–25 February; no damage reported.</em>"
 source_html = '<a href="https://www.timesofisrael.com/liveblog_entry/light-snow-falls-in-parts-of-jerusalem/">Times of Israel</a>; WAFA'
 [[impacts]]
 start = "2025-11-24"
@@ -275,13 +275,13 @@ source_html = '<a href="https://www.israelhayom.com/2026/01/13/winter-storm-isra
 start = "2013-01-07"
 end = "2013-01-10"
 hazard = "R F S"
-what_html = "<strong>Floods.</strong> About 1,043 homes damaged in 184 communities, most in the north; about 650 people displaced; 3 drowned (2 in a flash flood near Anabta on 8 January) and 1 died of burns; more than 260 mm in 48 hours in parts of the north."
+what_html = "<strong>Floods.</strong> About 1,043 homes damaged in 184 communities, most in the north; 410 people, 26 families and 104 more temporarily displaced; 3 drowned (2 in a flash flood near Anabta on 8 January) and 1 died of burns; more than 260 mm in 48 hours in parts of the north."
 source_html = '<a href="https://www.un.org/unispal/document/auto-insert-194567/">OCHA</a>, 16 Jan 2013; <a href="https://www.nbcnews.com/news/world/snow-desert-floods-west-bank-deadly-winter-storm-slams-mideast-flna1b7904394">NBC</a>'
 [[prewar]]
 start = "2013-12-10"
 end = "2013-12-19"
 hazard = "S C R"
-what_html = "<strong>Storm Alexa.</strong> 60–100 cm of snow over 15% of the West Bank; 7,128 Civil Defence operations, including 533 rescues of trapped people; 282 houses damaged; more than 300 herders displaced near Hebron; 281,000 animals died; 2 indirect deaths."
+what_html = "<strong>Storm Alexa.</strong> 60–100 cm of snow over 15% of the West Bank; more than 300 herders displaced near Hebron; 281,000 animals died (OCHA/FAO); a dialysis patient died after being cut off for two days. <em>7,128 Civil Defence operations, including 533 rescues of trapped people; 282 houses damaged; one death in a roof fall, “partly unrelated” to the storm (PA damage assessment, Civil Defence).</em>"
 source_html = '<a href="https://www.ochaopt.org/content/ocha-opt-humanitarian-update-winter-storm-developments-13-december-2013">OCHA</a>; <a href="https://documents1.worldbank.org/curated/en/416481468329971167/pdf/889710WP0P1499270Box385254B00PUBLIC00ACS.pdf">PA damage assessment</a>, Feb 2014'
 [[prewar]]
 start = "2015-01-06"
@@ -299,7 +299,7 @@ source_html = 'Ma’an via IMEMC; <a href="https://gulfnews.com/world/mena/three
 start = "2018-04-25"
 end = "2018-04-27"
 hazard = "F"
-what_html = "A spring Red Sea Trough flood: 2 children drowned in a flooded reservoir in Al Fawwar camp, and a girl herding sheep east of Bethlehem was swept away."
+what_html = "<em>A spring Red Sea Trough flood: 2 children drowned in a flooded reservoir in Al Fawwar camp, and a girl herding sheep east of Bethlehem was swept away (police, via media).</em>"
 source_html = '<a href="https://www.haaretz.com/israel-news/two-palestinian-children-drown-as-rains-flood-west-bank-and-israel-1.6032989">Haaretz</a>; <a href="https://www.cnn.com/2018/04/26/middleeast/israel-flash-floods-intl/index.html">CNN</a>'
 [[prewar]]
 start = "2020-01-18"
@@ -330,7 +330,7 @@ source_html = 'Mariotti, Zeng &amp; Lau 2002 (GRL); “Price, Stone &amp; Rind 1
 direction = "wetter, Oct–Apr"
 season = "strongest Oct–Dec"
 evidence = "moderate"
-evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.57 to +0.59); no positive link before 1979; no strong El Niño since 1979 was dry."
+evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.57 to +0.59); no positive link before 1979; strong El Niños since 1979 were normal to wet in GPCC."
 one_line = "2026/27 outlook: a very strong El Niño and a SEAS5 forecast for a wet October–December (23-year return period, high skill). Since 1979, 9 of 14 El Niño winters were in the West Bank's wettest third and none in the driest, but the link did not exist before the late 1970s. Weather impacts are small and poorly counted; herding communities in Area C and people displaced from the northern camps are the most exposed."
 
 [titles]
