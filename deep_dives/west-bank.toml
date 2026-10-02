@@ -14,10 +14,11 @@ summary_html = '''
 <p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. The GPCC gauge analysis, the long Jerusalem gauge and ERA5 correlate at +0.57 to +0.59 with winter Niño3.4. 9 of the 14 El Niño winters fell in the West Bank's wettest third, against none (GPCC) or one (ERA5) in the driest. Before 1979 the same records show no positive link. None of the six strong El Niños since 1979 was in the driest third in GPCC or at Jerusalem, though ERA5 puts 2009/10 just inside its driest third and IMERG puts 2015/16 there. The two wettest, 1982/83 and 1991/92, followed major volcanic eruptions; 1997/98 was wet, and the other three near normal.</p>
 <p><strong>3. What changes in an El Niño winter.</strong> More rain days: about 14 more than in a La Niña winter in ERA5, and 10 more at the Jerusalem gauge. There are also more days of 10 mm or more, and at Jerusalem more days of 20 mm or more. The single wettest day and cold nights show no consistent link.</p>
 <p><strong>4. What winter weather does in the West Bank.</strong> Far less than in Gaza, and it is poorly counted. The worst pre-war winters brought floods (January 2013: about 1,000 homes damaged, 4 deaths) and snow (Storm Alexa, December 2013). In three winters since October 2023, the UN has quantified one West Bank weather event: on 28–30 December 2025, at least 66 households in 18 herding communities lost tents and animal shelters or had them damaged. Winter deaths there have come from flash floods and heating fires; no hypothermia death was found.</p>
-<p><strong>5. What this winter could bring.</strong> A wet first half is the most likely El Niño outcome: a storm of 20 mm or more came before December in 7 of 8 El Niño winters. The most exposed groups are:</p>
+<p><strong>5. What this winter could bring.</strong> A wet first half is the most likely El Niño outcome: a storm of 20 mm or more came before December in 7 of 8 El Niño winters. In a typical winter the wettest week brings about a fifth of the year's rain; Byron's week brought half. The most exposed groups (set out by theme in section 5) are:</p>
 <ul>
 <li>herding and Bedouin communities in Area C, part of the 315 Area C communities (about 216,000 people) the Shelter Cluster assessed, where more than 2,200 shelters need urgent repair;</li>
-<li>more than 33,000 people displaced from the northern refugee camps, most of them renting.</li>
+<li>about 34,000 people still displaced from the Jenin, Tulkarm and Nur Shams camps, most of them renting, while the camps' drainage, water and sewage networks lie bulldozed;</li>
+<li>farmers with greenhouses (28,700 dunums, three quarters of them in Jenin, Tulkarm and Tubas), which take the wind, frost and flood damage.</li>
 </ul>
 <p>Snow is less likely in a warm winter but not ruled out. No West Bank-specific winter plan had been published by early October.</p>
 <p><strong>6. Farming.</strong> In ERA5 the three farming zones (the semi-coastal plain, the Central Highlands and the Jordan Valley) cannot be told apart in their El Niño rain signal; they differ in what they grow. Rainfed wheat and barley were above trend in 7 of 9 crop years after El Niño winters and 3 of 11 after La Niña winters, and the four worst harvests since 1994 all followed La Niña winters: El Niño has made a bad cereal year less likely rather than a bumper one more likely. Spring greenness after El Niño winters was above normal in 8 of 8 years in the Central Highlands (several only slightly) and 6 of 8 in the other two zones; the drier zones swing more, as they do in every year. Lentils follow the rain even more closely than cereals. Olives follow their own two-year bearing cycle and, since 2023, access; they show no clear El Niño signal. This winter feeds the 2027 cereal harvest, spring grazing and the autumn 2027 olive harvest.</p>
@@ -86,11 +87,11 @@ impacts_intro_html = '''
 <li>Storm Alexa's snow in December 2013: 7,128 Civil Defence operations, communities cut off for days, more than 300 herders displaced.</li>
 </ul>
 <p>Since October 2023, UN reporting on the West Bank has been dominated by the conflict, and the UN has quantified one weather event in three winters. Most other figures come from the Palestinian Civil Defence via the media. That gap shows in the timeline below. Storm Byron gave the West Bank its wettest day in IMERG's 28-year record, about 97 mm averaged over the whole territory on 11 December 2025, yet no West Bank impact from it was found in public reporting. Whether that reflects little damage or little counting cannot be told from what is published.</p>
-<p>The impacts fall on three groups:</p>
+<p>The impacts fall on three groups, set out by theme in section 5:</p>
 <ul>
+<li>refugee camps and towns, where drainage is blocked by the Barrier or destroyed (water, sewage and stormwater networks in the northern camps were bulldozed), and the hill towns when it snows;</li>
 <li>herding and Bedouin communities in Area C living in tents and tin structures, who lose shelters, animal pens and fodder in every storm;</li>
-<li>towns and camps where drainage is blocked by the Barrier or destroyed (more than 20 km of water, sewer and stormwater networks in the northern camps by October 2024);</li>
-<li>the hill towns, when it snows.</li>
+<li>farmers, whose greenhouses in the north and the Jordan Valley take the wind, frost and flood damage, and whose rainfed crops and pasture depend on the season's rain (section 6).</li>
 </ul>
 <p>Deaths come from flash floods in wadis and from heating fires. No hypothermia death was found for the West Bank in any winter.</p>
 '''
@@ -120,14 +121,51 @@ range_after_html = '''
 <tr><td>2024/25, 2025/26</td><td>light snow only (February 2025, January 2026)</td><td>La Niña</td></tr>
 </tbody></table>
 <p>Snow with impacts has come in every ENSO phase; over the last 15 years, more often in neutral and La Niña winters than in El Niño ones. The Israel Meteorological Service finds a slight, non-significant tilt towards more Jerusalem snow days in strong El Niño winters, from seven cases. With every forecast pointing to a warm winter, a snowstorm like Alexa is less likely than usual this year but not ruled out. The ERA5 cells are too smooth to see the hill-town snow, so this page does not estimate snow odds.</p>
-<h3>Who is exposed</h3>
-<table><thead><tr><th>Group</th><th>Size</th><th>Main winter risks</th></tr></thead><tbody>
-<tr><td>Herding and Bedouin communities in Area C</td><td>A subset of the 304–315 Area C communities (about 216,000 people, about 30,000 residential shelters) the Shelter Cluster assessed, where more than 2,200 shelters need urgent repair. No current count of people in tents exists; in 2022 REACH found 0.6% of Area C households in tents and 1.3% in makeshift shelters. 49 communities fully and 83 partly displaced by settler violence since 2023.</td><td>Tents, animal pens and fodder stores flattened or flooded; flash floods; cold. The only group with a UN impact count since 2023.</td></tr>
-<tr><td>People displaced from the Jenin, Tulkarm and Nur Shams camps</td><td>34,176 displaced (of 41,951 in the West Bank since January 2025); more than 33,000 still out; over 80% now rent</td><td>Heating costs and indoor wood burning; sub-standard and overcrowded rented rooms; buildings without doors or windows. Not tent flooding.</td></tr>
-<tr><td>Towns and camps with blocked or destroyed drainage</td><td>167 of 845 communities flooded at least once in the three years to 2022 (10,173 households, most of them in Jerusalem governorate); northern-camp networks destroyed since 2023</td><td>Urban flooding in heavy rain; contaminated water</td></tr>
-<tr><td>Hill towns above about 700 m</td><td>Hebron, Bethlehem, Ramallah, Jerusalem, Nablus</td><td>Snow cutting roads and power; heating fires</td></tr>
+<h3>Who is exposed, by theme</h3>
+<p>Three groups carry most of the West Bank's winter risk, and each meets the weather in a different way: camps and towns through drainage, power and roads; herding communities through shelters, animals and fodder; farmers through their crops. Conflict, not weather, has shaped all three since 2023, and the figures below keep the two apart.</p>
+
+<h4 style="font-size:14px;margin:20px 0 4px">Refugee camps and towns</h4>
+<p>Going into this winter:</p>
+<ul>
+<li>About 34,000 refugees remain displaced from the Jenin, Tulkarm and Nur Shams camps (UNRWA, 10 September 2026). None have returned; military closure orders on Tulkarm and Nur Shams camps ran to 30 September 2026. Of the displaced, over half rent, 30% stay with relatives and 20% are in public shelters or other temporary places (OCHA, May 2025 assessments). The about 4,000 displaced from El Far'a camp returned in February 2025.</li>
+<li>Satellite imagery from January–February 2026 shows 637 structures destroyed and 1,521 damaged or destroyed across the three camps, about half of all structures in Jenin and Nur Shams camps (UNOSAT, preliminary). Water, sewage and stormwater infrastructure in the camps was bulldozed (OCHA).</li>
+<li>Elsewhere, towns partly enclosed by the Barrier drain badly in heavy rain, and 167 of 845 communities reported flooding at least once in the three years to 2022 (WASH Cluster).</li>
+</ul>
+<table><thead><tr><th>Event</th><th>What winter weather did</th><th>Source</th></tr></thead><tbody>
+<tr><td>7–10 January 2013, floods</td><td>Qalqiliya and Tulkarm cities and Kafr Aqab flooded because the Barrier obstructed their drainage, and Hebron's Old City because of roadblocks. Villages such as Kafr Qaddum were cut off when the only road they are allowed to use flooded. Prolonged power cuts, flooded roads and schools closed. 618 homes damaged in 91 communities of the northern West Bank.</td><td><a href="https://www.un.org/unispal/document/auto-insert-194567/">OCHA</a>, 16 Jan 2013</td></tr>
+<tr><td>11–14 December 2013, Storm Alexa</td><td>Several floods and house fires reported in the 19 refugee camps, many of them left without adequate power; 80% of Ramallah city without power on the first day; most schools closed. A girl in Bethlehem died after an ambulance could not reach her through the snow for two days.</td><td>OCHA, <a href="https://www.un.org/unispal/document/auto-insert-197890/">14</a> and <a href="https://www.un.org/unispal/document/auto-insert-202086/">16 Dec 2013</a></td></tr>
+<tr><td>January 2024, rain</td><td><em>Rain on the bulldozed streets of the northern camps showed the scale of the destruction: streets turned to mud and potholes, hard for vehicles (no numbers).</em></td><td><a href="https://wafa.ps/Pages/Details/88932">WAFA</a>, 27 Jan 2024</td></tr>
+<tr><td>29 December 2025, storm</td><td><em>Civil Defence evacuated flooded homes south of Hebron and pumped water from homes, a kindergarten and two nurseries; road collapses and blocked rainwater drains.</em> 115 Civil Defence incidents in 11 hours across several governorates (relayed by OCHA).</td><td><a href="https://www.ochaopt.org/content/humanitarian-situation-update-352-west-bank">OCHA HSU #352</a>; <a href="https://www.aljazeera.net/news/2025/12/29/أمطار-غزيرة-وسيول-تضرب-الضفة-وتخلف">Al Jazeera Arabic</a> (Civil Defence), 29 Dec 2025</td></tr>
 </tbody></table>
-<p class="small">Shelter Cluster (January–February 2026); OCHA West Bank monthly snapshot (August 2026); UNRWA (September 2026); WASH Cluster community inventory (2022).</p>
+<p class="small">No numbers on camp flooding, power cuts or service interruptions from weather were found for any winter since 2023. The displaced from the northern camps now live mostly in rented rooms in the surrounding towns, so their winter risks are heating costs, indoor wood burning and sub-standard housing more than flooding.</p>
+
+<h4 style="font-size:14px;margin:20px 0 4px">Herding communities in the Jordan Valley and Area C</h4>
+<p>Going into this winter:</p>
+<ul>
+<li>The Shelter Cluster's Area C dataset covers 315 communities (215,703 people) with 30,173 residential shelters, of which 2,242 need rehabilitation (January 2026). Herding and Bedouin communities are a subset; no count of people in tents exists.</li>
+<li>Conflict displacement, separate from the weather: 130 communities fully or partly displaced and more than 6,400 people since January 2023, over 2,500 of them in 2026, mostly in Bedouin and herding communities in Area C (OCHA, 4 September 2026). Ras Ein al 'Auja near Jericho, about 600 people, was fully displaced in January 2026.</li>
+<li>After the 2024/25 drought (33% of the mean rainfall at Jericho by early March 2025), 16% of livestock-keeping households in Area C reported animal deaths from drought or lack of feed, and 81–90% of livestock keepers cited the cost of feed as a problem (FAO, survey of July–August 2025).</li>
+</ul>
+<table><thead><tr><th>Event</th><th>What winter weather did</th><th>Source</th></tr></thead><tbody>
+<tr><td>7–10 January 2013, floods</td><td>Hundreds of residential tents and shelters in Area C herding communities damaged; a sharp rise in livestock deaths and disease, made worse by the destruction of cereal crops grown for feed, which forced herders to buy fodder. Emergency funds later paid to rehabilitate 272 animal sheds in 66 communities.</td><td><a href="https://www.un.org/unispal/document/auto-insert-204416/">OCHA Humanitarian Monitor</a>, Feb 2013</td></tr>
+<tr><td>11–14 December 2013, Storm Alexa</td><td>At least 300 people displaced in herding and Bedouin communities in Hebron governorate; 55,760 m² of animal sheds damaged, mainly in the southern West Bank (MoA); 281,000 animals died in the West Bank, most of them poultry. In the Jordan Valley, demolitions the day before the storm had displaced 41 people.</td><td>OCHA, <a href="https://www.un.org/unispal/document/auto-insert-202086/">16 Dec 2013</a>; <a href="https://unispal.un.org/pdfs/HB1213.pdf">Humanitarian Bulletin</a>, Dec 2013</td></tr>
+<tr><td>28–30 December 2025, storm</td><td>At least 66 households (about 300 people) in 18 mainly herding and Bedouin communities had tents, livestock barracks, fodder stores or animal shelters damaged or destroyed; in several cases structures recently rebuilt after settler attacks were damaged again. The Shelter Cluster counted more than 120 households in 18 communities over December–January (the two counts overlap).</td><td><a href="https://www.ochaopt.org/content/humanitarian-situation-update-352-west-bank">OCHA HSU #352</a>; <a href="https://www.sheltercluster.org/palestine/documents/shelter-cluster-sitrep-january-2026">Shelter Cluster</a></td></tr>
+</tbody></table>
+<p class="small">No count of livestock killed by cold, floods or snow was found for any winter since 2015. Lambing falls in mid-winter; OCHA flagged the risk to lambs during Alexa, but no lamb losses were measured. No herding community is known to have been displaced by weather alone beyond a few days; long-term displacement is conflict-driven.</p>
+
+<h4 style="font-size:14px;margin:20px 0 4px">Farming: field crops, greenhouses, trees and rangeland</h4>
+<ul>
+<li><strong>Field crops</strong> (about 198,000 dunums) are 95% rainfed and <strong>tree crops</strong> (about 641,000 dunums, most of it olives) 91% rainfed; Jericho and Al-Aghwar is the exception, where about 96% of the tree area (dates, citrus and bananas among it) is irrigated. Section 6 shows how these follow the winter's rain and El Niño.</li>
+<li><strong>Greenhouses</strong>: 28,743 dunums of plastic houses, 77% of them in Jenin, Tulkarm and Tubas and another 8% in Jericho; vegetables as a whole are only 13% rainfed. Their winter hazards are wind, snow load, frost and flooding, not the season's rainfall.</li>
+<li><strong>Rangeland</strong>: about 2 million dunums, of which Palestinians were allowed to graze about 621,000 in 2014 (PA figures); settler violence and displacement have restricted it further since (no updated figure).</li>
+</ul>
+<table><thead><tr><th>Event</th><th>What winter weather did</th><th>Source</th></tr></thead><tbody>
+<tr><td>7–10 January 2013, floods</td><td>More than 4,200 greenhouses damaged across the West Bank and Gaza (MoA), with damage to greenhouses and open fields particularly high in the northern West Bank; more than 100,000 chickens dead in the northern West Bank; US$16.5 million of agricultural damage (West Bank and Gaza).</td><td>OCHA, <a href="https://www.un.org/unispal/document/auto-insert-194567/">16 Jan</a> and <a href="https://www.un.org/unispal/document/auto-insert-204416/">Mar 2013</a></td></tr>
+<tr><td>11–14 December 2013, Storm Alexa</td><td>West Bank production losses of about US$7 million in greenhouses, US$4.6 million in open fields and US$3 million in sheep milk; grape production in Hebron, Dura, Yatta and Bethlehem expected to be lost for two years.</td><td><a href="https://unispal.un.org/pdfs/HB1213.pdf">OCHA Humanitarian Bulletin</a>; <a href="https://openknowledge.worldbank.org/bitstreams/2a3faba9-9309-52d0-badd-ae5b23a7ffd3/download">PA damage assessment</a>, Feb 2014</td></tr>
+<tr><td>17–18 January 2022, frost</td><td><em>About 6,000 of 80,000 dunums of open-field crops and about 600 of 32,000 dunums of protected crops damaged, 60% of the damage in the Jordan Valley (MoA).</em></td><td><a href="https://wafa.ps/Pages/Details/39953">WAFA</a>, 19 Jan 2022</td></tr>
+</tbody></table>
+<p class="small">PCBS and MoA Agricultural Census 2021 (areas, irrigation, greenhouses); PA data in the Alexa damage assessment (rangeland). No storm damage to greenhouses or orchards was found reported for 2025/26.</p>
+
 <h3>Deaths</h3>
 <table><thead><tr><th>Cause</th><th>Events</th></tr></thead><tbody>
 <tr><td>Flash floods and drowning</td><td>8 January 2013, Anabta (2); 25–27 April 2018, Al Fawwar camp and east of Bethlehem (3, a spring storm); 24–25 January 2020, Jerusalem (1); 29 December 2025 (1, place of residence disputed)</td></tr>
@@ -141,7 +179,7 @@ range_after_html = '''
 <li>the Flash Appeal's West Bank shelter response: 62,900 people, US$28.4 million, including weatherproofing, insulation, heaters and blankets;</li>
 <li>UNRWA's West Bank shelter and household items: 11,500 households, US$21.9 million.</li>
 </ul>
-<p>Funding is reported only for the oPt as a whole.</p>
+<p>UNICEF's Winterization Plan 2026–2027 (17 September 2026) seeks US$97.5 million for 540,000 children in Gaza and the West Bank; its costed lines are almost all for Gaza. A US$1.0 million Humanitarian Fund allocation for West Bank shelter gaps, in Area C and for the displaced, was approved in January 2026. Funding is reported only for the oPt as a whole.</p>
 '''
 
 strong_notes = { "1991" = "Pinatubo erupted in June 1991; Jerusalem's wettest winter on record, heavy snow in February 1992.", "2023" = "<em>Palestinian Meteorological Department, season to 21 March: wet north (Tulkarm 144%), drier south (Jerusalem 86%, Hebron 75%).</em>" }
