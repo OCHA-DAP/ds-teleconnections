@@ -726,7 +726,7 @@ def week_ladder(imerg: pd.Series, gauge: pd.Series) -> dict:
         m = float(ann.mean())
         out[k] = dict(mean=m, first=int(ann.index.min()), last=int(ann.index.max()), n=len(mx),
                       med=float(mx.median()), q80=float(mx.quantile(0.8)), mx=float(mx.max()), mx_year=int(mx.idxmax()),
-                      share20=int((mx >= 0.2 * m).sum()), share30=int((mx >= 0.3 * m).sum()))
+                      share30=int((mx >= 0.3 * m).sum()))
     b = imerg.loc["2025-12-08":"2025-12-21"].rolling(7).sum()
     out["byron"] = dict(mm=float(b.max()), end=b.idxmax()) if b.notna().any() else None
     return out
@@ -1318,10 +1318,10 @@ def render_range(spec: dict, a: dict) -> str:
         pc = lambda v, m: f"{100 * v / m:.0f}%"
         o.append('<h3>How big a week of rain is</h3>')
         o.append(f'<p>A 7-day rainfall forecast can be read against the year: in a typical winter the wettest week over {A.ref} brings about '
-                 f'{pc(im["med"], im["mean"])} of an average year\'s rain (IMERG), and one winter in five brings a week of {pc(im["q80"], im["mean"])} or more '
-                 f'({im["share30"]} of {im["n"]} winters since 1998/99 had a week of 30% or more). The share travels better between data sources than '
-                 f'millimetres do: IMERG and the {html.escape(A.gauge_short)} gauge differ in their totals but roughly agree on the share. '
-                 + spec.get("week_html", "") + '</p>')
+                 f'{pc(im["med"], im["mean"])} of an average year\'s rain (IMERG), and one winter in five brings a week of {pc(im["q80"], im["mean"])} or more'
+                 + (f' ({im["share30"]} of the {im["n"]} winters since 1998/99 had a week of 30% or more)' if round(100 * im["q80"] / im["mean"]) != 30 else '')
+                 + '. The table is a scale for reading a forecast, '
+                 'not a damage predictor. ' + spec.get("week_html", "") + '</p>')
         o.append(f'<table><thead><tr><th>Wettest 7 days of a winter</th><th class="num">IMERG over {html.escape(A.ref)}</th>'
                  f'<th class="num">Share of the year</th><th class="num">{html.escape(A.gauge_short)} gauge</th><th class="num">Share of the year</th></tr></thead><tbody>')
         o.append(f'<tr><td>Average year (for scale)</td><td class="num">{im["mean"]:.0f} mm</td><td class="num">100%</td>'
@@ -1340,10 +1340,10 @@ def render_range(spec: dict, a: dict) -> str:
         o.append('</tbody></table>')
         o.append(f'<p class="small">Highest 7-day running total in each season (August–July), divided by the same source\'s mean annual total: IMERG '
                  f'{_yr(im["first"])}–{_yr(im["last"])} (area-weighted over {html.escape(A.ref)}), {html.escape(A.gauge_name)} {_yr(ga["first"])}–{_yr(ga["last"])} '
-                 '(seasons with at least 330 days reported). To use with a forecast: take the forecast 7-day total for the area and divide by the '
-                 'annual mean of the same kind of source (an area average for an area forecast, a gauge for a point). Forecast totals for a week ahead '
-                 'are much less certain than for the next two or three days, and a 7-day total says nothing about how much fell in an hour, which is '
-                 'what drives flash floods.</p>')
+                 '(seasons with at least 330 days reported). These are observed scales: a forecast system\'s 7-day totals carry its own biases, so a '
+                 'forecast compares best as a share of that system\'s own climatological annual total. Totals for a week ahead are much less certain '
+                 'than for the next two or three days, and a 7-day total says nothing about how much fell in an hour, which is what drives flash '
+                 'floods.</p>')
 
     # what one storm of each kind did
     if ev is not None and spec.get("storm_kinds"):

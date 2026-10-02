@@ -136,14 +136,23 @@ def modis_cube(govs) -> dict:
         for f in r.json()["features"]:
             prod, a_, tile = f["id"].split(".")[:3]
             if prod == "MOD13Q1" and int(a_[5:8]) in SPRING_DOY and int(a_[1:5]) == y:
-                items.setdefault(tile, []).append((pd.Timestamp(f"{y}-01-01") + pd.Timedelta(days=int(a_[5:8]) - 1),
-                                                   f["assets"]["250m_16_days_NDVI"]["href"]))
+                key = (tile, pd.Timestamp(f"{y}-01-01") + pd.Timedelta(days=int(a_[5:8]) - 1))
+                version = f["id"].split(".")[4]           # production timestamp: keep the latest reprocessing
+                if key not in items or version > items[key][0]:
+                    items[key] = (version, f["assets"]["250m_16_days_NDVI"]["href"])
+    by_tile = {}
+    for (tile, date), (_, href) in items.items():
+        by_tile.setdefault(tile, []).append((date, href))
     token = None
     env = dict(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="4", GDAL_HTTP_RETRY_DELAY="2")
     out = {}
-    for tile, its in sorted(items.items()):
+    for tile, its in sorted(by_tile.items()):
         path = L.CACHE / f"modis_ndvi_{tile}.npz"
         have = dict(np.load(path, allow_pickle=False)) if path.exists() else None
+        if have is not None:                              # older caches may hold two processing versions of a date
+            _, first = np.unique(have["dates"][::-1], return_index=True)
+            keep = np.sort(len(have["dates"]) - 1 - first)
+            have["dates"], have["ndvi"] = have["dates"][keep], have["ndvi"][keep]
         done = set(pd.to_datetime(have["dates"])) if have is not None else set()
         todo = sorted(it for it in its if it[0] not in done)
         if todo:
@@ -166,6 +175,8 @@ def modis_cube(govs) -> dict:
                 dates = np.concatenate([have["dates"], dates]); arr = np.concatenate([have["ndvi"], arr])
             o = np.argsort(dates)
             np.savez_compressed(path, dates=dates[o], ndvi=arr[o], transform=np.array(tr)[:6], crs=np.array(crs))
+        elif have is not None:
+            np.savez_compressed(path, dates=have["dates"], ndvi=have["ndvi"], transform=have["transform"], crs=have["crs"])
             have = dict(np.load(path, allow_pickle=False))
         if have is not None:
             out[tile] = have
@@ -695,8 +706,10 @@ def render(spec: dict, a: dict) -> str:
                  'out. Shares of the West Bank are of all land, including built-up and bare. r with rain: against the October–April ERA5 total over '
                  'the whole West Bank. “Year-to-year spread” is the standard deviation of the spring anomaly, 2001–2026. The 2021 map is applied to '
                  'every year. WorldCover has no orchard class, and how an olive grove is classed depends on how dense its canopy is, so the shrubland '
-                 'and grassland group mixes rangeland with sparse groves, and tree cover is the denser orchards, groves and woodland. Greenhouses '
-                 'cannot be told apart in these maps.</p>')
+                 'and grassland group mixes rangeland with sparse groves, and tree cover is the denser orchards, groves and woodland. Requiring 60% '
+                 'of a pixel favours large blocks: the cropland rows describe the plains and valley fields more than the fragmented terraces. NDVI '
+                 'is used without quality or snow masking, so February composites in snowy springs (2015, 2021, 2022) may read low; 2023 and 2026 '
+                 'miss one and two composites. Greenhouses cannot be told apart in these maps.</p>')
 
     # National: cereals, olives, long vegetation record, by phase
     fe, fl, fn = (_ph(g["field_ph"], p) for p in ("El Niño", "La Niña", "Neutral"))
