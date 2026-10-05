@@ -16,7 +16,7 @@ skill_html = '''
 '''
 
 monthly_html = '''
-<p>By month, the wet signal sits in October (+79% on the hindcast mean, the 4th-wettest of 46 September forecasts) and November (+22%, the 8th). December, January and March are at their hindcast means, and February is slightly dry (−11%). Skill for single months is low throughout the rainy season (r = −0.01 to +0.27), so read the monthly split as a guide to where the three-month signal sits, not as a forecast for individual months.</p>
+<p>By month, the wet signal sits in October (79% above the hindcast mean, the 4th-wettest of 46 September forecasts) and November (22% above, the 8th). December, January and March are at their hindcast means, and February is slightly dry (11% below). Skill for single months is low throughout the rainy season (r = −0.01 to +0.27), so read the monthly split as a guide to where the three-month signal sits, not as a forecast for individual months.</p>
 '''
 
 enso_intro_html = '''
@@ -48,7 +48,7 @@ trimester_html = '''
 '''
 
 daily_html = '''
-<p>A wetter El Niño winter is mostly a winter with more rainy days, not bigger storms. In all three records the number of rain days rises with Niño3.4 (r = 0.55–0.65). ERA5 has 54 rain days in an average El Niño winter against 42 in a La Niña winter, IMERG 41 against 33, and the Beer Sheva gauge 33 against 22. Days of 10 mm or more rise clearly at Beer Sheva (7.8 against 4.4) and in ERA5, but not in IMERG. The heaviest days are only loosely tied: for days of 20 mm or more and for the season's wettest day, correlations are 0.16–0.34, and only ERA5's wettest day clears p &lt; 0.05. The Israel Meteorological Service likewise finds no significant El Niño link to daily or storm maximum rainfall, but about 15% more days with a nearby low in El Niño than in La Niña winters. Cold nights show no link (Beer Sheva, r = +0.08). Windy days may be somewhat more frequent (12.8 against 9.3 of ERA5's top-5% days, r = +0.34, p = 0.02); with 17 tests in the table, treat that as suggestive.</p>
+<p>A wetter El Niño winter is mostly a winter with more rainy days, not bigger storms. In all three records the number of rain days rises with Niño3.4 (r = 0.55–0.65). ERA5 has 54 rain days in an average El Niño winter against 42 in a La Niña winter, IMERG 41 against 33, and the Beer Sheva gauge 33 against 22. Days of 10 mm or more rise clearly at Beer Sheva (7.8 against 4.4) and in ERA5, but not in IMERG. The heaviest days are only loosely tied: for days of 20 mm or more and for the season's wettest day, correlations are 0.16–0.34, and only ERA5's wettest day clears p &lt; 0.05. The Israel Meteorological Service likewise finds no significant El Niño link to daily or storm maximum rainfall, but about 15% more days with a nearby low in El Niño than in La Niña winters. Cold nights show no link (Beer Sheva, r = +0.08). Windy days may be somewhat more frequent (12.8 against 9.3 days in the windiest 5% of ERA5's winter days, r = +0.34, p = 0.02); with 17 tests in the table, treat that as suggestive.</p>
 <p>The distinction matters for people in tents. The storms that tear down shelters and flood whole sites, like Byron in December 2025, can come in any winter. What El Niño adds is more wet days around them. Our reading, not tested here, is that this is what keeps ground saturated, stormwater basins full and bedding wet between storms.</p>
 '''
 
@@ -56,7 +56,7 @@ impacts_intro_html = '''
 <p>As of September 2026 about 1.7 million people live in roughly 1,600 displacement sites, and 65% of households live in tents or makeshift shelters. Last winter 71% of households were flooded at least once, and 83% of those in tents (Shelter Cluster). The inter-agency flood-exposure outlook for 2026/27 puts 989 of 1,764 assessed sites in medium- or high-risk areas, and 451 sites holding about 464,000 people in high-risk areas (IOM, Site Management Cluster and Shelter Cluster, September 2026; OCHA). That exposure map uses terrain and past flooding, not rainfall. No published analysis links rainfall amounts to tent flooding in Gaza, and no rain gauge inside Gaza reports internationally. The table below is a first pass at that link: every dated winter impact in UN reporting since October 2023, with the weather over Gaza on those days.</p>
 <p>Three things stand out.</p>
 <ul>
-<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over Gaza. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over Gaza every winter. Byron (rain from 8 December, the storm proper from 10 December; about 150 mm in IMERG) was large, but the pre-October 2023 benchmark, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
+<li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over Gaza. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over Gaza every winter. Byron (rain from 8 December, the storm proper from 10 December; about 150 mm in IMERG) was large, but the benchmark from before October 2023, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
 <li><strong>Several damaging events came with little or no rain.</strong> These were the coastal flooding of 24–25 November 2024 (about 3 mm; high tides), the wind storms of 5–6 February 2025 and 14 March 2026, and the cold spells in which newborns died of hypothermia (ERA5 minimum 9 °C on 24–29 December 2024, 4 °C on 24–25 February 2025). A seasonal rainfall forecast says nothing about these.</li>
 <li><strong>Reporting changed between winters</strong>, from descriptive in 2023/24 to authority counts in 2024/25 and daily cluster alerts in 2025/26. So impact counts cannot be compared across winters; the dates can.</li>
 </ul>
@@ -101,7 +101,7 @@ range_after_html = '''
 <tr><td>2024/25</td><td><em>at least 8 by 6 January; 6 newborns on 24–25 February</em></td><td>none reported</td><td><em>Ministry of Health; health officials quoted in media</em>, both via OCHA</td></tr>
 <tr><td>2025/26</td><td><em>11 children (by 27 January)</em></td><td><em>25 (mid-December to 14 January)</em></td><td><em>Ministry of Health</em> via OCHA (its storm-related total was 31 by 14 January: 24 collapse and 7 cold); Byron's 12 storm deaths (11 collapse, 1 cold) were confirmed by the Health Cluster</td></tr>
 </tbody></table>
-<p>No range is given for deaths. Cold deaths followed shelter more than temperature: last winter had only 2 nights at or below 8 °C in ERA5 over Gaza and 11 child deaths; the winter before had 8 such nights. Collapse deaths came with Byron, when rain soaked buildings already damaged in the hostilities. Almost every death count comes from the authorities in Gaza, and OCHA does not systematically monitor deaths unrelated to the hostilities.</p>
+<p>No range is given for deaths. Cold deaths followed shelter more than temperature: last winter had only 2 nights at or below 8 °C in ERA5 over Gaza and 11 child deaths; the winter before had 8 such nights. Collapse deaths came with Byron, when rain soaked buildings already damaged in the hostilities. Almost every death count comes from the Ministry of Health in Gaza, and OCHA does not systematically monitor deaths unrelated to the hostilities.</p>
 '''
 
 [[storm_kinds]]
@@ -163,12 +163,12 @@ impacts = "4. What winter weather does in Gaza"
 range = "5. What this winter could bring"
 
 # ---- Impacts, winters since October 2023 (numbered in the timeline figure). Public UN sources only; figures from
-# the authorities in Gaza are italicised and attributed. Dates are the reported event dates.
+# figures from the Ministry of Health in Gaza, the Palestinian Civil Defense or the Government Media Office are italicised and attributed. Dates are the reported event dates.
 [[impacts]]
 start = "2023-11-13"
 end = "2023-11-14"
 hazard = "R W"
-what_html = 'First rains since October 2023: rain and flooding “damaged or destroyed tents and makeshifts” of people outside the shelters in the south; no count.'
+what_html = 'First rains of the 2023/24 winter: rain and flooding “damaged or destroyed tents and makeshifts” of people outside the shelters in the south; no count.'
 source_html = '<a href="https://www.ochaopt.org/content/hostilities-gaza-strip-and-israel-flash-update-39">OCHA Flash Update #39</a>, 14 Nov 2023'
 [[impacts]]
 start = "2023-12-13"
@@ -197,7 +197,7 @@ source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-u
 start = "2024-12-30"
 end = "2024-12-31"
 hazard = "R"
-what_html = '<em>1,542 tents flooded across Gaza, Khan Younis, Deir al Balah and Rafah (Palestinian Civil Defence).</em>'
+what_html = '<em>1,542 tents flooded across Gaza, Khan Younis, Deir al Balah and Rafah (Palestinian Civil Defense).</em>'
 source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-253-gaza-strip">OCHA HSU #253</a>, 8 Jan 2025'
 [[impacts]]
 start = "2025-02-05"
@@ -215,7 +215,7 @@ source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-u
 start = "2025-11-14"
 end = "2025-11-15"
 hazard = "R S"
-what_html = 'First rains after the ceasefire: an estimated 13,000 tents completely damaged (Shelter Cluster); more than 13,000 households affected; the Sheikh Radwan stormwater basin rose 37 cm; sea reached coastal tents on 16–17 November.'
+what_html = 'First rains after the 10 October 2025 ceasefire: an estimated 13,000 tents completely damaged (Shelter Cluster); more than 13,000 households affected; the Sheikh Radwan stormwater basin rose 37 cm; sea reached coastal tents on 16–17 November.'
 source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-342-gaza-strip">OCHA HSU #342</a>, 20 Nov 2025'
 [[impacts]]
 start = "2025-12-10"
@@ -264,7 +264,7 @@ source_html = '<a href="https://www.un.org/unispal/document/auto-insert-202884">
 start = "2010-01-18"
 end = "2010-01-19"
 hazard = "R"
-what_html = 'Wadi Gaza flood: about 800 people evacuated from Al Mughraqa and Juhor ad-Dik, water up to 2 m inside houses.'
+what_html = 'Wadi Gaza flood: about 800 people evacuated from Al Mughraqa and Juhor ad Dik, water up to 2 m inside houses.'
 source_html = '<a href="https://www.ochaopt.org/sites/default/files/ocha_opt_the_humanitarian_monitor_2010_01_31_english.pdf">OCHA Humanitarian Monitor</a>, Jan 2010'
 [[prewar]]
 start = "2013-01-07"

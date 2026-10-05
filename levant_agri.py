@@ -129,6 +129,10 @@ def modis_cube(govs) -> dict:
     from rasterio.windows import from_bounds
     w, s_, e, n = govs.total_bounds
     items = {}
+    cached = sorted(L.CACHE.glob("modis_ndvi_h*.npz"))
+    fresh = bool(cached) and all((pd.Timestamp.now() - pd.Timestamp(c.stat().st_mtime, unit="s")).days < 20 for c in cached)
+    if fresh:                                      # no catalogue search while the cached windows are recent
+        return {c.stem.replace("modis_ndvi_", ""): dict(np.load(c, allow_pickle=False)) for c in cached}
     for y in range(2000, pd.Timestamp.now().year + 1):
         r = requests.post(MODIS_STAC, json={"collections": ["modis-13Q1-061"], "bbox": [w, s_, e, n],
                                             "datetime": f"{y}-01-25/{y}-04-30", "limit": 200}, timeout=120)
@@ -611,6 +615,11 @@ def _ph(rows: list[dict], p: str) -> dict:
     return next(r for r in rows if r["phase"] == p)
 
 
+def _words(v: float, ref: str) -> str:
+    """A signed percentage in words, as running text has it: "7% above trend", "3% below normal"."""
+    return f"{abs(v):.0f}% {'above' if v >= 0 else 'below'} {ref}"
+
+
 def _nw(n: int) -> str:
     return {2: "two", 3: "three", 4: "four", 5: "five"}.get(n, str(n))
 
@@ -664,9 +673,10 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
              'normal in ' + ", ".join(f'{by(k, "El Niño")["above"]} of {by(k, "El Niño")["n"]} years in the {html.escape(pr[k])}' for k in names)
              + '; after La Niña winters, in ' + ", ".join(f'{by(k, "La Niña")["above"]} of {by(k, "La Niña")["n"]}' for k in names) + '. '
              'Several of those El Niño springs were only slightly above normal, and most El Niño winters of the MODIS years brought close to '
-             'normal rain (' + ", ".join(f'{y - 1}/{str(y)[2:]} {_signed(v)}' for y, v in g["en_rain_modis"].items()) + ' across the West Bank). '
+             'normal rain (percentage above or below the 1991–2020 mean across the West Bank: '
+             + ", ".join(f'{y - 1}/{str(y)[2:]} {_signed(v, "")}' for y, v in g["en_rain_modis"].items()) + '). '
              'The drier the zone, the larger the swing: the median El Niño spring was '
-             + ", ".join(f'{_signed(by(k, "El Niño")["median"])} in the {html.escape(pr[k])}' for k in names)
+             + ", ".join(f'{_words(by(k, "El Niño")["median"], "normal")} in the {html.escape(pr[k])}' for k in names)
              + ', though the drier zones also vary more in every year (standard deviation ' + ", ".join(f'{zd[k]["ndvi_sd"]:.0f}%' for k in names)
              + ' in the same order). ' + ag.get("ndvi_html", "") + '</p>')
     o.append('<figure><img src="agri_zone_ndvi.png" alt="Spring greenness by zone and year"><figcaption>MODIS Terra 16-day NDVI at 250 m '
@@ -718,14 +728,14 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
     oe = _ph(g["ol_ph"], "El Niño")
     worst = g["field"].nsmallest(4)
     wph = [g["crop_phase"].get(y, "") for y in worst.index]
-    worst_txt = ", ".join(f"{y} ({_signed(v)})" for y, v in worst.items())
+    worst_txt = ", ".join(f"{y} ({_words(v, 'trend')})" if i == 0 else f"{y} ({abs(v):.0f}%)" for i, (y, v) in enumerate(worst.items()))
     o.append('<h3>Harvests after El Niño winters</h3>')
     o.append(f'<p>Cereal yields are published only for the Occupied Palestinian Territory as a whole (the West Bank and Gaza together), but the West Bank holds {100 * g["wb_cereal_share"]:.0f}% of its wheat and '
              f'barley area and presses {100 * g["olive_wb_share"]:.0f}% of its olives. Rainfed wheat and barley yields were above trend in '
              f'{fe["above"]} of {fe["n"]} crop years after El Niño winters, against {fl["above"]} of {fl["n"]} after La Niña winters. The '
              f'{_nw(len(worst))} worst harvests since 1994, {worst_txt}, '
              + ('all followed La Niña winters' if all(p == "La Niña" for p in wph) else f'include {sum(p == "La Niña" for p in wph)} after La Niña winters')
-             + f'. El Niño years were not bumper years: their median, {_signed(fe["median"])}, is close to that of neutral years ({_signed(fn["median"])}). '
+             + f'. El Niño years were not bumper years: their median, {_words(fe["median"], "trend")}, is close to that of neutral years ({_words(fn["median"], "trend")}). '
              'What an El Niño winter has done is make a bad cereal year less likely. The longer vegetation record, which also covers pasture, '
              f'tells the same story: spring vegetation was above its median in {ve["above"]} of {ve["n"]} El Niño years on cropland and '
              f'{le_["above"]} of {le_["n"]} on all land, against {vl["above"]} of {vl["n"]} and {ll_["above"]} of {ll_["n"]} after La Niña winters. '

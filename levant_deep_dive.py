@@ -94,7 +94,7 @@ class Area:
                            "Gaza governorate and most of Deir al Balah; south = 31.2–31.4°N: Khan Younis and Rafah); window totals from IMERG and from ERA5 (which smooths rain over 25 km cells and "
                            "runs lower on heavy days; the two disagree on single days by a factor of two or more, so read them as a range); ERA5 lowest daily minimum temperature and highest hourly 10 m wind, averaged "
                            "over the three cells over Gaza (partly sea, so milder and less gusty than an exposed displacement site). Figures in <em>italics</em> "
-                           "are from the authorities in Gaza (the Ministry of Health, the Palestinian Civil Defence and the Government Media Office), as relayed by the UN; the rest are UN "
+                           "are from the Ministry of Health in Gaza, the Palestinian Civil Defense or the Government Media Office, as relayed by the UN; the rest are UN "
                            "agency or cluster figures.")
 
 
@@ -1657,6 +1657,15 @@ def _demote(chunks: list[str]) -> str:
     return re.sub(r"<(/?)h[23]\b", r"<\1h4", t)
 
 
+def _per_cent(page: str) -> str:
+    """OCHA writes "per cent" in running text and keeps "%" for tables and graphics: convert the text nodes of
+    plain paragraphs and list items; tables, figure captions and small notes are left alone."""
+    def block(m):
+        return m.group(1) + re.sub(r"(<[^>]+>)|(\d)%", lambda x: x.group(1) or x.group(2) + " per cent", m.group(2)) + m.group(3)
+    page = re.sub(r"(<p>)(.*?)(</p>)", block, page, flags=re.S)
+    return re.sub(r"(<li>)(.*?)(</li>)", block, page, flags=re.S)
+
+
 def _prefix_src(t: str, sub: str) -> str:
     """Point an area block's relative figure paths at its subfolder."""
     return re.sub(r'(src=")(?![a-z]+:|/|\.\./)', rf"\g<1>{sub}/", t)
@@ -1783,7 +1792,7 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
              + ", ".join(f'<code>deep_dives/parts/{p["slug"]}.toml</code>' for p in parts)
              + '. Grid method and Niño3.4 series as in the <a href="../../survey/">global survey</a>.</p>')
     o.append(edd.FOOT)
-    return "\n".join(o)
+    return _per_cent("\n".join(o))
 
 
 def main() -> None:
