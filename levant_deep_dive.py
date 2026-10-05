@@ -1397,17 +1397,19 @@ def render_range(spec: dict, a: dict, heading: bool = True) -> str:
 def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[str]]:
     """The page in named blocks (lists of HTML chunks), without the section headings, so a page can be
     assembled for one area (render) or interleaved with another area's (render_combined)."""
-    ours, cat = spec["assessment"], spec["catalogue"]
+    ours, cat = spec["assessment"], spec.get("catalogue")
     T = lambda k, d: html.escape(spec.get("titles", {}).get(k, d))
     B: dict[str, list[str]] = {k: [] for k in ['verdict', 'summary', 'before', 'forecast_lead', 'forecast_text', 'forecast_area', 'enso', 'daily', 'impacts', 'range', 'agri', 'after', 'refs']}
-    # verdict
+    # verdict (a part of a combined page has no catalogue row or summary of its own)
     B["verdict"].append('<div class="verdict">')
-    B["verdict"].append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
-             f'<p>{edd.chip(cat["evidence"])} <span class="small">source: {cat["source_html"]}</span></p></div>')
+    if cat:
+        B["verdict"].append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
+                 f'<p>{edd.chip(cat["evidence"])} <span class="small">source: {cat["source_html"]}</span></p></div>')
     B["verdict"].append(f'<div class="card"><p class="lbl">This review assesses</p><p class="big">El Niño → {html.escape(ours["direction"])}, {html.escape(ours["season"])}</p>'
              f'<p>{edd.chip(ours["evidence"])} <span class="small">{html.escape(ours["evidence_note"])}</span></p></div>')
     B["verdict"].append('</div>')
-    B["summary"].append(f'<div class="summary">{spec["summary_html"]}</div>')
+    if spec.get("summary_html"):
+        B["summary"].append(f'<div class="summary">{spec["summary_html"]}</div>')
     if spec.get("before_html"):
         B["before"].append(spec["before_html"])
 
@@ -1640,7 +1642,8 @@ def build(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFram
 
 PARTS_DIR = edd.DEEP_DIR / "parts"                 # area TOMLs that are built only as parts of a combined page
 COMBINED_CSS = ("h3.area{font-size:17px;margin:28px 0 8px;padding:2px 0 2px 10px;border-left:4px solid var(--b5)}"
-                "h4{font-size:14.5px;margin:20px 0 6px}h5{font-size:13.5px;margin:16px 0 4px}")
+                "h4{font-size:15px;margin:20px 0 6px}h5{font-size:14px;margin:16px 0 4px}"
+                "@media (min-width:641px){.verdict{grid-template-columns:1fr 1fr 1fr}}")
 
 
 def _demote(chunks: list[str]) -> str:
@@ -1682,7 +1685,7 @@ def build_combined(cspec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: p
         d = edd.OUT_DIR / old
         d.mkdir(parents=True, exist_ok=True)
         (d / "index.html").write_text(
-            f'<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Moved: {html.escape(cspec["name"])}</title>'
+            f'<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Moved: {html.escape(cspec["name"])}</title>'
             f'<meta http-equiv="refresh" content="0; url=../{cspec["slug"]}/"><link rel="canonical" href="../{cspec["slug"]}/"></head>'
             f'<body><p>This page is now part of <a href="../{cspec["slug"]}/">{html.escape(cspec["name"])}</a>.</p></body></html>\n',
             encoding="utf-8")
@@ -1724,13 +1727,14 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
 
     # 2. El Niño link: each area, then the regional maps once (both areas outlined)
     o.append(f'<h2>{T("enso", "2. How much El Niño matters")}</h2>')
-    o.append(cspec.get("enso_intro_html", ""))
+    if cspec.get("enso_intro_html"):
+        o.append(cspec["enso_intro_html"])
     for p in parts:
         ch = p["B"]["enso"]
         cut = next(i for i, c in enumerate(ch) if c.startswith("<h3>Across the region</h3>"))
         p["maps"] = ch[cut + 1:]
         o.append(area_block(p, ch[:cut], "enso"))
-    o.append(f'<h3>Across the region</h3>{cspec.get("maps_html", "")}')
+    o.append(f'<h3 class="area" id="region-enso">Both areas: across the region</h3>{cspec.get("maps_html", "")}')
     o.append(_prefix_src(p0["maps"][0], p0["slug"]).replace(f'{p0["area"].ref[0].upper() + p0["area"].ref[1:]} is outlined.',
                                                              f'{html.escape(cspec["name"])} are outlined.'))
     a0 = p0["a"]
@@ -1774,7 +1778,10 @@ def main() -> None:
     slug = sys.argv[1] if len(sys.argv) > 1 else "gaza-west-bank"
     cfg = dict(ts.CONFIG, max_lag=3)
     path = edd.DEEP_DIR / f"{slug}.toml"
-    spec = tomllib.loads((path if path.exists() else PARTS_DIR / f"{slug}.toml").read_text()) | {"slug": slug}
+    if not path.exists():
+        sys.exit(f"{slug}: no deep_dives/{slug}.toml" + (" (it is a part of a combined page: build that page, e.g. gaza-west-bank)"
+                                                        if (PARTS_DIR / f"{slug}.toml").exists() else ""))
+    spec = tomllib.loads(path.read_text()) | {"slug": slug}
     edd.extend_pixel_cache(cfg)
     grid = edd.load_grid(cfg)
     if spec.get("builder") == "levant-combined":

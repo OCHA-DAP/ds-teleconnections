@@ -1,41 +1,14 @@
+# One part of deep_dives/gaza-west-bank.toml (the combined page supplies the summary, forecast text and table,
+# regional-maps text, caveats, catalogue row and index card). This file: the area config and its section narratives.
 # West Bank — ENSO deep dive. Built by levant_deep_dive.py (builder = "levant"); its area table
 # points the Gaza builder at the West Bank. Figures and tables are recomputed on every run; the
 # narrative must be reconciled against them after every rebuild. Impacts are curated from public sources.
 iso3 = "PSE"
 name = "West Bank"
 builder = "levant"
-subtitle = "What the 2026 El Niño means for the West Bank's 2026/27 winter, how far to trust it, and what winter weather does there"
 skill_issued_month = 9
 skill_intro = false
 timeline_winters = [2023, 2024, 2025]
-
-summary_html = '''
-<p><strong>1. What the forecasts say.</strong> A very strong El Niño is under way. Every multi-model forecast checked favours above-normal rain over the southern Levant in October–December (40–70% for the wet tercile), with weaker odds in November–January and no wet signal for December–February. All favour a warm winter. Over the West Bank, SEAS5's September forecast puts October–December at a 23-year wet return period with high skill, and October alone is the 3rd-wettest of 46 September forecasts. After December both the signal and the skill fade.</p>
-<p><strong>2. How much El Niño matters.</strong> Since 1979, clearly. The GPCC gauge analysis, the long Jerusalem gauge and ERA5 correlate at +0.57 to +0.59 with winter Niño3.4. 9 of the 14 El Niño winters fell in the West Bank's wettest third, against none (GPCC) or one (ERA5) in the driest. Before 1979 the same records show no positive link. None of the six strong El Niños since 1979 was in the driest third in GPCC or at Jerusalem, though ERA5 puts 2009/10 just inside its driest third and IMERG puts 2015/16 there. The two wettest, 1982/83 and 1991/92, followed major volcanic eruptions; 1997/98 was wet, and the other three near normal.</p>
-<p><strong>3. What changes in an El Niño winter.</strong> More rain days: about 14 more than in a La Niña winter in ERA5, and 10 more at the Jerusalem gauge. There are also more days of 10 mm or more, and at Jerusalem more days of 20 mm or more. The single wettest day and cold nights show no consistent link.</p>
-<p><strong>4. What winter weather does in the West Bank.</strong> Far less than in Gaza, and it is poorly counted. The worst pre-war winters brought floods (January 2013: about 1,000 homes damaged, 4 deaths) and snow (Storm Alexa, December 2013). In three winters since October 2023, the UN has quantified one West Bank weather event: on 28–30 December 2025, at least 66 households in 18 herding communities lost tents and animal shelters or had them damaged. Winter deaths there have come from flash floods and heating fires; no hypothermia death was found.</p>
-<p><strong>5. What this winter could bring.</strong> A wet first half is the most likely El Niño outcome: a storm of 20 mm or more came before December in 7 of 8 El Niño winters. In a typical winter the wettest week brings about a fifth of the year's rain; Byron's week brought half. The most exposed groups (set out by theme in section 5) are:</p>
-<ul>
-<li>herding and Bedouin communities in Area C, part of the 315 Area C communities (about 216,000 people) the Shelter Cluster assessed, where more than 2,200 shelters require rehabilitation;</li>
-<li>about 34,000 people still displaced from the Jenin, Tulkarm and Nur Shams camps, most of them renting, while the camps' drainage, water and sewage networks lie bulldozed;</li>
-<li>farmers with greenhouses (28,700 dunums, three quarters of them in Jenin, Tulkarm and Tubas), which take the wind, frost and flood damage.</li>
-</ul>
-<p>Snow is less likely in a warm winter but not ruled out. No 2026/27 winter plan written for the West Bank was found by early October; its winter lines sit inside the calendar-2026 appeals.</p>
-<p><strong>6. Farming.</strong> In ERA5 the three farming zones (the semi-coastal plain, the Central Highlands and the Jordan Valley) cannot be told apart in their El Niño rain signal; they differ in what they grow. Rainfed wheat and barley were above trend in 7 of 9 crop years after El Niño winters and 3 of 11 after La Niña winters, and the four worst harvests since 1994 all followed La Niña winters: El Niño has made a bad cereal year less likely rather than a bumper one more likely. Spring greenness after El Niño winters was above normal in 8 of 8 years in the Central Highlands (several only slightly) and 6 of 8 in the other two zones; the drier zones swing more, as they do in every year. Lentils follow the rain even more closely than cereals. Olives follow their own two-year bearing cycle and, since 2023, access; they show no clear El Niño signal. This winter feeds the 2027 cereal harvest, spring grazing and the autumn 2027 olive harvest.</p>
-'''
-
-before_html = '''
-<p class="small"><strong>About the catalogue row.</strong> The survey's Palestine row was computed on the Natural Earth polygon for the West Bank, so it does describe this page's area; its ERA5 value was OND +0.56. Its second citation is garbled: the paper is Price, Stone, Huppert, Rajagopalan &amp; Alpert (1998) in <em>Geophysical Research Letters</em>. And Mariotti et al. (2002) found the El Niño autumn wet signal in the <em>western</em> Mediterranean. The grade here rests on this page's records and on the Israel-specific literature.</p>
-'''
-
-forecast_html = '''
-<p>NOAA's September outlook gives El Niño 100% odds for every season through January–March 2027. It has the event peaking in October–December, with a median relative Niño3.4 of +2.67 °C and a 75% chance of exceeding +2.5 °C, which no event since 1950 has done. It then weakens to about +1.8 °C by January–March. A positive Indian Ocean Dipole is developing and is expected to fade by early 2027. The coming winter is likely to be a stronger El Niño than any the relationships below were fitted on.</p>
-<p>The multi-model forecasts below are the same southern-Levant readings as for Gaza. They show wet odds for October–December, weaker for November–January, no wet signal for December–February (NMME leans dry), and a warm winter throughout. A warm winter makes snow on the hills less likely, but it does not stop cold spells.</p>
-'''
-
-forecast_table_note = '''
-<p class="small">Tercile probabilities for the wet (AN) or dry (BN) category over the southern Levant, read from the legend classes of each centre's published maps; most models' grid cells are larger than the West Bank's hill country. “No signal” means no category above 40%. Compiled 30 September 2026. The October issuances and the Mediterranean Climate Outlook Forum's late-November consensus will update them.</p>
-'''
 
 skill_html = '''
 <p>Over the West Bank, the September 2026 SEAS5 issuance forecasts a wet start to the season. September–November is at a 15-year wet return period, October–December at 23 years with high skill (r = 0.53), and November–January at 7 years. December–February is only slightly wet (2 years, moderate skill), and January–March slightly dry with low skill. The raw ensemble-mean files give the same picture independently of the app's cube: September–November and October–December are each the 5th-wettest of 46 September forecasts since 1981. SEAS5's wettest September–November hindcasts for the area are 1997, 2015 and 1982, the strongest El Niños in its record. (The skill table counts 17 cells, every 0.25° cell touching the West Bank; the ERA5 series uses the 16 that cover more than 0.5% of it.)</p>
@@ -70,10 +43,6 @@ strong_html = '''
 
 trimester_html = '''
 <p>The concurrent signal runs through the whole season and is strongest in October–December (r = 0.47–0.54). The August–October Niño3.4, known before the season starts, predicts the season total nearly as well (r = 0.49 in GPCC, 0.54 in ERA5). Unlike in Gaza, it still says something about January–March (0.33–0.37).</p>
-'''
-
-maps_html = '''
-<p>The signal covers the whole southern Levant. Over the 14 El Niño winters of 1981/82–2025/26, the cells over the West Bank averaged +0.80 standard deviations, with 65% of El Niño winters in their wettest third against 33% by chance.</p>
 '''
 
 daily_html = '''
@@ -185,43 +154,6 @@ range_after_html = '''
 
 strong_notes = { "1991" = "Pinatubo erupted in June 1991; Jerusalem's wettest winter on record, heavy snow in February 1992.", "2023" = "<em>Palestinian Meteorological Department, season to 21 March: wet north (Tulkarm 144%), drier south (Jerusalem 86%, Hebron 75%).</em>" }
 
-[[forecasts]]
-source_html = '<a href="https://charts.ecmwf.int/products/c3s_seasonal_spatial_mm_rain_3m?area=area11&amp;base_time=202609010000&amp;type=tsum&amp;valid_time=202610010000">C3S multi-system</a> (9 models)'
-issued = "Sep 2026"
-ond = "wet 50–60%"
-ndj = "wet 40–50%"
-djf = "no signal"
-temp = "warm 60–100%"
-[[forecasts]]
-source_html = '<a href="https://charts.ecmwf.int/products/c3s_seasonal_spatial_ecmf_rain_3m?area=area11&amp;base_time=202609010000&amp;type=tsum&amp;valid_time=202610010000">ECMWF SEAS5</a>'
-issued = "Sep 2026"
-ond = "wet 50–60%"
-ndj = "no signal"
-djf = "no signal"
-temp = "warm 70–100% (Nov–Feb)"
-[[forecasts]]
-source_html = '<a href="https://www.cpc.ncep.noaa.gov/products/NMME/prob/images/prob_ensemble_prate_season1.png">NMME</a> (NOAA)'
-issued = "Sep 2026"
-ond = "wet 50–60%"
-ndj = "wet 40–50%"
-djf = "dry 40–60%"
-temp = "warm 50–90%"
-[[forecasts]]
-source_html = '<a href="https://iri.columbia.edu/climate/forecast/net_asmt/2026/sep2026/images/OND26_MEa_pcp.gif">IRI</a> (calibrated NMME)'
-issued = "Sep 2026"
-ond = "wet ≥ 70%"
-ndj = "wet 40–45%"
-djf = "no signal (Jan–Mar: no signal)"
-temp = "warm 45% to ≥ 70%"
-[[forecasts]]
-source_html = '<a href="https://www.wmolc.org/seasonPmmeUI/plot_PMME">WMO Lead Centre LRF-MME</a> (11 centres, 2.5° cells)'
-issued = "Sep 2026"
-ond = "wet 40–50%"
-ndj = "no signal"
-djf = "no signal (dry 40–50% offshore)"
-temp = "warm 70% to ≥ 80% (Nov–Feb)"
-
-
 [area]
 name = "West Bank"
 ref = "the West Bank"
@@ -266,7 +198,6 @@ impact_caption = "Hazard: R rain and flooding, F flash flood, S snow, C cold, W 
 "c32.50_35.00" = [32.50, 35.00]
 "c32.50_35.25" = [32.50, 35.25]
 "c32.50_35.50" = [32.50, 35.50]
-
 
 # ---- War-winter impacts (West Bank). Public sources only; italic = Palestinian authority or media figures.
 [[impacts]]
@@ -361,18 +292,11 @@ hazard = "S C"
 what_html = "<em>Snow (about 20 cm): 400 Civil Defence incidents, including 15 fires; 2 deaths in a house fire in Adh-Dhahiriya.</em> IFRC counted 4 West Bank deaths from heating over the cold spell."
 source_html = '<a href="https://reliefweb.int/attachments/1e1b95d9-269b-44e2-8b65-5df193959c86/MDRPS013dfr.pdf">IFRC DREF MDRPS013</a>; WAFA'
 
-[catalogue]
-direction = "wetter"
-season = "DJF"
-evidence = "single-study"
-source_html = 'Mariotti, Zeng &amp; Lau 2002 (GRL); “Price, Stone &amp; Rind 1998 (J. Climate)” as cited (see below)'
-
 [assessment]
 direction = "wetter, Oct–Apr"
 season = "strongest Oct–Dec"
 evidence = "moderate"
 evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.57 to +0.59); no positive link before 1979; strong El Niños since 1979 were normal to wet in GPCC."
-one_line = "2026/27 outlook: a very strong El Niño and a SEAS5 forecast for a wet October–December (23-year return period, high skill). Since 1979, 9 of 14 El Niño winters were in the West Bank's wettest third and none in the driest, but the link did not exist before the late 1970s. Weather impacts are small and poorly counted; herding communities in Area C and people displaced from the northern camps are the most exposed."
 
 [titles]
 forecast = "1. What the forecasts say for this winter"
@@ -382,18 +306,6 @@ daily = "3. What changes in an El Niño winter, and what does not"
 impacts = "4. What winter weather does in the West Bank"
 range = "5. What this winter could bring"
 agri = "6. Farming: crop years after El Niño winters"
-
-[[sections_after]]
-title = "Caveats"
-html = '''
-<ul>
-<li><strong>A relationship that switched on can switch off.</strong> The El Niño link appears only after the late 1970s in every long record, and the coming event is likely to be stronger than any in that period.</li>
-<li><strong>Small samples and index choice.</strong> There are 14 El Niño winters since 1979 on the pinned index (16 on HadISST), six of them strong. Every hit rate carries wide uncertainty.</li>
-<li><strong>The records.</strong> GPCC's 1° cells take in the Jordan Valley and the hills on both sides. The Jerusalem gauge is one hill-town site, is one of GPCC's inputs, and its record ends in 2015. ERA5's cells are smoother and lower than the hills, so it understates heavy days and cannot see snow. IMERG is satellite-only. A storm that soaks one hillside is diluted in any West Bank average, so the storm counts here understate local downpours.</li>
-<li><strong>Forecast calibration.</strong> The September 2026 SEAS5 issuance sits in the tails of its hindcast unusually often across the globe (see the <a href="../zwe/">Zimbabwe page</a>). Read its return periods as a ranking.</li>
-<li><strong>Impact data.</strong> Most West Bank weather impacts are reported by the Palestinian Civil Defence through the media, often as counts of incidents or rescues, and the UN quantified one weather event in three winters. The absence of counts is not an absence of impact.</li>
-</ul>
-'''
 
 [[references]]
 html = 'Price, C., Stone, L., Huppert, A., Rajagopalan, B. &amp; Alpert, P. (1998). A possible link between El Niño and precipitation in Israel. <em>Geophysical Research Letters</em> 25, 3963–3966. <a href="https://doi.org/10.1029/1998GL900098">doi:10.1029/1998GL900098</a>'
