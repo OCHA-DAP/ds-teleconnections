@@ -642,7 +642,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     ref = reference_winters(ev, totals, st["ei"]) if (ev is not None and totals is not None) else None
     evp = load_events(data_dir / f"{A.slug}_prewar_events.csv", imerg, era5) if (data_dir / f"{A.slug}_prewar_events.csv").exists() else None
     wi = (winter_impacts(evp, ev, imerg.pr, st, djf_pin, ref, spec["winter_impacts"])
-          if (evp is not None and ref is not None and spec.get("winter_impacts")) else None)
+          if (evp is not None and ref is not None and ref["byron_ids"] and spec.get("winter_impacts")) else None)
     fig_storm_tiers(st, djf_pin, OUT / "storm_tiers.png")
     fig_first_storm(st, djf_pin, OUT / "first_storm.png")
     if ev is not None:
@@ -1345,6 +1345,8 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
     U = e[e.dated].copy(); U["lp"] = np.log10(U.people)
     corr_e = {s_: dict(n=int((U.since == s_).sum()), **{k: tuple(float(v) for v in stats.spearmanr(U[U.since == s_][k], U[U.since == s_].lp))
                                                        for k in ("im_max", "im_sum")}) for s_ in (False, True)}
+    wet_ev = U[U.since & (U.im_max >= SIZE_TIERS[0][0])]                  # since October 2023, with a day of 10 mm or more in IMERG
+    corr_wet = dict(n=len(wet_ev), rho=float(stats.spearmanr(wet_ev.im_max, wet_ev.lp)[0]) if len(wet_ev) >= 4 else np.nan)
 
     # the level shift: log10(people) = a + shift * since + slope * log10(storm rain + 1), on events with a dated count
     def fit(u: pd.DataFrame) -> dict:
@@ -1359,7 +1361,7 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
                  geo=float(10 ** (U[U.since].lp.mean() - U[~U.since].lp.mean())),
                  med=float(U[U.since].people.median() / U[~U.since].people.median()),
                  med_before=float(U[~U.since].people.median()), med_since=float(U[U.since].people.median()),
-                 top={k: dict(people=float(v.people), rain=float(v.im_sum), start=v.start) for k, v in top.items()})
+                 top={k: dict(people=float(v.people), rain=float(v.im_sum), start=v.start, end=v.end) for k, v in top.items()})
 
     # storm for storm: storms of each size in each period, how many left a report, and what was counted
     sto = st["ei"]; sto = sto[(sto.sy >= first) & (sto.sy <= S.index.max())]
@@ -1371,7 +1373,10 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
             x = sto[(sto["max"] >= lo) & (sto["max"] < hi_) & ((sto.sy >= SINCE) == s_)]
             tiers.append(dict(lo=lo, hi=hi_, since=s_, n=len(x), reported=int(sum(hit(r) for r in x.itertuples())),
                               people=counts(U[(U.im_max >= lo) & (U.im_max < hi_) & (U.since == s_)])))
-    low = {s_: counts(U[(U.im_max < SIZE_TIERS[0][0]) & (U.since == s_)]) for s_ in (False, True)}
+    dry_ev = U.im_max < SIZE_TIERS[0][0]                 # under 10 mm in IMERG: little rain only if ERA5 agrees
+    low = {s_: counts(U[dry_ev & (U.era5_max < SIZE_TIERS[0][0]) & (U.since == s_)]) for s_ in (False, True)}
+    missed = [dict(start=r.start, end=r.end, people=float(r.people), derived=bool(r.derived), im=float(r.im_max), era5=float(r.era5_max))
+              for r in U[dry_ev & (U.era5_max >= SIZE_TIERS[0][0])].itertuples()]
 
     # this winter's rain: the range of El Niño winters in the same record
     en = S[S.phase == "El Niño"]
@@ -1382,14 +1387,14 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
     freq = {k: dict(all=big(S, k), en=big(en, k), years=[int(y) for y in S.index[S.n50 >= 2]] if k == 2 else []) for k in (0, 1, 2)}
 
     # scenarios: last winter's alert-based counts without, with and with twice its largest storm, at this year's exposure
-    byron = float(e[e.event_id.isin(ref["byron_ids"])].people.sum())
+    byron, byron_hi = float(e[e.event_id.isin(ref["byron_ids"])].people.sum()), float(ref["byron_hh"] * hh[True])
     lo_all, hi_all = float(e[e.sy == ry].people.sum()), float(ref["snaps_all"] * hh[True])
     scale = float(cfg["people_in_sites_now"]) / float(cfg["people_in_sites_then"])
     scen = [dict(key=k, lo=lo_, hi=hi_, lo_s=lo_ * scale, hi_s=hi_ * scale, **freq[n_])
-            for k, n_, lo_, hi_ in [("none", 0, lo_all - byron, ref["snaps_wo"] * hh[True]), ("one", 1, lo_all, hi_all),
-                                    ("two", 2, lo_all + byron, hi_all + byron)]]
-    return dict(S=S, e=e, U=U, first=first, ry=ry, hh=hh, corr_w=corr_w, corr_e=corr_e, shift=shift, tiers=tiers, low=low, rain=rain,
-                scen=scen, scale=scale, byron=byron, survey=float(cfg["survey_flooded_share"]) * float(cfg["people_in_sites_now"]),
+            for k, n_, lo_, hi_ in [("none", 0, lo_all - byron, hi_all - byron_hi), ("one", 1, lo_all, hi_all),
+                                    ("two", 2, lo_all + byron, hi_all + byron_hi)]]
+    return dict(S=S, e=e, U=U, first=first, ry=ry, hh=hh, corr_w=corr_w, corr_e=corr_e, corr_wet=corr_wet, shift=shift, tiers=tiers,
+                low=low, missed=missed, rain=rain, scen=scen, scale=scale, byron=byron, byron_hi=byron_hi, n_all=len(S), survey=float(cfg["survey_flooded_share"]) * float(cfg["people_in_sites_now"]),
                 sites_now=float(cfg["people_in_sites_now"]), sites_then=float(cfg["people_in_sites_then"]))
 
 
@@ -1415,8 +1420,6 @@ def fig_winter_impacts(wi: dict, out: Path) -> None:
         dx, dy = off.get(y, (7, 4))
         ax.annotate(_yr(y), (r.total, r.people), xytext=(dx, dy), textcoords="offset points", fontsize=8, color=C_TEXT,
                     ha="right" if dx < 0 else "left")
-    ax.plot(S.total[ry], wi["survey"], "o", ms=8, mfc="white", mew=1.6, color=C_REGIME[True])
-    ax.annotate("survey: flooded\nat least once", (S.total[ry], wi["survey"]), xytext=(8, -4), textcoords="offset points", fontsize=7.5, color=C_MUTED)
     ax.plot(S.total, [13] * len(S), "|", ms=7, mew=1.1, color=C_MUTED, alpha=0.7)
     ax.set_yscale("log"); ax.set_ylim(10, 4e6)
     ax.set_yticks([10, 100, 1000, 10000, 100000, 1000000], ["10", "100", "1,000", "10,000", "100,000", "1 million"])
@@ -1428,23 +1431,25 @@ def fig_winter_impacts(wi: dict, out: Path) -> None:
     ax.set_title("Counted winters, before and since October 2023", fontsize=10, color=C_TEXT, loc="left")
     # right: since October 2023, with the scenarios for this winter
     lab = {"none": "no storm ≥ 50 mm", "one": "one, as last winter", "two": "two such storms"}
+    often = lambda sc: f"\n{sc['all']} of {wi['n_all']} winters"
     for sc in wi["scen"]:
         bx.add_patch(plt.Rectangle((rain["en_min"], sc["lo_s"] / 1e6), rain["en_max"] - rain["en_min"], (sc["hi_s"] - sc["lo_s"]) / 1e6,
                                    fc=C_REGIME[True], ec=C_REGIME[True], alpha=0.35, lw=1.0, zorder=2))
-        bx.text(rain["en_min"] - 6, (sc["lo_s"] + sc["hi_s"]) / 2e6, lab[sc["key"]], ha="right", va="center", fontsize=8, color=C_TEXT)
+        bx.text(rain["en_min"] - 6, (sc["lo_s"] + sc["hi_s"]) / 2e6, lab[sc["key"]] + often(sc), ha="right", va="center", fontsize=8,
+                color=C_TEXT, linespacing=1.15)
     for y, r in C.loc[SINCE:].iterrows():
         if pd.notna(r.people_hi):
             bx.plot([r.total] * 2, [r.people / 1e6, r.people_hi / 1e6], color=C_REGIME[True], lw=2.2, solid_capstyle="round", zorder=3)
         bx.plot(r.total, r.people / 1e6, "o", ms=8, color=C_REGIME[True], zorder=3)
         bx.annotate(_yr(y) + (" as counted" if y == ry else ""), (r.total, r.people / 1e6), xytext=(8, 5) if y != ry else (0, -15),
                     textcoords="offset points", fontsize=8, color=C_TEXT, ha="left" if y != ry else "center")
-    for v, t, ls in [(wi["survey"], f"if {100 * wi['survey'] / wi['sites_now']:.0f}% are flooded at least once, as surveyed last winter", (0, (4, 3))),
+    for v, t, ls in [(wi["survey"], f"if {100 * wi['survey'] / wi['sites_now']:.0f}% are flooded at least once, as surveyed last winter (each person once)", (0, (4, 3))),
                      (wi["sites_now"], "people in displacement sites, September 2026", (0, (1, 2)))]:
         bx.axhline(v / 1e6, color=C_MUTED, lw=1.0, ls=ls, zorder=1)
         bx.text(86, v / 1e6 + 0.02, t, fontsize=7.5, color=C_MUTED, va="bottom")
-    bx.set_ylim(0, 1.9); bx.set_yticks([0, 0.5, 1.0, 1.5], ["0", "0.5", "1.0", "1.5"]); bx.set_ylabel("people-impacts in the winter, millions", fontsize=9, color=C_MUTED)
+    bx.set_ylim(0, 1.9); bx.set_yticks([0, 0.5, 1.0, 1.5], ["0", "0.5", "1.0", "1.5"]); bx.set_ylabel("people reported affected in the winter, millions", fontsize=9, color=C_MUTED)
     bx.text((rain["en_min"] + rain["en_max"]) / 2, 0.02, "El Niño winters", ha="center", va="bottom", fontsize=7.5, color=SRC_COL["GPCC"])
-    bx.set_title("Scenarios for 2026/27, scaled from last winter's counts", fontsize=10, color=C_TEXT, loc="left")
+    bx.set_title("Planning scenarios for 2026/27, not a forecast", fontsize=10, color=C_TEXT, loc="left")
     for x in (ax, bx):
         x.grid(color="#eceff0", lw=0.8); x.set_axisbelow(True); edd._style_ax(x)
     _save(fig, out)
@@ -1707,26 +1712,29 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append(f'<p class="small">Rain: IMERG, area-weighted over {html.escape(A.ref)}; the wettest 7 days is the highest 7-day running total of the season; '
              'storms as defined above, sized by their wettest day. People: as the source gives them; where a source gives only households or families '
              f'they are multiplied by {hh[False]:.1f} people before October 2023 (average household in Gaza, PCBS census 2017) and by {hh[True]:.1f} since '
-             '(the ratio in the Site Management Cluster\'s own counts last winter), and shown as “about” or rounded. A person is counted once for each '
+             '(people per household in displacement sites, September 2026), and shown as “about” or rounded. A person is counted once for each '
              f'storm that affected them. {_yr(ry)}: the lower figure sums the per-event counts and the higher uses the Shelter Cluster\'s monthly snapshots, '
              'as in “Last winter in numbers”. Tents and shelters: UN and cluster counts. Figures in italics come from the Government Media Office and '
              'Palestinian Civil Defense (tents) or the Ministry of Health in Gaza (deaths), relayed by OCHA. Deaths before October 2023 are those UN or Red Cross and Red Crescent reports attribute to the storms. '
              '“Not counted” means an impact was reported without a number; “none found” means no weather impact was found in UN reporting for that winter.</p>')
 
     # which measure of rain tracks the counts
-    cw, ce, U = wi["corr_w"], wi["corr_e"], wi["U"]
+    cw, ce, cwet = wi["corr_w"], wi["corr_e"], wi["corr_wet"]
     n_cw = int(T.loc[:SINCE - 1].people.notna().sum())
-    assert max(cw, key=cw.get) == "rx7", "the wettest week no longer ranks first: rewrite this paragraph"
-    assert all(pv > 0.05 for _, pv in (ce[True]["im_max"], ce[True]["im_sum"])), "rain now tracks the counts since October 2023: rewrite"
-    o.append(f'<p>Which measure of rain tracks the counts? Before October 2023 it was the winter\'s wettest week. Across the {_nword(n_cw)} winters '
-             f'with a count, the more rain in the wettest 7 days, the more people were counted (rank correlation {cw["rx7"]:+.2f}), ahead of the season '
-             f'total ({cw["total"]:+.2f}) and the number of storms of 20 mm or more ({cw["n20"]:+.2f}). {_nword(n_cw).capitalize()} winters is a small '
-             'sample, and the order rests on two floods: Wadi Gaza in January 2010 and Storm Alexa in December 2013. Since October 2023 no measure of '
-             f'rain tracks the counts. Across the {_nword(ce[True]["n"])} events with a dated count, people affected and rain are barely related '
-             f'(rank correlation {ce[True]["im_max"][0]:+.2f} with the event\'s wettest day and {ce[True]["im_sum"][0]:+.2f} with its total, both within chance).'
-             + (f' The driest winter of the {n_all}-winter IMERG record, {_yr(rain["driest"])}, has more people reported affected (at least '
-                f'{_sig(S.people[rain["driest"]])}) than the wettest, {_yr(rain["wettest"])} ({_sig(S.people[rain["wettest"]])}).'
-                if S.people.get(rain["driest"], np.nan) > S.people.get(rain["wettest"], np.nan) else '') + '</p>')
+    names = {"rx7": "the winter\'s wettest week", "total": "the season total", "n20": "the number of storms of 20 mm or more"}
+    k1, k2, k3 = sorted(cw, key=cw.get, reverse=True)
+    low, missed = wi["low"], wi["missed"]
+    o.append(f'<p>Which measure of rain tracks the counts? Before October 2023 it was {names[k1]}. Across the {_nword(n_cw)} winters with a count, '
+             f'its rank correlation with the people counted is {cw[k1]:+.2f}, against {cw[k2]:+.2f} for {names[k2]} and {cw[k3]:+.2f} for {names[k3]}. '
+             f'{_nword(n_cw).capitalize()} winters is a small sample. ' + cfg.get("corr_note_html", "")
+             + ' Since October 2023 rain alone does not order the counts. '
+             + (f'Among the {_nword(cwet["n"])} events with a dated count and a day of 10 mm or more, the bigger storms were counted higher (rank correlation '
+                f'{cwet["rho"]:+.2f} with the wettest day, on {_nword(cwet["n"])} events). ' if cwet["n"] >= 4 and cwet["rho"] > 0.5 else '')
+             + (f'But {_nword(len(low[True]))} events with less than 10 mm in both IMERG and ERA5, driven by high tides and wind, were counted at '
+                f'{_span(low[True])} people each. ' if low[True] else '')
+             + f'Across all {_nword(ce[True]["n"])} dated counts, people affected and rain are barely related (rank correlation {ce[True]["im_max"][0]:+.2f} '
+             f'with the event\'s wettest day and {ce[True]["im_sum"][0]:+.2f} with its total'
+             + (', both within chance' if min(ce[True]["im_max"][1], ce[True]["im_sum"][1]) > 0.05 else '') + ').</p>')
 
     # storm for storm
     tr = {(t["lo"], t["since"]): t for t in wi["tiers"]}
@@ -1741,26 +1749,32 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     for lo, hi_ in SIZE_TIERS:
         o.append(f'<tr><td>{f"{lo}–{hi_:.0f} mm" if np.isfinite(hi_) else f"{lo} mm or more"}</td>{cell(tr[(lo, False)])}{cell(tr[(lo, True)])}</tr>')
     o.append('</tbody></table></div>')
-    o.append(f'<p class="small">Storms over {html.escape(A.ref)} in IMERG, as defined above. “With a reported impact”: at least one dated entry in the event '
-             'catalogue overlaps the storm (from the day before the entry starts to the day it ends). “People counted”: the range across events with a '
-             'dated count, sized by the wettest day in the event\'s own dates, with the number of counts in brackets. Counts of assistance delivered, '
-             'with no rain date, are left out.</p>')
-    t20b, t20s, low = tr[(20, False)], tr[(20, True)], wi["low"]
+    miss = " ".join(f'The event of {m["start"]:%-d}–{m["end"]:%-d %B %Y} ({_sig(m["people"], 2 if m["derived"] else 3)} people) is not in the table: IMERG has '
+                    f'{m["im"]:.1f} mm on its wettest day and ERA5 {m["era5"]:.0f} mm, so IMERG missed most of its rain.' for m in missed)
+    o.append(f'<p class="small">Storms over {html.escape(A.ref)} in IMERG, as defined above. “With a reported impact”: any entry in the event '
+             'catalogue, with or without a count, overlaps the storm (from the day before the entry starts to the day it ends). “People counted”: the '
+             'range across events with a dated count, sized by the wettest day in the event\'s own dates, with the number of counts in brackets. Counts '
+             f'of assistance delivered, with no rain date, are left out. {miss}</p>')
+    t20b, t20s = tr[(20, False)], tr[(20, True)]
     f_all, f_not = sh["all"], sh["no_top"]
     tb, ts = sh["top"][False], sh["top"][True]
     did = f'all {t20s["n"]}' if t20s["reported"] == t20s["n"] else f'{t20s["reported"]} of {t20s["n"]}'
     o.append(f'<p>Two things changed. The first is how often a storm does harm. Before October 2023, {t20b["reported"]} of the {t20b["n"]} storms of '
-             f'20–50 mm left a dated entry in the event catalogue; since, {did} did. '
-             + (f'And {_nword(len(low[True]))} events with less than 10 mm of rain in IMERG, driven by high tides, wind and cold, were counted at '
-                f'{_span(low[True])} people each' + ('; no event that small has a count before October 2023.' if not low[False] else '.')
-                if low[True] else '') + '</p>')
+             f'20–50 mm left an entry in the event catalogue, counted or not; since, {did} did. '
+             + (f'And the {_nword(len(low[True]))} events with less than 10 mm of rain have no counterpart before October 2023, when no event that small has a count.'
+                if low[True] and not low[False] else '') + '</p>')
     o.append(f'<p>The second is how many people. Storm for storm, the counts are tens to hundreds of times higher. Comparing the typical counted event '
              f'gives about {sh["med"]:.0f} times (a median of {_sig(sh["med_since"])} people against {_sig(sh["med_before"])}), or about {sh["geo"]:.0f} '
-             f'times on geometric means. Allowing for the rain in each storm, a model fitted to the {f_all["n"]} events with a dated count (people rising '
-             f'with the storm\'s rain total, plus a step in October 2023) puts the step at about {_sig(f_all["mult"])} times, with a 95% interval from '
-             f'about {_sig(f_all["lo"])} to about {_sig(f_all["hi"])}; without the largest storm of each period it is about {_sig(f_not["mult"])} times. '
-             f'At the top of the scale, Byron ({ts["rain"]:.0f} mm in IMERG, at least {ts["people"]:,.0f} people) had {ts["people"] / tb["people"]:.0f} '
-             f'times the count of Storm Alexa ({tb["rain"]:.0f} mm, {tb["people"]:,.0f} people), with less rain.</p>')
+             f'times on geometric means. As a scale check that allows for the rain in each storm, a model fitted to the {f_all["n"]} events with a dated '
+             f'count (one slope on the storm\'s rain total, plus a step in October 2023) puts the step at about {_sig(f_all["mult"])} times, with a 95% '
+             f'interval from about {_sig(f_all["lo"])} to about {_sig(f_all["hi"])}; without the largest storm of each period it is about '
+             f'{_sig(f_not["mult"])} times. ' + cfg.get("top_storms_html", "").format(
+                 since_rain=_round_to(ts["rain"], 10), since_people=f'{ts["people"]:,.0f}', before_rain=_round_to(tb["rain"], 10),
+                 before_people=f'{tb["people"]:,.0f}', ratio=f'{ts["people"] / tb["people"]:.0f}')
+             + (f' And the driest winter of the {n_all}-winter IMERG record, {_yr(rain["driest"])}, has more people reported affected (at least '
+                f'{_sig(S.people[rain["driest"]])}) than the wettest, {_yr(rain["wettest"])} ({_sig(S.people[rain["wettest"]])}).'
+                if rain["driest"] >= SINCE > rain["wettest"] and S.people.get(rain["driest"], np.nan) > S.people.get(rain["wettest"], np.nan) else '')
+             + '</p>')
     o.append(cfg.get("multiplier_caveat_html", ""))
 
     # scenarios
@@ -1771,8 +1785,9 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append('<h3>Scenarios for winter 2026/27</h3>' + cfg.get("scenario_intro_html", ""))
     o.append(f'<figure><img src="winter_impacts.png" alt="People reported affected per winter against rain, with scenarios for 2026/27"><figcaption>'
              f'Left: each dot is one winter with a count, people reported affected against October–April rain over {A.ref} (IMERG), on a log scale; '
-             f'for {_yr(ry)} the bar spans the two alert-based sums and the hollow marker is the Shelter Cluster survey. Right: the two counted winters '
-             f'since October 2023 on a linear scale, with the three scenarios in the table below as boxes. The boxes are scaled from last winter\'s '
+             f'for {_yr(ry)} the bar spans the two alert-based sums. Right: the two counted winters since October 2023 on a linear scale, with the three '
+             f'planning scenarios in the table below as boxes. The dots and boxes count a person once per storm; the two horizontal lines count each '
+             f'person once. The boxes are scaled from last winter\'s '
              f'counts, not fitted to the dots, and are drawn across the range of rain in the {_nword(n_en)} El Niño winters since {_yr(int(S.index.min()))} '
              f'({rain["en_min"]:.0f}–{rain["en_max"]:.0f} mm, shaded), the nearest guide the record gives to this winter\'s rain; they do not depend '
              f'on where in that range the winter falls.</figcaption></figure>')
@@ -1788,9 +1803,14 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
              + (f'<br><span class="small">{", ".join(_yr(y) for y in sc["two"]["years"])}</span>' if sc["two"]["years"] else '')
              + f'</td><td>last winter plus a second Byron</td><td class="num">{rng(sc["two"])}</td><td class="num">{rng(sc["two"], "_s")}</td></tr>')
     o.append('</tbody></table></div>')
+    two_none = [y for y in sc["two"]["years"] if S.n_ev[y] == 0]
     o.append(f'<p class="small">People-impacts count a person once for each storm that affected them. Each range runs from the sum of the per-event counts '
-             f'to the Shelter Cluster\'s monthly snapshots, as in “Last winter in numbers”, with households converted at {hh[True]:.1f} people. Byron is '
-             f'taken at the Shelter Cluster\'s {wi["byron"]:,.0f} people. “How often” counts IMERG winters {_yr(int(S.index.min()))}–{_yr(int(S.index.max()))}. '
+             f'(people as reported where a source gives them, {hh[True]:.1f} per household otherwise) to the Shelter Cluster\'s monthly snapshots (households at '
+             f'{hh[True]:.1f} people), as in “Last winter in numbers”. Byron is taken out or added at the Shelter Cluster\'s {wi["byron"]:,.0f} people in '
+             f'the lower figures and at the Site Management Cluster\'s {a["ref"]["byron_hh"]:,.0f} households (about {_sig(wi["byron_hi"], 3)} people) in '
+             f'the higher ones. “How often” counts IMERG winters {_yr(int(S.index.min()))}–{_yr(int(S.index.max()))}. '
+             + (f'The only winter with two such storms, {_yr(two_none[0])}, was before October 2023 and left no entry in the event catalogue. '
+                if len(sc["two"]["years"]) == 1 and two_none else '') +
              f'Exposure: about {wi["sites_now"] / 1e6:.1f} million people in displacement sites in September 2026 against about '
              f'{wi["sites_then"] / 1e6:.1f} million in early December 2025; the two counts used different methods.</p>')
     dry = rain["driest"]
@@ -1798,9 +1818,10 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
              f'<li><strong>One winter, one storm.</strong> Every figure is last winter\'s count rescaled, and the two larger cases rest on a single storm. '
              f'The first case is last winter with Byron taken out: {S.n20[ry] - 1:.0f} storms of 20 mm or more and {S.n10[ry] - 1:.0f} of 10 mm or more '
              f'remain, close to an average El Niño winter ({row[(20, "El Niño")]["mean"]:.0f} and {row[(10, "El Niño")]["mean"]:.0f}).</li>'
-             f'<li><strong>Alert counts are floors.</strong> The Shelter Cluster\'s survey found {100 * wi["survey"] / wi["sites_now"]:.0f}% of households '
-             f'flooded at least once last winter. If the same share held this winter, about {wi["survey"] / 1e6:.1f} million of the '
-             f'{wi["sites_now"] / 1e6:.1f} million people in displacement sites would be flooded at least once. That figure counts each person once; the '
+             f'<li><strong>Alert counts are floors.</strong> The Shelter Cluster\'s household survey found {100 * wi["survey"] / wi["sites_now"]:.0f}% of '
+             f'households flooded at least once last winter' + cfg.get("survey_note", "") + f'. If the same share held this winter among the '
+             f'{wi["sites_now"] / 1e6:.1f} million people in displacement sites, about {wi["survey"] / 1e6:.1f} million would be flooded at least once. '
+             'That figure counts each person once; the '
              'alert-based figures count impacts, one per person per storm, and last winter the alerts caught a third or less of the households the survey found.</li>'
              + cfg.get("scenario_limits_html", "") +
              (f'<li><strong>A dry winter is not a safe one.</strong> {_yr(dry)} was the driest winter of the IMERG record ({S.total[dry]:.0f} mm), and at least '
