@@ -186,7 +186,9 @@ new forecast lands. When the cube's forecast is older than the latest issuance i
 the return periods from the admin-1 raster statistics instead (prod `public.seas5` / `public.era5`, the app's detrended method,
 fully forecast windows only; cached in `cache/gaza/*_adm1_db.parquet`), keeps the cube's hindcast skill, and the page says so.
 The database is reachable only inside the VNet or through the laptop tunnel (`DSCI_AZ_DB_PROD_HOST`). Delete
-`cache/skill_stats_grid_detrended.nc` to pick up the refreshed cube; the page then reads it again without further changes.
+`cache/skill_stats_grid_detrended.nc` to pick up the refreshed cube; the page then reads it again (the build says so), and the
+SEAS5 paragraphs, summary item 1 and key message 1 need re-checking against the regenerated tables, since pixel medians can
+differ slightly from the area-mean stand-in.
 `skill_issued_month` in each part's TOML selects the issuance, and the SEAS5 paragraphs there are written for it.
 
 ---

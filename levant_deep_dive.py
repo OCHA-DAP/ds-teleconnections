@@ -606,6 +606,14 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
             row["rp"][t["code"]] = v["rp"] if v else float("nan")
             row["pct"][t["code"]] = v["pct"] if v else float("nan")
         skill.update(cube_year=skill.get("issued_year"), issued_year=db["year"], db=db)
+    elif skill and db:
+        print(f"  note: the skill cube holds the {skill.get('issued_year')} issuance, so SEAS5 return periods are pixel medians from the cube "
+              "again; re-check the SEAS5 paragraphs, summary item 1 and key message 1 against the regenerated tables.")
+    now = pd.Timestamp.now()
+    im_ = int(spec.get("skill_issued_month", 9))
+    if db and (im_ < now.month or (im_ == now.month and now.day >= 5)) and db["year"] != now.year:
+        print(f"  WARNING: the cached raster stats end before the {now.year}-{im_:02d} issuance (latest for that month: {db['year']}); "
+              "the SEAS5 forecast on the page is not this year's.")
     if skill:
         edd.fig_skill_issued(gc, grid, {}, skill, OUT / "skill_issued.png", A.name, area_label=A.name,
                              rp_label="admin-1 mean, team database" if skill.get("db") else "median pixel")
@@ -1539,6 +1547,24 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
                     'median pixel correlation from the app\'s cube, which depends on the hindcasts and not on the new forecast. Windows that had '
                     'already started at issuance are left blank: they blend in observed months, and the latest ERA5 month arrives a day after the forecast.</p>')
             sk_html = sk_html.replace('<figure><img src="skill_issued.png"', note + '<figure><img src="skill_issued.png"', 1)
+            # the app's alert rule, read with both measures of skill: the cube's pixel median and the area mean's own r
+            lo_ = edd.SKILL_THRESH["r_mod"]; row_ = sk["rows"][0]; clear, border = [], []
+            for t in sk["trimesters"]:
+                v = sk["db"]["rows"].get(t["code"])
+                if t["lead"] < 0 or not v or abs(v["rp"]) < 3:
+                    continue
+                rc, ra = row_["r"].get(t["code"], float("nan")), v["r"]
+                if rc >= lo_ and ra >= lo_:
+                    clear.append(t["code"])
+                elif rc >= lo_ or ra >= lo_:
+                    border.append(f'{t["code"]} (pixel-median r {rc:.2f}, area-mean r {ra:.2f})')
+            rule = ("Under the app\'s rule, an alert needs the return period <em>and</em> at least moderate skill. Until the pixel product is "
+                    "out this is provisional: " + (f'{", ".join(clear)} meet both conditions on either measure of skill' if clear else
+                                                    'no window meets both conditions on both measures of skill')
+                    + (f'; {", ".join(border)} {"sits" if len(border) == 1 else "sit"} at the moderate-skill boundary' if border else '') + '.')
+            sk_html, n_sub = re.subn(r"Under the app\'s rule — .*?(?:this issuance would raise an alert for [^.]*\.|because the skill behind them is low\.)",
+                                     lambda m_: rule, sk_html, count=1, flags=re.S)
+            assert n_sub == 1, "alert sentence not found in the skill block"
         # the shared auto-summary names the zone before each window ("Gaza SON, Gaza OND"): drop it
         B["forecast_area"].append(re.sub(rf"\b{re.escape(A.name)} (?=[A-Z]{{3}}\b)", "", sk_html))
     sr = a.get("seas5_raw")
