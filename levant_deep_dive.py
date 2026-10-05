@@ -1754,7 +1754,7 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append(f'<p class="small">Storms over {html.escape(A.ref)} in IMERG, as defined above. “With a reported impact”: any entry in the event '
              'catalogue, with or without a count, overlaps the storm (from the day before the entry starts to the day it ends). “People counted”: the '
              'range across events with a dated count, sized by the wettest day in the event\'s own dates, with the number of counts in brackets. Counts '
-             f'of assistance delivered, with no rain date, are left out. {miss}</p>')
+             f'of assistance delivered, with no rain date, are left out. {miss} ' + cfg.get("tier_note", "") + '</p>')
     t20b, t20s = tr[(20, False)], tr[(20, True)]
     f_all, f_not = sh["all"], sh["no_top"]
     tb, ts = sh["top"][False], sh["top"][True]
