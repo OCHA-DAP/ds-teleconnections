@@ -2131,13 +2131,13 @@ COMBINED_CSS = ("h3.area{font-size:17px;margin:28px 0 8px;padding:2px 0 2px 10px
                 "details.summary summary{cursor:pointer;font-weight:700}details.summary[open] summary{margin-bottom:10px}")
 # Navigation on the combined page: a sticky section bar, a contents block, links between the areas of a
 # section, a list of each long part's subsections, and an anchor on every heading.
-NAV_CSS = ("h2,h3,h4,h5,#key-messages,#contents{scroll-margin-top:52px}"
-           ".secbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:2px;margin:0 -44px 16px;padding:7px 44px;"
-           "background:rgba(255,255,255,.97);border-bottom:1px solid #e2e7e7;font-size:13px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}"
+NAV_CSS = ("h2,h3,h4,h5,#key-messages,#contents{scroll-margin-top:48px}"
+           ".secbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;margin:0 -44px 16px;padding:7px 44px;"
+           "background:#fff;border-bottom:1px solid #e2e7e7;font-size:12.5px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}"
            ".secbar::-webkit-scrollbar{display:none}.secbar .item{display:inline-flex;align-items:center}"
-           ".secbar a{color:var(--n8);text-decoration:none;padding:4px 8px;border-radius:4px}.secbar a:hover,.secbar a:focus-visible{background:var(--b05);color:var(--b7)}"
-           ".secbar .item.cur>a{background:var(--b05);color:var(--b7);font-weight:700}.secbar .sub{display:none;font-size:12.5px;color:var(--n7)}"
-           ".secbar .item.cur .sub{display:inline}.secbar .sub a{padding:3px 5px}.secbar .sub a.cur{color:var(--b7);font-weight:700;text-decoration:underline}"
+           ".secbar a{color:var(--n8);text-decoration:none;padding:4px 6px;border-radius:4px}.secbar a:hover,.secbar a:focus-visible{background:var(--b05);color:var(--b7)}"
+           ".secbar .item.cur>a{background:var(--b05);color:var(--b7);font-weight:700}.secbar .sub{display:none;font-size:12px;color:var(--n7)}"
+           ".secbar .item.cur .sub,.secbar .item:focus-within .sub{display:inline}.secbar .sub a{padding:3px 5px}.secbar .sub a.cur{color:var(--b7);font-weight:700;text-decoration:underline}"
            ".contents{background:var(--n05);border:1px solid #e2e7e7;border-radius:6px;padding:12px 18px 8px;margin:16px 0 10px}"
            ".contents .lbl{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:var(--n7);margin:0 0 4px}"
            ".contents ul{list-style:none;margin:0;padding:0}.contents li{display:flex;justify-content:space-between;align-items:baseline;gap:6px 18px;"
@@ -2145,12 +2145,15 @@ NAV_CSS = ("h2,h3,h4,h5,#key-messages,#contents{scroll-margin-top:52px}"
            ".contents li>a:hover{text-decoration:underline}.contents .areas{font-size:13px;white-space:nowrap}.contents .areas a{margin-left:14px}"
            ".areahead{display:flex;justify-content:space-between;align-items:baseline;gap:4px 16px;flex-wrap:wrap;margin:28px 0 8px}"
            ".areahead h3.area{margin:0}.areahead .alt{margin:0;font-size:12.5px;color:var(--n7);max-width:none}.tscroll{overflow-x:auto}"
-           ".inpart{font-size:12.5px;color:var(--n7);max-width:none;margin:0 0 12px;line-height:1.85}.inpart a{white-space:nowrap}"
-           ".anchor{margin-left:7px;font:400 .8em 'Roboto',system-ui,sans-serif;color:var(--n7);text-decoration:none;opacity:0}"
+           ".inpart{font-size:12.5px;color:var(--n7);max-width:none;margin:0 0 12px;line-height:1.85}.inpart span{white-space:nowrap}"
+           ".anchor{margin-left:7px;font:400 .8em 'Roboto',system-ui,sans-serif;color:var(--n7);text-decoration:none;opacity:0;user-select:none}"
+           ".anchor::after{content:'#'}"
            "h2:hover .anchor,h3:hover .anchor,h4:hover .anchor,h5:hover .anchor{opacity:1}"
            ".keymsg .see,.summary .see{font-size:13px;color:var(--n7);white-space:nowrap}"
+           "@media(max-width:1000px){.secbar{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);"
+           "mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}}"
            "@media(max-width:640px){.secbar{margin:0 -18px 12px;padding:6px 18px}.contents .areas a{margin:0 14px 0 0}}"
-           "@media print{.secbar,.anchor,.areahead .alt,.inpart{display:none}}")
+           "@media print{.secbar,.anchor,.areahead .alt,.inpart{display:none}.tscroll,div[style*='overflow-x']{overflow:visible}}")
 NAV_JS = """<script>
 (function(){
   var bar=document.querySelector('.secbar'); if(!bar) return;
@@ -2158,14 +2161,20 @@ NAV_JS = """<script>
   var secs=[].map.call(bar.querySelectorAll('.item>a'),pair), subs=[].map.call(bar.querySelectorAll('.sub a'),pair), last=null, tick=0;
   function update(){
     tick=0;
-    var y=bar.getBoundingClientRect().bottom+12, cur=null, sub=null;
+    var y=bar.getBoundingClientRect().bottom+16, cur=null, sub=null;
     secs.forEach(function(s){ if(s.el && s.el.getBoundingClientRect().top<=y) cur=s; });
+    if(window.innerHeight+window.scrollY>=document.documentElement.scrollHeight-1) cur=secs[secs.length-1];
     subs.forEach(function(s){ if(s.el && s.el.getBoundingClientRect().top<=y) sub=s; });
     secs.forEach(function(s){ s.a.parentNode.classList.toggle('cur', s===cur); if(s===cur) s.a.setAttribute('aria-current','true'); else s.a.removeAttribute('aria-current'); });
-    subs.forEach(function(s){ s.a.classList.toggle('cur', s===sub && !!cur && s.a.parentNode.parentNode===cur.a.parentNode); });
+    subs.forEach(function(s){
+      var on = s===sub && !!cur && s.a.parentNode.parentNode===cur.a.parentNode;
+      s.a.classList.toggle('cur', on); if(on) s.a.setAttribute('aria-current','location'); else s.a.removeAttribute('aria-current');
+    });
     if(cur && cur!==last){
-      last=cur; var it=cur.a.parentNode;
-      bar.scrollLeft += it.getBoundingClientRect().left - bar.getBoundingClientRect().left - (bar.clientWidth - it.offsetWidth)/2;
+      last=cur; var it=cur.a.parentNode, b=bar.getBoundingClientRect(), r=it.getBoundingClientRect();
+      if(r.left<b.left || r.right>b.right)
+        bar.scrollTo({left: bar.scrollLeft + r.left - b.left - (bar.clientWidth - it.offsetWidth)/2,
+                      behavior: window.matchMedia && matchMedia('(prefers-reduced-motion:reduce)').matches ? 'auto' : 'smooth'});
     }
   }
   window.addEventListener('scroll', function(){ if(!tick) tick=setTimeout(update, 60); }, {passive:true});
@@ -2177,13 +2186,13 @@ HEADING = re.compile(r"<(h[2-5])\b([^>]*)>(.*?)</\1>", re.S)
 
 def _slug(t: str) -> str:
     t = unicodedata.normalize("NFKD", html.unescape(re.sub(r"<[^>]+>", "", t))).encode("ascii", "ignore").decode()
-    return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
+    return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-") or "part"
 
 
 def _scroll_tables(page: str) -> str:
     """A table wider than a narrow screen scrolls sideways in its own box instead of widening the whole page."""
     def wrap(m):
-        return m.group(0) if page[:m.start()].rstrip().endswith('<div style="overflow-x:auto">') else f'<div class="tscroll">{m.group(0)}</div>'
+        return m.group(0) if re.search(r"<div[^>]*overflow-x:auto[^>]*>\s*$", page[:m.start()]) else f'<div class="tscroll">{m.group(0)}</div>'
     return re.sub(r"<table\b.*?</table>", wrap, page, flags=re.S)
 
 
@@ -2218,10 +2227,11 @@ def _anchors(page: str) -> str:
         m = h["m"]
         attrs = h["attrs"] if 'id="' in h["attrs"] else f'{h["attrs"]} id="{h["id"]}"'
         out.append(page[pos:m.start()])
-        out.append(f'<{h["tag"]}{attrs}>{h["inner"]}<a class="anchor" href="#{h["id"]}" aria-hidden="true" tabindex="-1">#</a></{h["tag"]}>')
+        out.append(f'<{h["tag"]}{attrs}>{h["inner"]}<a class="anchor" href="#{h["id"]}" aria-hidden="true" tabindex="-1"></a></{h["tag"]}>')
         pos = m.end()
         if len(h.get("kids", [])) >= 3:
-            links = " · ".join(f'<a href="#{k["id"]}">{re.sub(r"<[^>]+>", "", k["inner"])}</a>' for k in h["kids"])
+            links = " ".join(f'<span><a href="#{k["id"]}">{re.sub(r"<[^>]+>", "", k["inner"])}</a>{"" if k is h["kids"][-1] else " ·"}</span>'
+                             for k in h["kids"])
             lst = f'<p class="inpart">In this {"part" if "area" in h["attrs"] else "section"}: {links}</p>'
             if page[:m.start()].endswith('<div class="areahead">'):                  # after the heading row, not inside it
                 end = page.index("</div>", pos) + 6
@@ -2232,7 +2242,8 @@ def _anchors(page: str) -> str:
     ids = re.findall(r'\bid="([^"]+)"', page)
     dup = {i for i in ids if ids.count(i) > 1}
     dead = {h for h in re.findall(r'href="#([^"]+)"', page) if h not in set(ids)}
-    assert not dup and not dead, f"navigation: duplicate ids {sorted(dup)}, links to nothing {sorted(dead)}"
+    if dup or dead:
+        raise ValueError(f"navigation: duplicate ids {sorted(dup)}, links to nothing {sorted(dead)}")
     return page
 
 
@@ -2309,11 +2320,13 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
     short = cspec.get("nav", {})
     sec_no = {i: n for n, (i, _, _) in enumerate(toc, 1) if n <= len(sec_keys) + bool(agri)}
 
+    targets = {k: (sec_no[k], None) for k in sec_no} | {a: (sec_no[k], n) for k in sec_keys for a, n in sibs[k]}
+
     def see(ids: list[str]) -> str:
-        """Links from a key message or a summary item to the sections that carry its evidence."""
+        """Links from a key message to the sections that carry its evidence (a wrong anchor is a KeyError naming it)."""
         def one(i):
-            k = next(k for k in sec_no if i == k or i.endswith("-" + k))
-            return f'<a href="#{i}">section {sec_no[k]}' + (f', {html.escape(names[i[:-len(k) - 1]])}' if i != k else '') + '</a>'
+            n, area = targets[i]
+            return f'<a href="#{i}">section {n}' + (f', {html.escape(area)}' if area else '') + '</a>'
         return ' <span class="see">See ' + " and ".join(one(i) for i in ids) + '.</span>' if ids else ''
 
     o.append(f'<p class="eyebrow">{html.escape(cspec.get("eyebrow", "ENSO country deep dive"))}</p><h1>{html.escape(cspec["name"])}</h1>')
@@ -2328,7 +2341,7 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
                        for i, t, sub in toc) + '</nav>')
     # key messages for the coming winter, ahead of everything else
     if cspec.get("key_messages"):
-        o.append(f'<div class="keymsg" id="key-messages"><h2>{html.escape(cspec.get("key_messages_title", "Key messages"))}</h2>'
+        o.append(f'<div class="keymsg" id="key-messages"><h2 id="key-messages-heading">{html.escape(cspec.get("key_messages_title", "Key messages"))}</h2>'
                  + (f'<p class="small">{html.escape(cspec["key_messages_dateline"])}</p>' if cspec.get("key_messages_dateline") else "")
                  + "<ol>" + "".join(f'<li><strong>{html.escape(m["lead"])}</strong> {html.escape(m["text"])}{see(m.get("see", []))}</li>'
                                     for m in cspec["key_messages"]) + "</ol>"
@@ -2350,7 +2363,7 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
         o.append(f'<details class="summary"><summary>Summary by section</summary>{summary}</details>')
     else:
         o.append(f'<div class="summary">{summary}</div>')
-    o.append('<nav class="contents" id="contents" aria-label="Contents"><p class="lbl">Contents</p><ul>' + "".join(
+    o.append('<nav class="contents" id="contents" aria-labelledby="contents-label"><p class="lbl" id="contents-label">Contents</p><ul>' + "".join(
         f'<li><a href="#{i}">{html.escape(t)}</a>' + ('<span class="areas">' + "".join(f'<a href="#{a}">{html.escape(n)}</a>' for a, n in sub) + '</span>' if sub else '')
         + '</li>' for i, t, sub in toc) + '</ul></nav>')
     o.append(cspec.get("before_html", ""))
