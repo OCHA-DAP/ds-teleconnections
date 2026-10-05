@@ -93,8 +93,8 @@ class Area:
                            "before the reported start to the reported end: IMERG wettest day over Gaza (north = cells at 31.4–31.6°N: North Gaza, "
                            "Gaza governorate and most of Deir al Balah; south = 31.2–31.4°N: Khan Younis and Rafah); window totals from IMERG and from ERA5 (which smooths rain over 25 km cells and "
                            "runs lower on heavy days; the two disagree on single days by a factor of two or more, so read them as a range); ERA5 lowest daily minimum temperature and highest hourly 10 m wind, averaged "
-                           "over the three cells over Gaza (partly sea, so milder and less gusty than an exposed tent site). Figures in <em>italics</em> "
-                           "are from Gaza authorities (Ministry of Health, Civil Defence, Government Media Office) as relayed by the UN; the rest are UN "
+                           "over the three cells over Gaza (partly sea, so milder and less gusty than an exposed displacement site). Figures in <em>italics</em> "
+                           "are from the authorities in Gaza (the Ministry of Health, the Palestinian Civil Defence and the Government Media Office), as relayed by the UN; the rest are UN "
                            "agency or cluster figures.")
 
 
@@ -1157,7 +1157,7 @@ def fig_event_impacts(ev: pd.DataFrame, out: Path, storms_im: pd.DataFrame | Non
         rain = "R" in r.hazard and r.im_max >= 10
         mk = "o" if rain else ("^" if "S" in r.hazard and "W" not in r.hazard else "s")
         ax.plot(r.im_max, r.hh_affected_un, mk, ms=8, color=col[r.winter], mfc=col[r.winter] if r.hh_complete else "white", mew=1.6)
-    # storms of 20 mm or more in the three war winters with no dated UN household count: drawn at the floor
+    # storms of 20 mm or more in the three winters since October 2023 with no dated UN household count: drawn at the floor
     if storms_im is not None:
         big = storms_im[(storms_im.sy >= 2023) & (storms_im["max"] >= 20)]
         k = 0
@@ -1543,7 +1543,7 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
     B["enso"].append('<figure><img src="corr_maps.png" alt="Pixel correlation maps, southern Levant"><figcaption>Pearson r between three-month rainfall and '
              'Niño3.4 for each ERA5 0.25° cell, keeping the lag (0–3 months, index leading) with the largest |r| as the survey does. '
              f'Blue = wetter under El Niño. Grey cells hold under a quarter of their annual rain in that window. {A.ref[0].upper() + A.ref[1:]} is outlined.</figcaption></figure>')
-    B["enso"].append(f'<figure><img src="composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean standardised '
+    B["enso"].append(f'<figure><img src="composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean standardized '
              f'October–April anomaly over the {a["n_en_grid"]} El Niño winters of {_yr(a["n_grid"][0])}–{_yr(a["n_grid"][1])} '
              f'(cells over {A.ref}: {a["comp_gaza"]:+.2f} SD; positive in {100 * a["comp_region_pos"]:.0f}% of analysed cells). '
              f'Right: the share of those winters in each cell\'s wettest third ({A.name}: {100 * a["hit_gaza"]:.0f}%; regional median '
@@ -1579,7 +1579,7 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
     B["impacts"].append(impact_table(a["ev_rows"], numbered=True))
     B["impacts"].append(f'<p class="small">{A.impact_caption}</p>')
     if a.get("pre_rows"):
-        B["impacts"].append(f'<h3>Before the war</h3>{spec.get("prewar_html", "")}')
+        B["impacts"].append(f'<h3>Before October 2023</h3>{spec.get("prewar_html", "")}')
         B["impacts"].append(impact_table(a["pre_rows"], numbered=False))
     B["impacts"].append(spec.get("impacts_after_html", ""))
     if a.get("st"):
@@ -1702,7 +1702,7 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
     p0 = parts[0]
     o = [edd.HEAD.format(title=f'{cspec["name"]} — ENSO deep dive', desc=html.escape(ours["one_line"]), css=edd.CSS + COMBINED_CSS,
                          home="../", home_label="ENSO country deep dives")]
-    o.append(f'<p class="eyebrow">ENSO country deep dive</p><h1>{html.escape(cspec["name"])}</h1>')
+    o.append(f'<p class="eyebrow">{html.escape(cspec.get("eyebrow", "ENSO country deep dive"))}</p><h1>{html.escape(cspec["name"])}</h1>')
     o.append(f'<p class="meta">{html.escape(cspec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{p0["a"]["end_era5"]:%Y}, '
              f'IMERG 1998–{p0["a"]["end_imerg"]:%Y}, ' + ", ".join(f'{p["area"].meta_gauge} ({p["area"].name})' for p in parts)
              + ' &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
@@ -1752,7 +1752,7 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
                                                              f'{html.escape(cspec["name"])} are outlined.'))
     a0 = p0["a"]
     o.append(f'<figure><img src="{p0["slug"]}/composite_maps.png" alt="El Niño composite and wettest-third hit rate"><figcaption>Left: mean '
-             f'standardised October–April anomaly over the {a0["n_en_grid"]} El Niño winters of {_yr(a0["n_grid"][0])}–{_yr(a0["n_grid"][1])} '
+             f'standardized October–April anomaly over the {a0["n_en_grid"]} El Niño winters of {_yr(a0["n_grid"][0])}–{_yr(a0["n_grid"][1])} '
              f'(positive in {100 * a0["comp_region_pos"]:.0f}% of analysed cells). Right: the share of those winters in each cell\'s wettest '
              f'third (regional median {100 * a0["hit_region"]:.0f}%; chance is 33%). '
              + "Cells over " + "; over ".join(f'{p["area"].ref}: {p["a"]["comp_gaza"]:+.2f} SD and {100 * p["a"]["hit_gaza"]:.0f}% in the wettest third' for p in parts)

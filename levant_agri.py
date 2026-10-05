@@ -521,7 +521,7 @@ def fig_field_rain(field: pd.Series, rain: pd.Series, phase: pd.Series, out: Pat
     ax.set_xlabel("October–April rainfall before the harvest, % above or below the 1991–2020 mean (ERA5, West Bank)", fontsize=8.5, color=L.C_MUTED)
     ax.set_ylabel("Wheat and barley yield, % above or below trend", fontsize=8.5, color=L.C_MUTED)
     ax.legend(frameon=False, fontsize=8, loc="upper left")
-    ax.set_title("Wheat and barley yields against the winter's rain (Palestine, 1994–2021)", fontsize=10, color=L.C_TEXT, loc="left")
+    ax.set_title("Wheat and barley yields against the winter's rain (West Bank and Gaza, 1994–2021)", fontsize=10, color=L.C_TEXT, loc="left")
     ax.tick_params(labelsize=8.5)
     ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True)
     edd._style_ax(ax)
@@ -644,7 +644,7 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
     o.append('</tbody></table></div>')
     o.append('<p class="small">Wheat and barley area: PCBS Agricultural Census 2021, by governorate. The Jordan Valley\'s share is almost all '
              'Tubas governorate (which PCBS reports with the northern valleys), much of it on the governorate\'s hills and plains above the valley floor. '
-             f'Olives pressed: PCBS Olive Presses Survey, share of all olives pressed in Palestine, 2003–2019 mean (the West Bank as a whole pressed '
+             f'Olives pressed: PCBS Olive Presses Survey, share of all olives pressed in the Occupied Palestinian Territory, 2003–2019 mean (the West Bank as a whole pressed '
              f'{100 * g["olive_wb_share"]:.0f}%). PCBS merges Jenin and Tubas, so Tubas\'s olives sit in the semi-coastal row; Jericho has no presses; '
              'Jerusalem is reported only from 2008 and left out (about 3% of the highland pressings since). Rain: October–April ERA5 over each '
              f'zone\'s governorates, {L.SPLIT}/{str(L.SPLIT + 1)[2:]}–2025/26, against December–February Niño3.4 (pinned series). Spring greenness: '
@@ -720,7 +720,7 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
     wph = [g["crop_phase"].get(y, "") for y in worst.index]
     worst_txt = ", ".join(f"{y} ({_signed(v)})" for y, v in worst.items())
     o.append('<h3>Harvests after El Niño winters</h3>')
-    o.append(f'<p>Cereal yields are published only for Palestine as a whole, but the West Bank holds {100 * g["wb_cereal_share"]:.0f}% of its wheat and '
+    o.append(f'<p>Cereal yields are published only for the Occupied Palestinian Territory as a whole (the West Bank and Gaza together), but the West Bank holds {100 * g["wb_cereal_share"]:.0f}% of its wheat and '
              f'barley area and presses {100 * g["olive_wb_share"]:.0f}% of its olives. Rainfed wheat and barley yields were above trend in '
              f'{fe["above"]} of {fe["n"]} crop years after El Niño winters, against {fl["above"]} of {fl["n"]} after La Niña winters. The '
              f'{_nw(len(worst))} worst harvests since 1994, {worst_txt}, '
@@ -779,7 +779,7 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
              f'years above trend, {_ph(lt["ph"], "La Niña")["above"]} of {_ph(lt["ph"], "La Niña")["n"]} La Niña years). Chickpeas show no clear link '
              f'(r = {L._r(ck["r"][0])} with rain).</p>')
     o.append('<figure><img src="agri_field_rain.png" alt="Wheat and barley yield against rainfall"><figcaption>Wheat and barley yields (official '
-             'FAOSTAT figures for Palestine; percentage above or below trend) against the rainfall of the winter before the harvest. '
+             'FAOSTAT figures for the West Bank and Gaza together; percentage above or below trend) against the rainfall of the winter before the harvest. '
              f'r = {L._r(g["field_r"][0])} (p {L._p(g["field_r"][1])}, {g["field_r"][2]} years); without 1999, {L._r(g["field_r99"][0])}. '
              'FAOSTAT repeats its 2013 figures as 2014 and gives only estimated or imputed figures for '
              + " and ".join(str(y) for y in g["excluded"] if y != 2014) + '; those years are left out. Harvested area halves in FAOSTAT from 2010 '
@@ -792,7 +792,7 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
     # Olives
     oz = [z for z in zs if "olive_ab" in z]
     o.append('<h3>Olives</h3>' + ag.get("olive_html", ""))
-    o.append('<figure><img src="agri_olives.png" alt="Olive production by year"><figcaption>Olive production (FAOSTAT, Palestine; for 2017–2019 '
+    o.append('<figure><img src="agri_olives.png" alt="Olive production by year"><figcaption>Olive production (FAOSTAT, West Bank and Gaza together; for 2017–2019 '
              'it equals the olives pressed in the PCBS survey). Big and small crops alternate (r between one year and the next, official years: '
              f'{g["ol_ac"]:+.2f}); the colour is the ENSO phase of the winter before the harvest. Hollow bars are FAO estimates, left out of '
              'the alternate-bearing model and the tables. FAOSTAT\'s harvested area halves from 2010 '
