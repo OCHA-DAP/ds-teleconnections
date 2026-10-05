@@ -653,7 +653,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
         fig_winter_impacts(wi, OUT / "winter_impacts.png")
         if "rx1" in wi["S"]:
             fig_winter_hazards(wi, OUT / "winter_hazards.png")
-        if wi["ond"]:
+        if wi["ond"] and wi["ond"]["top"]:
             fig_forecast_quarter(wi, OUT / "forecast_quarter.png")
 
     # Rainfall on the dates of reported impacts, and how often such days occur
@@ -1319,7 +1319,7 @@ C_REGIME = {False: SRC_COL["GPCC"], True: SRC_COL["gauge"]}
 
 HAZARDS = [("total", "Rain, October–April", "mm"), ("rx7", "Wettest 7 days", "mm"), ("rx1", "Wettest day", "mm"),
            ("n20", "Storms of 20 mm or more", ""), ("d10", "Days of 10 mm or more", ""), ("rd", "Rain days (1 mm or more)", ""),
-           ("windy", "Windy days (ERA5)", ""), ("cold8", "Cold nights, ≤ 8 °C (ERA5)", "")]
+           ("windy", "Windy days, top 5% (ERA5)", ""), ("cold8", "Cold nights, ≤ 8 °C (ERA5)", "")]
 
 
 def forecast_analogues(db: dict | None, code: str, share: float = 0.2) -> dict | None:
@@ -1332,9 +1332,13 @@ def forecast_analogues(db: dict | None, code: str, share: float = 0.2) -> dict |
     h = row["hind"].sort_values("f")
     k = int(np.ceil(share * len(h)))
     pos = int((h.f < row["cur"]).sum())                                    # hindcasts drier than this year's forecast
-    lo = min(max(pos - k // 2, 0), len(h) - k)
+    top = pos >= len(h) - k + 1                                           # fewer than k hindcasts are wetter: the wettest fifth
+    lo = len(h) - k if top else min(max(pos - k // 2, 0), len(h) - k)
     an = h.iloc[lo:lo + k]
-    return dict(code=code, issued_year=db["year"], issued_month=db["month"], n=len(h), k=k, drier=pos, top=lo + k == len(h),
+    near = an.mm[(an.mm - h.mm.median()).abs() <= 0.15 * h.mm.median()]
+    return dict(code=code, issued_year=db["year"], issued_month=db["month"], n=len(h), k=k, drier=pos, top=top,
+                n_near=len(near), far_lo=float(an.mm.drop(near.index).min()) if len(near) < k else np.nan,
+                drier_by_year={int(y): int((h.f < v).sum()) for y, v in h.f.items()},
                 years=sorted(int(y) for y in an.index), lo=float(an.mm.min()), hi=float(an.mm.max()), med=float(an.mm.median()),
                 an=an.mm.sort_values(), clim=h.mm.sort_index(), clim_med=float(h.mm.median()),
                 clim_lo=float(h.mm.quantile(.1)), clim_hi=float(h.mm.quantile(.9)), r=row["r"])
@@ -1375,7 +1379,7 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
         S["windy"] = dm["ERA5"].windy
         t = era5.tmin[era5.index.month.isin(WET)].dropna()
         S["cold8"] = (t <= 8).groupby(season_year(t.index)).sum()
-    q4 = e[e.start.dt.month.isin([10, 11, 12])]          # counts for events dated October–December, against that quarter's rain
+    q4 = e[e.start.dt.month.isin([10, 11, 12]) & e.dated]   # dated counts for events of October–December, against that quarter's rain
     S["people_ond"] = q4.groupby("sy").people.sum(min_count=1)
     S["people_ond_hi"] = np.nan; S.loc[ry, "people_ond_hi"] = (ref["first"] + ref["dec"]) * hh[True]
     ond = forecast_analogues(db, "OND")
@@ -1549,7 +1553,7 @@ def fig_forecast_quarter(wi: dict, out: Path) -> None:
     ax.axvspan(q["lo"], q["hi"], color="#BFD9EE", alpha=0.5, lw=0, zorder=0)
     ax.axvline(q["clim_med"], color=C_MUTED, lw=1.0, ls=(0, (4, 3)), zorder=1)
     ax.text(q["clim_med"] - 2, 1.3e6, f"normal\n{q['clim_med']:.0f} mm", ha="right", va="top", fontsize=7.5, color=C_MUTED)
-    ax.text((q["lo"] + q["hi"]) / 2, 1.3e6, f"rain in the {_nword(q['k'])} years with an October\nforecast as wet as {q['issued_year']}'s: "
+    ax.text((q["lo"] + q["hi"]) / 2, 1.3e6, f"rain in the {_nword(q['k'])} years with an October forecast\nin the wettest fifth, like {q['issued_year']}'s: "
             f"{q['lo']:.0f}–{q['hi']:.0f} mm", ha="center", va="top", fontsize=7.5, color=SRC_COL["GPCC"])
     ax.plot(x, [13] * len(x), "|", ms=7, mew=1.1, color=C_MUTED, alpha=0.7)
     ax.plot(q["an"], [13] * len(q["an"]), "|", ms=9, mew=1.6, color=SRC_COL["GPCC"])
@@ -1788,6 +1792,11 @@ def _sig(v: float, n: int = 2) -> str:
     return f"{int(round(v / 10 ** k) * 10 ** k):,}" if k > 0 else f"{v:,.0f}"
 
 
+def _join(items) -> str:
+    v = list(items)
+    return v[0] if len(v) == 1 else ", ".join(v[:-1]) + " and " + v[-1]
+
+
 def _span(v: list[tuple[float, bool]]) -> str:
     """The range of a sorted list of counts: three significant figures as reported, two where converted from households."""
     f = [_sig(x, 2 if derived else 3) for x, derived in v]
@@ -1836,28 +1845,33 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
                  f'<td class="num" style="white-space:nowrap">{tents(r)}</td><td class="num" style="white-space:nowrap">{deaths(y, r)}</td>'
                  f'<td class="small">{cfg.get("notes", {}).get(str(y), "")}</td></tr>')
     o.append('</tbody></table></div>')
-    o.append(f'<p class="small">Rain: IMERG, area-weighted over {html.escape(A.ref)}; the wettest 7 days is the highest 7-day running total of the season; '
-             'storms as defined above, sized by their wettest day. People: as the source gives them; where a source gives only households or families '
-             f'they are multiplied by {hh[False]:.1f} people before October 2023 (average household in Gaza, PCBS census 2017) and by {hh[True]:.1f} since '
-             '(people per household in displacement sites, September 2026), and shown as “about” or rounded. A person is counted once for each '
+    o.append(f'<p class="small">People are as the source gives them, or households multiplied by {hh[False]:.1f} before October 2023 and {hh[True]:.1f} '
+             f'since, shown as “about” or rounded. Rain: IMERG, area-weighted over {html.escape(A.ref)}; the wettest 7 days is the highest 7-day running '
+             'total of the season; storms as defined above, sized by their wettest day. Household sizes: the average household in Gaza (PCBS census 2017) '
+             'and people per household in displacement sites (September 2026). A person is counted once for each '
              f'storm that affected them. {_yr(ry)}: the lower figure sums the per-event counts and the higher uses the Shelter Cluster\'s monthly snapshots, '
              'as in “Last winter in numbers”. Tents and shelters: UN and cluster counts. Figures in italics come from the Government Media Office and '
              'Palestinian Civil Defense (tents) or the Ministry of Health in Gaza (deaths), relayed by OCHA. Deaths before October 2023 are those UN or Red Cross and Red Crescent reports attribute to the storms. '
              '“Not counted” means an impact was reported without a number; “none found” means no weather impact was found in UN reporting for that winter.</p>')
 
     # which measure of the weather tracks the counts: the panels, then what they do not show
-    cw, ca = wi["corr_w"], wi["corr_all"]
+    cw, ca, ce, cwet = wi["corr_w"], wi["corr_all"], wi["corr_e"], wi["corr_wet"]
     n_cw, n_en = wi["n_before"], rain["en_n"]
-    names = {"rx7": "the winter\'s wettest week", "total": "the season total", "n20": "the number of storms of 20 mm or more"}
-    k1, k2, k3 = sorted(cw, key=cw.get, reverse=True)
+    names = {"rx7": "wettest week", "rx1": "wettest day", "total": "season total", "n20": "the number of storms of 20 mm or more",
+             "d10": "days of 10 mm or more", "rd": "rain days", "windy": "windy days", "cold8": "cold nights"}
+    rk = sorted((k for k in ca if k in names), key=ca.get, reverse=True)
+    k1, k2, k3 = rk[:3]
+    weak = [k for k in rk[3:] if abs(ca[k]) < 0.3]; neg = [k for k in rk[3:] if ca[k] <= -0.3]
     if "rx1" in S:
         o.append(f'<figure><img src="winter_hazards.png" alt="People reported affected per winter against eight measures of the winter\'s weather">'
                  f'<figcaption>Each dot is one winter with a count, against eight measures of that winter\'s weather over {A.ref} (IMERG unless marked). '
-                 f'Shaded: the measure\'s range in the {_nword(n_en)} El Niño winters since {_yr(int(S.index.min()))}. ρ: rank correlation across the '
-                 f'{_nword(n_cw)} counted winters before October 2023.</figcaption></figure>')
-    o.append(f'<p>Before October 2023 the counts followed the winter\'s biggest storm. Across the {_nword(n_cw)} counted winters, {names[k1]} ranks them '
-             f'best (rank correlation {cw[k1]:+.2f}), ahead of {names[k2]} ({cw[k2]:+.2f}) and {names[k3]} ({cw[k3]:+.2f}); '
-             + ('rain days, windy days and cold nights show no relation. ' if all(ca.get(k, 0) < 0.3 for k in ("rd", "windy", "cold8")) else '')
+                 f'Shaded: the measure\'s range in the {_nword(n_en)} El Niño winters since {_yr(int(S.index.min()))}, which spans most of each axis. '
+                 f'ρ: rank correlation across the {_nword(n_cw)} counted winters before October 2023. Bar on {_yr(ry)}: the two alert-based sums. Windy days: '
+                 f'the top 5% of ERA5 winter days. Cold nights: an ERA5 minimum of 8 °C or less.</figcaption></figure>')
+    o.append(f'<p>Before October 2023 the counts followed the winter\'s biggest storm. Across the {_nword(n_cw)} counted winters, the {names[k1]} '
+             f'(rank correlation {ca[k1]:+.2f}) and {names[k2]} ({ca[k2]:+.2f}) rank them best, ahead of the {names[k3]} ({ca[k3]:+.2f})'
+             + (f'; {" and ".join(names[k] for k in neg)} run the other way ({", ".join(f"{ca[k]:+.2f}" for k in neg)})' if neg else '')
+             + (f', and {_join(names[k] for k in weak)} show no relation' if weak else '') + f'. {_nword(n_cw).capitalize()} winters is a small sample. '
              + cfg.get("corr_note_html", "") + ' Since October 2023 the two counted winters sit far above every earlier one on every measure'
              + (f', and the driest winter of the {n_all}-winter record, {_yr(rain["driest"])}, has more people reported affected (at least '
                 f'{_sig(S.people[rain["driest"]])}) than the wettest, {_yr(rain["wettest"])} ({_sig(S.people[rain["wettest"]])})'
@@ -1889,14 +1903,20 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     tb, ts = sh["top"][False], sh["top"][True]
     did = f'all {t20s["n"]}' if t20s["reported"] == t20s["n"] else f'{t20s["reported"]} of {t20s["n"]}'
     o.append(f'<p>Two things changed. More storms do harm: {t20b["reported"]} of the {t20b["n"]} storms of 20–50 mm left an entry in the event catalogue '
-             f'before October 2023, and {did} since'
-             + (f', along with {_nword(len(low[True]))} events with less than 10 mm of rain (high tides and wind), counted at {_span(low[True])} people each'
-                if low[True] and not low[False] else '')
-             + f'. And each does more: the counts are tens to hundreds of times higher, about {sh_["med"]:.0f} times on medians ({_sig(sh_["med_since"])} '
+             f'before October 2023, and {did} since.'
+             + (f' {_nword(len(low[True])).capitalize()} events with less than 10 mm of rain (high tides and wind), with no counterpart before October 2023, '
+                f'were counted at {_span(low[True])} people each.' if low[True] and not low[False] else '')
+             + f' And each does more: the counts are tens to hundreds of times higher, about {sh_["med"]:.0f} times on medians ({_sig(sh_["med_since"])} '
              f'people against {_sig(sh_["med_before"])}) and, as a scale check allowing for each storm\'s rain, about {_sig(f_all["mult"])} times (95% '
              f'interval about {_sig(f_all["lo"])} to {_sig(f_all["hi"])}, on {f_all["n"]} events). ' + cfg.get("top_storms_html", "").format(
                  since_rain=_round_to(ts["rain"], 10), since_people=f'{ts["people"]:,.0f}', before_rain=_round_to(tb["rain"], 10),
-                 before_people=f'{tb["people"]:,.0f}', ratio=f'{ts["people"] / tb["people"]:.0f}') + '</p>')
+                 before_people=f'{tb["people"]:,.0f}', ratio=f'{ts["people"] / tb["people"]:.0f}')
+             + f'<!--more-->The scale check is a model fitted to the {f_all["n"]} events with a dated count: one slope on the storm\'s rain total, plus a '
+             f'step in October 2023. Without the largest storm of each period the step is about {_sig(sh_["no_top"]["mult"])} times; on geometric means, '
+             f'ignoring rain, about {sh_["geo"]:.0f}. ' + cfg.get("model_note", "")
+             + (f' Since October 2023 rain alone does not order the counts: across the {_nword(ce[True]["n"])} dated counts, people affected and rain are '
+                f'barely related (rank correlation {ce[True]["im_max"][0]:+.2f} with the wettest day), though among the {_nword(cwet["n"])} with a day of '
+                f'10 mm or more the bigger storms were counted higher ({cwet["rho"]:+.2f}).' if cwet["n"] >= 4 else '') + '</p>')
     o.append(cfg.get("multiplier_caveat_html", ""))
 
     # what this October's forecast implies for October–December
@@ -1904,15 +1924,18 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     if q and q["top"]:
         x, top = q["clim"], int(S.loc[wi["first"]:SINCE - 1].people_ond.idxmax())
         o.append(f'<h3>What the October forecast implies for October–December</h3>'
-                 f'<p>SEAS5\'s October {q["issued_year"]} forecast for October–December is wetter than {q["drier"]} of its {q["n"]} past October forecasts. '
-                 f'In the {_nword(q["k"])} years with a forecast that wet, ERA5 rain over {A.ref} in the quarter was {q["lo"]:.0f}–{q["hi"]:.0f} mm '
-                 f'(median {q["med"]:.0f}), never below the normal {q["clim_med"]:.0f} mm; last year\'s quarter, with Byron, had {x[ry]:.0f} mm. '
-                 f'ERA5 flattens the biggest storms: it has {_yr(top)}\'s quarter, with Storm Alexa, at {x[top]:.0f} mm where IMERG has '
-                 f'{S.q4_imerg[top]:.0f} mm. Read where a winter sits, not its millimetres.</p>')
+                 f'<p>SEAS5\'s October {q["issued_year"]} forecast for October–December is wetter than {q["drier"]} of its {q["n"]} past October forecasts once '
+                 f'the trend is taken out (section 1). In the {_nword(q["k"])} years with a forecast in that wettest fifth, ERA5 rain over {A.ref} in the '
+                 f'quarter was {q["lo"]:.0f}–{q["hi"]:.0f} mm: {_nword(q["n_near"])} were close to the normal {q["clim_med"]:.0f} mm and '
+                 f'{_nword(q["k"] - q["n_near"])} had {q["far_lo"]:.0f} mm or more. '
+                 + (f'Last year\'s quarter, with Byron, had {x[ry]:.0f} mm after an October forecast in the driest fifth. '
+                    if q["drier_by_year"].get(ry, q["n"]) < q["k"] else f'Last year\'s quarter, with Byron, had {x[ry]:.0f} mm. ')
+                 + f'ERA5 flattens the biggest storms: it has the quarters of Storm Alexa and Byron at {x[top]:.0f} and {x[ry]:.0f} mm, where IMERG has '
+                 f'{S.q4_imerg[top]:.0f} and {S.q4_imerg[ry]:.0f} mm. Read where a winter sits, not its millimetres.</p>')
         o.append(f'<figure><img src="forecast_quarter.png" alt="People reported affected in October–December against that quarter\'s ERA5 rain, with the range '
                  f'implied by the October forecast"><figcaption>People counted in events dated October–December against that quarter\'s rain in ERA5. Shaded: the rain in the '
-                 f'{_nword(q["k"])} years whose October forecast ranked in SEAS5\'s wettest fifth, as this year\'s does. It is the range of outcomes after '
-                 f'such a forecast, not the spread of the ensemble. Those years (dark ticks): {", ".join(str(y) for y in q["years"])}. ERA5 from the team\'s '
+                 f'{_nword(q["k"])} years whose October forecast ranked in SEAS5\'s wettest fifth, as this year\'s does: the range of outcomes after such '
+                 f'a forecast, not the spread of the ensemble. Those years (dark ticks): {", ".join(str(y) for y in q["years"])}. ERA5 from the team\'s '
                  f'admin-1 statistics, {int(x.index.min())}–{int(x.index.max())}. {_yr(ry)}: the bar reaches the Shelter Cluster\'s first-storm and December '
                  f'counts.</figcaption></figure>')
 
@@ -1922,7 +1945,8 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append('<h3>Scenarios for winter 2026/27</h3>' + cfg.get("scenario_intro_html", ""))
     o.append(f'<figure><img src="winter_impacts.png" alt="People reported affected per winter against rain, with scenarios for 2026/27"><figcaption>'
              f'Left: counted winters against October–April rain over {A.ref} (IMERG), log scale. Right: the two counted winters since October 2023 on a '
-             f'linear scale, with the three scenarios as boxes, scaled from last winter\'s counts and not fitted to the dots. The boxes span the rain of '
+             f'linear scale, with the three scenarios as boxes, scaled from last winter\'s counts, not fitted to the dots, and the same wherever in the El '
+             f'Niño range the winter falls. Bar on {_yr(ry)}: the two alert-based sums. The boxes span the rain of '
              f'the {_nword(n_en)} El Niño winters since {_yr(int(S.index.min()))} ({rain["en_min"]:.0f}–{rain["en_max"]:.0f} mm). Dots and boxes '
              f'count a person once per storm; the two horizontal lines count each person once.</figcaption></figure>')
     often = lambda x_: f'{x_["all"]} of {n_all} · {x_["en"]} of {n_en}'
@@ -1954,10 +1978,12 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
              '<li><strong>One winter, one storm.</strong> Every figure is last winter\'s count rescaled, and the two larger cases rest on Byron alone.</li>'
              f'<li><strong>Alert counts are floors.</strong> The Shelter Cluster\'s household survey found {100 * wi["survey"] / wi["sites_now"]:.0f}% of '
              f'households flooded at least once last winter' + cfg.get("survey_note", "") + f'. At the same share, about {wi["survey"] / 1e6:.1f} million of '
-             f'the {wi["sites_now"] / 1e6:.1f} million people in displacement sites would be flooded at least once this winter, each counted once.</li>'
+             f'the {wi["sites_now"] / 1e6:.1f} million people in displacement sites would be flooded at least once this winter, each counted once. Last '
+             'winter the alerts caught a third or less of the households the survey found.</li>'
              + cfg.get("scenario_limits_html", "") +
              (f'<li><strong>A dry winter is not a safe one.</strong> {_yr(dry)}, the driest winter of the record ({S.total[dry]:.0f} mm), still had at least '
-              f'{_sig(S.people[dry])} people reported affected, by high tides and wind.</li>' if dry >= SINCE and pd.notna(S.people[dry]) else '')
+              f'{_sig(S.people[dry])} people reported affected, by high tides and wind. No El Niño winter since {_yr(int(S.index.min()))} has been that dry, '
+              'but sea surge, wind and cold come whatever the rain.</li>' if dry >= SINCE and pd.notna(S.people[dry]) else '')
              + '<li><strong>Deaths are not scaled.</strong> They came from collapsing buildings and cold nights, which do not follow the number of people in sites.</li>'
              '</ul>')
     return "\n".join(o)
@@ -2225,7 +2251,7 @@ def render(spec: dict, a: dict) -> str:
     o.append(f'<p class="small">Generated by <code>levant_deep_dive.py</code> from <code>deep_dives/{A.slug}.toml</code>. '
              'Grid method and Niño3.4 series as in the <a href="../../survey/">global survey</a>.</p>')
     o.append(edd.FOOT)
-    return "\n".join(o)
+    return ("\n".join(o)).replace("<!--more-->", " ")   # the fold marker is for the combined page
 
 
 # --------------------------------------------------------------------------- #
@@ -2281,7 +2307,7 @@ NAV_CSS = ("h2,h3,h4,h5,#key-messages,#contents{scroll-margin-top:48px}"
            "@media(max-width:1000px){.secbar{-webkit-mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent);"
            "mask-image:linear-gradient(90deg,#000 calc(100% - 28px),transparent)}}"
            "@media(max-width:640px){.secbar{margin:0 -18px 12px;padding:6px 18px}.contents .areas a{margin:0 14px 0 0}}"
-           "@media print{.secbar,.anchor,.areahead .alt,.inpart,.foldall{display:none}.tscroll,div[style*='overflow-x']{overflow:visible}}")
+           "@media print{.secbar,.anchor,.areahead .alt,.inpart,.foldall,details.note>summary{display:none}.tscroll,div[style*='overflow-x']{overflow:visible}}")
 NAV_JS = """<script>
 (function(){
   var bar=document.querySelector('.secbar'); if(!bar) return;
@@ -2310,10 +2336,12 @@ NAV_JS = """<script>
 })();
 (function(){
   var notes=[].slice.call(document.querySelectorAll('details.note')), btn=document.querySelector('.foldall button'), open=false;
-  if(btn){ btn.parentNode.hidden=false; btn.addEventListener('click', function(){
+  if(btn && notes.length){ btn.parentNode.hidden=false; btn.addEventListener('click', function(){
     open=!open; notes.forEach(function(d){ d.open=open; }); btn.textContent=open ? 'Hide the notes and method details' : 'Show all notes and method details ('+notes.length+')'; });
     btn.textContent='Show all notes and method details ('+notes.length+')'; }
-  window.addEventListener('beforeprint', function(){ [].forEach.call(document.querySelectorAll('details'), function(d){ d.open=true; }); });
+  var shut=[];
+  window.addEventListener('beforeprint', function(){ shut=[].filter.call(document.querySelectorAll('details'), function(d){ return !d.open; }); shut.forEach(function(d){ d.open=true; }); });
+  window.addEventListener('afterprint', function(){ shut.forEach(function(d){ d.open=false; }); shut=[]; });
 })();
 </script>"""
 HEADING = re.compile(r"<(h[2-5])\b([^>]*)>(.*?)</\1>", re.S)
@@ -2345,8 +2373,13 @@ def _fold(page: str, note_words: int = 45, caption_words: int = 60, lead_words: 
         if m.start() < start or _words(t) <= note_words:
             return m.group(0)
         lead = re.match(r"\s*<strong>(.*?)</strong>\s*", t)
-        label = lead.group(1).rstrip(".:") if lead else "Notes and method"
-        return f'<details class="note"><summary>{label}</summary><p class="small">{t[lead.end():] if lead else t}</p></details>'
+        if lead:
+            return f'<details class="note"><summary>{lead.group(1).rstrip(".:")}</summary><p class="small">{t[lead.end():]}</p></details>'
+        for b in re.finditer(r"(?<=[a-z0-9)%”])\.\s+(?=[A-Z“])", t):          # first sentence stays: it is often the table's legend
+            if t.count("<", 0, b.start()) == t.count(">", 0, b.start()) and _words(t[:b.start()]) >= 6:
+                return (f'<p class="small">{t[:b.start() + 1]}</p><details class="note"><summary>Notes and method</summary>'
+                        f'<p class="small">{t[b.end():]}</p></details>')
+        return m.group(0)
 
     def caption(m):
         t = m.group(1)
