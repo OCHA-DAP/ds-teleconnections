@@ -346,7 +346,7 @@ survey_flooded_share = 0.71    # Shelter Cluster household survey, June 2026
 before_label = "Before October 2023: people in houses; counts of people evacuated, displaced or whose homes were damaged"
 since_label = "Since October 2023: most people in tents and makeshift shelters; counts from partner assessments and site alerts"
 table_intro_html = '''
-<p>Every winter since 2008/09 on one row. The impact columns are not one series: before October 2023 they count people evacuated, displaced or with damaged homes, in the few storms that OCHA, UNRWA or UNICEF quantified in their situation reports; since, people whose tents and shelters flooded or were damaged, counted by the Site Management Cluster and the Shelter Cluster and published by OCHA. They are set side by side for scale only. Each count and its source is listed in the table of events under the next heading.</p>
+<p>Every winter since 2008/09 on one row. The impact columns are not one series: before October 2023 they count people evacuated, displaced or with damaged homes, in the few storms that OCHA, UNRWA or UNICEF quantified in their reports; since, people whose tents and shelters flooded or were damaged, in counts published by OCHA, mostly from the Site Management Cluster and the Shelter Cluster. They are set side by side for scale only. Each count and its source is listed in the table of events under the next heading.</p>
 '''
 storm_for_storm_html = '''
 <p>How much more does the same weather do now? The record supports a comparison by size of storm, not a rate per millimetre: two counted winters cannot fix a slope, and events with almost no rain were counted in the thousands.</p>
@@ -401,8 +401,8 @@ scenario_limits_html = '''
 "GZ-2425-06" = { what = "at least 800 families at 23 of 1,328 sites, Site Management Cluster partners", source = "OCHA HSU #263, 11 Feb 2025" }
 "GZ-2526-01" = { what = "more than 13,000 households, Gaza-wide", source = "OCHA HSU #342, 20 Nov 2025" }
 "GZ-2526-02" = { what = "people in 32 designated emergency shelters, Site Management Cluster", source = "OCHA SitRep 33, 28 Nov 2025" }
-"GZ-2526-04" = { what = "people in 320 sites and 43 areas, Shelter Cluster (Storm Byron)", source = "OCHA HSU #349, 18 Dec 2025" }
+"GZ-2526-04" = { what = "at least this many people in 320 sites and 43 areas, Shelter Cluster (Storm Byron)", source = "OCHA HSU #349, 18 Dec 2025" }
 "GZ-2526-07" = { what = "more than 1,300 households at 34 sites in northern Gaza, Site Management Cluster", source = "OCHA SitRep 61, 13 Jan 2026" }
-"GZ-2526-08" = { what = "people at 106 sites, Site Management Cluster (IMERG missed this storm's rain; ERA5 has 12 mm)", source = "OCHA SitRep 62, 16 Jan 2026" }
-"GZ-2526-16" = { what = "894 households in displacement sites, Site Management Cluster", source = "OCHA Humanitarian Situation Report, 19 Mar 2026" }
+"GZ-2526-08" = { what = "people at 106 sites, Site Management Cluster", source = "OCHA SitRep 62, 16 Jan 2026" }
+"GZ-2526-16" = { what = "894 households in displacement sites after a sandstorm and strong winds, Site Management Cluster", source = "OCHA Humanitarian Situation Report, 19 Mar 2026" }
 "GZ-2526-18" = { what = "more than 3,000 displaced people, Site Management Cluster", source = "OCHA Humanitarian Situation Report, 2 Apr 2026" }

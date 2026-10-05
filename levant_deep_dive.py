@@ -92,8 +92,8 @@ class Area:
     daily_note: str = ("ERA5 spreads rain over a 25 km cell and understates heavy days; IMERG is satellite-only; Beer Sheva is drier "
                        "and 46 km inland.")
     byron: bool = True                                         # Gaza's Byron-specific wording in section 5
-    event_sources: str = ("Counts: OCHA, UNRWA and UNICEF situation reports before October 2023; Site Management Cluster and Shelter Cluster "
-                          "counts published by OCHA since.")
+    event_sources: str = ("Counts: OCHA, UNRWA and UNICEF reports before October 2023; since, counts published by OCHA, mostly from the "
+                          "Site Management Cluster and the Shelter Cluster.")
     impact_caption: str = ("Hazard: R rain and flooding, S sea surge or high tide, W wind, C cold. Weather columns cover the window from the day "
                            "before the reported start to the reported end: IMERG wettest day over Gaza (north = cells at 31.4–31.6°N: North Gaza, "
                            "Gaza governorate and most of Deir al Balah; south = 31.2–31.4°N: Khan Younis and Rafah); window totals from IMERG and from ERA5 (which smooths rain over 25 km cells and "
@@ -1325,8 +1325,8 @@ HAZARDS = [("total", "Rain, October–April", "mm"), ("rx7", "Wettest 7 days", "
            ("windy", "Windy days, top 5% (ERA5)", ""), ("cold8", "Cold nights, ≤ 8 °C (ERA5)", "")]
 
 
-EVENT_HAZARDS = [("im_max", "Wettest day, mm (IMERG)"), ("im_sum", "Rain over the event, mm (IMERG)"),
-                 ("wmax", "Strongest hourly wind, m/s (ERA5)"), ("tmin", "Coldest night, °C (ERA5)")]
+EVENT_HAZARDS = [("im_max", "Wettest day, mm (IMERG)"), ("im_sum", "Rain over the event, mm (IMERG)")]   # ERA5's area-mean wind and
+#                 night minimum do not resolve the gusts and cold the reports describe, so they are not plotted per event
 HAZARD_WORD = {"R": "rain", "S": "sea", "W": "wind", "C": "cold"}
 
 
@@ -1400,7 +1400,8 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
     corr_all = {k: float(stats.spearmanr(C[k], C.people)[0]) for k, *_ in HAZARDS if k in C}
     U = e[e.dated].sort_values("start").copy(); U["lp"] = np.log10(U.people)
     U["no"] = range(1, len(U) + 1)                       # the number each count carries in the event figure and its table
-    corr_ev = {k: {s_: float(stats.spearmanr(U[U.since == s_][k], U[U.since == s_].lp)[0]) for s_ in (False, True)} for k, _ in EVENT_HAZARDS}
+    corr_ev = {k: {s_: tuple(float(v) for v in stats.spearmanr(U[U.since == s_][k], U[U.since == s_].lp)) for s_ in (False, True)} for k, _ in EVENT_HAZARDS}
+    U["missed"] = (U.im_max < SIZE_TIERS[0][0]) & (U.era5_max >= SIZE_TIERS[0][0])       # rain that IMERG did not see but ERA5 did
     corr_e = {s_: dict(n=int((U.since == s_).sum()), **{k: tuple(float(v) for v in stats.spearmanr(U[U.since == s_][k], U[U.since == s_].lp))
                                                        for k in ("im_max", "im_sum")}) for s_ in (False, True)}
     wet_ev = U[U.since & (U.im_max >= SIZE_TIERS[0][0])]                  # since October 2023, with a day of 10 mm or more in IMERG
@@ -1555,40 +1556,48 @@ def fig_winter_hazards(wi: dict, out: Path) -> None:
 
 
 def fig_event_hazards(wi: dict, out: Path) -> None:
-    """People counted per event (log scale) against four measures of the weather over the event's own dates, before
-    and since October 2023. Each dot carries the number of its row in the table of events and sources."""
+    """People counted per event (log scale) against the rain over the event's own dates, before and since October 2023.
+    Each dot carries the number of its row in the table of events and sources."""
     U = wi["U"]
-    fig, axs = plt.subplots(2, 2, figsize=(10.4, 7.4), dpi=150, sharey=True, gridspec_kw=dict(wspace=0.06, hspace=0.34))
-    for ax, (k, title) in zip(axs.ravel(), EVENT_HAZARDS):
+    fig, axs = plt.subplots(1, len(EVENT_HAZARDS), figsize=(10.4, 4.9), dpi=150, sharey=True, gridspec_kw=dict(wspace=0.06))
+    for ax, (k, title) in zip(np.atleast_1d(axs), EVENT_HAZARDS):
         v = U[k]; pad = 0.07 * (v.max() - v.min())
         ax.set_xlim(v.min() - pad, v.max() + pad); ax.set_yscale("log"); ax.set_ylim(10, 6e5)
         if k == "im_max":
             for t in TIERS:
                 ax.axvline(t, color="#b8bfbf", lw=0.8, ls=(0, (3, 3)), zorder=0)
+        dots = [ax.transData.transform((getattr(r, k), r.people)) for r in U.itertuples()]
         placed = []
-        for r in U.itertuples():
+        for r, (px, py) in zip(U.itertuples(), dots):
             x, y = getattr(r, k), r.people
-            ax.plot(x, y, "o", ms=7, color=C_REGIME[r.since], zorder=3)
-            px, py = ax.transData.transform((x, y))
-            for dx, dy, ha in ((7, 2, "left"), (-7, 2, "right"), (7, -9, "left"), (-7, -9, "right"), (0, 9, "center")):
-                if all(abs(px + dx * 2.2 - qx) > 22 or abs(py + dy * 2.2 - qy) > 16 for qx, qy in placed):
-                    break
+            ax.plot(x, y, "o", ms=7, color=C_REGIME[r.since], mfc="white" if r.missed else C_REGIME[r.since], mew=1.5, zorder=3)
+            clear = lambda dx, dy: (all(abs(px + dx * 2.2 - qx) > 22 or abs(py + dy * 2.2 - qy) > 16 for qx, qy in placed)
+                                    and all(abs(px + dx * 2.2 - qx) > 13 or abs(py + dy * 2.2 - qy) > 11 for qx, qy in dots if (qx, qy) != (px, py)))
+            near = [(7, 2, "left"), (-7, 2, "right"), (7, -9, "left"), (-7, -9, "right"), (0, 9, "center"), (0, -15, "center")]
+            far = [(16, 14, "left"), (-16, 14, "right"), (16, -18, "left"), (-16, -18, "right"), (0, 22, "center"), (0, -26, "center")]
+            dx, dy, ha = next((c for c in near if clear(c[0], c[1])), None) or next((c for c in far if clear(c[0], c[1])), far[0])
+            lead = (dx, dy, ha) in far                                  # a label that had to move away is tied to its dot by a line
             placed.append((px + dx * 2.2, py + dy * 2.2))
-            ax.annotate(str(r.no), (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=7.5, color=C_TEXT, ha=ha, zorder=4)
+            ax.annotate(str(r.no), (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=7.5, color=C_TEXT, ha=ha, zorder=4,
+                        arrowprops=dict(arrowstyle="-", lw=0.5, color=C_MUTED, shrinkA=1, shrinkB=4) if lead else None)
         c = wi["corr_ev"][k]
         ax.set_title(title, fontsize=9, color=C_TEXT, loc="left")
-        ax.set_title(f"ρ {c[False]:+.2f} before · {c[True]:+.2f} since", fontsize=7.5, color=C_MUTED, loc="right")
+        ax.set_title(f"ρ {c[False][0]:+.2f} before · {c[True][0]:+.2f} since", fontsize=7.5, color=C_MUTED, loc="right")
         ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax); ax.tick_params(labelsize=8)
-    for ax in axs[:, 0]:
-        ax.set_yticks([10, 100, 1000, 10000, 100000], ["10", "100", "1,000", "10,000", "100,000"])
-        ax.set_ylabel("people counted in the event", fontsize=9, color=C_MUTED)
+    ax0 = np.atleast_1d(axs)[0]
+    ax0.set_yticks([10, 100, 1000, 10000, 100000], ["10", "100", "1,000", "10,000", "100,000"])
+    ax0.set_ylabel("people counted in the event", fontsize=9, color=C_MUTED)
     n = {s_: int((U.since == s_).sum()) for s_ in (False, True)}
-    fig.legend(handles=[plt.Line2D([], [], marker="o", color=C_REGIME[False], ls="", ms=7, label=f"before October 2023 ({n[False]} counts)"),
-                        plt.Line2D([], [], marker="o", color=C_REGIME[True], ls="", ms=7, label=f"since October 2023 ({n[True]} counts)"),
-                        plt.Line2D([], [], ls="", marker="", label="numbers: rows of the table of events and sources"),
-                        plt.Line2D([], [], ls="", marker="", label="ρ: rank correlation within each period")],
-               frameon=False, fontsize=8, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 0.965), handletextpad=0.4, columnspacing=1.6)
-    fig.text(0.125, 0.045, A.event_sources, fontsize=7.5, color=C_MUTED, ha="left", va="top")
+    weak = all(pv > 0.05 for c in wi["corr_ev"].values() for _, pv in c.values())
+    hs = [plt.Line2D([], [], marker="o", color=C_REGIME[False], ls="", ms=7, label=f"before October 2023 ({n[False]} counts)"),
+          plt.Line2D([], [], marker="o", color=C_REGIME[True], ls="", ms=7, label=f"since October 2023 ({n[True]} counts)")]
+    if U.missed.any():
+        hs.append(plt.Line2D([], [], marker="o", color=C_REGIME[True], mfc="white", mew=1.5, ls="", ms=7, label="hollow: rain IMERG missed"))
+    hs.append(plt.Line2D([], [], ls="", marker="", label="ρ: rank correlation within each period" + (" (none clears p < 0.05)" if weak else "")))
+    fig.legend(handles=hs, frameon=False, fontsize=8, loc="upper center", ncol=len(hs), bbox_to_anchor=(0.5, 1.0), handletextpad=0.4, columnspacing=1.6)
+    import textwrap
+    fig.text(0.125, 0.0, textwrap.fill(A.event_sources + " Numbers: rows of the table of events and sources.", 118), fontsize=7.5, color=C_MUTED,
+             ha="left", va="top", linespacing=1.3)
     _save(fig, out)
 
 
@@ -1941,30 +1950,38 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append('</tbody></table></div>')
     low, missed = wi["low"], wi["missed"]
     miss = " ".join(f'The event of {m["start"]:%-d}–{m["end"]:%-d %B %Y} ({_sig(m["people"], 2 if m["derived"] else 3)} people) is not in the table: IMERG has '
-                    f'{m["im"]:.1f} mm on its wettest day and ERA5 {m["era5"]:.0f} mm, so IMERG missed most of its rain.' for m in missed)
+                    f'{m["im"]:.1f} mm on its wettest day and ERA5 {m["era5"]:.0f} mm, so IMERG missed most of its rain.' for m in missed).replace(
+                        "is not in the table:", "is not in the size tiers above:")
     o.append(f'<p class="small">Storms over {html.escape(A.ref)} in IMERG, as defined above. “With a reported impact”: any entry in the event '
              'catalogue, with or without a count, overlaps the storm (from the day before the entry starts to the day it ends). “People counted”: the '
              'range across events with a dated count, sized by the wettest day in the event\'s own dates, with the number of counts in brackets. Counts '
              f'of assistance delivered, with no rain date, are left out. {miss} ' + cfg.get("tier_note", "") + '</p>')
     U, evs = wi["U"], cfg.get("events", {})
-    o.append(f'<figure><img src="event_hazards.png" alt="People counted per event against four measures of the weather over the event\'s dates">'
-             f'<figcaption>{html.escape(A.event_sources)} Each dot is one event with a dated count, against the weather over {A.ref} from the '
+    if set(U.event_id) - set(evs):
+        raise ValueError(f"[winter_impacts.events] lacks {sorted(set(U.event_id) - set(evs))}")
+    o.append(f'<figure><img src="event_hazards.png" alt="People counted per event against the rain over the event\'s dates">'
+             f'<figcaption>{html.escape(A.event_sources)} Each dot is one event with a dated count, against the rain over {A.ref} from the '
              f'day before the event to its last day. Numbers: rows of the table below, which links each count to its source.</figcaption></figure>')
     o.append('<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Dates</th><th>Hazard</th><th class="num">Wettest day</th>'
              '<th class="num">People counted</th><th>What the count is</th><th>Source</th></tr></thead><tbody>')
     for r in U.itertuples():
         if r.since and not U[U.no < r.no].since.any():
             o.append('<tr><td colspan="7" class="small" style="background:var(--n05)"><strong>Since October 2023</strong></td></tr>')
-        d = f'{r.start:%-d %b %Y}' if r.start == r.end else (f'{r.start:%-d}–{r.end:%-d %b %Y}' if r.start.month == r.end.month else f'{r.start:%-d %b}–{r.end:%-d %b %Y}')
+        d = (f'{r.start:%-d %b %Y}' if r.start == r.end else f'{r.start:%-d %b %Y}–{r.end:%-d %b %Y}' if r.start.year != r.end.year
+             else f'{r.start:%-d}–{r.end:%-d %b %Y}' if r.start.month == r.end.month else f'{r.start:%-d %b}–{r.end:%-d %b %Y}')
+        d = ("about " if str(getattr(r, "date_quality", "")) == "M" else "") + d
         ev_ = evs.get(r.event_id, {})
         src = html.escape(ev_.get("source", str(r.source_publisher)))
         o.append(f'<tr><td>{r.no}</td><td style="white-space:nowrap">{d}</td><td>{", ".join(HAZARD_WORD[h] for h in r.hazard.split("+"))}</td>'
-                 f'<td class="num" style="white-space:nowrap">{r.im_max:.0f} mm</td><td class="num" style="white-space:nowrap">'
+                 f'<td class="num" style="white-space:nowrap">{r.im_max:.0f} mm{"*" if r.missed else ""}</td><td class="num" style="white-space:nowrap">'
                  f'{("about " + _sig(r.people)) if r.derived else f"{r.people:,.0f}"}</td><td class="small">{ev_.get("what", "")}</td>'
                  f'<td class="small" style="white-space:nowrap"><a href="{html.escape(str(r.source_url_primary))}">{src}</a></td></tr>')
     o.append('</tbody></table></div>')
     o.append(f'<p class="small">“About”: the source gives households or families, converted at {hh[False]:.1f} people before October 2023 and '
-             f'{hh[True]:.1f} since. Wettest day: IMERG over {html.escape(A.ref)}, from the day before the event to its last day. Events reported without a '
+             f'{hh[True]:.1f} since. Wettest day: IMERG over {html.escape(A.ref)}, from the day before the event to its last day. '
+             + "".join(f'* IMERG missed this storm\'s rain: ERA5 has {r.era5_max:.0f} mm. ' for r in U[U.missed].itertuples())
+             + 'Wind and cold are not plotted: ERA5\'s area-mean wind and night minimum do not resolve the gusts and the cold in tents that the reports '
+             'describe; the hazard column is from the reports. Events reported without a '
              'number, and counts of assistance delivered with no rain date, are in the tables of section 4 but not here.</p>')
     t20b, t20s = tr[(20, False)], tr[(20, True)]
     f_all, sh_ = sh["all"], sh
