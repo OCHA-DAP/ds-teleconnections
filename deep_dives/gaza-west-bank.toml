@@ -45,26 +45,32 @@ key_messages_footer = "El Niño's link to winter rain here has held only since 1
 [[key_messages]]
 lead = "The odds favour a wet start to the winter; they do not forecast a wet winter, or a flood."
 text = "With a very strong El Niño under way, the September forecasts gave a 40–70 per cent chance that October–December falls in its wettest third over the area, against one in three normally. ECMWF's October forecast keeps the wet start: its October–December ranks among the wettest fifth of its past forecasts for both areas. For December–February, when most of the rain falls, there is no clear wet signal: one September model leaned dry, and ECMWF's October forecast is only slightly above normal. Since 1979, 9 of 14 El Niño winters were in each area's wettest third; the last strong one, 2023/24, was normal to dry in Gaza."
+see = ["forecast", "enso"]
 
 [[key_messages]]
 lead = "El Niño adds rainy days, not bigger storms, and says little about cold, wind or the sea."
 text = "El Niño winters bring about ten more rain days than La Niña winters (10 to 14 in the West Bank), while the season's biggest storm is only loosely tied to it. A day of 50 mm or more, as in Storm Byron last December, comes in about half of Gaza's winters, El Niño or not. A large share of Gaza's recent damage and deaths came with high tides, wind and cold, not rain."
+see = ["daily"]
 
 [[key_messages]]
 lead = "In Gaza, damage has started by mid-to-late November in each winter since October 2023, and ordinary rain is enough to cause it."
 text = "First damage was reported on 13–14 November 2023, 24–25 November 2024 and 14–15 November 2025, twice before the winter's first storm of 20 mm. Tents have flooded on days of 16 mm or less, and after high tides with almost no rain. Last winter's first storm, 22 mm on 14–15 November, damaged an estimated 13,000 tents."
+see = ["gaza-impacts"]
 
 [[key_messages]]
 lead = "Last winter's Gaza counts are a floor, and exposure is higher this winter."
 text = "Alerts counted about 80,000–100,000 household-impacts (one per household per storm), about 58,500 tents and shelters damaged and 35–36 deaths reported; a June survey found 71 per cent of households flooded at least once, about 250,000. About 1.7 million people live in some 1,600 sites, 65 per cent of households in tents or makeshift shelters, more than half of those tents in poor condition; 451 sites with about 464,000 people are rated at high flood risk."
+see = ["gaza-range"]
 
 [[key_messages]]
 lead = "In the West Bank the harm is far smaller and barely counted; it falls on Bedouin and herding communities in Area C, people displaced from the northern West Bank refugee camps and greenhouse farmers."
 text = "Since 2023 the UN has quantified one weather event: at least 66 households in herding communities had tents and animal shelters damaged in late December 2025. About 34,000 people remain displaced from the Jenin, Tulkarm and Nur Shams camps, over 80 per cent of them renting, which points to heating and housing more than floods as their winter risk. In 7 of 8 El Niño winters the first storm of 20 mm came before December."
+see = ["west-bank-impacts", "west-bank-range"]
 
 [[key_messages]]
 lead = "For West Bank rainfed crops and pasture, a wet winter would lower the odds of a bad 2027; this autumn's olive crop is already set."
 text = "Wheat and barley were above trend after 7 of 9 El Niño winters and 3 of 11 La Niña winters, and the four worst harvests since 1994 all followed La Niña. That is an avoided bad year, not a bumper one, on small samples. Olives follow their two-year cycle and access to the groves more than the rain."
+see = ["farming"]
 
 # Multi-model forecasts, southern Levant (shared by both areas)
 [[forecasts]]
@@ -115,6 +121,15 @@ season = "strongest Oct–Dec"
 evidence = "moderate"
 evidence_note = "Gauge records and ERA5 agree since 1979 in both areas (r = +0.55 to +0.67); the same records show no positive link before 1979."
 one_line = "2026/27 outlook for Gaza and the West Bank: a very strong El Niño, and forecasts for a wet October–December and a warm winter. Since 1979, 9 of 14 El Niño winters were in each area's wettest third, but the link did not exist before the late 1970s and strong events have been mixed. Gaza's displacement sites flood after ordinary rain; in the West Bank, Bedouin and herding communities, people displaced from the northern West Bank refugee camps and farmers are the most exposed."
+
+# Short labels for the sticky section bar (keys are the section anchors)
+[nav]
+forecast = "Forecasts"
+enso = "El Niño link"
+daily = "What changes"
+impacts = "Impacts"
+range = "This winter"
+farming = "Farming"
 
 [titles]
 forecast = "1. What the forecasts say for this winter"

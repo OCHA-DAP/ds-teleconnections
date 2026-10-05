@@ -29,6 +29,7 @@ import html
 import io
 import re
 import tomllib
+import unicodedata
 import zipfile
 from dataclasses import dataclass, field
 from concurrent.futures import ThreadPoolExecutor
@@ -2128,6 +2129,111 @@ COMBINED_CSS = ("h3.area{font-size:17px;margin:28px 0 8px;padding:2px 0 2px 10px
                 ".keymsg h2{border:0;margin:0 0 2px;padding:0;font-size:20px}.keymsg ol{margin:10px 0 8px;padding-left:22px}"
                 ".keymsg li{margin:0 0 11px;max-width:92ch}.keymsg li::marker{font-weight:700;color:var(--b6)}.keymsg p.small{margin:0 0 6px}"
                 "details.summary summary{cursor:pointer;font-weight:700}details.summary[open] summary{margin-bottom:10px}")
+# Navigation on the combined page: a sticky section bar, a contents block, links between the areas of a
+# section, a list of each long part's subsections, and an anchor on every heading.
+NAV_CSS = ("h2,h3,h4,h5,#key-messages,#contents{scroll-margin-top:52px}"
+           ".secbar{position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:2px;margin:0 -44px 16px;padding:7px 44px;"
+           "background:rgba(255,255,255,.97);border-bottom:1px solid #e2e7e7;font-size:13px;white-space:nowrap;overflow-x:auto;scrollbar-width:none}"
+           ".secbar::-webkit-scrollbar{display:none}.secbar .item{display:inline-flex;align-items:center}"
+           ".secbar a{color:var(--n8);text-decoration:none;padding:4px 8px;border-radius:4px}.secbar a:hover,.secbar a:focus-visible{background:var(--b05);color:var(--b7)}"
+           ".secbar .item.cur>a{background:var(--b05);color:var(--b7);font-weight:700}.secbar .sub{display:none;font-size:12.5px;color:var(--n7)}"
+           ".secbar .item.cur .sub{display:inline}.secbar .sub a{padding:3px 5px}.secbar .sub a.cur{color:var(--b7);font-weight:700;text-decoration:underline}"
+           ".contents{background:var(--n05);border:1px solid #e2e7e7;border-radius:6px;padding:12px 18px 8px;margin:16px 0 10px}"
+           ".contents .lbl{font-size:11px;letter-spacing:.11em;text-transform:uppercase;font-weight:700;color:var(--n7);margin:0 0 4px}"
+           ".contents ul{list-style:none;margin:0;padding:0}.contents li{display:flex;justify-content:space-between;align-items:baseline;gap:6px 18px;"
+           "flex-wrap:wrap;padding:5px 0;border-top:1px solid #e6eaea}.contents li:first-child{border-top:0}.contents li>a{font-weight:500;text-decoration:none}"
+           ".contents li>a:hover{text-decoration:underline}.contents .areas{font-size:13px;white-space:nowrap}.contents .areas a{margin-left:14px}"
+           ".areahead{display:flex;justify-content:space-between;align-items:baseline;gap:4px 16px;flex-wrap:wrap;margin:28px 0 8px}"
+           ".areahead h3.area{margin:0}.areahead .alt{margin:0;font-size:12.5px;color:var(--n7);max-width:none}.tscroll{overflow-x:auto}"
+           ".inpart{font-size:12.5px;color:var(--n7);max-width:none;margin:0 0 12px;line-height:1.85}.inpart a{white-space:nowrap}"
+           ".anchor{margin-left:7px;font:400 .8em 'Roboto',system-ui,sans-serif;color:var(--n7);text-decoration:none;opacity:0}"
+           "h2:hover .anchor,h3:hover .anchor,h4:hover .anchor,h5:hover .anchor{opacity:1}"
+           ".keymsg .see,.summary .see{font-size:13px;color:var(--n7);white-space:nowrap}"
+           "@media(max-width:640px){.secbar{margin:0 -18px 12px;padding:6px 18px}.contents .areas a{margin:0 14px 0 0}}"
+           "@media print{.secbar,.anchor,.areahead .alt,.inpart{display:none}}")
+NAV_JS = """<script>
+(function(){
+  var bar=document.querySelector('.secbar'); if(!bar) return;
+  function pair(a){return {a:a, el:document.getElementById(a.getAttribute('href').slice(1))};}
+  var secs=[].map.call(bar.querySelectorAll('.item>a'),pair), subs=[].map.call(bar.querySelectorAll('.sub a'),pair), last=null, tick=0;
+  function update(){
+    tick=0;
+    var y=bar.getBoundingClientRect().bottom+12, cur=null, sub=null;
+    secs.forEach(function(s){ if(s.el && s.el.getBoundingClientRect().top<=y) cur=s; });
+    subs.forEach(function(s){ if(s.el && s.el.getBoundingClientRect().top<=y) sub=s; });
+    secs.forEach(function(s){ s.a.parentNode.classList.toggle('cur', s===cur); if(s===cur) s.a.setAttribute('aria-current','true'); else s.a.removeAttribute('aria-current'); });
+    subs.forEach(function(s){ s.a.classList.toggle('cur', s===sub && !!cur && s.a.parentNode.parentNode===cur.a.parentNode); });
+    if(cur && cur!==last){
+      last=cur; var it=cur.a.parentNode;
+      bar.scrollLeft += it.getBoundingClientRect().left - bar.getBoundingClientRect().left - (bar.clientWidth - it.offsetWidth)/2;
+    }
+  }
+  window.addEventListener('scroll', function(){ if(!tick) tick=setTimeout(update, 60); }, {passive:true});
+  window.addEventListener('resize', update); window.addEventListener('load', update); update();
+})();
+</script>"""
+HEADING = re.compile(r"<(h[2-5])\b([^>]*)>(.*?)</\1>", re.S)
+
+
+def _slug(t: str) -> str:
+    t = unicodedata.normalize("NFKD", html.unescape(re.sub(r"<[^>]+>", "", t))).encode("ascii", "ignore").decode()
+    return re.sub(r"[^a-z0-9]+", "-", t.lower()).strip("-")
+
+
+def _scroll_tables(page: str) -> str:
+    """A table wider than a narrow screen scrolls sideways in its own box instead of widening the whole page."""
+    def wrap(m):
+        return m.group(0) if page[:m.start()].rstrip().endswith('<div style="overflow-x:auto">') else f'<div class="tscroll">{m.group(0)}</div>'
+    return re.sub(r"<table\b.*?</table>", wrap, page, flags=re.S)
+
+
+def _anchors(page: str) -> str:
+    """Give every heading an id and a link to itself, and list a part's subsections under its heading when it
+    has three or more. Ids are nested: a subsection's id starts with the id of the area heading (or, outside
+    the area blocks, the section heading) it sits under, which also keeps repeated titles apart."""
+    hs = [dict(tag=m.group(1), attrs=m.group(2), inner=m.group(3), m=m) for m in HEADING.finditer(page)]
+    used = set(re.findall(r'\bid="([^"]+)"', page))
+    sec = area = None
+    for h in hs:
+        got = re.search(r'\bid="([^"]+)"', h["attrs"])
+        if h["tag"] == "h2":
+            sec, area, parent = h, None, None
+        elif 'class="area"' in h["attrs"]:
+            area, parent = h, None
+        else:
+            parent = area or sec
+            top = "h4" if area else "h3"                 # the first level of headings under an area or section heading
+            if parent is not None and h["tag"] == top:
+                parent.setdefault("kids", []).append(h)
+        if got:
+            h["id"] = got.group(1)
+        else:
+            base = "-".join(x for x in (parent["id"] if parent else "", _slug(h["inner"])) if x)
+            hid, k = base, 2
+            while hid in used:
+                hid, k = f"{base}-{k}", k + 1
+            used.add(hid); h["id"] = hid
+    out, pos = [], 0
+    for h in hs:
+        m = h["m"]
+        attrs = h["attrs"] if 'id="' in h["attrs"] else f'{h["attrs"]} id="{h["id"]}"'
+        out.append(page[pos:m.start()])
+        out.append(f'<{h["tag"]}{attrs}>{h["inner"]}<a class="anchor" href="#{h["id"]}" aria-hidden="true" tabindex="-1">#</a></{h["tag"]}>')
+        pos = m.end()
+        if len(h.get("kids", [])) >= 3:
+            links = " · ".join(f'<a href="#{k["id"]}">{re.sub(r"<[^>]+>", "", k["inner"])}</a>' for k in h["kids"])
+            lst = f'<p class="inpart">In this {"part" if "area" in h["attrs"] else "section"}: {links}</p>'
+            if page[:m.start()].endswith('<div class="areahead">'):                  # after the heading row, not inside it
+                end = page.index("</div>", pos) + 6
+                out.append(page[pos:end]); pos = end
+            out.append(lst)
+    out.append(page[pos:])
+    page = "".join(out)
+    ids = re.findall(r'\bid="([^"]+)"', page)
+    dup = {i for i in ids if ids.count(i) > 1}
+    dead = {h for h in re.findall(r'href="#([^"]+)"', page) if h not in set(ids)}
+    assert not dup and not dead, f"navigation: duplicate ids {sorted(dup)}, links to nothing {sorted(dead)}"
+    return page
 
 
 def _demote(chunks: list[str]) -> str:
@@ -2189,17 +2295,43 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
     ours, cat = cspec["assessment"], cspec["catalogue"]
     T = lambda k, d: html.escape(cspec.get("titles", {}).get(k, d))
     p0 = parts[0]
-    o = [edd.HEAD.format(title=f'{cspec["name"]} — ENSO deep dive', desc=html.escape(ours["one_line"]), css=edd.CSS + COMBINED_CSS,
+    o = [edd.HEAD.format(title=f'{cspec["name"]} — ENSO deep dive', desc=html.escape(ours["one_line"]), css=edd.CSS + COMBINED_CSS + NAV_CSS,
                          home="../", home_label="ENSO country deep dives")]
+    # what each section holds, known before anything is written: the bar, the contents block and the links between areas use it
+    names = {p["slug"]: p["area"].name for p in parts}
+    sec_keys = ["forecast", "enso", "daily", "impacts", "range"]
+    has = {k: [p for p in parts if any(c.strip() for c in p["B"][{"forecast": "forecast_area"}.get(k, k)])] for k in sec_keys}
+    sibs = {k: [(f'{p["slug"]}-{k}', names[p["slug"]]) for p in has[k]] + ([("region-enso", "Both areas")] if k == "enso" else []) for k in sec_keys}
+    agri = [p for p in parts if p["B"]["agri"]]
+    after = [(_slug(sec["title"]), sec["title"]) for sec in cspec.get("sections_after", [])]
+    toc = ([(k, cspec.get("titles", {}).get(k, k), sibs[k]) for k in sec_keys] + ([("farming", cspec.get("titles", {}).get("agri", "6. Farming"), [])] if agri else [])
+           + [(i, t, []) for i, t in after] + [("references", "References", [])])
+    short = cspec.get("nav", {})
+    sec_no = {i: n for n, (i, _, _) in enumerate(toc, 1) if n <= len(sec_keys) + bool(agri)}
+
+    def see(ids: list[str]) -> str:
+        """Links from a key message or a summary item to the sections that carry its evidence."""
+        def one(i):
+            k = next(k for k in sec_no if i == k or i.endswith("-" + k))
+            return f'<a href="#{i}">section {sec_no[k]}' + (f', {html.escape(names[i[:-len(k) - 1]])}' if i != k else '') + '</a>'
+        return ' <span class="see">See ' + " and ".join(one(i) for i in ids) + '.</span>' if ids else ''
+
     o.append(f'<p class="eyebrow">{html.escape(cspec.get("eyebrow", "ENSO country deep dive"))}</p><h1>{html.escape(cspec["name"])}</h1>')
     o.append(f'<p class="meta">{html.escape(cspec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{p0["a"]["end_era5"]:%Y}, '
              f'IMERG 1998–{p0["a"]["end_imerg"]:%Y}, ' + ", ".join(f'{p["area"].meta_gauge} ({p["area"].name})' for p in parts)
              + ' &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
+    item = lambda i, label, sub=(): ('<span class="item">' + f'<a href="#{i}">{label}</a>' + ('<span class="sub">' + "".join(
+        f'<a href="#{a}">{html.escape(n)}</a>' for a, n in sub) + '</span>' if sub else '') + '</span>')
+    o.append('<nav class="secbar" aria-label="Sections of this page">'
+             + (item("key-messages", "Key messages") if cspec.get("key_messages") else '') + item("contents", "Contents")
+             + "".join(item(i, html.escape(short.get(i, t)) if i not in sec_no else f'{sec_no[i]}&nbsp;{html.escape(short.get(i, t.split(". ", 1)[-1]))}', sub)
+                       for i, t, sub in toc) + '</nav>')
     # key messages for the coming winter, ahead of everything else
     if cspec.get("key_messages"):
         o.append(f'<div class="keymsg" id="key-messages"><h2>{html.escape(cspec.get("key_messages_title", "Key messages"))}</h2>'
                  + (f'<p class="small">{html.escape(cspec["key_messages_dateline"])}</p>' if cspec.get("key_messages_dateline") else "")
-                 + "<ol>" + "".join(f'<li><strong>{html.escape(m["lead"])}</strong> {html.escape(m["text"])}</li>' for m in cspec["key_messages"]) + "</ol>"
+                 + "<ol>" + "".join(f'<li><strong>{html.escape(m["lead"])}</strong> {html.escape(m["text"])}{see(m.get("see", []))}</li>'
+                                    for m in cspec["key_messages"]) + "</ol>"
                  + (f'<p class="small">{html.escape(cspec["key_messages_footer"])}</p>' if cspec.get("key_messages_footer") else "") + '</div>')
     # verdict: the survey's catalogue row once, then this review's grade for each area
     o.append('<div class="verdict">')
@@ -2211,24 +2343,35 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
                  f'{html.escape(po["direction"])}, {html.escape(po["season"])}</p>'
                  f'<p>{edd.chip(po["evidence"])} <span class="small">{html.escape(po["evidence_note"])}</span></p></div>')
     o.append('</div>')
+    by_no = {n: i for i, n in sec_no.items()}           # the summary's numbered items link to their sections
+    summary = re.sub(r"<p><strong>(\d+)\. ([^<]*)</strong>", lambda m: (f'<p><strong><a href="#{by_no[int(m.group(1))]}">{m.group(1)}. {m.group(2)}</a></strong>'
+                                                                       if int(m.group(1)) in by_no else m.group(0)), cspec["summary_html"])
     if cspec.get("key_messages"):       # the section-by-section summary folds away once the key messages lead the page
-        o.append(f'<details class="summary"><summary>Summary by section</summary>{cspec["summary_html"]}</details>')
+        o.append(f'<details class="summary"><summary>Summary by section</summary>{summary}</details>')
     else:
-        o.append(f'<div class="summary">{cspec["summary_html"]}</div>')
+        o.append(f'<div class="summary">{summary}</div>')
+    o.append('<nav class="contents" id="contents" aria-label="Contents"><p class="lbl">Contents</p><ul>' + "".join(
+        f'<li><a href="#{i}">{html.escape(t)}</a>' + ('<span class="areas">' + "".join(f'<a href="#{a}">{html.escape(n)}</a>' for a, n in sub) + '</span>' if sub else '')
+        + '</li>' for i, t, sub in toc) + '</ul></nav>')
     o.append(cspec.get("before_html", ""))
 
+    def area_head(anchor: str, label: str, key: str) -> str:
+        """An area's heading within a section, with links to the section's other areas beside it."""
+        alt = " · ".join(f'<a href="#{a}">{html.escape(n)}</a>' for a, n in sibs[key] if a != anchor)
+        return (f'<div class="areahead"><h3 class="area" id="{anchor}">{html.escape(label)}</h3>'
+                + (f'<p class="alt">Also in this section: {alt}</p>' if alt else '') + '</div>')
+
     def area_block(p: dict, chunks: list[str], anchor: str) -> str:
-        return (f'<h3 class="area" id="{p["slug"]}-{anchor}">{html.escape(p["area"].name)}</h3>\n'
-                + _prefix_src(_demote(chunks), p["slug"]))
+        return area_head(f'{p["slug"]}-{anchor}', p["area"].name, anchor) + '\n' + _prefix_src(_demote(chunks), p["slug"])
 
     # 1. Forecasts: shared text and table once (built with the first area), then each area's SEAS5
-    o.append(f'<h2>{T("forecast", "1. What the forecasts say for this winter")}</h2>')
+    o.append(f'<h2 id="forecast">{T("forecast", "1. What the forecasts say for this winter")}</h2>')
     o.extend(p0["B"]["forecast_lead"] + p0["B"]["forecast_text"])
     for p in parts:
         o.append(area_block(p, p["B"]["forecast_area"], "forecast"))
 
     # 2. El Niño link: each area, then the regional maps once (both areas outlined)
-    o.append(f'<h2>{T("enso", "2. How much El Niño matters")}</h2>')
+    o.append(f'<h2 id="enso">{T("enso", "2. How much El Niño matters")}</h2>')
     if cspec.get("enso_intro_html"):
         o.append(cspec["enso_intro_html"])
     for p in parts:
@@ -2236,7 +2379,7 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
         cut = next(i for i, c in enumerate(ch) if c.startswith("<h3>Across the region</h3>"))
         p["maps"] = ch[cut + 1:]
         o.append(area_block(p, ch[:cut], "enso"))
-    o.append(f'<h3 class="area" id="region-enso">Both areas: across the region</h3>{cspec.get("maps_html", "")}')
+    o.append(area_head("region-enso", "Both areas: across the region", "enso") + cspec.get("maps_html", ""))
     o.append(_prefix_src(p0["maps"][0], p0["slug"]).replace(f'{p0["area"].ref[0].upper() + p0["area"].ref[1:]} is outlined.',
                                                              f'{html.escape(cspec["name"])} are outlined.'))
     a0 = p0["a"]
@@ -2251,28 +2394,26 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
     for key, title, blocks in (("daily", "3. What changes in an El Niño winter, and what does not", ("daily",)),
                                ("impacts", "4. What winter weather does", ("impacts",)),
                                ("range", "5. What this winter could bring", ("range",))):
-        o.append(f'<h2>{T(key, title)}</h2>')
-        for p in parts:
-            ch = sum((p["B"][b] for b in blocks), [])
-            if any(c.strip() for c in ch):
-                o.append(area_block(p, ch, key))
+        o.append(f'<h2 id="{key}">{T(key, title)}</h2>')
+        for p in has[key]:
+            o.append(area_block(p, sum((p["B"][b] for b in blocks), []), key))
     # 6. Farming: the areas that have it, under their own headings
     for p in parts:
         if p["B"]["agri"]:
-            o.append(f'<h2>{T("agri", "6. Farming")}</h2>')
+            o.append(f'<h2 id="farming">{T("agri", "6. Farming")}</h2>')
             o.append(_prefix_src("\n".join(p["B"]["agri"]), p["slug"]))
     for sec in cspec.get("sections_after", []):
-        o.append(f'<h2>{html.escape(sec["title"])}</h2>{sec["html"]}')
+        o.append(f'<h2 id="{_slug(sec["title"])}">{html.escape(sec["title"])}</h2>{sec["html"]}')
     refs, seen = [], set()
     for r in [r for p in parts for r in p["spec"].get("references", [])] + cspec.get("references", []):
         if r["html"] not in seen:
             seen.add(r["html"]); refs.append(r)
-    o.append('<h2>References</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in refs) + '</ul>')
+    o.append('<h2 id="references">References</h2><ul class="refs">' + "".join(f'<li>{r["html"]}</li>' for r in refs) + '</ul>')
     o.append(f'<p class="small">Generated by <code>levant_deep_dive.py</code> from <code>deep_dives/{cspec["slug"]}.toml</code> and '
              + ", ".join(f'<code>deep_dives/parts/{p["slug"]}.toml</code>' for p in parts)
              + '. Grid method and Niño3.4 series as in the <a href="../../survey/">global survey</a>.</p>')
-    o.append(edd.FOOT)
-    return _per_cent("\n".join(o))
+    o.append(NAV_JS + edd.FOOT)
+    return _anchors(_scroll_tables(_per_cent("\n".join(o))))
 
 
 def main() -> None:
