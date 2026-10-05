@@ -672,7 +672,7 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
     o.append('<p>The one yearly measure available for every zone is satellite greenness. In the spring after an El Niño winter, it was above '
              'normal in ' + ", ".join(f'{by(k, "El Niño")["above"]} of {by(k, "El Niño")["n"]} years in the {html.escape(pr[k])}' for k in names)
              + '; after La Niña winters, in ' + ", ".join(f'{by(k, "La Niña")["above"]} of {by(k, "La Niña")["n"]}' for k in names) + '. '
-             'Several of those El Niño springs were only slightly above normal, and most El Niño winters of the MODIS years brought close to '
+             'Several of those El Niño springs were only slightly above normal.<!--more-->Most El Niño winters of the MODIS years brought close to '
              'normal rain (percentage above or below the 1991–2020 mean across the West Bank: '
              + ", ".join(f'{y - 1}/{str(y)[2:]} {_signed(v, "")}' for y, v in g["en_rain_modis"].items()) + '). '
              'The drier the zone, the larger the swing: the median El Niño spring was '
@@ -736,7 +736,7 @@ def render(spec: dict, a: dict, heading: bool = True) -> str:
              f'{_nw(len(worst))} worst harvests since 1994, {worst_txt}, '
              + ('all followed La Niña winters' if all(p == "La Niña" for p in wph) else f'include {sum(p == "La Niña" for p in wph)} after La Niña winters')
              + f'. El Niño years were not bumper years: their median, {_words(fe["median"], "trend")}, is close to that of neutral years ({_words(fn["median"], "trend")}). '
-             'What an El Niño winter has done is make a bad cereal year less likely. The longer vegetation record, which also covers pasture, '
+             'What an El Niño winter has done is make a bad cereal year less likely.<!--more-->The longer vegetation record, which also covers pasture, '
              f'tells the same story: spring vegetation was above its median in {ve["above"]} of {ve["n"]} El Niño years on cropland and '
              f'{le_["above"]} of {le_["n"]} on all land, against {vl["above"]} of {vl["n"]} and {ll_["above"]} of {ll_["n"]} after La Niña winters. '
              f'Olives show no clear El Niño signal ({oe["above"]} of {oe["n"]} El Niño years above what the previous crop predicts, '
