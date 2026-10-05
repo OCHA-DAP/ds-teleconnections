@@ -1643,7 +1643,11 @@ def build(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFram
 PARTS_DIR = edd.DEEP_DIR / "parts"                 # area TOMLs that are built only as parts of a combined page
 COMBINED_CSS = ("h3.area{font-size:17px;margin:28px 0 8px;padding:2px 0 2px 10px;border-left:4px solid var(--b5)}"
                 "h4{font-size:15px;margin:20px 0 6px}h5{font-size:14px;margin:16px 0 4px}"
-                "@media (min-width:641px){.verdict{grid-template-columns:1fr 1fr 1fr}}")
+                "@media (min-width:641px){.verdict{grid-template-columns:1fr 1fr 1fr}}"
+                ".keymsg{border:1px solid #cfe3dc;border-top:4px solid var(--b5);border-radius:6px;background:#fff;padding:14px 22px 10px;margin:4px 0 20px}"
+                ".keymsg h2{border:0;margin:0 0 2px;padding:0;font-size:20px}.keymsg ol{margin:10px 0 8px;padding-left:22px}"
+                ".keymsg li{margin:0 0 11px;max-width:92ch}.keymsg li::marker{font-weight:700;color:var(--b6)}.keymsg p.small{margin:0 0 6px}"
+                "details.summary summary{cursor:pointer;font-weight:700}details.summary[open] summary{margin-bottom:10px}")
 
 
 def _demote(chunks: list[str]) -> str:
@@ -1702,6 +1706,12 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
     o.append(f'<p class="meta">{html.escape(cspec.get("subtitle", ""))} &nbsp;·&nbsp; GPCC 1891–2025, ERA5 1950–{p0["a"]["end_era5"]:%Y}, '
              f'IMERG 1998–{p0["a"]["end_imerg"]:%Y}, ' + ", ".join(f'{p["area"].meta_gauge} ({p["area"].name})' for p in parts)
              + ' &nbsp;·&nbsp; Niño3.4 (NOAA)</p>')
+    # key messages for the coming winter, ahead of everything else
+    if cspec.get("key_messages"):
+        o.append(f'<div class="keymsg" id="key-messages"><h2>{html.escape(cspec.get("key_messages_title", "Key messages"))}</h2>'
+                 + (f'<p class="small">{html.escape(cspec["key_messages_dateline"])}</p>' if cspec.get("key_messages_dateline") else "")
+                 + "<ol>" + "".join(f'<li><strong>{html.escape(m["lead"])}</strong> {html.escape(m["text"])}</li>' for m in cspec["key_messages"]) + "</ol>"
+                 + (f'<p class="small">{html.escape(cspec["key_messages_footer"])}</p>' if cspec.get("key_messages_footer") else "") + '</div>')
     # verdict: the survey's catalogue row once, then this review's grade for each area
     o.append('<div class="verdict">')
     o.append(f'<div class="card"><p class="lbl">Survey catalogue says</p><p class="big">El Niño → {html.escape(cat["direction"])}, {html.escape(cat["season"])}</p>'
@@ -1712,7 +1722,10 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
                  f'{html.escape(po["direction"])}, {html.escape(po["season"])}</p>'
                  f'<p>{edd.chip(po["evidence"])} <span class="small">{html.escape(po["evidence_note"])}</span></p></div>')
     o.append('</div>')
-    o.append(f'<div class="summary">{cspec["summary_html"]}</div>')
+    if cspec.get("key_messages"):       # the section-by-section summary folds away once the key messages lead the page
+        o.append(f'<details class="summary"><summary>Summary by section</summary>{cspec["summary_html"]}</details>')
+    else:
+        o.append(f'<div class="summary">{cspec["summary_html"]}</div>')
     o.append(cspec.get("before_html", ""))
 
     def area_block(p: dict, chunks: list[str], anchor: str) -> str:
