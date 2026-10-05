@@ -517,7 +517,8 @@ def seas5_skill_issued(c: Country, zones: dict[str, np.ndarray], issued_month: i
 
 
 def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill: dict, out: Path,
-                     name: str, off_share: float = 0.15, area_label: str = "Whole country") -> None:
+                     name: str, off_share: float = 0.15, area_label: str = "Whole country",
+                     rp_label: str = "median pixel") -> None:
     """Climatology on top, skill heatmap underneath, on a shared month axis.
 
     Months run from two before the issuance to six after (the 7-month SEAS5 horizon). Each
@@ -642,7 +643,7 @@ def fig_skill_issued(c: Country, grid: Grid, zones: dict[str, np.ndarray], skill
     for sp in ("left", "bottom"):
         rx.spines[sp].set_color("#c9d0d0")
     rx.set_title(f"What this issuance forecasts ({MONTH_NAMES[im - 1]} {yr if yr else ''}): return period of the forecast "
-                 f"anomaly, median pixel" + ("" if len(rows) == 1 else " per zone"), fontsize=9.5, color=C_TEXT, loc="left")
+                 f"anomaly, {rp_label}" + ("" if len(rows) == 1 else " per zone"), fontsize=9.5, color=C_TEXT, loc="left")
     rx.legend(handles=[plt.Line2D([], [], color=C_MUTED, marker="o", ls="", mew=1.6, label="filled = skill ≥ moderate" if solo_fig else "filled = zone skill ≥ moderate"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", mfc="white", ls="", mew=1.6, label="hollow = low skill"),
                        plt.Line2D([], [], color=C_MUTED, marker="o", ls="", alpha=0.35, label="faded = off-season" if solo_fig else "faded = off-season for that zone")],

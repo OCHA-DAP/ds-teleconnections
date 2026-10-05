@@ -7,16 +7,16 @@
 iso3 = "PSE"
 name = "Gaza"
 builder = "levant"
-skill_issued_month = 9
+skill_issued_month = 10
 skill_intro = false
 timeline_winters = [2023, 2024, 2025]
 
 skill_html = '''
-<p>The September 2026 SEAS5 issuance forecasts a wet start to the season over Gaza and little after it. September–November is at a 9-year wet return period, October–December 7 years and November–January 3.5 years; December–February and January–March are slightly dry of their hindcast medians (2- to 3-year dry return periods). Skill from September is moderate for the first three windows (r = 0.44–0.49) and low or absent for the last two (0.29 and 0.0). The raw ensemble-mean files for a box over Gaza give the same picture independently of the app's cube (table below): the September–November forecast is the 5th-wettest of 46 September issuances since 1981 and October–December the 8th. SEAS5's three wettest September–November hindcasts are 1997, 1982 and 2015, the three strongest El Niños in its record. So this is the El Niño signal the model carries, not an independent source of information.</p>
+<p>ECMWF's October 2026 forecast (SEAS5, published on 5 October) keeps a wet start to the season over Gaza. October–December is at a 9-year wet return period with high skill (r = 0.60), and November–January at about 5 years with moderate skill. December–February and January–March, slightly dry in the September issuance, are now slightly wet (about 4 years each), and February–April is at about 8 years; skill is moderate for December–February (0.32) and low after it (0.11–0.13). Like for like, the September issuance had October–December at about 7 years. The raw ensemble-mean files for a box over Gaza show the same shape more modestly (table below): October–December is the 9th-wettest of 46 October issuances since 1981 and 11% above the hindcast mean, and the later windows are 3–5% above it, which is close to normal. The return periods rank higher than the raw values because the app's method takes a long-term trend out of the hindcasts first. SEAS5's three wettest October–December hindcasts from October are 1986, 2018 and 1994, all El Niño winters. So this is the El Niño signal the model carries, not an independent source of information.</p>
 '''
 
 monthly_html = '''
-<p>By month, the wet signal sits in October (79% above the hindcast mean, the 4th-wettest of 46 September forecasts) and November (22% above, the 8th). December, January and March are at their hindcast means, and February is slightly dry (11% below). Skill for single months is low throughout the rainy season (r = −0.01 to +0.27), so read the monthly split as a guide to where the three-month signal sits, not as a forecast for individual months.</p>
+<p>By month, the forecast is above its hindcast mean in October (25%, the 11th-wettest of 46 October forecasts), November (7%) and December (10%), at its mean in January and February, and well above it in March (28%, the 4th-wettest) and April (18%). The October signal is much smaller than a month ago, when the September issuance had October 79% above its mean. Skill for single months is high for October (r = 0.54), moderate for November and low from December on (0.06–0.23), so read the monthly split as a guide to where the three-month signal sits, not as a forecast for individual months.</p>
 '''
 
 enso_intro_html = '''
@@ -44,7 +44,7 @@ strong_html = '''
 '''
 
 trimester_html = '''
-<p>The concurrent signal runs through the whole season, strongest early: r = 0.35–0.52 for every three-month window from October–December to January–March, in both GPCC and ERA5. What matters for a forecast now is the August–October Niño3.4, known before the season starts. It predicts the season total nearly as well (r = 0.45 in GPCC, 0.50 in ERA5), the windows from October–December to December–February at 0.32–0.46, and January–March more weakly (0.28–0.29, borderline significant). That matches SEAS5, whose skill and wet signal both fade after December, and the literature, which puts the eastern Mediterranean ENSO signal in autumn and early winter (Hochman &amp; Gildor 2025; Mariotti et al. 2005).</p>
+<p>The concurrent signal runs through the whole season, strongest early: r = 0.35–0.52 for every three-month window from October–December to January–March, in both GPCC and ERA5. What matters for a forecast now is the August–October Niño3.4, known before the season starts. It predicts the season total nearly as well (r = 0.45 in GPCC, 0.50 in ERA5), the windows from October–December to December–February at 0.32–0.46, and January–March more weakly (0.28–0.29, borderline significant). That matches SEAS5, whose skill fades after December, and the literature, which puts the eastern Mediterranean ENSO signal in autumn and early winter (Hochman &amp; Gildor 2025; Mariotti et al. 2005).</p>
 '''
 
 daily_html = '''
@@ -74,7 +74,7 @@ range_intro_html = '''
 
 week_html = "IMERG and the Beer Sheva gauge differ in their totals but agree closely on the share; Beer Sheva is 46 km inland and drier than Gaza, so compare its shares, not its millimetres. Byron's week came close to half an average year."
 first_storm_html = '''
-<p>This is where El Niño may matter, though not by much more than chance on eight winters. In 5 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more came before 1 December, against 12 of 28 winters overall, and the September forecasts put this year's wet anomaly in October and November. Damage does not wait for a big storm, though. In each of the last three winters the first weather damage was reported in mid to late November (13–14 November 2023, 24–25 November 2024, 14–15 November 2025), and in two of them that came before the winter's first 20 mm storm. Last winter's first storm, with 22 mm, damaged about 13,000 tents.</p>
+<p>This is where El Niño may matter, though not by much more than chance on eight winters. In 5 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more came before 1 December, against 12 of 28 winters overall, and the forecasts put this year's wet anomaly in October–December. Damage does not wait for a big storm, though. In each of the last three winters the first weather damage was reported in mid to late November (13–14 November 2023, 24–25 November 2024, 14–15 November 2025), and in two of them that came before the winter's first 20 mm storm. Last winter's first storm, with 22 mm, damaged about 13,000 tents.</p>
 '''
 
 storm_kinds_intro_html = '''
@@ -156,7 +156,7 @@ evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.55 to +0.67); t
 
 [titles]
 forecast = "1. What the forecasts say for this winter"
-skill = "SEAS5 for Gaza: skill and the September 2026 forecast"
+skill = "SEAS5 for Gaza: skill and the October 2026 forecast"
 enso = "2. How much El Niño matters for a Gaza winter"
 daily = "3. What changes in an El Niño winter, and what does not"
 impacts = "4. What winter weather does in Gaza"
@@ -334,4 +334,4 @@ html = 'NOAA CPC ENSO diagnostic discussion, 10 September 2026 <a href="https://
 [[references]]
 html = 'IOM, Site Management Cluster &amp; Shelter Cluster (2026). Sites exposed to flood risk: Phase one outlook for rainy season 2026–27 <a href="https://www.sheltercluster.org/palestine/documents/sites-exposed-flood-risk">link</a>; Shelter Cluster (2026). Exposed on all sides: shelter severity and household needs across accessible areas in Gaza <a href="https://www.sheltercluster.org/palestine/documents/shelter-severity-and-household-needs-across-accessible-areas-gaza">link</a>; OCHA Humanitarian Situation Report, 25 September 2026 <a href="https://www.ochaopt.org/content/humanitarian-situation-report-25-september-2026">link</a>.'
 [[references]]
-html = 'Rainfall: GPCC Full Data v2020 to 2019 + Monitoring v2020 after (DWD), combined 1° product via <a href="https://psl.noaa.gov/data/gridded/data.gpcc.html">NOAA PSL</a>; ERA5 hourly time series (Copernicus Climate Change Service); IMERG late run v7 (NASA), from the team blob; GHCN-Daily Beer Sheva IS000051690 (NOAA NCEI). Niño3.4: NOAA PSL (ERSST v5 pinned; HadISST before 1950). SEAS5 skill and forecast return periods from the seas5-skill app&#39;s detrended skill cube. Boundaries: COD-AB (OCHA) via FieldMaps.'
+html = 'Rainfall: GPCC Full Data v2020 to 2019 + Monitoring v2020 after (DWD), combined 1° product via <a href="https://psl.noaa.gov/data/gridded/data.gpcc.html">NOAA PSL</a>; ERA5 hourly time series (Copernicus Climate Change Service); IMERG late run v7 (NASA), from the team blob; GHCN-Daily Beer Sheva IS000051690 (NOAA NCEI). Niño3.4: NOAA PSL (ERSST v5 pinned; HadISST before 1950). SEAS5 skill from the seas5-skill app&#39;s detrended skill cube; the October 2026 return periods from the team&#39;s admin-1 raster statistics with the same method. Boundaries: COD-AB (OCHA) via FieldMaps.'

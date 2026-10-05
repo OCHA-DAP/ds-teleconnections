@@ -181,6 +181,14 @@ health (1982–), FAOSTAT yields for Palestine (subset committed as `deep_dives/
 rebuilds it from the bulk file) and PCBS olive presses and 2021 census cereal area by governorate
 (`deep_dives/data/pcbs_*.csv`, with a source URL per row). Crop year Y follows the October Y−1 to April Y rainy season.
 
+SEAS5 on this page: skill and return periods come from the seas5-skill app's pixel cube, which is recomputed the day after a
+new forecast lands. When the cube's forecast is older than the latest issuance in the team database, `seas5_db_trimesters` takes
+the return periods from the admin-1 raster statistics instead (prod `public.seas5` / `public.era5`, the app's detrended method,
+fully forecast windows only; cached in `cache/gaza/*_adm1_db.parquet`), keeps the cube's hindcast skill, and the page says so.
+The database is reachable only inside the VNet or through the laptop tunnel (`DSCI_AZ_DB_PROD_HOST`). Delete
+`cache/skill_stats_grid_detrended.nc` to pick up the refreshed cube; the page then reads it again without further changes.
+`skill_issued_month` in each part's TOML selects the issuance, and the SEAS5 paragraphs there are written for it.
+
 ---
 
 ## The web app

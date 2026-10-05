@@ -6,16 +6,16 @@
 iso3 = "PSE"
 name = "West Bank"
 builder = "levant"
-skill_issued_month = 9
+skill_issued_month = 10
 skill_intro = false
 timeline_winters = [2023, 2024, 2025]
 
 skill_html = '''
-<p>Over the West Bank, the September 2026 SEAS5 issuance forecasts a wet start to the season. September–November is at a 15-year wet return period, October–December at 23 years with high skill (r = 0.53), and November–January at 7 years. December–February is only slightly wet (2 years, moderate skill), and January–March slightly dry with low skill. The raw ensemble-mean files give the same picture independently of the app's cube: September–November and October–December are each the 5th-wettest of 46 September forecasts since 1981. SEAS5's wettest September–November hindcasts for the area are 1997, 2015 and 1982, the strongest El Niños in its record. (The skill table counts 17 cells, every 0.25° cell touching the West Bank; the ERA5 series uses the 16 that cover more than 0.5% of it.)</p>
+<p>Over the West Bank, ECMWF's October 2026 forecast (SEAS5, published on 5 October) still shows a wet start to the season, though a less extreme one than a month ago. October–December is at a 9-year wet return period with high skill (r = 0.62); the September issuance had it at 23 years. November–January is at about 7 years with moderate skill, December–February at about 3.5 years with moderate skill (0.33), January–March at about 4 years with low skill, and February–April at about 6 years with skill just at the moderate threshold (0.31). The raw ensemble-mean files show the same shape more modestly: October–December is the 8th-wettest of 46 October forecasts since 1981 and 12% above the hindcast mean, and the later windows are 1–8% above it. The return periods rank higher than the raw values because the app's method takes a long-term trend out of the hindcasts first. SEAS5's wettest October–December hindcasts for the area are 1986, 2018 and 2002, all El Niño winters. (The skill table counts 17 cells, every 0.25° cell touching the West Bank; the ERA5 series uses the 16 that cover more than 0.5% of it.)</p>
 '''
 
 monthly_html = '''
-<p>By month, the wet signal sits in October (about double the hindcast mean, the 3rd-wettest of 46 September forecasts) and November (22% above, the 10th). December is slightly wet and January–March slightly dry. Skill for single months is low in the rainy months except November, so read the monthly split as a guide to where the three-month signal sits.</p>
+<p>By month, the forecast is above its hindcast mean in October (29%, the 11th-wettest of 46 October forecasts), November (13%) and December (7%), close to it in January and February, and well above it in March (23%, the 2nd-wettest) and April (15%). Skill for single months is high for October (r = 0.57), moderate for November and December, and low after that, so read the monthly split as a guide to where the three-month signal sits.</p>
 '''
 
 enso_intro_html = '''
@@ -173,6 +173,7 @@ meta_gauge = "Jerusalem gauge 1908–2015"
 imerg_box = [34.85, 31.30, 35.65, 32.60]
 imerg_split = []
 seas5_box = [34.8, 31.2, 35.6, 32.6]
+seas5_pcode = "PS01"
 era5_cold = true
 cold_thresh = 3.0
 byron = false
@@ -300,7 +301,7 @@ evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.57 to +0.59); n
 
 [titles]
 forecast = "1. What the forecasts say for this winter"
-skill = "SEAS5 for the West Bank: skill and the September 2026 forecast"
+skill = "SEAS5 for the West Bank: skill and the October 2026 forecast"
 enso = "2. How much El Niño matters for a West Bank winter"
 daily = "3. What changes in an El Niño winter, and what does not"
 impacts = "4. What winter weather does in the West Bank"

@@ -81,6 +81,7 @@ class Area:
     imerg_box: tuple = (33.95, 30.95, 34.85, 31.85)          # w, s, e, n
     imerg_split: tuple | None = (31.45, 31.35)                # north of / south of (latitude)
     seas5_box: tuple = (34.0, 31.0, 34.8, 31.8)
+    seas5_pcode: str = "PS02"                                  # this area in the team's raster stats (public.seas5, admin 1)
     era5_cold: bool = False                                    # ERA5 cells partly sea: no cold-night metric
     cold_thresh: float = 5.0
     stationarity_records: str = ("Two gauge-based records (the GPCC analysis, and the Beer Sheva gauge 46 km inland, which is one of GPCC\'s "
@@ -594,8 +595,20 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     # 6. SEAS5: skill + current forecast for the cells over Gaza
     gc = edd.Country(iso3="GAZ", geom=gaza.geometry, lat=c.lat, lon=c.lon, mask=gz_cells, sub=c.sub, neighbours=c.neighbours)
     skill = edd.seas5_skill_issued(gc, {A.name: gz_cells}, int(spec.get("skill_issued_month", 9)))
+    # The app's pixel cube is recomputed a day after SEAS5 lands. Until then its forecast layers belong to an older
+    # issuance: take the return periods of the new one from the team's admin-1 raster stats instead (same method),
+    # keep the cube's hindcast skill, and blank the in-season windows, which need the latest ERA5 month.
+    db = seas5_db_trimesters(A.seas5_pcode, int(spec.get("skill_issued_month", 9))) if skill else None
+    if skill and db and (skill.get("issued_year") or 0) < db["year"]:
+        row = skill["rows"][0]
+        for t in skill["trimesters"]:
+            v = db["rows"].get(t["code"]) if t["lead"] >= 0 else None
+            row["rp"][t["code"]] = v["rp"] if v else float("nan")
+            row["pct"][t["code"]] = v["pct"] if v else float("nan")
+        skill.update(cube_year=skill.get("issued_year"), issued_year=db["year"], db=db)
     if skill:
-        edd.fig_skill_issued(gc, grid, {}, skill, OUT / "skill_issued.png", A.name, area_label=A.name)
+        edd.fig_skill_issued(gc, grid, {}, skill, OUT / "skill_issued.png", A.name, area_label=A.name,
+                             rp_label="admin-1 mean, team database" if skill.get("db") else "median pixel")
 
     # SEAS5 raw ensemble mean: rank cross-check by window and the forecast by month
     seas5_raw = seas5_raw_ranks(int(spec.get("skill_issued_month", 9)), box=A.seas5_box)
@@ -689,6 +702,83 @@ def seas5_raw_ranks(issued_month: int = 9, box=(34.0, 31.0, 34.8, 31.8)) -> dict
         top = [int(y) for y in v.drop(latest).sort_values(ascending=False).index[:3]]
         out.append(dict(code=code, rank=rank, n=len(v), ratio=float(v[latest] / v.drop(latest).mean()), top=top))
     return dict(year=latest, month=issued_month, rows=out, em=df)
+
+
+SEAS5_DB_CACHE = COD_CACHE / "seas5_adm1_db.parquet"      # prod public.seas5, admin 1, both areas
+ERA5_DB_CACHE = COD_CACHE / "era5_adm1_db.parquet"        # prod public.era5, admin 1
+
+
+def seas5_db_tables(iso3: str = "PSE") -> tuple[pd.DataFrame, pd.DataFrame] | None:
+    """The team's admin-1 raster stats for SEAS5 (monthly ensemble mean by issuance and lead, mm/day) and ERA5
+    (monthly mean, mm/day), from the prod database, cached. The database is reachable only inside the VNet or
+    through the laptop tunnel (DSCI_AZ_DB_PROD_HOST pointing at it), so it is queried only when the cache lacks the
+    issuance that should exist by now, and a failed connection falls back to the cache."""
+    now = pd.Timestamp.now()
+    expected = (now if now.day >= 5 else now - pd.DateOffset(months=1)).to_period("M").to_timestamp()   # SEAS5 lands on the 5th
+    stale = not SEAS5_DB_CACHE.exists() or pd.read_parquet(SEAS5_DB_CACHE, columns=["issued_date"]).issued_date.max() < expected
+    if stale:
+        try:
+            import ocha_stratus as stratus
+            with stratus.get_engine("prod").connect() as c:
+                s = pd.read_sql("SELECT pcode, issued_date, valid_date, leadtime, mean FROM public.seas5 WHERE iso3 = %s AND adm_level = 1",
+                                c, params=(iso3,), parse_dates=["issued_date", "valid_date"])
+                e = pd.read_sql("SELECT pcode, valid_date, mean FROM public.era5 WHERE iso3 = %s AND adm_level = 1",
+                                c, params=(iso3,), parse_dates=["valid_date"])
+            s.to_parquet(SEAS5_DB_CACHE); e.to_parquet(ERA5_DB_CACHE)
+        except Exception as ex:  # noqa: BLE001
+            print(f"  (prod database not reachable, using the cached raster stats: {ex})")
+    if not (SEAS5_DB_CACHE.exists() and ERA5_DB_CACHE.exists()):
+        return None
+    return pd.read_parquet(SEAS5_DB_CACHE), pd.read_parquet(ERA5_DB_CACHE)
+
+
+def seas5_db_trimesters(pcode: str, issued_month: int) -> dict | None:
+    """What the latest issuance of `issued_month` forecasts for one admin-1 unit, per fully forecast trimester
+    (leads 0–4), computed from the team's raster stats the way the seas5-skill app computes its admin-level
+    product (src/skill.py, detrended): trimester means per issuance year, log1p, SEAS5 scaled to ERA5's mean
+    and spread over the overlap years, both detrended linearly, then the latest forecast's Weibull rank among
+    the hindcasts. Used while the app's pixel cube still holds the previous issuance. In-season trimesters are
+    left out: they blend observed months, and ERA5 for the month before an issuance lands a day after SEAS5."""
+    tabs = seas5_db_tables()
+    if tabs is None:
+        return None
+    s, e = (t[t.pcode == pcode].dropna(subset=["mean"]) for t in tabs)
+    s = s[s.issued_date.dt.month == issued_month]
+    if s.empty:
+        return None
+    issued_year = int(s.issued_date.dt.year.max())
+    out = {}
+    for code, months in ts._TRIMESTER_MONTHS.items():
+        lead = (months[0] - issued_month) % 12
+        if lead > 4:
+            continue
+        wraps = 1 in months and 12 in months
+        f = s[s.valid_date.dt.month.isin(months)]
+        f = f.groupby(f.issued_date.dt.year)["mean"].mean()
+        f.index = f.index + (1 if (not wraps and min(months) < issued_month) else 0)           # season year
+        o = e[e.valid_date.dt.month.isin(months)]
+        sy = np.where((o.valid_date.dt.month > 6) | (not wraps), o.valid_date.dt.year, o.valid_date.dt.year - 1)
+        g = o.groupby(sy)["mean"]
+        o = g.mean()[g.count() == 3]
+        f, o = np.log1p(f.clip(lower=0)), np.log1p(o.clip(lower=0))
+        hist = f.index.intersection(o.index)
+        if len(hist) < 10:
+            continue
+        f = (f - f[hist].mean()) / max(f[hist].std(ddof=1), 1e-9) * o[hist].std(ddof=1) + o[hist].mean()
+        x = hist.values.astype(float)
+        a_, b_ = np.polyfit(x, f[hist].values, 1)
+        f = f - (a_ * f.index.values.astype(float) + b_) + f[hist].mean()
+        a_, b_ = np.polyfit(x, o[hist].values, 1)
+        o = o - (a_ * o.index.values.astype(float) + b_) + o[hist].mean()
+        cur_year = int(f.index.max())
+        if cur_year in o.index:                    # the latest forecast must be a real forecast, not a past season
+            continue
+        cur, h = float(f[cur_year]), f[hist].values
+        dry, wet = (len(h) + 1) / (int((h < cur).sum()) + 1), (len(h) + 1) / (int((h > cur).sum()) + 1)
+        pct_ = 100.0 * float((h <= cur).sum()) / len(h)
+        out[code] = dict(lead=lead, r=float(np.corrcoef(f[hist].values, o[hist].values)[0, 1]), n=len(hist),
+                         pct=pct_, rp=dry if pct_ < 50 else -wet, season_year=cur_year)
+    return dict(year=issued_year, month=issued_month, pcode=pcode, rows=out) if out else None
 
 
 def seas5_monthly(sr: dict, era5_monthly: pd.Series) -> list[dict]:
@@ -1434,6 +1524,21 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
                  .replace("for the whole country", f"for the cells over {A.ref}")
                  .replace("of the's annual rain", f"of {A.ref}'s annual rain")
                    )
+        sk = a["skill"]
+        if sk.get("db"):       # return periods from the database while the app's pixel cube lags the new issuance
+            import calendar
+            mn = calendar.month_name[sk["issued_month"]]
+            sk_html = (sk_html
+                       .replace("forecast_rp / flood_rp), median pixel;", "forecast_rp / flood_rp), here for the area mean (see the note above the figure);")
+                       .replace(f"median return period of the {edd.MONTH_NAMES[sk['issued_month'] - 1]} {sk['issued_year']} forecast anomaly",
+                                f"return period of the {edd.MONTH_NAMES[sk['issued_month'] - 1]} {sk['issued_year']} forecast anomaly for the area mean"))
+            note = (f'<p class="small"><strong>Source of the {mn} {sk["issued_year"]} return periods.</strong> The seas5-skill app\'s pixel product, which this '
+                    f'page normally reads, is recomputed the day after a new forecast lands, so the return periods here come from the team\'s '
+                    f'raster statistics for {html.escape(A.ref)} as one area (the ensemble mean averaged over the admin-1 polygon, in the team '
+                    f'database), ranked against the {mn} hindcasts of 1981–{sk["issued_year"] - 1} with the app\'s own method. Skill is still the '
+                    'median pixel correlation from the app\'s cube, which depends on the hindcasts and not on the new forecast. Windows that had '
+                    'already started at issuance are left blank: they blend in observed months, and the latest ERA5 month arrives a day after the forecast.</p>')
+            sk_html = sk_html.replace('<figure><img src="skill_issued.png"', note + '<figure><img src="skill_issued.png"', 1)
         # the shared auto-summary names the zone before each window ("Gaza SON, Gaza OND"): drop it
         B["forecast_area"].append(re.sub(rf"\b{re.escape(A.name)} (?=[A-Z]{{3}}\b)", "", sk_html))
     sr = a.get("seas5_raw")
@@ -1449,13 +1554,16 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
     sm = a.get("seas5_mon")
     if sm:
         B["forecast_area"].append(f'<h3>The same forecast, month by month</h3>{spec.get("monthly_html", "")}')
+        import calendar
+        imn = calendar.month_name[sr["month"]]
+        dry0 = (f' {calendar.month_name[sm[0]["month"]]} gets about {sm[0]["obs_clim"]:.0f} mm in an average year, so its skill says little.'
+                if sm[0]["obs_clim"] < 5 else '')
         B["forecast_area"].append('<figure><img src="seas5_monthly.png" alt="SEAS5 forecast and skill by month"><figcaption>Top: the SEAS5 ensemble-mean '
-                 f'rainfall for each month of the September issuance, averaged over a box on {A.ref} ({A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, {A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), against the mean of '
-                 'the same month in the 1981–2025 September hindcasts; labels give the forecast as a percentage above or below that mean and its '
-                 'rank among all 46 September issuances (1 = wettest). Bottom: the skill of that month\'s forecast, the correlation between the '
+                 f'rainfall for each month of the {imn} issuance, averaged over a box on {A.ref} ({A.seas5_box[1]:.1f}–{A.seas5_box[3]:.1f}°N, {A.seas5_box[0]:.1f}–{A.seas5_box[2]:.1f}°E), against the mean of '
+                 f'the same month in the 1981–{sr["year"] - 1} {imn} hindcasts; labels give the forecast as a percentage above or below that mean and its '
+                 f'rank among all {sm[0]["n"]} {imn} issuances (1 = wettest). Bottom: the skill of that month\'s forecast, the correlation between the '
                  f'detrended hindcast ensemble mean and detrended ERA5 rainfall over {A.ref}, on the app\'s low / moderate / high bands. A single month '
-                 'is noisier than a three-month window, so monthly skill is lower than in the figure above. September gets about 3 mm in an '
-                 'average year, so its skill says little.</figcaption></figure>')
+                 f'is noisier than a three-month window, so monthly skill is lower than in the figure above.{dry0}</figcaption></figure>')
         B["forecast_area"].append('<table><thead><tr><th>Month</th><th class="num">Hindcast mean</th><th class="num">Forecast</th><th class="num">vs mean</th>'
                  f'<th class="num">Rank (1 = wettest)</th><th class="num">Skill r</th><th class="num">ERA5 mean, {A.name}</th></tr></thead><tbody>'
                  + "".join(f'<tr><td>{edd.MONTH_NAMES[r["month"] - 1]}</td><td class="num">{r["hind"]:.0f} mm</td><td class="num">{r["fc"]:.0f} mm</td>'
