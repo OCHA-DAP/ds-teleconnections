@@ -1435,9 +1435,9 @@ def winter_impacts(evp: pd.DataFrame, ev: pd.DataFrame, imerg: pd.Series, st: di
     dry_ev = U.im_max < SIZE_TIERS[0][0]                 # under 10 mm in IMERG: little rain only if ERA5 agrees
     low = {s_: counts(U[dry_ev & (U.era5_max < SIZE_TIERS[0][0]) & (U.since == s_)]) for s_ in (False, True)}
     per = pd.DataFrame({lo: st["ci"][lo] - (st["ci"][int(hi_)] if np.isfinite(hi_) else 0) for lo, hi_ in SIZE_TIERS})   # storms per winter, by size
-    en_w = per[pd.Series(phase_of(djf.reindex(per.index)), index=per.index) == "El Niño"]
+    en_w = per[S.phase.reindex(per.index) == "El Niño"]
     expect = {lo: dict(lo=int(en_w[lo].min()), hi=int(en_w[lo].max()), med=float(en_w[lo].median()), n=len(en_w),
-                       all_lo=int(per[lo].min()), all_hi=int(per[lo].max())) for lo, _ in SIZE_TIERS}
+                       all_lo=int(per[lo].min()), all_hi=int(per[lo].max()), n_all=len(per), first=int(per.index.min())) for lo, _ in SIZE_TIERS}
     missed = [dict(start=r.start, end=r.end, people=float(r.people), derived=bool(r.derived), im=float(r.im_max), era5=float(r.era5_max))
               for r in U[dry_ev & (U.era5_max >= SIZE_TIERS[0][0])].itertuples()]
 
@@ -1566,18 +1566,25 @@ def fig_event_hazards(wi: dict, out: Path) -> None:
     fig, axs = plt.subplots(1, len(EVENT_HAZARDS), figsize=(10.4, 5.3), dpi=150, sharey=True, gridspec_kw=dict(wspace=0.06))
     for ax, (k, title) in zip(np.atleast_1d(axs), EVENT_HAZARDS):
         v = U[k]; pad = 0.07 * (v.max() - v.min())
-        ax.set_xlim(v.min() - pad, v.max() + pad); ax.set_yscale("log"); ax.set_ylim(10, 6e6)                 # room above the dots for the storm counts
+        ax.set_xlim(v.min() - pad, v.max() + pad); ax.set_yscale("log"); ax.set_ylim(10, 3e7)                 # room above the dots for the storm counts
         if k == "im_max":
             x0, x1 = ax.get_xlim(); ex = wi["expect"]
             for t in TIERS:
                 ax.axvline(t, color="#b8bfbf", lw=0.8, ls=(0, (3, 3)), zorder=0)
-            ax.axhspan(7e5, 6e6, color="#BFD9EE", alpha=0.35, lw=0, zorder=0)
-            ax.text((x0 + TIERS[0]) / 2, 2.0e6, f"storms in an\nEl Niño winter", ha="center", va="center", fontsize=7, color=SRC_COL["GPCC"], linespacing=1.15)
+            ax.axhspan(6e5, 3e7, color="#BFD9EE", alpha=0.35, lw=0, zorder=0)
+            e0 = ex[SIZE_TIERS[0][0]]; xl = x0 + 0.012 * (x1 - x0); rg = lambda a_, b_: f"{a_}–{b_}" if a_ != b_ else f"{a_}"
+            ax.text(xl, 2.0e7, f"Storms per winter: fewest–most in the {e0['n']} El Niño winters since {_yr(e0['first'])}", ha="left", va="center",
+                    fontsize=7, color=SRC_COL["GPCC"])
+            ax.text(xl, 1.2e7, "every rain spell of that size, damaging or not; a past range, not a forecast", ha="left", va="center",
+                    fontsize=6.5, color=C_MUTED)
+            xm = (x0 + TIERS[0]) / 2
+            ax.text(xm, 6.0e6, "< 10 mm", ha="center", va="center", fontsize=7, color=C_MUTED)
+            ax.text(xm, 2.6e6, "not\ncounted", ha="center", va="center", fontsize=7, color=C_MUTED, linespacing=1.1)
             for (lo, hi_) in SIZE_TIERS:
                 xm = (lo + (hi_ if np.isfinite(hi_) else x1)) / 2
-                ax.text(xm, 3.3e6, f"{lo}–{hi_:.0f} mm" if np.isfinite(hi_) else f"{lo} mm or more", ha="center", va="center", fontsize=7, color=C_MUTED)
-                ax.text(xm, 1.35e6, f"{ex[lo]['lo']}–{ex[lo]['hi']}" if ex[lo]["lo"] != ex[lo]["hi"] else f"{ex[lo]['lo']}", ha="center", va="center",
-                        fontsize=10, fontweight="bold", color=SRC_COL["GPCC"])
+                ax.text(xm, 6.0e6, f"{lo}–{hi_:.0f} mm" if np.isfinite(hi_) else f"{lo} mm or more", ha="center", va="center", fontsize=7, color=C_MUTED)
+                ax.text(xm, 2.8e6, rg(ex[lo]["lo"], ex[lo]["hi"]), ha="center", va="center", fontsize=10, fontweight="bold", color=SRC_COL["GPCC"])
+                ax.text(xm, 1.05e6, f"all {ex[lo]['n_all']}: {rg(ex[lo]['all_lo'], ex[lo]['all_hi'])}", ha="center", va="center", fontsize=6.5, color=C_MUTED)
         dots = [ax.transData.transform((getattr(r, k), r.people)) for r in U.itertuples()]
         placed = []
         for r, (px, py) in zip(U.itertuples(), dots):
@@ -1597,7 +1604,7 @@ def fig_event_hazards(wi: dict, out: Path) -> None:
         ax.set_title(f"ρ {c[False][0]:+.2f} before · {c[True][0]:+.2f} since", fontsize=7.5, color=C_MUTED, loc="right")
         ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax); ax.tick_params(labelsize=8)
     ax0 = np.atleast_1d(axs)[0]
-    ax0.set_yticks([10, 100, 1000, 10000, 100000, 1000000], ["10", "100", "1,000", "10,000", "100,000", "1 million"])
+    ax0.set_yticks([10, 100, 1000, 10000, 100000], ["10", "100", "1,000", "10,000", "100,000"])
     ax0.set_ylabel("people counted in the event", fontsize=9, color=C_MUTED)
     n = {s_: int((U.since == s_).sum()) for s_ in (False, True)}
     weak = all(pv > 0.05 for c in wi["corr_ev"].values() for _, pv in c.values())
@@ -1975,7 +1982,8 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
              f'<figcaption>{html.escape(A.event_sources)} Each dot is one event with a dated count, against the rain over {A.ref} from the '
              f'day before the event to its last day. Numbers: rows of the table below, which links each count to its source. Top of the left panel: how '
              f'many storms of each size the {_nword(wi["expect"][SIZE_TIERS[0][0]]["n"])} El Niño winters since {_yr(int(S.index.min()))} brought, fewest to '
-             f'most; events under 10 mm (high tides, wind) are not storms in that count.</figcaption></figure>')
+             f'most. That is every rain spell of that size, whether or not anyone was counted: what past El Niño winters brought, not a forecast of this '
+             f'one, and close to the range of all {wi["n_all"]} winters. Events under 10 mm (high tides, wind) are not storms in that count.</figcaption></figure>')
     o.append('<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Dates</th><th>Hazard</th><th class="num">Wettest day</th>'
              '<th class="num">People counted</th><th>What the count is</th><th>Source</th></tr></thead><tbody>')
     for r in U.itertuples():
