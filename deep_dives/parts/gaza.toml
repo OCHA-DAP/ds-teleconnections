@@ -58,7 +58,7 @@ impacts_intro_html = '''
 <ul>
 <li><strong>The rain that floods tents is ordinary.</strong> In 2023/24, tent flooding was reported on days when neither product had more than about 16 mm over Gaza. On 31 December 2024, in an otherwise very dry winter, IMERG had 34 mm (ERA5 9 mm). In 2025/26 the rain-driven events ranged from about 13 to 66 mm on their wettest day in IMERG. For comparison, IMERG averages 9 days of 10 mm or more and 3.3 of 20 mm or more over Gaza every winter. Byron (rain from 8 December, the storm proper from 10 December; about 150 mm in IMERG) was large, but the benchmark from before October 2023, Storm Alexa in December 2013, was larger (about 185 mm over 11–14 December in IMERG).</li>
 <li><strong>Several damaging events came with little or no rain.</strong> These were the coastal flooding of 24–25 November 2024 (about 3 mm; high tides), the wind storms of 5–6 February 2025 and 14 March 2026, and the cold spells in which newborns died of hypothermia (ERA5 minimum 9 °C on 24–29 December 2024, 4 °C on 24–25 February 2025). A seasonal rainfall forecast says nothing about these.</li>
-<li><strong>Reporting changed between winters</strong>, from descriptive in 2023/24 to authority counts in 2024/25 and daily cluster alerts in 2025/26. So impact counts cannot be compared across winters; the dates can.</li>
+<li><strong>Reporting changed between winters</strong>, from descriptive in 2023/24 to authority counts in 2024/25 and daily cluster alerts in 2025/26. So impact counts cannot be compared across winters like for like; the dates can. Section 5 sets the counts side by side for scale only, and says what is mixed into that comparison.</li>
 </ul>
 '''
 
@@ -69,7 +69,7 @@ prewar_html = '''
 strong_notes = { "1982" = "El Chichón erupted in April 1982; 1982/83 is in Dogar et al.'s (2017) composite of volcanically cooled Middle East winters.", "1991" = "Pinatubo erupted in June 1991; snow in Jerusalem and the Negev; about twice the average rainfall in Israel (IMS).", "2009" = "IMS: southern coastal plain 50–75% of normal.", "2015" = "IMS: Be'eri, next to Gaza, 153% of normal; nationally a dry year.", "2023" = "IMS: 70–90% of normal in the areas of Israel next to Gaza while northern Israel had 130–165%; about 2 °C warmer than average." }
 
 range_intro_html = '''
-<p>The question for planners is what this winter could do. The record cannot answer that with a forecast: there is one well-documented winter, reporting that changed every year, and a population whose exposure keeps changing. What it can do is bound the answer. This section separates the weather (how many storms, how big, how early, and what El Niño does or does not change) from what each kind of storm did last winter, and then uses last winter as two reference points.</p>
+<p>The question for planners is what this winter could do. The record cannot answer that with a forecast: there is one well-documented winter, reporting that changed every year, and a population whose exposure keeps changing. What it can do is bound the answer. This section separates the weather (how many storms, how big, how early, and what El Niño does or does not change) from what each kind of storm did last winter, and then uses last winter as two reference points. It ends with the longer record: every winter since 2008/09 on one row, the same sizes of storm before and since October 2023, and three scenarios for this winter scaled from last winter's counts.</p>
 '''
 
 week_html = "IMERG and the Beer Sheva gauge differ in their totals but agree closely on the share; Beer Sheva is 46 km inland and drier than Gaza, so compare its shares, not its millimetres. Byron's week came close to half an average year."
@@ -335,3 +335,50 @@ html = 'NOAA CPC ENSO diagnostic discussion, 10 September 2026 <a href="https://
 html = 'IOM, Site Management Cluster &amp; Shelter Cluster (2026). Sites exposed to flood risk: Phase one outlook for rainy season 2026–27 <a href="https://www.sheltercluster.org/palestine/documents/sites-exposed-flood-risk">link</a>; Shelter Cluster (2026). Exposed on all sides: shelter severity and household needs across accessible areas in Gaza <a href="https://www.sheltercluster.org/palestine/documents/shelter-severity-and-household-needs-across-accessible-areas-gaza">link</a>; OCHA Humanitarian Situation Report, 25 September 2026 <a href="https://www.ochaopt.org/content/humanitarian-situation-report-25-september-2026">link</a>.'
 [[references]]
 html = 'Rainfall: GPCC Full Data v2020 to 2019 + Monitoring v2020 after (DWD), combined 1° product via <a href="https://psl.noaa.gov/data/gridded/data.gpcc.html">NOAA PSL</a>; ERA5 hourly time series (Copernicus Climate Change Service); IMERG late run v7 (NASA), from the team blob; GHCN-Daily Beer Sheva IS000051690 (NOAA NCEI). Niño3.4: NOAA PSL (ERSST v5 pinned; HadISST before 1950). SEAS5 skill from the seas5-skill app&#39;s detrended skill cube; the October 2026 return periods from the team&#39;s admin-1 raster statistics with the same method. Boundaries: COD-AB (OCHA) via FieldMaps.'
+
+# Winter-by-winter record, the before/since comparison and the scenarios (section 5, last three subsections)
+[winter_impacts]
+hh_size_before = 5.6           # people per household, Gaza Strip, PCBS census 2017
+hh_size_since = 4.8            # Site Management Cluster counts 2025/26; 1.7 million people in about 355,000 households
+people_in_sites_then = 1.5e6   # early December 2025 (942 sites)
+people_in_sites_now = 1.7e6    # September 2026 (1,591 verified sites)
+survey_flooded_share = 0.71    # Shelter Cluster household survey, June 2026
+before_label = "Before October 2023: people in houses; counts of people evacuated or displaced"
+since_label = "Since October 2023: most people in tents and makeshift shelters; counts from partner assessments and site alerts"
+table_intro_html = '''
+<p>The table puts every winter since 2008/09 on one row: how much it rained over Gaza, and what UN reporting counted as affected by winter weather. The impact columns are not one consistent series. Before October 2023 the counts are of people evacuated or displaced from flooded houses, in the few storms that OCHA, UNRWA or UNICEF quantified. Since October 2023 they are counts of people in tents and makeshift shelters that flooded or were damaged, raised by partner assessments and site alerts. They are set side by side here for scale only; what is mixed into the comparison is spelled out under the next table.</p>
+'''
+storm_for_storm_html = '''
+<p>How much more does the same weather do now? The record supports an answer by size of storm, not a rate per millimetre. Since October 2023 the counts do not rise steadily with rain, so a per-millimetre figure would be invented. What changed is the level.</p>
+'''
+multiplier_caveat_html = '''
+<p><strong>What the multiplier mixes.</strong> It is a ratio of reported counts, and three changes are folded into it. Most people now live in tents and damaged buildings, many on flood-prone ground, where before they lived in houses: that is the change in vulnerability, and it is real. What is counted changed, from people evacuated or displaced from houses to people whose tents flooded or were damaged. And how closely it is counted changed, from occasional situation reports to daily site alerts last winter. Before October 2023 only the largest impacts were counted at all (seven counts in 15 winters), which pulls the ratio down; closer counting since pulls it up. The record cannot separate these, which is why section 4 warns that counts cannot be compared across winters like for like. Read “tens to hundreds of times” as the scale of the change, not a measurement of it.</p>
+'''
+scenario_intro_html = '''
+<p><strong>These are planning scenarios, not a forecast.</strong> A model fitted to past winters is not possible: only two winters since October 2023 have counts, and they were counted differently. What the record supports is simpler. Take what last winter's weather did, as it was counted, and ask what the same weather would do with this September's number of people in displacement sites: the hazard (the weather), times vulnerability (what that weather did last winter), times exposure (people in sites now against then). The three cases are set by what dominated last winter's counts: whether the winter brings a storm with a day of 50 mm or more. El Niño has not changed those odds, and no forecast sees such a storm more than days ahead.</p>
+'''
+scenario_limits_html = '''
+<li><strong>The scaling is crude.</strong> It assumes impact rises in step with the number of people in sites. Tents are a year older (54% in poor or very poor condition), which would raise it. Site preparation, drainage works and relocation from flood-prone ground would lower it. Neither is in the figures.</li>
+'''
+
+[winter_impacts.deaths]
+"2023" = '<span class="small">not reported</span>'
+"2024" = "<em>at least 14</em>"
+
+[winter_impacts.notes]
+"2008" = "Houses flooded in Beach and Jabalia camps in October; no count."
+"2009" = "Wadi Gaza flood, 18–19 January 2010: about 800 residents evacuated."
+"2010" = "Windstorm in December: farm and fishing losses; no count of people."
+"2011" = "Floods and a cold wave from late February; no count."
+"2012" = "January storm: 20 families displaced (OCHA preliminary reports); 530 homes damaged."
+"2013" = "Storm Alexa: homes of about 21,000 people damaged; about 10,000 evacuated at the peak."
+"2014" = "About 350 people moved to UNRWA shelters in November; 151 sheltered in January (Storm Huda), when four children died of cold."
+"2015" = "January rain: 20 people evacuated (UNRWA)."
+"2017" = "“Mild rainfall” flooded houses and a sewage pump station in Gaza city in November; no count."
+"2019" = "About 2,000 homes flooded in December (initial reports, not counted as people); about 100 families displaced in January."
+"2020" = "Crop damage in northern Gaza in December; no count of people."
+"2021" = "Storm and cold wave in January 2022; no count."
+"2022" = "Homes and farmland flooded in Deir al Balah governorate in December; no count."
+"2023" = "Tent flooding reported in nine events from 13 November; no counts were published."
+"2024" = "Two partial counts: about 7,000 families on the south-west shoreline (high tides, November) and at least 800 at 23 of 1,328 sites (wind and rain, February)."
+"2025" = "Partner assessments and site alerts for 16 events, Gaza-wide for the two largest. A household survey later found 71% of households flooded at least once."
