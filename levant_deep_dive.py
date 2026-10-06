@@ -1569,20 +1569,24 @@ def fig_event_hazards(wi: dict, out: Path) -> None:
         ax.set_xlim(v.min() - pad, v.max() + pad); ax.set_yscale("log"); ax.set_ylim(10, 3e7)                 # room above the dots for the storm counts
         if k == "im_max":
             x0, x1 = ax.get_xlim(); ex = wi["expect"]
-            for t in TIERS:
-                ax.axvline(t, color="#b8bfbf", lw=0.8, ls=(0, (3, 3)), zorder=0)
-            ax.axhspan(6e5, 3e7, color="#BFD9EE", alpha=0.35, lw=0, zorder=0)
+            edges = [x0] + [float(t) for t in TIERS] + [x1]          # the size bands: alternate shading and a firm line between them
+            for i, (a_, b_) in enumerate(zip(edges, edges[1:])):
+                if i % 2:
+                    ax.fill_between([a_, b_], 10, 9e6, color="#e3e8ea", alpha=0.75, lw=0, zorder=0)
+            ax.vlines(TIERS, 10, 9e6, color="#6f7b7c", lw=1.3, zorder=1)       # stop below the strip's two header lines
+            ax.axhspan(6e5, 3e7, color="#BFD9EE", alpha=0.45, lw=0, zorder=0)
+            ax.axhline(6e5, color="#6f7b7c", lw=0.8, zorder=1)
             e0 = ex[SIZE_TIERS[0][0]]; xl = x0 + 0.012 * (x1 - x0); rg = lambda a_, b_: f"{a_}–{b_}" if a_ != b_ else f"{a_}"
-            ax.text(xl, 2.0e7, f"Storms per winter: fewest–most in the {e0['n']} El Niño winters since {_yr(e0['first'])}", ha="left", va="center",
+            ax.text(xl, 2.0e7, f"Storms per winter (fewest–most, {e0['n']} El Niño winters since {_yr(e0['first'])})", ha="left", va="center",
                     fontsize=7, color=SRC_COL["GPCC"])
             ax.text(xl, 1.2e7, "every rain spell of that size, damaging or not; a past range, not a forecast", ha="left", va="center",
                     fontsize=6.5, color=C_MUTED)
             xm = (x0 + TIERS[0]) / 2
-            ax.text(xm, 6.0e6, "< 10 mm", ha="center", va="center", fontsize=7, color=C_MUTED)
+            ax.text(xm, 6.0e6, "under 10", ha="center", va="center", fontsize=7, color=C_MUTED)
             ax.text(xm, 2.6e6, "not\ncounted", ha="center", va="center", fontsize=7, color=C_MUTED, linespacing=1.1)
             for (lo, hi_) in SIZE_TIERS:
                 xm = (lo + (hi_ if np.isfinite(hi_) else x1)) / 2
-                ax.text(xm, 6.0e6, f"{lo}–{hi_:.0f} mm" if np.isfinite(hi_) else f"{lo} mm or more", ha="center", va="center", fontsize=7, color=C_MUTED)
+                ax.text(xm, 6.0e6, f"{lo}–{hi_:.0f}" if np.isfinite(hi_) else f"{lo} or more", ha="center", va="center", fontsize=7, color=C_MUTED)
                 ax.text(xm, 2.8e6, rg(ex[lo]["lo"], ex[lo]["hi"]), ha="center", va="center", fontsize=10, fontweight="bold", color=SRC_COL["GPCC"])
                 ax.text(xm, 1.05e6, f"all {ex[lo]['n_all']}: {rg(ex[lo]['all_lo'], ex[lo]['all_hi'])}", ha="center", va="center", fontsize=6.5, color=C_MUTED)
         dots = [ax.transData.transform((getattr(r, k), r.people)) for r in U.itertuples()]
