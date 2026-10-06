@@ -19,6 +19,8 @@ summary_html = '''
 <p><strong>6. Farming in the West Bank.</strong> The three farming zones cannot be told apart in their El Niño rain signal; they differ in what they grow. Rainfed wheat and barley were above trend in 7 of 9 crop years after El Niño winters and 3 of 11 after La Niña winters, and the four worst harvests since 1994 all followed La Niña winters: El Niño has made a bad cereal year less likely rather than a bumper one more likely. Spring greenness after El Niño winters was above normal in 8 of 8 years in the Central Highlands (several only slightly) and 6 of 8 in the other zones. Olives follow their own two-year bearing cycle and, since 2023, access, and show no clear El Niño signal. This winter feeds the 2027 cereal harvest, spring grazing and the autumn 2027 olive harvest.</p>
 '''
 
+cold_html = "A warm-winter forecast therefore says nothing about whether cold snaps will come."
+
 before_html = '''
 <p class="small"><strong>About the catalogue row.</strong> The survey's “Palestine” row was computed on the Natural Earth polygon for the West Bank only, so it describes the West Bank (its ERA5 value was OND +0.56) and has never described Gaza. Its second citation is garbled: the paper is Price, Stone, Huppert, Rajagopalan &amp; Alpert (1998) in <em>Geophysical Research Letters</em>, not a <em>Journal of Climate</em> paper. And Mariotti et al. (2002) found the El Niño autumn wet signal in the <em>western</em> Mediterranean, with negative anomalies in the east in their reanalysis. The grades here rest on this page's records and on the Israel-specific literature.</p>
 '''

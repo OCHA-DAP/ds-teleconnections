@@ -73,6 +73,8 @@ range_intro_html = '''
 <p>There is not enough counted impact data for the West Bank to say how many households a winter will affect. What the record can show is how often the weather that has caused harm comes, whether El Niño changes that, how big a week of rain is against the year, and who is exposed now.</p>
 '''
 
+winter_counts_caption = "Every count in the tables above, one bar per winter, coloured by the winter's ENSO phase. The counts are of different kinds, named on each bar: people displaced (OCHA), families assisted by the Palestine Red Crescent Society (IFRC), tents and shelters damaged (OCHA; the line reaches the Shelter Cluster's count), and one media count. Households at 4.8 people (PCBS census 2017)."
+winter_counts_html = "Six winters have any count, of different kinds and spread over all three phases: too few and too mixed to test. No average per phase is given."
 week_html = "The Jerusalem gauge, a single hill-top point whose last complete season is 2013/14, runs a few points higher on every rung than the IMERG area average: compare the IMERG column with an area forecast and the gauge column with a point. Byron's week, half an average year and the wettest week in IMERG's record, had no impact attributed to it in public reporting; the second-wettest, 7–13 January 2013 (166 mm, about 40% of a year), brought the largest flood event in this page's record, with more than 260 mm in 48 hours locally in the north."
 first_storm_html = '''
 <p>In 7 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more over the West Bank came before 1 December, against 14 of 28 winters overall. Against the other winters that is unlikely to be chance alone (p ≈ 0.03), though eight winters is a small sample. Last winter's most damaging West Bank event, on 28–30 December 2025, came in a December that gave Jerusalem more than 237 mm, its wettest December since 2013 according to the Palestinian Meteorological Department (via Al Jazeera).</p>
@@ -176,6 +178,7 @@ seas5_box = [34.8, 31.2, 35.6, 32.6]
 seas5_pcode = "PS01"
 era5_cold = true
 cold_thresh = 3.0
+cold_snap_thresh = 3.0
 byron = false
 stationarity_records = "Two gauge-based records (the GPCC analysis and the long Jerusalem gauge, which is one of GPCC's inputs) and a reanalysis that assimilates no rain gauges (ERA5)."
 daily_cold_note = "the Jerusalem gauge (to 1999, when its temperature record ends) and ERA5 (whose cells sit lower than the hill towns, so they run warmer)."
@@ -401,3 +404,31 @@ governorates = ["Jericho", "Tubas"]
 pcbs_area = ["Jericho and Al-Aghwar", "Tubas and Northern Valleys"]
 governorates_label = ["Jericho & Al Aghwar", "Tubas"]
 grows_html = "100–200 mm a year. The main irrigated area: off-season vegetables, dates, bananas and citrus, on springs and groundwater. Herding on the margins."
+
+# Counts by winter for the bar chart in section 4: every entry of the tables above that carries a number of people or
+# households (households at 4.8 people, the West Bank average household, PCBS census 2017)
+[[winter_counts]]
+winter = 2012
+people = 640          # 410 people, 26 families (x 4.8) and 104 more displaced, January 2013 floods (OCHA): 639, rounded
+kind = "displaced"
+[[winter_counts]]
+winter = 2013
+people = 300          # more than 300 herders displaced near Hebron, Storm Alexa (OCHA)
+kind = "herders displaced"
+[[winter_counts]]
+winter = 2014
+people = 2839         # 505 families assisted, Storm Huda (IFRC DREF MDRPS010)
+kind = "assisted (Red Crescent)"
+[[winter_counts]]
+winter = 2019
+households = 1076     # families reached, January 2020 (IFRC DREF MDRPS011)
+kind = "assisted (Red Crescent)"
+[[winter_counts]]
+winter = 2023
+households = 10       # families flooded in Jenin camp, November 2023 (WAFA)
+kind = "flooded (one camp, media)"
+[[winter_counts]]
+winter = 2025
+people = 300          # at least 66 households, about 300 people, 28-30 December 2025 (OCHA)
+households_hi = 120   # more than 120 households over December-January (Shelter Cluster)
+kind = "tents and shelters damaged"

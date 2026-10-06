@@ -28,6 +28,7 @@ from __future__ import annotations
 import html
 import io
 import re
+import textwrap
 import tomllib
 import unicodedata
 import zipfile
@@ -86,6 +87,7 @@ class Area:
     seas5_pcode: str = "PS02"                                  # this area in the team's raster stats (public.seas5, admin 1)
     era5_cold: bool = False                                    # ERA5 cells partly sea: no cold-night metric
     cold_thresh: float = 5.0
+    cold_snap_thresh: float = 8.0                              # ERA5 night minimum counted as a cold night in the ENSO comparison
     stationarity_records: str = ("Two gauge-based records (the GPCC analysis, and the Beer Sheva gauge 46 km inland, which is one of GPCC\'s "
                                  "inputs) and a reanalysis that assimilates no rain gauges (ERA5).")
     daily_cold_note: str = "the Beer Sheva gauge only, because the ERA5 cells are partly sea and rarely get that cold."
@@ -640,6 +642,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     st = storm_stats(imerg.pr, era5.pr, djf_pin)
     week = week_ladder(imerg.pr, bs.pr)
     cold = cold_stats(era5.tmin, djf_pin)
+    cold_enso = cold_by_enso(era5.tmin, djf_pin, A.cold_snap_thresh)
     data_dir = edd.DEEP_DIR / "data"
     ev = load_events(data_dir / f"{A.slug}_events.csv", imerg, era5) if (data_dir / f"{A.slug}_events.csv").exists() else None
     totals = pd.read_csv(data_dir / f"{A.slug}_season_totals.csv") if (data_dir / f"{A.slug}_season_totals.csv").exists() else None
@@ -655,9 +658,12 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
         fig_winter_impacts(wi, OUT / "winter_impacts.png")
         if "rx1" in wi["S"]:
             fig_winter_hazards(wi, OUT / "winter_hazards.png")
-        fig_event_hazards(wi, OUT / "event_hazards.png")
+        fig_event_hazards(wi, st, OUT / "event_hazards.png")
         if wi["ond"] and wi["ond"]["top"]:
             fig_forecast_quarter(wi, OUT / "forecast_quarter.png")
+    bars = winter_counts(spec, wi, djf_pin)
+    if bars is not None:
+        fig_winter_counts(bars, OUT / "winter_counts.png")
 
     # Rainfall on the dates of reported impacts, and how often such days occur
     ev_rows = impact_rain(events, imerg, era5)
@@ -668,7 +674,7 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     nn = edd.NINO_LATEST.dropna() if edd.NINO_LATEST is not None else n_pin
     nn = nn[nn > -90]
     out = dict(week=week, wts=wts, per=per, run=run, tri_rows=tri_rows, ptab=ptab, strong=strong, daily_rows=daily_rows,
-                wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, st=st, cold=cold, ev=ev, ref=ref, wi=wi, gauge_last=int(dm["gauge"].index.max()), seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
+                wind95=wind95, map_rows=map_rows, diff=diff, en_had=en_had, st=st, cold=cold, cold_enso=cold_enso, bars=bars, ev=ev, ref=ref, wi=wi, gauge_last=int(dm["gauge"].index.max()), seas5_raw=seas5_raw, seas5_mon=seas5_mon, skill=skill, tot=tot, djf=djf_pin, ev_rows=ev_rows, pre_rows=pre_rows, freq=freq,
                 end_era5=end_era5, end_imerg=imerg.index[-1], n_grid=(int(sy.min()), int(sy.max())), n_en_grid=int(en.sum()),
                 comp_gaza=float(np.nanmean(comp[gz_cells])), hit_gaza=float(np.nanmean(hit[gz_cells])),
                 hit_region=float(np.nanmedian(hit[ok_wet])), comp_region_pos=float((comp[ok_wet] > 0).mean()),
@@ -924,17 +930,21 @@ def storms(d: pd.Series, wet: float = 1.0, gap: int = 2) -> pd.DataFrame:
     return e
 
 
-def storm_counts(e: pd.DataFrame, years, thresholds: dict[int, float]) -> pd.DataFrame:
-    """Storms per winter at or above each tier's threshold (tier key → threshold in this record's mm)."""
-    return pd.DataFrame({t: e[e["max"] >= thr].groupby("sy").size().reindex(years, fill_value=0)
+TOTAL_TIERS = [25, 50, 100]                   # a storm's total rain over the area (IMERG mm)
+
+
+def storm_counts(e: pd.DataFrame, years, thresholds: dict[int, float], col: str = "max") -> pd.DataFrame:
+    """Storms per winter at or above each tier's threshold (tier key → threshold in this record's mm), sized by
+    the storm's wettest day (`max`) or its total rain (`total`)."""
+    return pd.DataFrame({t: e[e[col] >= thr].groupby("sy").size().reindex(years, fill_value=0)
                          for t, thr in thresholds.items()})
 
 
-def matched_thresholds(e_ref: pd.DataFrame, e_other: pd.DataFrame, lo: int, hi: int) -> dict[int, float]:
+def matched_thresholds(e_ref: pd.DataFrame, e_other: pd.DataFrame, lo: int, hi: int, tiers=None, col: str = "max") -> dict[int, float]:
     """Thresholds in `e_other` (ERA5) that give the same number of storms over [lo, hi] as each IMERG
     tier does in `e_ref` (frequency matching: ERA5 spreads rain over 25 km cells and runs lower)."""
-    r = e_ref[(e_ref.sy >= lo) & (e_ref.sy <= hi)]; o = np.sort(e_other[(e_other.sy >= lo) & (e_other.sy <= hi)]["max"].values)[::-1]
-    return {t: float(o[int((r["max"] >= t).sum()) - 1]) for t in TIERS}
+    r = e_ref[(e_ref.sy >= lo) & (e_ref.sy <= hi)]; o = np.sort(e_other[(e_other.sy >= lo) & (e_other.sy <= hi)][col].values)[::-1]
+    return {t: float(o[int((r[col] >= t).sum()) - 1]) for t in (TIERS if tiers is None else tiers)}
 
 
 def storm_stats(imerg: pd.Series, era5: pd.Series, djf: pd.Series) -> dict:
@@ -961,7 +971,67 @@ def storm_stats(imerg: pd.Series, era5: pd.Series, djf: pd.Series) -> dict:
             dd = days[m]
             first.append(dict(src=name, group=label, n=int(m.sum()), median_day=float(dd.median()),
                               p_before_dec=float((dd < 61).mean()), p_octnov=float((on[m] >= 1).mean())))
-    return dict(ei=ei, ee=ee, thr_e=thr_e, ci=ci, ce=ce, rows=rows, first=first)
+    # the same count by a storm's total rain, by phase: what an El Niño winter has brought against the others
+    thr_t = matched_thresholds(ei, ee, 1998, 2025, TOTAL_TIERS, "total")
+    cti = storm_counts(ei, range(1998, 2026), {t: float(t) for t in TOTAL_TIERS}, "total")
+    cte = storm_counts(ee, range(1950, 2026), thr_t, "total")
+    by_total = []
+    for name, c, lo in [("IMERG", cti, 1998), ("ERA5", cte, SPLIT)]:
+        c = c.loc[lo:2025]; ph = pd.Series(phase_of(djf.reindex(c.index)), index=c.index)
+        for t in TOTAL_TIERS:
+            p_ = float(stats.mannwhitneyu(c.loc[ph == "El Niño", t], c.loc[ph != "El Niño", t], alternative="two-sided").pvalue)
+            for label, m in [("El Niño", ph == "El Niño"), ("Neutral", ph == "Neutral"), ("La Niña", ph == "La Niña"), ("other", ph != "El Niño")]:
+                v = c.loc[m, t]
+                by_total.append(dict(src=name, tier=t, group=label, n=int(m.sum()), lo=int(v.min()), hi=int(v.max()), mean=float(v.mean()),
+                                     med=float(v.median()), any=int((v >= 1).sum()), p=p_, first=int(c.index.min())))
+    return dict(ei=ei, ee=ee, thr_e=thr_e, ci=ci, ce=ce, rows=rows, first=first, by_total=by_total, thr_t=thr_t, cti=cti)
+
+
+def cold_by_enso(tmin: pd.Series, djf: pd.Series, thr: float, lo: int = SPLIT, hi: int = 2025) -> dict:
+    """Cold nights per winter (ERA5 minimum at or below `thr`), the winter's coldest night and its cold snaps (runs of
+    two or more cold nights) against winter Niño3.4: the correlation of each, and of the night count two degrees either
+    side of the threshold, so that the answer does not hang on the threshold chosen."""
+    t = tmin[tmin.index.month.isin(WET)].dropna(); sy = season_year(t.index); yrs = range(lo, hi + 1)
+    count = lambda th: (t <= th).groupby(sy).sum().reindex(yrs)
+    b = (t <= thr).astype(int); run = b.groupby((b != b.shift()).cumsum()).transform("size") * b
+    m = dict(nights=count(thr), coldest=t.groupby(sy).min().reindex(yrs),
+             snaps=((b == 1) & (b.shift(fill_value=0) == 0) & (run >= 2)).groupby(sy).sum().reindex(yrs))
+    n = djf.reindex(m["nights"].index); ph = pd.Series(phase_of(n), index=n.index)
+    out = dict(thr=thr, lo=lo, hi=hi, nights=m["nights"], nino=n, phase=ph,
+               mean={g: float(m["nights"][ph == g].mean()) for g in ("El Niño", "Neutral", "La Niña")},
+               n={g: int((ph == g).sum()) for g in ("El Niño", "Neutral", "La Niña")})
+    for k, v in m.items():
+        out[f"r_{k}"], out[f"p_{k}"] = (float(x) for x in stats.pearsonr(n, v))
+    out["r_other"] = {thr + d: float(stats.pearsonr(n, count(thr + d))[0]) for d in (-2, 2)}
+    return out
+
+
+def winter_counts(spec: dict, wi: dict | None, djf: pd.Series) -> dict | None:
+    """People reported affected by winter weather, one figure per winter with its ENSO phase: from the event catalogues
+    where the area has them (wi), otherwise from the counts listed in the area's TOML. Winters with a report but no
+    number are kept as such. The phase test is El Niño winters against the others, on the winters of one period."""
+    if wi is not None:
+        S = wi["S"].loc[wi["first"]:]
+        rows = pd.DataFrame(dict(people=S.people, people_hi=S.people_hi, n_ev=S.n_ev, kind=""))
+        test = rows.loc[:SINCE - 1]; split = SINCE
+    elif spec.get("winter_counts"):
+        hh = float(spec.get("hh_size", 4.8)); ev = spec.get("prewar", []) + spec.get("impacts", [])
+        sy = pd.Series(season_year(pd.DatetimeIndex([e["start"] for e in ev])))
+        yrs = range(int(sy.min()), 2026)
+        rows = pd.DataFrame(dict(people=np.nan, people_hi=np.nan, n_ev=sy.value_counts().reindex(yrs, fill_value=0).values, kind=""), index=yrs)
+        for c in spec["winter_counts"]:
+            y = int(c["winter"])
+            rows.loc[y, "people"] = c.get("people", c.get("households", np.nan) * hh if "households" in c else np.nan)
+            rows.loc[y, "people_hi"] = c.get("people_hi", c.get("households_hi", np.nan) * hh if "households_hi" in c else np.nan)
+            rows.loc[y, "kind"] = c.get("kind", "")
+        test = rows; split = None
+    else:
+        return None
+    rows["phase"] = phase_of(djf.reindex(rows.index))
+    c = test.dropna(subset=["people"]); c = c.assign(phase=rows.phase.reindex(c.index))
+    en, rest = c[c.phase == "El Niño"].people, c[c.phase != "El Niño"].people
+    p = float(stats.mannwhitneyu(en, rest, alternative="two-sided").pvalue) if len(en) >= 2 and len(rest) >= 2 else np.nan
+    return dict(rows=rows, split=split, p=p, n_test=len(c), by_phase={g: sorted(c[c.phase == g].people) for g in ("El Niño", "Neutral", "La Niña")})
 
 
 def cold_stats(tmin: pd.Series, djf: pd.Series, lo: int = SPLIT, hi: int = 2025) -> dict:
@@ -1559,68 +1629,110 @@ def fig_winter_hazards(wi: dict, out: Path) -> None:
     _save(fig, out)
 
 
-def fig_event_hazards(wi: dict, out: Path) -> None:
+def fig_event_hazards(wi: dict, st: dict, out: Path) -> None:
     """People counted per event (log scale) against the rain over the event's own dates, before and since October 2023.
-    Each dot carries the number of its row in the table of events and sources."""
-    U = wi["U"]
-    fig, axs = plt.subplots(1, len(EVENT_HAZARDS), figsize=(10.4, 5.3), dpi=150, sharey=True, gridspec_kw=dict(wspace=0.06))
-    for ax, (k, title) in zip(np.atleast_1d(axs), EVENT_HAZARDS):
-        v = U[k]; pad = 0.07 * (v.max() - v.min())
-        ax.set_xlim(v.min() - pad, v.max() + pad); ax.set_yscale("log"); ax.set_ylim(10, 3e7)                 # room above the dots for the storm counts
-        if k == "im_max":
-            x0, x1 = ax.get_xlim(); ex = wi["expect"]
-            edges = [x0] + [float(t) for t in TIERS] + [x1]          # the size bands: alternate shading and a firm line between them
-            for i, (a_, b_) in enumerate(zip(edges, edges[1:])):
-                if i % 2:
-                    ax.fill_between([a_, b_], 10, 9e6, color="#e3e8ea", alpha=0.75, lw=0, zorder=0)
-            ax.vlines(TIERS, 10, 9e6, color="#6f7b7c", lw=1.3, zorder=1)       # stop below the strip's two header lines
-            ax.axhspan(6e5, 3e7, color="#BFD9EE", alpha=0.45, lw=0, zorder=0)
-            ax.axhline(6e5, color="#6f7b7c", lw=0.8, zorder=1)
-            e0 = ex[SIZE_TIERS[0][0]]; xl = x0 + 0.012 * (x1 - x0); rg = lambda a_, b_: f"{a_}–{b_}" if a_ != b_ else f"{a_}"
-            ax.text(xl, 2.0e7, f"Storms per winter (fewest–most, {e0['n']} El Niño winters since {_yr(e0['first'])})", ha="left", va="center",
-                    fontsize=7, color=SRC_COL["GPCC"])
-            ax.text(xl, 1.2e7, "every rain spell of that size, damaging or not; a past range, not a forecast", ha="left", va="center",
-                    fontsize=6.5, color=C_MUTED)
-            xm = (x0 + TIERS[0]) / 2
-            ax.text(xm, 6.0e6, "under 10", ha="center", va="center", fontsize=7, color=C_MUTED)
-            ax.text(xm, 2.6e6, "not\ncounted", ha="center", va="center", fontsize=7, color=C_MUTED, linespacing=1.1)
-            for (lo, hi_) in SIZE_TIERS:
-                xm = (lo + (hi_ if np.isfinite(hi_) else x1)) / 2
-                ax.text(xm, 6.0e6, f"{lo}–{hi_:.0f}" if np.isfinite(hi_) else f"{lo} or more", ha="center", va="center", fontsize=7, color=C_MUTED)
-                ax.text(xm, 2.8e6, rg(ex[lo]["lo"], ex[lo]["hi"]), ha="center", va="center", fontsize=10, fontweight="bold", color=SRC_COL["GPCC"])
-                ax.text(xm, 1.05e6, f"all {ex[lo]['n_all']}: {rg(ex[lo]['all_lo'], ex[lo]['all_hi'])}", ha="center", va="center", fontsize=6.5, color=C_MUTED)
-        dots = [ax.transData.transform((getattr(r, k), r.people)) for r in U.itertuples()]
-        placed = []
-        for r, (px, py) in zip(U.itertuples(), dots):
-            x, y = getattr(r, k), r.people
-            ax.plot(x, y, "o", ms=7, color=C_REGIME[r.since], mfc="white" if r.missed else C_REGIME[r.since], mew=1.5, zorder=3)
-            clear = lambda dx, dy: (all(abs(px + dx * 2.2 - qx) > 22 or abs(py + dy * 2.2 - qy) > 16 for qx, qy in placed)
-                                    and all(abs(px + dx * 2.2 - qx) > 13 or abs(py + dy * 2.2 - qy) > 11 for qx, qy in dots if (qx, qy) != (px, py)))
-            near = [(7, 2, "left"), (-7, 2, "right"), (7, -9, "left"), (-7, -9, "right"), (0, 9, "center"), (0, -15, "center")]
-            far = [(16, 14, "left"), (-16, 14, "right"), (16, -18, "left"), (-16, -18, "right"), (0, 22, "center"), (0, -26, "center")]
-            dx, dy, ha = next((c for c in near if clear(c[0], c[1])), None) or next((c for c in far if clear(c[0], c[1])), far[0])
-            lead = (dx, dy, ha) in far                                  # a label that had to move away is tied to its dot by a line
-            placed.append((px + dx * 2.2, py + dy * 2.2))
-            ax.annotate(str(r.no), (x, y), xytext=(dx, dy), textcoords="offset points", fontsize=7.5, color=C_TEXT, ha=ha, zorder=4,
-                        arrowprops=dict(arrowstyle="-", lw=0.5, color=C_MUTED, shrinkA=1, shrinkB=4) if lead else None)
-        c = wi["corr_ev"][k]
-        ax.set_title(title, fontsize=9, color=C_TEXT, loc="left")
-        ax.set_title(f"ρ {c[False][0]:+.2f} before · {c[True][0]:+.2f} since", fontsize=7.5, color=C_MUTED, loc="right")
-        ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax); ax.tick_params(labelsize=8)
-    ax0 = np.atleast_1d(axs)[0]
-    ax0.set_yticks([10, 100, 1000, 10000, 100000], ["10", "100", "1,000", "10,000", "100,000"])
-    ax0.set_ylabel("people counted in the event", fontsize=9, color=C_MUTED)
+    Above the dots: how many storms with at least that much rain a winter has brought, El Niño winters against the others."""
+    U = wi["U"]; k = "im_sum"
+    bt = {(r["tier"], r["group"]): r for r in st["by_total"] if r["src"] == "IMERG"}
+    rg = lambda r: f"{r['lo']}–{r['hi']}" if r["lo"] != r["hi"] else f"{r['lo']}"
+    fig, ax = plt.subplots(figsize=(9.2, 5.6), dpi=150)
+    v = U[k]; pad = 0.05 * (v.max() - v.min())
+    x0, x1 = v.min() - pad, v.max() + pad
+    ax.set_xlim(x0, x1); ax.set_yscale("log"); ax.set_ylim(10, 6e7)
+    edges = [x0] + [float(t) for t in TOTAL_TIERS] + [x1]            # bands of total rain: alternate shading, a firm line between them
+    for n_, (a_, b_) in enumerate(zip(edges, edges[1:])):
+        if n_ % 2:
+            ax.fill_between([a_, b_], 10, 6e5, color="#e3e8ea", alpha=0.75, lw=0, zorder=0)
+    ax.axhspan(6e5, 6e7, color="#BFD9EE", alpha=0.45, lw=0, zorder=0); ax.axhline(6e5, color="#6f7b7c", lw=0.8, zorder=1)
+    en0 = bt[(TOTAL_TIERS[0], "El Niño")]; ot0 = bt[(TOTAL_TIERS[0], "other")]
+    ax.text(x0 + 0.012 * (x1 - x0), 3.6e7, f"Storms per winter with at least this much rain: fewest–most in the {en0['n']} El Niño winters since "
+            f"{_yr(en0['first'])}, and in the other {ot0['n']}", ha="left", va="center", fontsize=7.5, color=SRC_COL["GPCC"])
+    ax.text(x0 + 0.012 * (x1 - x0), 2.0e7, "every rain spell of that size, damaging or not; a past range, not a forecast", ha="left", va="center",
+            fontsize=6.8, color=C_MUTED)
+    for t, ytxt in zip(TOTAL_TIERS, (8.5e6, 3.4e6, 1.35e6)):             # each row starts at its own threshold
+        ax.vlines(t, 10, ytxt * 1.55, color="#6f7b7c", lw=1.3, zorder=1)
+        e_, o_ = bt[(t, "El Niño")], bt[(t, "other")]
+        ax.text(t + 0.012 * (x1 - x0), ytxt, f"{t} mm or more:", ha="left", va="center", fontsize=7.5, color=C_MUTED)
+        ax.text(t + 0.150 * (x1 - x0), ytxt, f"El Niño {rg(e_)}", ha="left", va="center", fontsize=9, fontweight="bold", color=SRC_COL["GPCC"])
+        ax.text(t + 0.287 * (x1 - x0), ytxt, f"other winters {rg(o_)}", ha="left", va="center", fontsize=7.5, color=C_MUTED)
+    for r in U.itertuples():
+        ax.plot(getattr(r, k), r.people, "o", ms=8, color=C_REGIME[r.since], mfc="white" if r.missed else C_REGIME[r.since], mew=1.6, zorder=3)
+    ax.set_yticks([10, 100, 1000, 10000, 100000], ["10", "100", "1,000", "10,000", "100,000"])
+    ax.set_xlabel(f"rain over {A.ref} during the event, mm (IMERG)", fontsize=9, color=C_MUTED)
+    ax.set_ylabel("people counted in the event (log scale)", fontsize=9, color=C_MUTED)
     n = {s_: int((U.since == s_).sum()) for s_ in (False, True)}
-    weak = all(pv > 0.05 for c in wi["corr_ev"].values() for _, pv in c.values())
     hs = [plt.Line2D([], [], marker="o", color=C_REGIME[False], ls="", ms=7, label=f"before October 2023 ({n[False]} counts)"),
           plt.Line2D([], [], marker="o", color=C_REGIME[True], ls="", ms=7, label=f"since October 2023 ({n[True]} counts)")]
     if U.missed.any():
         hs.append(plt.Line2D([], [], marker="o", color=C_REGIME[True], mfc="white", mew=1.5, ls="", ms=7, label="hollow: rain IMERG missed"))
-    hs.append(plt.Line2D([], [], ls="", marker="", label="ρ: rank correlation within each period" + (" (none clears p < 0.05)" if weak else "")))
-    fig.legend(handles=hs, frameon=False, fontsize=8, loc="upper center", ncol=len(hs), bbox_to_anchor=(0.5, 1.0), handletextpad=0.4, columnspacing=1.6)
+    ax.legend(handles=hs, frameon=False, fontsize=8, loc="upper center", ncol=len(hs), bbox_to_anchor=(0.5, 1.09), handletextpad=0.4, columnspacing=1.6)
+    ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax)
     import textwrap
-    fig.text(0.125, 0.0, textwrap.fill(A.event_sources + " Numbers: rows of the table of events and sources.", 118), fontsize=7.5, color=C_MUTED,
-             ha="left", va="top", linespacing=1.3)
+    fig.text(0.125, 0.0, textwrap.fill(A.event_sources, 125), fontsize=7.5, color=C_MUTED, ha="left", va="top", linespacing=1.3)
+    _save(fig, out)
+
+
+PHASE_COL = {"El Niño": C_EN, "Neutral": C_NEU, "La Niña": C_LN}
+
+
+def fig_winter_counts(bars: dict, out: Path) -> None:
+    """People reported affected by winter weather, one bar per winter (log scale), coloured by the winter's ENSO phase.
+    A hollow dot marks a winter with a report but no number."""
+    R = bars["rows"]; x = np.arange(len(R))
+    fig, ax = plt.subplots(figsize=(9.6, 4.2), dpi=150)
+    floor = 10
+    top = np.nanmax(R[["people", "people_hi"]].values)
+    for i, (y, r) in enumerate(R.iterrows()):
+        c = PHASE_COL[r.phase]
+        if pd.notna(r.people):
+            ax.bar(i, r.people - floor, bottom=floor, color=c, width=0.72, edgecolor="white", linewidth=0.4, zorder=2)
+            if pd.notna(r.people_hi):
+                ax.plot([i, i], [r.people, r.people_hi], color=c, lw=2.0, solid_capstyle="round", zorder=3)
+            if r.kind:
+                ax.text(i, max(r.people, r.people_hi if pd.notna(r.people_hi) else 0) * 1.25, "\n".join(textwrap.wrap(r.kind, 18)), ha="center", va="bottom",
+                        fontsize=6.8, color=C_TEXT, linespacing=1.1)
+        elif r.n_ev:
+            ax.plot(i, floor * 1.6, "o", ms=6, mfc="white", mew=1.4, color=c, zorder=3)
+    if bars["split"] is not None and bars["split"] in R.index:
+        k = list(R.index).index(bars["split"]) - 0.5
+        ax.axvline(k, color=C_TEXT, lw=1, ls=(0, (4, 3)))
+        ax.text(k + 0.12, top * 6, "since October 2023", fontsize=7.5, color=C_TEXT, va="top", ha="left")
+    ax.set_yscale("log"); ax.set_ylim(floor, top * 8)
+    ticks = [v for v in (10, 100, 1000, 10000, 100000, 1000000) if v <= top * 8]
+    ax.set_yticks(ticks, [f"{v:,}" if v < 1e6 else "1 million" for v in ticks])
+    ax.set_xticks(x, [_yr(int(y)) for y in R.index], rotation=45, ha="right", fontsize=8)
+    ax.set_xlim(-0.7, len(R) - 0.3)
+    ax.set_ylabel("people reported affected (log scale)", fontsize=9, color=C_MUTED)
+    ax.legend(handles=[edd.Patch(color=C_EN, label="El Niño winter"), edd.Patch(color=C_NEU, label="neutral"), edd.Patch(color=C_LN, label="La Niña"),
+                       plt.Line2D([], [], marker="o", color=C_MUTED, mfc="white", mew=1.4, ls="", ms=6, label="impact reported, no number")],
+              frameon=False, fontsize=8, loc="upper left", ncol=4, bbox_to_anchor=(0.0, 1.12), handletextpad=0.5, columnspacing=1.4)
+    ax.grid(axis="y", color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax)
+    _save(fig, out)
+
+
+def fig_cold_enso(parts: list[dict], out: Path) -> None:
+    """Cold nights per winter against winter Niño3.4, one panel per area: each dot a winter, coloured by its phase,
+    with the mean of each phase as a short line."""
+    fig, axs = plt.subplots(1, len(parts), figsize=(10.4, 4.3), dpi=150, gridspec_kw=dict(wspace=0.2))
+    for ax, p in zip(np.atleast_1d(axs), parts):
+        c = p["a"]["cold_enso"]; n, v, ph = c["nino"], c["nights"], c["phase"]
+        for g, col in PHASE_COL.items():
+            m = ph == g
+            ax.plot(n[m], v[m], "o", ms=6.5, color=col, alpha=0.9, zorder=3)
+            ax.plot([n[m].min(), n[m].max()], [c["mean"][g]] * 2, color=col, lw=2.0, alpha=0.9, zorder=2)
+        for t in (-ENSO_THRESH, ENSO_THRESH):
+            ax.axvline(t, color="#b8bfbf", lw=0.8, ls=(0, (3, 3)), zorder=0)
+        ax.set_title(f"{p['area'].name}: nights of {c['thr']:g} °C or colder", fontsize=9.5, color=C_TEXT, loc="left")
+        ax.set_title(f"r = {c['r_nights']:+.2f}, p = {c['p_nights']:.2f}", fontsize=8.5, color=C_MUTED, loc="right")
+        ax.set_xlabel("December–February Niño3.4, °C", fontsize=9, color=C_MUTED)
+        ax.set_ylabel(f"cold nights per winter (ERA5, {_yr(c['lo'])}–{_yr(c['hi'])})", fontsize=9, color=C_MUTED)
+        ax.set_ylim(bottom=-0.6)
+        ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax)
+    fig.legend(handles=[plt.Line2D([], [], marker="o", color=C_LN, ls="", ms=6.5, label="La Niña winter"),
+                        plt.Line2D([], [], marker="o", color=C_NEU, ls="", ms=6.5, label="neutral"),
+                        plt.Line2D([], [], marker="o", color=C_EN, ls="", ms=6.5, label="El Niño winter"),
+                        plt.Line2D([], [], color=C_MUTED, lw=2, label="mean of each phase")],
+               frameon=False, fontsize=8, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 1.02))
     _save(fig, out)
 
 
@@ -1766,6 +1878,8 @@ def render_range(spec: dict, a: dict, heading: bool = True) -> str:
              'counts as one storm (rain from 8 December, the storm proper from 10 December). ERA5 is not used for the largest storms: its 25 km '
              'cells smooth them so much that it gives Byron a wettest day of 18 mm, which would not place it among the record\'s 14 largest '
              'storms.' if A.byron else '') + '</figcaption></figure>')
+    if st.get("by_total"):
+        o.append(render_storm_totals(st))
     # first storm
     fe, fa = fs[("IMERG", "El Niño")], fs[("IMERG", "all")]
     e_ = st["ei"]; f_ = e_[e_["max"] >= 20].groupby("sy").start.min().reindex(range(1998, 2026))
@@ -1863,6 +1977,60 @@ def render_range(spec: dict, a: dict, heading: bool = True) -> str:
     o.append(spec.get("range_after_html", ""))
     if a.get("wi"):
         o.append(render_winter_impacts(spec, a))
+    return "\n".join(o)
+
+
+def render_winter_counts(spec: dict, bars: dict) -> str:
+    """Section 4, last part for an area: the counts by winter coloured by ENSO phase, and whether the phases differ."""
+    bp = bars["by_phase"]; lst = lambda v: _join(_sig(x) if x >= 1000 else f"{x:,.0f}" for x in v)
+    said = [f'the {_nword(len(bp[g]))} counted {g if g != "Neutral" else "neutral"} winter{"s" if len(bp[g]) != 1 else ""} ({lst(bp[g])} people)'
+            for g in ("El Niño", "Neutral", "La Niña") if bp[g]]
+    none = [g for g in ("El Niño", "Neutral", "La Niña") if not bp[g]]
+    o = ['<h3>Counts by winter and ENSO phase</h3>',
+         f'<figure><img src="winter_counts.png" alt="People reported affected by winter weather in {html.escape(A.ref)}, by winter and ENSO phase">'
+         f'<figcaption>{spec.get("winter_counts_caption", "")}</figcaption></figure>',
+         f'<p>The counts do not separate by ENSO phase. ' + (("Before October 2023, " + _join(said)) if bars["split"] else (_join(said)[0].upper() + _join(said)[1:]))
+         + (' cannot be told apart' + (f' ({_pv(bars["p"])} for El Niño against the rest)' if pd.notna(bars["p"]) else '')
+            if len(said) > 1 else ' are all there is')
+         + (f', and no {_join(none)} winter has a count' if none else '') + '. ' + spec.get("winter_counts_html", "") + '</p>']
+    return "\n".join(o)
+
+
+def _pv(p: float) -> str:
+    return "p &lt; 0.01" if p < 0.01 else f"p = {p:.2f}"
+
+
+def render_storm_totals(st: dict) -> str:
+    """How many storms of a given total rain a winter has brought, El Niño winters against neutral and La Niña ones:
+    a past range for this winter, with the test of whether the phases differ. IMERG first; ERA5's longer record,
+    at thresholds matched to IMERG's, as the check."""
+    bt = {(r["src"], r["tier"], r["group"]): r for r in st["by_total"]}
+    rg = lambda r: f'{r["lo"]}–{r["hi"]}' if r["lo"] != r["hi"] else f'{r["lo"]}'
+    t0, t1, t2 = TOTAL_TIERS; thr = st["thr_t"]
+    en, ne, ln, ot = (bt[("IMERG", t0, g)] for g in ("El Niño", "Neutral", "La Niña", "other"))
+    e_en, e_ot = bt[("ERA5", t0, "El Niño")], bt[("ERA5", t0, "other")]
+    chance = lambda p: "is within chance" if p >= 0.05 else "is unlikely to be chance"
+    big_en, big_ot = bt[("IMERG", t2, "El Niño")], bt[("IMERG", t2, "other")]
+    mid = bt[("IMERG", t1, "El Niño")]
+    o = [f'<p>Counted by a storm\'s total rain, El Niño winters have brought {rg(en)} storms of {t0} mm or more ({en["mean"]:.1f} on average), against '
+         f'{rg(ne)} in neutral winters ({ne["mean"]:.1f}) and {rg(ln)} in La Niña winters ({ln["mean"]:.1f}). On IMERG\'s {_nword(en["n"])} El Niño '
+         f'winters the difference from the other {ot["n"]} {chance(en["p"])} ({_pv(en["p"])}); in ERA5 since {e_en["first"]}, with {e_en["n"]} El Niño '
+         f'winters and thresholds matched to IMERG\'s, the gap is {e_en["mean"] - e_ot["mean"]:.1f} storms a winter and {chance(e_en["p"])} ({_pv(e_en["p"])}). '
+         f'The bigger storms do not follow the phase: {t1} mm or more came {rg(mid)} times in an El Niño winter and {rg(bt[("IMERG", t1, "other")])} in the '
+         f'others, and a storm of {t2} mm or more came in {big_en["any"]} of {big_en["n"]} El Niño winters and {big_ot["any"]} of {big_ot["n"]} others. '
+         'These are past ranges, not a forecast.</p>']
+    o.append('<table><thead><tr><th>Storms per winter with a total of</th>'
+             + "".join(f'<th class="num">{g}<br><span class="small">{bt[("IMERG", t0, g)]["n"]} winters</span></th>' for g in ("El Niño", "Neutral", "La Niña"))
+             + '<th class="num">El Niño against the rest<br><span class="small">IMERG · ERA5</span></th></tr></thead><tbody>')
+    for t in TOTAL_TIERS:
+        o.append(f'<tr><td>{t} mm or more</td>' + "".join(
+            f'<td class="num">{rg(bt[("IMERG", t, g)])} <span class="small">(mean {bt[("IMERG", t, g)]["mean"]:.1f})</span></td>' for g in ("El Niño", "Neutral", "La Niña"))
+            + f'<td class="num">{_pv(bt[("IMERG", t, "El Niño")]["p"])} · {_pv(bt[("ERA5", t, "El Niño")]["p"])}</td></tr>')
+    o.append('</tbody></table>')
+    o.append(f'<p class="small">Fewest to most storms per winter, IMERG {_yr(en["first"])}–{_yr(2025)}. A storm is a run of rainy days as defined above, here sized by '
+             f'its total rain over {html.escape(A.ref)}. The last column tests El Niño winters against all others (Mann–Whitney): first on IMERG, then on ERA5 '
+             f'{_yr(e_en["first"])}–{_yr(2025)} with thresholds that give the same number of storms as IMERG\'s over the shared years '
+             f'({", ".join(f"{thr[t]:.0f}" for t in TOTAL_TIERS)} mm).</p>')
     return "\n".join(o)
 
 
@@ -1984,27 +2152,26 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
         raise ValueError(f"[winter_impacts.events] lacks {sorted(set(U.event_id) - set(evs))}")
     o.append(f'<figure><img src="event_hazards.png" alt="People counted per event against the rain over the event\'s dates">'
              f'<figcaption>{html.escape(A.event_sources)} Each dot is one event with a dated count, against the rain over {A.ref} from the '
-             f'day before the event to its last day. Numbers: rows of the table below, which links each count to its source. Top of the left panel: how '
-             f'many storms of each size the {_nword(wi["expect"][SIZE_TIERS[0][0]]["n"])} El Niño winters since {_yr(int(S.index.min()))} brought, fewest to '
-             f'most. That is every rain spell of that size, whether or not anyone was counted: what past El Niño winters brought, not a forecast of this '
-             f'one, and close to the range of all {wi["n_all"]} winters. Events under 10 mm (high tides, wind) are not storms in that count.</figcaption></figure>')
-    o.append('<div style="overflow-x:auto"><table><thead><tr><th>#</th><th>Dates</th><th>Hazard</th><th class="num">Wettest day</th>'
+             f'day before the event to its last day; the table below lists each with its source. Top: how many storms with at least that much rain a '
+             f'winter has brought, in El Niño winters and in the others. That is every rain spell of that size, whether or not anyone was counted: a '
+             f'past range, not a forecast.</figcaption></figure>')
+    o.append('<div style="overflow-x:auto"><table><thead><tr><th>Dates</th><th>Hazard</th><th class="num">Rain over the event</th>'
              '<th class="num">People counted</th><th>What the count is</th><th>Source</th></tr></thead><tbody>')
     for r in U.itertuples():
         if r.since and not U[U.no < r.no].since.any():
-            o.append('<tr><td colspan="7" class="small" style="background:var(--n05)"><strong>Since October 2023</strong></td></tr>')
+            o.append('<tr><td colspan="6" class="small" style="background:var(--n05)"><strong>Since October 2023</strong></td></tr>')
         d = (f'{r.start:%-d %b %Y}' if r.start == r.end else f'{r.start:%-d %b %Y}–{r.end:%-d %b %Y}' if r.start.year != r.end.year
              else f'{r.start:%-d}–{r.end:%-d %b %Y}' if r.start.month == r.end.month else f'{r.start:%-d %b}–{r.end:%-d %b %Y}')
         d = ("about " if str(getattr(r, "date_quality", "")) == "M" else "") + d
         ev_ = evs.get(r.event_id, {})
         src = html.escape(ev_.get("source", str(r.source_publisher)))
-        o.append(f'<tr><td>{r.no}</td><td style="white-space:nowrap">{d}</td><td>{", ".join(HAZARD_WORD[h] for h in r.hazard.split("+"))}</td>'
-                 f'<td class="num" style="white-space:nowrap">{r.im_max:.0f} mm{"*" if r.missed else ""}</td><td class="num" style="white-space:nowrap">'
+        o.append(f'<tr><td style="white-space:nowrap">{d}</td><td>{", ".join(HAZARD_WORD[h] for h in r.hazard.split("+"))}</td>'
+                 f'<td class="num" style="white-space:nowrap">{r.im_sum:.0f} mm{"*" if r.missed else ""}</td><td class="num" style="white-space:nowrap">'
                  f'{("about " + _sig(r.people)) if r.derived else f"{r.people:,.0f}"}</td><td class="small">{ev_.get("what", "")}</td>'
                  f'<td class="small" style="white-space:nowrap"><a href="{html.escape(str(r.source_url_primary))}">{src}</a></td></tr>')
     o.append('</tbody></table></div>')
     o.append(f'<p class="small">“About”: the source gives households or families, converted at {hh[False]:.1f} people before October 2023 and '
-             f'{hh[True]:.1f} since. Wettest day: IMERG over {html.escape(A.ref)}, from the day before the event to its last day. '
+             f'{hh[True]:.1f} since. Rain: IMERG over {html.escape(A.ref)}, from the day before the event to its last day. '
              + "".join(f'* IMERG missed this storm\'s rain: ERA5 has {r.era5_max:.0f} mm. ' for r in U[U.missed].itertuples())
              + 'Wind and cold are not plotted: ERA5\'s area-mean wind and night minimum do not resolve the gusts and the cold in tents that the reports '
              'describe; the hazard column is from the reports. Events reported without a '
@@ -2324,6 +2491,8 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
         B["impacts"].append(f'<h3>Before October 2023</h3>{spec.get("prewar_html", "")}')
         B["impacts"].append(impact_table(a["pre_rows"], numbered=False))
     B["impacts"].append(spec.get("impacts_after_html", ""))
+    if a.get("bars"):
+        B["impacts"].append(render_winter_counts(spec, a["bars"]))
     if a.get("st"):
         B["range"].append(render_range(spec, a, headings))
     if a.get("agri"):
@@ -2600,6 +2769,8 @@ def build_combined(cspec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: p
         a = analyse(pspec, grid, ne, indices)
         parts.append(dict(slug=slug, spec=pspec, a=a, area=A, B=render_blocks(pspec, a, headings=False)))
     out = edd.OUT_DIR / cspec["slug"]
+    if all(p["a"].get("cold_enso") for p in parts):
+        fig_cold_enso(parts, out / "cold_enso.png")
     (out / "index.html").write_text(render_combined(cspec, parts), encoding="utf-8")
     for p in parts[1:]:                                      # the regional maps are shown once, from the first part
         for f in ("corr_maps.png", "composite_maps.png"):
@@ -2625,7 +2796,8 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
     names = {p["slug"]: p["area"].name for p in parts}
     sec_keys = ["forecast", "enso", "daily", "impacts", "range"]
     has = {k: [p for p in parts if any(c.strip() for c in p["B"][{"forecast": "forecast_area"}.get(k, k)])] for k in sec_keys}
-    sibs = {k: [(f'{p["slug"]}-{k}', names[p["slug"]]) for p in has[k]] + ([("region-enso", "Both areas")] if k == "enso" else []) for k in sec_keys}
+    sibs = {k: [(f'{p["slug"]}-{k}', names[p["slug"]]) for p in has[k]] + ([("region-enso", "Both areas")] if k == "enso" else [])
+               + ([("cold-daily", "Cold snaps")] if k == "daily" and all(p["a"].get("cold_enso") for p in parts) else []) for k in sec_keys}
     agri = [p for p in parts if p["B"]["agri"]]
     after = [(_slug(sec["title"]), sec["title"]) for sec in cspec.get("sections_after", [])]
     toc = ([(k, cspec.get("titles", {}).get(k, k), sibs[k]) for k in sec_keys] + ([("farming", cspec.get("titles", {}).get("agri", "6. Farming"), [])] if agri else [])
@@ -2723,6 +2895,21 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
         o.append(f'<h2 id="{key}">{T(key, title)}</h2>')
         for p in has[key]:
             o.append(area_block(p, sum((p["B"][b] for b in blocks), []), key))
+        if key == "daily" and ("cold-daily", "Cold snaps") in sibs[key]:
+            cs = [p["a"]["cold_enso"] for p in parts]
+            rs = [c[k] for c in cs for k in ("r_coldest", "r_snaps")] + [r for c in cs for r in c["r_other"].values()]
+            o.append(area_head("cold-daily", "Both areas: cold snaps and El Niño", key))
+            o.append('<p>Cold snaps show no link to El Niño in either area. Since ' + f'{cs[0]["lo"]}' + ' the number of cold nights in a winter does not follow winter '
+                     'Niño3.4: ' + "; ".join(f'{html.escape(p["area"].name)}, nights of {c["thr"]:g} °C or colder, r = {c["r_nights"]:+.2f} ({_pv(c["p_nights"])})'
+                                           for p, c in zip(parts, cs))
+                     + f'. Nor do the winter\'s coldest night, the number of cold snaps of two nights or more, or the night count two degrees either side '
+                     f'of each threshold (correlations between {min(rs):+.2f} and {max(rs):+.2f}). ' + cspec.get("cold_html", "") + '</p>')
+            o.append('<figure><img src="cold_enso.png" alt="Cold nights per winter against winter Niño3.4, Gaza and the West Bank"><figcaption>Each dot is one '
+                     f'winter, {_yr(cs[0]["lo"])}–{_yr(cs[0]["hi"])}: nights whose ERA5 minimum over the area was at or below the threshold, against that '
+                     'winter\'s Niño3.4. Lines: the mean of each phase (' + "; ".join(
+                         f'{html.escape(p["area"].name)} {c["mean"]["El Niño"]:.1f} in El Niño winters, {c["mean"]["Neutral"]:.1f} neutral, '
+                         f'{c["mean"]["La Niña"]:.1f} La Niña' for p, c in zip(parts, cs)) + '). ERA5 is an area mean and runs warmer than the coldest places.'
+                     '</figcaption></figure>')
     # 6. Farming: the areas that have it, under their own headings
     for p in parts:
         if p["B"]["agri"]:
