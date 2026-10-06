@@ -1003,6 +1003,8 @@ def cold_by_enso(tmin: pd.Series, djf: pd.Series, thr: float, lo: int = SPLIT, h
     for k, v in m.items():
         out[f"r_{k}"], out[f"p_{k}"] = (float(x) for x in stats.pearsonr(n, v))
     out["r_other"] = {thr + d: float(stats.pearsonr(n, count(thr + d))[0]) for d in (-2, 2)}
+    d_ = tmin[tmin.index.month.isin([12, 1, 2])].dropna()
+    out["r_warm"] = float(stats.pearsonr(d_.groupby(season_year(d_.index)).mean().reindex(yrs), m["nights"])[0])   # cold nights against the winter's mean
     return out
 
 
@@ -1015,7 +1017,7 @@ def winter_counts(spec: dict, wi: dict | None, djf: pd.Series) -> dict | None:
         rows = pd.DataFrame(dict(people=S.people, people_hi=S.people_hi, n_ev=S.n_ev, kind=""))
         test = rows.loc[:SINCE - 1]; split = SINCE
     elif spec.get("winter_counts"):
-        hh = float(spec.get("hh_size", 4.8)); ev = spec.get("prewar", []) + spec.get("impacts", [])
+        hh = float(spec.get("hh_size", 4.8)); ev = [e for e in spec.get("prewar", []) + spec.get("impacts", []) if not e.get("no_impact")]
         sy = pd.Series(season_year(pd.DatetimeIndex([e["start"] for e in ev])))
         yrs = range(int(sy.min()), 2026)
         rows = pd.DataFrame(dict(people=np.nan, people_hi=np.nan, n_ev=sy.value_counts().reindex(yrs, fill_value=0).values, kind=""), index=yrs)
@@ -1031,7 +1033,9 @@ def winter_counts(spec: dict, wi: dict | None, djf: pd.Series) -> dict | None:
     c = test.dropna(subset=["people"]); c = c.assign(phase=rows.phase.reindex(c.index))
     en, rest = c[c.phase == "El Niño"].people, c[c.phase != "El Niño"].people
     p = float(stats.mannwhitneyu(en, rest, alternative="two-sided").pvalue) if len(en) >= 2 and len(rest) >= 2 else np.nan
-    return dict(rows=rows, split=split, p=p, n_test=len(c), by_phase={g: sorted(c[c.phase == g].people) for g in ("El Niño", "Neutral", "La Niña")})
+    drv = wi["S"].derived.reindex(c.index).fillna(False) if wi is not None else pd.Series(True, index=c.index)     # shown rounded where converted
+    return dict(rows=rows, split=split, p=p, n_test=len(c),
+                by_phase={g: sorted(zip(c[c.phase == g].people, drv[c.phase == g])) for g in ("El Niño", "Neutral", "La Niña")})
 
 
 def cold_stats(tmin: pd.Series, djf: pd.Series, lo: int = SPLIT, hi: int = 2025) -> dict:
@@ -1318,7 +1322,7 @@ def load_events(path: Path, imerg: pd.DataFrame, era5: pd.DataFrame) -> pd.DataF
         a, b = r.start - pd.Timedelta(days=1), r.end
         w, x = imerg.loc[a:b], era5.loc[a:b]
         rows.append(dict(im_max=float(w.pr.max()) if len(w) else np.nan, im_sum=float(w.pr.sum()) if len(w) else np.nan,
-                         era5_max=float(x.pr.max()) if len(x) else np.nan,
+                         era5_max=float(x.pr.max()) if len(x) else np.nan, era5_sum=float(x.pr.sum()) if len(x) else np.nan,
                          tmin=float(x.tmin.min()) if len(x) else np.nan, wmax=float(x.wmax.max()) if len(x) else np.nan))
     ev = pd.concat([ev, pd.DataFrame(rows, index=ev.index)], axis=1)
     scope = ev["hh_affected_scope"].fillna("").str.lower()
@@ -1649,6 +1653,7 @@ def fig_event_hazards(wi: dict, st: dict, out: Path) -> None:
             f"{_yr(en0['first'])}, and in the other {ot0['n']}", ha="left", va="center", fontsize=7.5, color=SRC_COL["GPCC"])
     ax.text(x0 + 0.012 * (x1 - x0), 2.0e7, "every rain spell of that size, damaging or not; a past range, not a forecast", ha="left", va="center",
             fontsize=6.8, color=C_MUTED)
+    ax.text((x0 + TOTAL_TIERS[0]) / 2, 2.2e6, f"under {TOTAL_TIERS[0]} mm:\nnot counted", ha="center", va="center", fontsize=7, color=C_MUTED, linespacing=1.15)
     for t, ytxt in zip(TOTAL_TIERS, (8.5e6, 3.4e6, 1.35e6)):             # each row starts at its own threshold
         ax.vlines(t, 10, ytxt * 1.55, color="#6f7b7c", lw=1.3, zorder=1)
         e_, o_ = bt[(t, "El Niño")], bt[(t, "other")]
@@ -1667,7 +1672,6 @@ def fig_event_hazards(wi: dict, st: dict, out: Path) -> None:
         hs.append(plt.Line2D([], [], marker="o", color=C_REGIME[True], mfc="white", mew=1.5, ls="", ms=7, label="hollow: rain IMERG missed"))
     ax.legend(handles=hs, frameon=False, fontsize=8, loc="upper center", ncol=len(hs), bbox_to_anchor=(0.5, 1.09), handletextpad=0.4, columnspacing=1.6)
     ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax)
-    import textwrap
     fig.text(0.125, 0.0, textwrap.fill(A.event_sources, 125), fontsize=7.5, color=C_MUTED, ha="left", va="top", linespacing=1.3)
     _save(fig, out)
 
@@ -1728,9 +1732,9 @@ def fig_cold_enso(parts: list[dict], out: Path) -> None:
         ax.set_ylabel(f"cold nights per winter (ERA5, {_yr(c['lo'])}–{_yr(c['hi'])})", fontsize=9, color=C_MUTED)
         ax.set_ylim(bottom=-0.6)
         ax.grid(color="#eceff0", lw=0.8); ax.set_axisbelow(True); edd._style_ax(ax)
-    fig.legend(handles=[plt.Line2D([], [], marker="o", color=C_LN, ls="", ms=6.5, label="La Niña winter"),
+    fig.legend(handles=[plt.Line2D([], [], marker="o", color=C_EN, ls="", ms=6.5, label="El Niño winter"),
                         plt.Line2D([], [], marker="o", color=C_NEU, ls="", ms=6.5, label="neutral"),
-                        plt.Line2D([], [], marker="o", color=C_EN, ls="", ms=6.5, label="El Niño winter"),
+                        plt.Line2D([], [], marker="o", color=C_LN, ls="", ms=6.5, label="La Niña"),
                         plt.Line2D([], [], color=C_MUTED, lw=2, label="mean of each phase")],
                frameon=False, fontsize=8, loc="upper center", ncol=4, bbox_to_anchor=(0.5, 1.02))
     _save(fig, out)
@@ -1981,18 +1985,19 @@ def render_range(spec: dict, a: dict, heading: bool = True) -> str:
 
 
 def render_winter_counts(spec: dict, bars: dict) -> str:
-    """Section 4, last part for an area: the counts by winter coloured by ENSO phase, and whether the phases differ."""
-    bp = bars["by_phase"]; lst = lambda v: _join(_sig(x) if x >= 1000 else f"{x:,.0f}" for x in v)
+    """Section 4, last part for an area: the counts by winter coloured by ENSO phase, and why the phases cannot be compared."""
+    bp = bars["by_phase"]; lst = lambda v: _join((_sig(x) if (d or x >= 1000) else f"{x:,.0f}") for x, d in v)
     said = [f'the {_nword(len(bp[g]))} counted {g if g != "Neutral" else "neutral"} winter{"s" if len(bp[g]) != 1 else ""} ({lst(bp[g])} people)'
             for g in ("El Niño", "Neutral", "La Niña") if bp[g]]
+    if not said:
+        return ""
     none = [g for g in ("El Niño", "Neutral", "La Niña") if not bp[g]]
+    lead = ("Before October 2023, " + _join(said)) if bars["split"] else (_join(said)[0].upper() + _join(said)[1:])
     o = ['<h3>Counts by winter and ENSO phase</h3>',
          f'<figure><img src="winter_counts.png" alt="People reported affected by winter weather in {html.escape(A.ref)}, by winter and ENSO phase">'
          f'<figcaption>{spec.get("winter_counts_caption", "")}</figcaption></figure>',
-         f'<p>The counts do not separate by ENSO phase. ' + (("Before October 2023, " + _join(said)) if bars["split"] else (_join(said)[0].upper() + _join(said)[1:]))
-         + (' cannot be told apart' + (f' ({_pv(bars["p"])} for El Niño against the rest)' if pd.notna(bars["p"]) else '')
-            if len(said) > 1 else ' are all there is')
-         + (f', and no {_join(none)} winter has a count' if none else '') + '. ' + spec.get("winter_counts_html", "") + '</p>']
+         f'<p>The counts do not separate by ENSO phase. {lead} overlap, and {_nword(bars["n_test"])} counted winters are too few for any test to separate '
+         f'them' + (f'; no {_join(none)} winter has a count' if none else '') + '. ' + spec.get("winter_counts_html", "") + '</p>']
     return "\n".join(o)
 
 
@@ -2009,13 +2014,15 @@ def render_storm_totals(st: dict) -> str:
     t0, t1, t2 = TOTAL_TIERS; thr = st["thr_t"]
     en, ne, ln, ot = (bt[("IMERG", t0, g)] for g in ("El Niño", "Neutral", "La Niña", "other"))
     e_en, e_ot = bt[("ERA5", t0, "El Niño")], bt[("ERA5", t0, "other")]
-    chance = lambda p: "is within chance" if p >= 0.05 else "is unlikely to be chance"
+    chance = lambda p: "is within chance" if p >= 0.05 else ("is unlikely to be chance" if p < 0.01 else f"is suggestive, with {_nword(len(TOTAL_TIERS))} sizes tested")
+    gap = e_en["mean"] - e_ot["mean"]
     big_en, big_ot = bt[("IMERG", t2, "El Niño")], bt[("IMERG", t2, "other")]
     mid = bt[("IMERG", t1, "El Niño")]
     o = [f'<p>Counted by a storm\'s total rain, El Niño winters have brought {rg(en)} storms of {t0} mm or more ({en["mean"]:.1f} on average), against '
          f'{rg(ne)} in neutral winters ({ne["mean"]:.1f}) and {rg(ln)} in La Niña winters ({ln["mean"]:.1f}). On IMERG\'s {_nword(en["n"])} El Niño '
-         f'winters the difference from the other {ot["n"]} {chance(en["p"])} ({_pv(en["p"])}); in ERA5 since {e_en["first"]}, with {e_en["n"]} El Niño '
-         f'winters and thresholds matched to IMERG\'s, the gap is {e_en["mean"] - e_ot["mean"]:.1f} storms a winter and {chance(e_en["p"])} ({_pv(e_en["p"])}). '
+         f'winters the difference from the other {ot["n"]} {chance(en["p"])} ({_pv(en["p"])}); in ERA5 since {_yr(e_en["first"])}, with {e_en["n"]} El Niño '
+         f'winters and thresholds matched to IMERG\'s, ' + (f'the gap is {gap:.1f} storms a winter and' if gap > 0.05 else 'there is no gap, which')
+         + f' {chance(e_en["p"])} ({_pv(e_en["p"])}). '
          f'The bigger storms do not follow the phase: {t1} mm or more came {rg(mid)} times in an El Niño winter and {rg(bt[("IMERG", t1, "other")])} in the '
          f'others, and a storm of {t2} mm or more came in {big_en["any"]} of {big_en["n"]} El Niño winters and {big_ot["any"]} of {big_ot["n"]} others. '
          'These are past ranges, not a forecast.</p>']
@@ -2030,7 +2037,8 @@ def render_storm_totals(st: dict) -> str:
     o.append(f'<p class="small">Fewest to most storms per winter, IMERG {_yr(en["first"])}–{_yr(2025)}. A storm is a run of rainy days as defined above, here sized by '
              f'its total rain over {html.escape(A.ref)}. The last column tests El Niño winters against all others (Mann–Whitney): first on IMERG, then on ERA5 '
              f'{_yr(e_en["first"])}–{_yr(2025)} with thresholds that give the same number of storms as IMERG\'s over the shared years '
-             f'({", ".join(f"{thr[t]:.0f}" for t in TOTAL_TIERS)} mm).</p>')
+             f'({", ".join(f"{thr[t]:.0f}" for t in TOTAL_TIERS)} mm); that equalizes the counts, not the storms themselves. ERA5\'s winters include '
+             'IMERG\'s, so the two tests are not independent.</p>')
     return "\n".join(o)
 
 
@@ -2172,7 +2180,7 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append('</tbody></table></div>')
     o.append(f'<p class="small">“About”: the source gives households or families, converted at {hh[False]:.1f} people before October 2023 and '
              f'{hh[True]:.1f} since. Rain: IMERG over {html.escape(A.ref)}, from the day before the event to its last day. '
-             + "".join(f'* IMERG missed this storm\'s rain: ERA5 has {r.era5_max:.0f} mm. ' for r in U[U.missed].itertuples())
+             + "".join(f'* IMERG missed this storm\'s rain: ERA5 has {r.era5_sum:.0f} mm over the event. ' for r in U[U.missed].itertuples())
              + 'Wind and cold are not plotted: ERA5\'s area-mean wind and night minimum do not resolve the gusts and the cold in tents that the reports '
              'describe; the hazard column is from the reports. Events reported without a '
              'number, and counts of assistance delivered with no rain date, are in the tables of section 4 but not here.</p>')
@@ -2899,16 +2907,20 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
             cs = [p["a"]["cold_enso"] for p in parts]
             rs = [c[k] for c in cs for k in ("r_coldest", "r_snaps")] + [r for c in cs for r in c["r_other"].values()]
             o.append(area_head("cold-daily", "Both areas: cold snaps and El Niño", key))
-            o.append('<p>Cold snaps show no link to El Niño in either area. Since ' + f'{cs[0]["lo"]}' + ' the number of cold nights in a winter does not follow winter '
+            o.append('<p>Cold snaps show no link to El Niño in either area. Since ' + _yr(cs[0]["lo"]) + ' the number of cold nights in a winter does not follow winter '
                      'Niño3.4: ' + "; ".join(f'{html.escape(p["area"].name)}, nights of {c["thr"]:g} °C or colder, r = {c["r_nights"]:+.2f} ({_pv(c["p_nights"])})'
                                            for p, c in zip(parts, cs))
                      + f'. Nor do the winter\'s coldest night, the number of cold snaps of two nights or more, or the night count two degrees either side '
-                     f'of each threshold (correlations between {min(rs):+.2f} and {max(rs):+.2f}). ' + cspec.get("cold_html", "") + '</p>')
+                     f'of each threshold (correlations between {min(rs):+.2f} and {max(rs):+.2f}). El Niño is therefore no guide to cold snaps. The '
+                     f'forecasts\' warm signal is a separate matter: warmer winters have had fewer cold nights (r = '
+                     + " and ".join(f'{c["r_warm"]:+.2f} for {html.escape(p["area"].ref)}' for p, c in zip(parts, cs))
+                     + ' between a winter\'s cold nights and its December–February mean night temperature). ' + cspec.get("cold_html", "") + '</p>')
             o.append('<figure><img src="cold_enso.png" alt="Cold nights per winter against winter Niño3.4, Gaza and the West Bank"><figcaption>Each dot is one '
                      f'winter, {_yr(cs[0]["lo"])}–{_yr(cs[0]["hi"])}: nights whose ERA5 minimum over the area was at or below the threshold, against that '
                      'winter\'s Niño3.4. Lines: the mean of each phase (' + "; ".join(
                          f'{html.escape(p["area"].name)} {c["mean"]["El Niño"]:.1f} in El Niño winters, {c["mean"]["Neutral"]:.1f} neutral, '
-                         f'{c["mean"]["La Niña"]:.1f} La Niña' for p, c in zip(parts, cs)) + '). ERA5 is an area mean and runs warmer than the coldest places.'
+                         f'{c["mean"]["La Niña"]:.1f} La Niña' for p, c in zip(parts, cs)) + '). ERA5 is an area mean and runs warmer than the coldest places; '
+                     'Gaza\'s cells are partly sea and rarely reach 5 °C, hence its higher threshold.'
                      '</figcaption></figure>')
     # 6. Farming: the areas that have it, under their own headings
     for p in parts:
