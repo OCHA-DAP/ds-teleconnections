@@ -987,22 +987,28 @@ def storm_stats(imerg: pd.Series, era5: pd.Series, djf: pd.Series) -> dict:
                 by_total.append(dict(src=name, tier=t, group=label, n=int(m.sum()), lo=int(v.min()), hi=int(v.max()), mean=float(v.mean()),
                                      med=float(v.median()), any=int((v >= 1).sum()), p=p_, first=int(c.index.min())))
     # early-season storms by phase: ERA5 since the link switched on (the longer record), IMERG as the check
-    def early_counts(e, lo, hi, thr=EARLY_TOTAL):
-        x = e[pd.DatetimeIndex(e.start).month.isin(EARLY_MONTHS) & (e.total >= thr)]
+    def early_counts(e, lo, hi, thr=EARLY_TOTAL, months=EARLY_MONTHS):
+        x = e[pd.DatetimeIndex(e.start).month.isin(months) & (e.total >= thr)]
         return x.groupby("sy").size().reindex(range(lo, hi + 1), fill_value=0)
 
     def by_phase(c):
+        assert djf.reindex(c.index).notna().all(), "a winter without a Niño3.4 value would pass as neutral"
         ph = pd.Series(phase_of(djf.reindex(c.index)), index=c.index)
         g = {k: c[ph == k] for k in ("El Niño", "Neutral", "La Niña")} | {"other": c[ph != "El Niño"]}
         return dict(p=float(stats.mannwhitneyu(g["El Niño"], g["other"], alternative="two-sided").pvalue),
                     **{k: dict(n=len(v), lo=int(v.min()), hi=int(v.max()), mean=float(v.mean()),
                                dist={int(a): int(b) for a, b in v.value_counts().sort_index().items()}) for k, v in g.items()})
     a_, b_ = (x[pd.DatetimeIndex(x.start).month.isin(EARLY_MONTHS) & (x.sy >= 1998) & (x.sy <= 2025)] for x in (ee, ei))
+    n_match = int((a_.total >= EARLY_TOTAL).sum())
+    assert 0 < n_match <= len(b_), "no IMERG total gives the same number of early storms as ERA5"
+    eq = float(np.sort(b_.total.values)[::-1][n_match - 1])                # the IMERG total with as many early storms as ERA5 at its threshold
+    b0 = max(int(ee.sy.min()) + 1, int(djf.dropna().index.min()))         # the first season with an October in the record and a phase
+    late = [m for m in WET if m not in EARLY_MONTHS]
     early = dict(thr=EARLY_TOTAL, lo=SPLIT, hi=2025, era5=by_phase(early_counts(ee, SPLIT, 2025)), imerg=by_phase(early_counts(ei, 1998, 2025)),
+                 imerg_matched=by_phase(early_counts(ei, 1998, 2025, eq)), late=by_phase(early_counts(ee, SPLIT, 2025, months=late)),
                  halves=[(lo, hi, by_phase(early_counts(ee, lo, hi))) for lo, hi in ((SPLIT, 1997), (1998, 2025))],
-                 before=(int(ee.sy.min()), by_phase(early_counts(ee, int(ee.sy.min()), SPLIT - 1))),
-                 p_other={t: by_phase(early_counts(ee, SPLIT, 2025, t))["p"] for t in (10, 25, 30, 50)},
-                 imerg_equiv=float(np.sort(b_.total.values)[::-1][int((a_.total >= EARLY_TOTAL).sum()) - 1]))
+                 before=(b0, by_phase(early_counts(ee, b0, SPLIT - 1))),
+                 p_other={t: by_phase(early_counts(ee, SPLIT, 2025, t))["p"] for t in (10, 25, 30, 50)}, imerg_equiv=eq)
     return dict(ei=ei, ee=ee, thr_e=thr_e, ci=ci, ce=ce, rows=rows, first=first, by_total=by_total, thr_t=thr_t, cti=cti, early=early)
 
 
@@ -1666,7 +1672,7 @@ def fig_event_hazards(wi: dict, st: dict, out: Path) -> None:
     ax.vlines(thr, 10, 6e6, color="#6f7b7c", lw=1.3, zorder=1)
     ax.axhspan(6e5, 6e7, color="#BFD9EE", alpha=0.45, lw=0, zorder=0); ax.axhline(6e5, color="#6f7b7c", lw=0.8, zorder=1)
     xl = x0 + 0.012 * (x1 - x0); W = x1 - x0
-    ax.text(xl, 3.4e7, f"Storms of {thr} mm or more before January, per winter (ERA5, {_yr(ea['lo'])}–{_yr(ea['hi'])})", ha="left", va="center",
+    ax.text(xl, 3.4e7, f"Storms with a total of {thr} mm or more before January, per winter (ERA5, {_yr(ea['lo'])}–{_yr(ea['hi'])})", ha="left", va="center",
             fontsize=8, color=SRC_COL["GPCC"])
     ax.text(xl, 1.9e7, "every rain spell of that size that began in October–December, damaging or not; a past range, not a forecast", ha="left",
             va="center", fontsize=6.8, color=C_MUTED)
@@ -1769,7 +1775,8 @@ def fig_storms_early(st: dict, out: Path) -> None:
             if d.get(k, 0):
                 ax.text(x_, h_ + 1.0, str(d[k]), ha="center", va="bottom", fontsize=7.5, color=C_TEXT)
     ax.set_xticks(range(kmax + 1), [str(k) for k in range(kmax + 1)])
-    ax.set_xlabel(f"storms of {ea['thr']} mm or more that began in October–December (ERA5, {_yr(ea['lo'])}–{_yr(ea['hi'])})", fontsize=9, color=C_MUTED)
+    ax.set_xlabel(f"storms with a total of {ea['thr']} mm or more that began in October–December (ERA5, {_yr(ea['lo'])}–{_yr(ea['hi'])})", fontsize=9,
+                  color=C_MUTED)
     ax.set_ylabel("share of the phase's winters, %", fontsize=9, color=C_MUTED)
     ax.set_title(f"{A.name}: early-season storms per winter, by ENSO phase", fontsize=10, color=C_TEXT, loc="left")
     ax.legend(frameon=False, fontsize=8.5, loc="upper right")
@@ -2059,21 +2066,29 @@ def render_storm_totals(st: dict) -> str:
     xe, xn, xl, xo = E["El Niño"], E["Neutral"], E["La Niña"], E["other"]
     fewer = sum(v for k, v in xo["dist"].items() if k < xe["lo"]); ratio = xe["mean"] / xo["mean"]
     h1, h2 = ea["halves"]; b0, bf = ea["before"]; ps = list(ea["p_other"].values()) + [E["p"]]
-    o = [f'<p>The clearest El Niño signal in the storm record is early in the season. In ERA5 since {_yr(ea["lo"])}, El Niño winters have brought {rg(xe)} '
-         f'storms with a total of {ea["thr"]} mm or more before January ({xe["mean"]:.1f} on average), against {rg(xn)} in neutral winters ({xn["mean"]:.1f}) '
-         f'and {rg(xl)} in La Niña winters ({xl["mean"]:.1f}): ' + ("about twice" if 1.85 <= ratio <= 2.2 else f"{ratio:.1f} times")
-         + f' as many as in the other winters ({_pv(E["p"])}). Every one of the {xe["n"]} El Niño winters had at least {_nword(xe["lo"])}; {fewer} of the '
-         f'other {xo["n"]} had {"none" if xe["lo"] == 1 else "fewer"}. IMERG\'s shorter record points the same way ({I["El Niño"]["mean"]:.1f} against '
-         f'{I["other"]["mean"]:.1f}, {_pv(I["p"])}). These are past ranges, not a forecast.</p>',
+    M, Lt = ea["imerg_matched"], ea["late"]
+    eqmm = _round_to(ea["imerg_equiv"], 5)
+    same = M["El Niño"]["mean"] / max(M["other"]["mean"], 1e-9) >= 1.2
+    o = [f'<p>El Niño\'s extra storms come early in the season. In ERA5 since {_yr(ea["lo"])}, El Niño winters have brought {rg(xe)} storms with a total '
+         f'of {ea["thr"]} mm or more before January ({xe["mean"]:.1f} on average), against {rg(xn)} in neutral winters ({xn["mean"]:.1f}) and {rg(xl)} in '
+         f'La Niña winters ({xl["mean"]:.1f}): ' + ("about twice" if 1.85 <= ratio <= 2.2 else f"{ratio:.1f} times") + ' as many as in the other winters. '
+         f'From January to April the phases do not differ ({Lt["El Niño"]["mean"]:.1f} against {Lt["other"]["mean"]:.1f}). Every one of the {xe["n"]} El '
+         f'Niño winters had at least {_nword(xe["lo"])} before January; {fewer} of the other {xo["n"]} had {"none" if xe["lo"] == 1 else "fewer"}.</p>',
+         f'<p><strong>How far to trust it.</strong> The window and the threshold were chosen after about a hundred combinations were compared, so the '
+         f'{_pv(E["p"])} of this one overstates the evidence. The gap is wider before 1998 ({h1[2]["El Niño"]["mean"]:.1f} against '
+         f'{h1[2]["other"]["mean"]:.1f}) than since ({h2[2]["El Niño"]["mean"]:.1f} against {h2[2]["other"]["mean"]:.1f}, '
+         + ("within chance on its own" if h2[2]["p"] >= 0.05 else "still unlikely to be chance") + f', {_pv(h2[2]["p"])}). IMERG\'s {M["El Niño"]["n"] + M["other"]["n"]} winters, '
+         f'at the matched size of about {eqmm} mm, ' + (f'point the same way ({M["El Niño"]["mean"]:.1f} against {M["other"]["mean"]:.1f}, {_pv(M["p"])})'
+                                                         if same else f'show no gap ({M["El Niño"]["mean"]:.1f} against {M["other"]["mean"]:.1f})')
+         + '. These are past ranges, not a forecast.</p>',
          f'<figure><img src="storms_early.png" alt="Winters by number of early-season storms, by ENSO phase"><figcaption>Winters by the number of storms that '
          f'began in October–December with a total of {ea["thr"]} mm or more over {A.ref} (ERA5, {_yr(ea["lo"])}–{_yr(ea["hi"])}), as a share of each '
          'phase\'s winters; the number of winters is on each bar.</figcaption></figure>',
-         f'<p class="small">ERA5 averages rain over 25 km cells: {ea["thr"]} mm there is about {_round_to(ea["imerg_equiv"], 5)} mm in IMERG\'s terms. The window and the '
-         f'threshold were chosen after comparing several: the gap is there at every total tried from 10 to 50 mm (p from {min(ps):.3f} to {max(ps):.3f}) and in '
-         f'both halves of the record ({_yr(h1[0])}–{_yr(h1[1])}: {h1[2]["El Niño"]["mean"]:.1f} against {h1[2]["other"]["mean"]:.1f}; {_yr(h2[0])}–{_yr(h2[1])}: '
-         f'{h2[2]["El Niño"]["mean"]:.1f} against {h2[2]["other"]["mean"]:.1f}). Before {_yr(ea["lo"])} there was none ({bf["El Niño"]["mean"]:.1f} against '
-         f'{bf["other"]["mean"]:.1f} from {_yr(b0)}), like the rest of the El Niño link (section 2).</p>',
-         f'<p>Over the whole winter the gap is smaller. El Niño winters have brought {rg(en)} storms of {t0} mm or more ({en["mean"]:.1f} on average, IMERG), against '
+         f'<p class="small">ERA5 averages rain over 25 km cells: {ea["thr"]} mm there is about {eqmm} mm in IMERG\'s terms. At the other totals tried from 10 '
+         f'to 50 mm the full-record gap has p from {min(ps):.3f} to {max(ps):.3f}. IMERG at {ea["thr"]} mm, a smaller class of storm: '
+         f'{I["El Niño"]["mean"]:.1f} against {I["other"]["mean"]:.1f} ({_pv(I["p"])}). Before {_yr(ea["lo"])} there was no gap ({bf["El Niño"]["mean"]:.1f} '
+         f'against {bf["other"]["mean"]:.1f} from {_yr(b0)}), like the rest of the El Niño link (section 2).</p>',
+         f'<p>Over the whole winter the difference is proportionally smaller. El Niño winters have brought {rg(en)} storms of {t0} mm or more ({en["mean"]:.1f} on average, IMERG), against '
          f'{rg(ne)} in neutral winters ({ne["mean"]:.1f}) and {rg(ln)} in La Niña winters ({ln["mean"]:.1f}). On IMERG\'s {_nword(en["n"])} El Niño '
          f'winters the difference from the other {ot["n"]} {chance(en["p"])} ({_pv(en["p"])}); in ERA5 since {_yr(e_en["first"])}, with {e_en["n"]} El Niño '
          f'winters and thresholds matched to IMERG\'s, ' + (f'the gap is {gap:.1f} storms a winter and' if gap > 0.05 else 'there is no gap, which')
@@ -2217,8 +2232,8 @@ def render_winter_impacts(spec: dict, a: dict) -> str:
     o.append(f'<figure><img src="event_hazards.png" alt="People counted per event against ERA5 rain over the event\'s dates">'
              f'<figcaption>{html.escape(A.event_sources)} Each dot is one event with a dated count, against ERA5 rain over {A.ref} from the day before '
              f'the event to its last day; faded dots are events after December. Top: storms of that size before January in El Niño and other winters, a '
-             f'past range and not a forecast. ERA5 averages rain over 25 km cells and flattens the largest storms; the table below gives IMERG beside '
-             f'it.</figcaption></figure>')
+             f'past range and not a forecast. ERA5 averages rain over 25 km cells: it flattens the largest storms and can differ severalfold from IMERG on '
+             f'a single storm; the table below gives both.</figcaption></figure>')
     o.append('<div style="overflow-x:auto"><table><thead><tr><th>Dates</th><th>Hazard</th><th class="num">Rain over the event<br><span class="small">IMERG · ERA5</span></th>'
              '<th class="num">People counted</th><th>What the count is</th><th>Source</th></tr></thead><tbody>')
     for r in U.itertuples():
