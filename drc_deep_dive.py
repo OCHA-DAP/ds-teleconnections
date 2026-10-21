@@ -100,7 +100,7 @@ plt.rcParams.update({
 # Analogue seasons (July–June, labelled by the starting year). Fixed once, used everywhere.
 BOTH = [1997, 2015, 2023]          # strong El Niño + positive IOD (SON ONI >= 1.5, SON DMI >= 0.4)
 BOTH_PRE = [1972, 1982]            # same class, before FloodScan (1982 is in CHIRPS)
-IOD_ONLY = [2019]                  # positive IOD, weak El Niño
+IOD_ONLY = [2019]                  # very strong positive IOD (SON DMI >= 1.0), weak El Niño (SON ONI < 1.0): 2019 only
 NOW = 2026
 FS_START = pd.Timestamp("1998-01-12")
 
@@ -480,6 +480,9 @@ def emdat_events() -> pd.DataFrame:
     return df
 
 
+HNRP_ADM2_FIX = {"CD3106": "CD3107"}  # Kasongo-Lunda: HNRP 2026 code vs the CODAB used by FloodScan
+
+
 def territory_cross(fs2: pd.DataFrame) -> gpd.GeoDataFrame:
     """Per territory: smoothed seasonal peak in the El Niño + IOD seasons vs a typical season; 2026 PiN."""
     fs2 = fs2[fs2.valid_date >= FS_START].copy()
@@ -490,7 +493,11 @@ def territory_cross(fs2: pd.DataFrame) -> gpd.GeoDataFrame:
     full = [y for y in pk.index if 1998 <= y <= 2025]
     t = pd.DataFrame({"analog": pk.loc[[y for y in BOTH if y >= 1998]].mean(), "typical": pk.loc[full].median()})
     p = pin()
-    t["pin"] = p.groupby("admin2_code")["final_pin"].sum().reindex(t.index).fillna(0)
+    by2 = p.groupby(p["admin2_code"].replace(HNRP_ADM2_FIX))["final_pin"].sum()
+    missing = sorted(set(by2.index) - set(t.index))
+    if missing:
+        raise ValueError(f"HNRP admin2 codes not in the FloodScan territories: {missing} (extend HNRP_ADM2_FIX)")
+    t["pin"] = by2.reindex(t.index).fillna(0)
     g = boundaries(2).set_index("ADM2_PCODE").join(t, how="left")
     return g
 
@@ -560,7 +567,7 @@ def fig_setup() -> Path:
     ax.set_ylabel(_t("Indian Ocean Dipole: DMI, Sep–Nov (°C)", "Dipôle de l'océan Indien : DMI, sept.–nov. (°C)"))
     ax.legend(handles=[
         Line2D([], [], marker="o", ls="", color=BOTH_C, label=_t("strong El Niño + positive IOD", "El Niño fort + IOD positif")),
-        Line2D([], [], marker="o", ls="", color=IOD_C, label=_t("positive IOD, weak El Niño", "IOD positif, El Niño faible")),
+        Line2D([], [], marker="o", ls="", color=IOD_C, label=_t("very strong positive IOD, weak El Niño", "IOD positif très fort, El Niño faible")),
         Line2D([], [], marker="*", ls="", color=NOW_C, ms=10, label="2026"),
     ], loc="upper left", fontsize=8)
     _source(fig, _t("Sources: NOAA CPC ONI; DMI from NOAA OSMC (OISST) since Oct 1981, NOAA PSL (HadISST) before.",
@@ -586,34 +593,40 @@ def _clip(da: xr.DataArray, adm0) -> np.ndarray:
     return np.where(m[::-1] if lat[0] < lat[-1] else m, da.values, np.nan)
 
 
-def fig_drivers(maps: dict) -> Path:
+def fig_drivers(maps: dict, maps_era5: dict) -> Path:
     adm0, adm1 = boundaries(0), boundaries(1)
     bounds = [-1, -0.5, -0.3, 0.3, 0.5, 1]
     cmap = mcolors.ListedColormap([DIV[0], DIV[1], "#ebeae6", DIV[5], DIV[6]])
     norm = mcolors.BoundaryNorm(bounds, cmap.N)
-    rows = [("iod", ["SON", "OND", "NDJ"], _t("Positive IOD (El Niño held fixed)", "IOD positif (El Niño fixé)")),
-            ("enso", ["OND", "DJF", "JFM"], _t("El Niño (IOD held fixed)", "El Niño (IOD fixé)"))]
-    fig, axes = plt.subplots(2, 3, figsize=(9.6, 7.0))
-    for i, (key, seasons, lab) in enumerate(rows):
+    seasons = ["SON", "OND", "NDJ", "JFM"]
+    rows = [("iod", maps, _t("Positive Dipole\n(CHIRPS)", "Dipôle positif\n(CHIRPS)")),
+            ("iod", maps_era5, _t("Positive Dipole\n(ERA5)", "Dipôle positif\n(ERA5)")),
+            ("enso", maps, _t("El Niño\n(CHIRPS)", "El Niño\n(CHIRPS)"))]
+    fig, axes = plt.subplots(len(rows), len(seasons), figsize=(10.4, 8.4))
+    for i, (key, m, lab) in enumerate(rows):
         for j, s in enumerate(seasons):
             ax = axes[i, j]
-            da = maps[(key, s)]
+            da = m[(key, s)]
             ax.pcolormesh(da.lon, da.lat, _clip(da, adm0), cmap=cmap, norm=norm, shading="nearest")
             _map_axes(ax, adm1)
             adm0.boundary.plot(ax=ax, color="#52514e", lw=0.6)
-            ax.set_title(s, fontsize=10, loc="left")
-        axes[i, 0].text(-0.08, 0.5, lab, transform=axes[i, 0].transAxes, rotation=90, va="center", ha="center",
-                        fontsize=10, fontweight="bold")
+            if i == 0:
+                ax.set_title(_t({"SON": "Sep–Nov", "OND": "Oct–Dec", "NDJ": "Nov–Jan", "JFM": "Jan–Mar"}[s],
+                                {"SON": "sept.–nov.", "OND": "oct.–déc.", "NDJ": "nov.–janv.", "JFM": "janv.–mars"}[s]), fontsize=10)
+        axes[i, 0].text(-0.1, 0.5, lab, transform=axes[i, 0].transAxes, rotation=90, va="center", ha="center",
+                        fontsize=9.5, fontweight="bold")
     fig.legend(handles=[Patch(color=DIV[6], label=_t("much wetter (r ≥ 0.5)", "beaucoup plus humide (r ≥ 0,5)")),
                         Patch(color=DIV[5], label=_t("wetter (0.3–0.5)", "plus humide (0,3–0,5)")),
                         Patch(color="#ebeae6", label=_t("no clear signal", "pas de signal net")),
                         Patch(color=DIV[1], label=_t("drier (−0.3 to −0.5)", "plus sec (−0,3 à −0,5)")),
                         Patch(color=DIV[0], label=_t("much drier (r ≤ −0.5)", "beaucoup plus sec (r ≤ −0,5)"))],
                loc="lower center", ncol=5, fontsize=8, bbox_to_anchor=(0.5, -0.01))
-    fig.subplots_adjust(wspace=0.02, hspace=0.08, bottom=0.07)
-    _source(fig, _t(f"Partial correlation of 3-month rainfall with the index, the other index held fixed; CHIRPS v3 0.5°, 1981–2025 (n = {maps['n']}); |r| ≥ 0.3 ≈ p < 0.05. ERA5 shows the same pattern.",
-                    f"Corrélation partielle de la pluie sur 3 mois avec l'indice, l'autre indice fixé ; CHIRPS v3 0,5°, 1981–2025 (n = {maps['n']}) ; |r| ≥ 0,3 ≈ p < 0,05. ERA5 donne la même image."),
-            y=-0.03)
+    fig.subplots_adjust(wspace=0.02, hspace=0.08, bottom=0.06)
+    _source(fig, _t(f"Partial correlation of 3-month rainfall with the Dipole index (El Niño held fixed) or with Niño3.4 (Dipole held fixed); "
+                    f"0.5° grid, 1981–2025 (n = {maps['n']}); |r| ≥ 0.3 ≈ p < 0.05. El Niño in ERA5: no clear signal in at least 96% of cells in every season shown.",
+                    f"Corrélation partielle de la pluie sur 3 mois avec l'indice du dipôle (El Niño fixé) ou avec Niño3.4 (dipôle fixé) ; grille 0,5°, "
+                    f"1981–2025 (n = {maps['n']}) ; |r| ≥ 0,3 ≈ p < 0,05. El Niño dans ERA5 : pas de signal net dans au moins 96 % des cellules à chaque saison."),
+            y=-0.02)
     return _save(fig, "drivers")
 
 
@@ -643,8 +656,8 @@ def fig_rain_years(anoms: dict) -> Path:
                bbox_to_anchor=(0.5, -0.02), title=_t("rainfall, % of the 1991–2020 average", "pluie, % de la moyenne 1991–2020"),
                title_fontsize=8)
     fig.subplots_adjust(wspace=0.02, hspace=0.06, bottom=0.12)
-    _source(fig, _t("CHIRPS v3, 0.5°. Orange titles: strong El Niño + positive IOD; blue: positive IOD with a weak El Niño.",
-                    "CHIRPS v3, 0,5°. Titres orange : El Niño fort + IOD positif ; bleu : IOD positif, El Niño faible."), y=-0.05)
+    _source(fig, _t("CHIRPS v3, 0.5°. Orange titles: strong El Niño + positive IOD; blue: very strong positive IOD with a weak El Niño.",
+                    "CHIRPS v3, 0,5°. Titres orange : El Niño fort + IOD positif ; bleu : IOD positif très fort, El Niño faible."), y=-0.05)
     return _save(fig, "rain_years")
 
 
@@ -686,7 +699,7 @@ def fig_flood_cycle(series: dict) -> Path:
         ax.set_ylabel(_t("people in flooded areas (thousands)", "personnes en zone inondée (milliers)"))
     fig.legend(handles=[
         Line2D([], [], color=BOTH_C, lw=1.8, label=_t("strong El Niño + positive IOD", "El Niño fort + IOD positif")),
-        Line2D([], [], color=IOD_C, lw=1.8, label=_t("positive IOD, weak El Niño (2019/20)", "IOD positif, El Niño faible (2019/20)")),
+        Line2D([], [], color=IOD_C, lw=1.8, label=_t("very strong positive IOD, weak El Niño (2019/20)", "IOD positif très fort, El Niño faible (2019/20)")),
         Line2D([], [], color=NOW_C, lw=1.8, label=_t("2026/27 so far", "2026/27 à ce jour")),
         Line2D([], [], color=OTHER_C, lw=1, label=_t("other seasons since 1998", "autres saisons depuis 1998"))],
         loc="lower center", ncol=4, fontsize=8, bbox_to_anchor=(0.5, -0.02))
@@ -705,7 +718,7 @@ def fig_flood_peaks(pk: pd.DataFrame) -> Path:
     for ax, k in zip(axes, PEAK_REGIONS):
         r = REGIONS[k]
         d = pk[pk.region == k]
-        med = d.peak.median()
+        med = d[d.season >= 1998].peak.median()
         ax.axvline(med / 1000, color=TEXT2, lw=0.8)
         ax.text(med / 1000, 0.97, _t(f" median {_num(med / 1000)}k", f" médiane {_num(med / 1000)} k"), fontsize=7.5,
                 color=TEXT2, transform=ax.get_xaxis_transform(), ha="left", va="top")
@@ -818,13 +831,15 @@ def fig_lake() -> tuple[Path, dict]:
     ax4.set_yticks(range(len(scen)))
     ax4.set_yticklabels([_t(f"rise as in {l}", f"hausse comme en {l}") if "/" in l else l for l, _, _ in scen], fontsize=7.5)
     ax4.set_ylim(len(scen) - 0.5, -0.5)
+    ax4.set_xlim(oct26 - 0.15, max(v for _, v, _ in scen) + 0.15)
     ax4.set_xlabel(_t("peak level in 2027 (m)", "niveau du pic en 2027 (m)"))
     ax4.set_title(_t("From the October 2026 level", "À partir du niveau d'octobre 2026"), loc="left")
     _source(fig, _t(f"NASA GSFC G-REALM satellite altimetry, 10-day, EGM2008 datum (not the national gauge datum); latest {t.index.max():%d %b %Y}. "
-                    "Shading: orange El Niño + positive IOD, blue positive IOD alone. Bottom right: a past range, not a forecast.",
+                    "Shading: orange El Niño + positive IOD, blue very strong positive IOD with a weak El Niño. Past rises have not depended on the October level "
+                    f"(r = {rz.rise.corr(rz.oct):.2f}). Bottom right: a past range, not a forecast.",
                     f"Altimétrie satellite NASA GSFC G-REALM, pas de 10 jours, référence EGM2008 (pas celle des échelles nationales) ; "
-                    f"dernière mesure {t.index.max():%d/%m/%Y}. Fond : orange El Niño + IOD positif, bleu IOD positif seul. "
-                    "En bas à droite : une fourchette passée, pas une prévision."), y=0.02)
+                    f"dernière mesure {t.index.max():%d/%m/%Y}. Fond : orange El Niño + IOD positif, bleu IOD positif très fort avec El Niño faible. "
+                    f"Les hausses passées ne dépendent pas du niveau d'octobre (r = {_num(rz.rise.corr(rz.oct), 2)}). En bas à droite : une fourchette passée, pas une prévision."), y=0.02)
     return _save(fig, "lake"), dict(oct26=oct26, rises=rz, scen=scen, record=rec, record_season=rec_season)
 
 
@@ -862,9 +877,9 @@ def fig_reported(ev: pd.DataFrame) -> Path:
     ax2.legend(loc="lower left", fontsize=7.5, ncol=3, bbox_to_anchor=(0, -0.28), labelspacing=1.2, borderpad=0.8)
     fig.tight_layout()
     _source(fig, _t(f"EM-DAT (CRED/UCLouvain), flood records for DRC, team snapshot to {ev['Last Update'].max()}. Reported counts are a floor: "
-                    "small events and earlier years are under-recorded. Seasons July–June; shading: orange El Niño + positive IOD, blue positive IOD alone.",
+                    "small events and earlier years are under-recorded. Seasons July–June; shading: orange El Niño + positive IOD, blue very strong positive IOD with a weak El Niño.",
                     f"EM-DAT (CRED/UCLouvain), inondations en RDC, copie de l'équipe à jour au {ev['Last Update'].max()}. Les chiffres signalés sont "
-                    "un minimum : petits événements et années anciennes sous-enregistrés. Saisons juillet–juin ; fond : orange El Niño + IOD positif, bleu IOD positif seul."),
+                    "un minimum : petits événements et années anciennes sous-enregistrés. Saisons juillet–juin ; fond : orange El Niño + IOD positif, bleu IOD positif très fort avec El Niño faible."),
             y=-0.06)
     return _save(fig, "reported")
 
@@ -951,13 +966,14 @@ def southeast_rain(pcodes: tuple[str, ...] = ("CD71",)) -> pd.Series:
     tr = from_origin(lon.min() - res / 2, lat.max() + res / 2, res, res)
     adm1 = boundaries(1)
     m = geometry_mask(adm1[adm1.ADM1_PCODE.isin(pcodes)].geometry, out_shape=(lat.size, lon.size), transform=tr,
-                      invert=True, all_touched=True)[::-1]
+                      invert=True, all_touched=False)[::-1]
     ser = pd.Series(np.nanmean(np.where(m, rs.values, np.nan), axis=(1, 2)), index=rs.year.values)
     return ser / ser.loc[1991:2020].mean() * 100
 
 
 def strong_nino() -> list[int]:
-    o = oni_season("NDJ")
+    """Strong El Niño seasons: Sep–Nov ONI >= 1.5 °C (the same El Niño test as the analogue seasons)."""
+    o = oni_season("SON")
     return [int(y) for y in o[o >= 1.5].index]
 
 
@@ -1002,7 +1018,7 @@ def fig_southeast() -> tuple[Path, dict]:
     a3.set_title(_t("Maize prices, Lubumbashi", "Prix du maïs, Lubumbashi"), loc="left")
     a3.legend(loc="upper left", fontsize=7.5)
     a3.set_ylim(bottom=0)
-    fig.legend(handles=[Patch(color=BOTH_C, label=_t("after a strong El Niño (Nov–Jan ONI ≥ 1.5 °C)", "après un El Niño fort (ONI nov.–janv. ≥ 1,5 °C)")),
+    fig.legend(handles=[Patch(color=BOTH_C, label=_t("after a strong El Niño (Sep–Nov ONI ≥ 1.5 °C)", "après un El Niño fort (ONI sept.–nov. ≥ 1,5 °C)")),
                         Patch(color=OTHER_C, label=_t("other years", "autres années"))], loc="lower center", ncol=2, fontsize=8,
                bbox_to_anchor=(0.5, -0.06))
     _source(fig, _t("CHIRPS v3 0.5° (Haut-Katanga mean); FAOSTAT; WFP retail prices (HDX), US$, months where the local price repeats for six "
@@ -1010,8 +1026,10 @@ def fig_southeast() -> tuple[Path, dict]:
                     "CHIRPS v3 0,5° (moyenne Haut-Katanga) ; FAOSTAT ; prix de détail PAM (HDX), en US$, les mois où le prix local se répète six "
                     "mois ou plus sont exclus (non mis à jour). Barres et fond colorés pour la récolte ou la soudure qui suit l'événement."), y=-0.1)
     n = [y for y in sn if y in jfm.index]
-    stats = dict(se_n=len(n), se_dry=sum(jfm[y] <= dry3 for y in n),
-                 zmb_drop=_num((1 - zmb[2024] / zmb[2023]) * 100), zmb_n=len([y for y in zmb.index if y - 1 in sn]))
+    dry = [y for y in n if jfm[y] <= dry3]
+    stats = dict(se_n=len(n), se_dry=len(dry), se_dry_years=", ".join(season_label(y) for y in dry),
+                 se_wet_years=", ".join(season_label(y) for y in n if y not in dry),
+                 zmb_drop=_num((1 - zmb[2024] / zmb[2023]) * 100), zmb_drop98=_num((1 - zmb[1998] / zmb[1997]) * 100))
     return _save(fig, "southeast"), stats
 
 
@@ -1074,10 +1092,10 @@ def range_table(pk: pd.DataFrame, series: dict) -> str:
     for k in ["corridor", "kinshasa", "tanganyika", "southeast"]:
         d = pk[pk.region == k].set_index("season")["peak"]
         cells = "".join(f'<td class="num">{_num(d.get(y, np.nan) / 1000)}</td>' for y, _ in cols)
-        rows.append(f'<tr><td>{_t(REGIONS[k]["en"], REGIONS[k]["fr"])}</td><td class="num">{_num(d.median() / 1000)}</td>{cells}</tr>')
+        rows.append(f'<tr><td>{_t(REGIONS[k]["en"], REGIONS[k]["fr"])}</td><td class="num">{_num(d.loc[1998:].median() / 1000)}</td>{cells}</tr>')
     return ('<div class="tablewrap"><table><tr><th>' + _t("People in flooded areas, season peak (thousands)", "Personnes en zone inondée, pic de la saison (milliers)")
             + f'</th><th class="num">{_t("typical season", "saison typique")}</th>{head}</tr>' + "".join(rows) + "</table></div>"
-            + f'<p class="note">{_t("*1997/98 from 12 January 1998. Typical = median of 1997/98–2025/26.", "*1997/98 à partir du 12 janvier 1998. Typique = médiane de 1997/98–2025/26.")}</p>')
+            + f'<p class="note">{_t("*1997/98 from 12 January 1998. Typical = median of 1998/99–2025/26.", "*1997/98 à partir du 12 janvier 1998. Typique = médiane de 1998/99–2025/26.")}</p>')
 
 
 def private_block(v: dict) -> str:
@@ -1137,7 +1155,7 @@ def encrypt() -> None:
         enc = (DOCS / rel).read_text()
         if "staticrypt" not in enc:
             raise SystemExit(f"{DOCS / rel} is not a staticrypt page")
-        for marker in ('class="tile"', "data:image/png", "EM-DAT", "FloodScan", "Tanganyika"):
+        for marker in ('class="tile"', "data:image/png", "EM-DAT", "FloodScan", "Tanganyika", "WFP", "PAM", "METTELSAT", "IPC 3+"):
             if marker in enc:
                 raise SystemExit(f"{DOCS / rel} contains plaintext ({marker})")
     print(f"  encrypted -> {DOCS}/index.html, fr/index.html")
@@ -1157,7 +1175,7 @@ def write_index() -> None:
 def analyse() -> dict:
     fs = floodscan_adm1()
     series = region_series(fs)
-    a = dict(series=series, peaks=region_peaks(series), maps=driver_maps(), anoms=rain_anomalies(),
+    a = dict(series=series, peaks=region_peaks(series), maps=driver_maps(), maps_era5=driver_maps("era5"), anoms=rain_anomalies(),
              events=emdat_events(), cross=territory_cross(floodscan_adm2()))
     return a
 
@@ -1165,7 +1183,7 @@ def analyse() -> dict:
 def figures(a: dict) -> dict:
     f = {}
     f["setup"] = fig_setup()
-    f["drivers"] = fig_drivers(a["maps"])
+    f["drivers"] = fig_drivers(a["maps"], a["maps_era5"])
     f["rain_years"] = fig_rain_years(a["anoms"])
     f["flood_cycle"] = fig_flood_cycle(a["series"])
     f["flood_peaks"] = fig_flood_peaks(a["peaks"])

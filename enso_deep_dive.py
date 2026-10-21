@@ -1797,6 +1797,8 @@ def render_index(specs: list[dict], end_year: int) -> str:
                'resolution, and what that means for drought.</p>')
     out.append('<div class="grid">')
     for s in sorted(specs, key=lambda s: s["name"]):
+        if s.get("restricted") and not (Path(__file__).resolve().parent / OUT_DIR / s["slug"] / "index.html").exists():
+            continue  # encrypted page not built (no SITE_PASSWORD): no card, no dead link
         cat, ours = s["catalogue"], s["assessment"]
         foot = ("restricted · password shared internally" if s.get("restricted")
                 else f'catalogue {chip(cat["evidence"])} → reviewed {chip(ours["evidence"])}')
