@@ -18,6 +18,7 @@ from __future__ import annotations
 import argparse
 import html
 import json
+import os
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -1797,9 +1798,11 @@ def render_index(specs: list[dict], end_year: int) -> str:
     out.append('<div class="grid">')
     for s in sorted(specs, key=lambda s: s["name"]):
         cat, ours = s["catalogue"], s["assessment"]
+        foot = ("restricted · password shared internally" if s.get("restricted")
+                else f'catalogue {chip(cat["evidence"])} → reviewed {chip(ours["evidence"])}')
         out.append(f'<a class="k" href="{s["slug"]}/"><h2>{html.escape(s["name"])}</h2>'
                    f'<p>{html.escape(ours["one_line"])}</p>'
-                   f'<div class="foot">catalogue {chip(cat["evidence"])} → reviewed {chip(ours["evidence"])}</div></a>')
+                   f'<div class="foot">{foot}</div></a>')
     out.append('</div>')
     out.append('<h2>How a deep dive is built</h2>'
                '<p>Each page pairs a curated evidence review (why the survey catalogue graded the country as it did, and what '
@@ -1857,6 +1860,11 @@ def main() -> None:
             # Gaza and the West Bank: wet-season hazards on a few ERA5 cells: own module (reuses this one's pieces)
             import levant_deep_dive
             levant_deep_dive.build(spec, grid, gdf, indices)
+            continue
+        if spec.get("builder") == "drc":
+            # restricted, plot-led flood page; encrypted into docs/enso/drc/ only when SITE_PASSWORD is set
+            import drc_deep_dive
+            drc_deep_dive.build(spec, grid, gdf, indices, encrypt_pages=bool(os.environ.get("SITE_PASSWORD")))
             continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack
