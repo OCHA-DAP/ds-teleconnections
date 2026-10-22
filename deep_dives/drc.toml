@@ -65,8 +65,8 @@ fr = "La pluie lors des saisons passées comparables"
 [[sections]]
 id = "timing"
 fig = "flood_cycle"
-en = "Floods arrive at different times: December–January on the rivers, March–May on Lake Tanganyika and in the south-east"
-fr = "Les crues arrivent à des moments différents : décembre–janvier sur les fleuves, mars–mai sur le lac Tanganyika et au Sud-Est"
+en = "Floods arrive at different times: December–January on the Congo and Ubangi, March–May on the Lualaba floodplains and in the south-east"
+fr = "Les crues arrivent à des moments différents : décembre–janvier sur le Congo et l'Oubangui, mars–mai dans les plaines du Lualaba et au Sud-Est"
 
 [[sections]]
 id = "range"
@@ -94,6 +94,22 @@ en = "Flood exposure and humanitarian needs mostly sit in different places. The 
 fr = "L'exposition aux crues et les besoins humanitaires se situent surtout à des endroits différents. La zone de crues éclair du Kivu est leur point de rencontre"
 
 [[sections]]
+id = "hnrp_split"
+fig = "need_split"
+en = "Against the 2026 HNRP, only {inpin_lo}–{inpin_hi}% of the people in flooded areas in these seasons are already counted in need. On the rivers almost all live in severity-2 health zones, where the plan counts almost no one"
+fr = "Au regard du HNRP 2026, seulement {inpin_lo} à {inpin_hi} % des personnes en zone inondée lors de ces saisons sont déjà comptées dans le besoin. Sur les fleuves, presque toutes vivent dans des zones de santé en sévérité 2, où le plan ne compte presque personne"
+note_en = "Each bar is a region's flood peak in that season, split by the 2026 HNRP status of the health zones those people live in."
+note_fr = "Chaque barre est le pic de crue d'une région lors de cette saison, réparti selon le statut HNRP 2026 des zones de santé où vivent ces personnes."
+
+[[sections]]
+id = "hnrp_list"
+fig = "flood_lists"
+en = "The HNRP's own flood list and the satellite see different floods: {risk_blind}% of the {risk_total} M people the 2026 HNRP lists at flood risk are in territories where FloodScan saw almost no one flooded, even in 2023/24"
+fr = "La liste d'inondation du HNRP et le satellite voient des crues différentes : {risk_blind} % des {risk_total} M de personnes que le HNRP 2026 liste à risque d'inondation sont dans des territoires où FloodScan n'a vu presque personne inondé, même en 2023/24"
+note_en = "Almost no one: fewer than {seen_below} people at the 2023/24 peak. The other way round, {sat_unlisted}% of the people in flooded areas in 2023/24 were in territories where the list has no one."
+note_fr = "Presque personne : moins de {seen_below} personnes au pic de 2023/24. Dans l'autre sens, {sat_unlisted} % des personnes en zone inondée en 2023/24 étaient dans des territoires où la liste ne compte personne."
+
+[[sections]]
 id = "southeast"
 fig = "southeast"
 en = "South-east: a dry January–March and dearer maize after El Niño are possible, not reliable"
@@ -107,6 +123,7 @@ en = [
   "<b>People in flooded areas is not people affected.</b> At the height of the 2023/24 floods, FloodScan put about {exposed_2324} M people in flooded areas across the country; EM-DAT reports {affected_2324} M affected that season. Read FloodScan as a consistent yardstick between seasons, and EM-DAT for the humanitarian scale.",
   "<b>Reported impacts</b> (EM-DAT, CRED/UCLouvain) are a floor: small events and earlier years are under-recorded. The team snapshot runs to {emdat_end}.",
   "<b>Analogue seasons</b>: strong El Niño with a positive Dipole (Sep–Nov ONI ≥ 1.5 °C, DMI ≥ 0.4 °C): 1997/98, 2015/16, 2023/24 (1972/73 and 1982/83 before the flood record). Very strong positive Dipole with a weak El Niño (DMI ≥ 1.0 °C, ONI < 1.0 °C): 2019/20 only. Strong El Niño in the south-east section: Sep–Nov ONI ≥ 1.5 °C. Three or four seasons give a range, not odds.",
+  "<b>People in need and severity</b>: HNRP 2026 as revised in July 2026 ({pin_total} M people in need; intersectoral severity of {hz_n} health zones). FloodScan works by territory, so each territory's people in flooded areas are shared out like its population across its health zones ({maj_share}% of people live in health zones at their territory's most common severity). Counting them as already in need assumes they are as likely to be in need as their neighbours.",
   "<b>Rainfall</b>: CHIRPS v3 at 0.5°; the Dipole maps also show ERA5, which agrees on September–December but not on January–March. <b>Lake levels</b>: NASA GSFC G-REALM satellite altimetry (EGM2008 datum, not the national gauge datum). <b>Needs</b>: HNRP 2026 people in need (OCHA).",
 ]
 fr = [
@@ -114,5 +131,6 @@ fr = [
   "<b>Personnes en zone inondée n'est pas personnes affectées.</b> Au plus fort des inondations de 2023/24, FloodScan comptait environ {exposed_2324} M de personnes en zone inondée dans le pays ; EM-DAT signale {affected_2324} M de personnes affectées sur la saison. FloodScan sert d'étalon constant entre saisons, EM-DAT donne l'ordre de grandeur humanitaire.",
   "<b>Impacts signalés</b> (EM-DAT, CRED/UCLouvain) : un minimum ; les petits événements et les années anciennes sont sous-enregistrés. La copie de l'équipe s'arrête au {emdat_end}.",
   "<b>Saisons analogues</b> : El Niño fort avec dipôle positif (ONI sept.–nov. ≥ 1,5 °C, DMI ≥ 0,4 °C) : 1997/98, 2015/16, 2023/24 (1972/73 et 1982/83 avant l'archive des crues). Dipôle positif très fort avec El Niño faible (DMI ≥ 1,0 °C, ONI < 1,0 °C) : 2019/20 seulement. El Niño fort dans la section Sud-Est : ONI sept.–nov. ≥ 1,5 °C. Trois ou quatre saisons donnent une fourchette, pas des probabilités.",
+  "<b>Personnes dans le besoin et sévérité</b> : HNRP 2026 révisé en juillet 2026 ({pin_total} M de personnes dans le besoin ; sévérité intersectorielle de {hz_n} zones de santé). FloodScan travaille par territoire : les personnes en zone inondée de chaque territoire sont réparties comme sa population entre ses zones de santé ({maj_share} % des habitants vivent dans une zone de santé à la sévérité la plus courante de leur territoire). Les compter comme déjà dans le besoin suppose qu'elles le sont autant que leurs voisins.",
   "<b>Pluie</b> : CHIRPS v3 à 0,5° ; les cartes du dipôle montrent aussi ERA5, en accord pour septembre–décembre mais pas pour janvier–mars. <b>Niveaux des lacs</b> : altimétrie satellite NASA GSFC G-REALM (référence EGM2008, pas celle des échelles nationales). <b>Besoins</b> : personnes dans le besoin HNRP 2026 (OCHA).",
 ]

@@ -15,4 +15,5 @@ dependencies = [
     "h5py>=3.16.0",
     "cdsapi>=0.7.7",
     "pyyaml>=6.0.3",
+    "openpyxl>=3.1.5",
 ]
