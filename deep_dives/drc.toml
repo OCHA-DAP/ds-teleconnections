@@ -1,0 +1,118 @@
+# DRC — El Niño, the Indian Ocean Dipole and floods, 2026/27. Built by drc_deep_dive.py (builder = "drc").
+# Plot-led and ENCRYPTED (staticrypt): one short headline per figure, no paragraphs. English and French sit side
+# by side here; {placeholders} are filled from the build (report() prints the values), so numbers cannot drift.
+# The comparison with the partner's internal scenario note lives in deep_dives/private/drc-partner.toml (gitignored)
+# and only ever appears inside the encrypted HTML. Nothing in this file may quote that note.
+iso3 = "COD"
+name = "DR Congo: floods"
+builder = "drc"
+restricted = true
+
+[catalogue]
+evidence = "moderate"
+
+[assessment]
+evidence = "moderate"
+one_line = "Restricted page. What past seasons with a strong El Niño and a positive Indian Ocean Dipole brought in river, lake and wetland floods, region by region."
+
+[page]
+title_en = "DRC: El Niño, the Indian Ocean Dipole and floods in 2026/27"
+title_fr = "RDC : El Niño, le dipôle de l'océan Indien et les inondations en 2026/27"
+sub_en = "What past seasons like this one brought, region by region. A past range, not a forecast."
+sub_fr = "Ce qu'ont apporté les saisons passées comparables, région par région. Une fourchette passée, pas une prévision."
+dateline_en = "Draft for the OCHA DRC office · data to {data_end}"
+dateline_fr = "Version de travail pour le bureau OCHA RDC · données au {data_end}"
+
+[[tiles]]
+big = "{corridor_top}"
+en = "the three largest Congo and Ubangi river floods since January 1998 all came in El Niño + positive-Dipole seasons"
+fr = "les trois plus grandes crues du Congo et de l'Oubangui depuis janvier 1998 sont toutes survenues en saison El Niño + dipôle positif"
+[[tiles]]
+big = "{lake_oct} m"
+en = "Lake Tanganyika in October 2026: the {lake_oct_rank_en} October of {lake_n} on record, {lake_gap} m below the 2024 flood peak"
+fr = "le lac Tanganyika en octobre 2026 : {lake_oct_rank_fr} octobre sur {lake_n} mesurés, {lake_gap} m sous le pic de crue de 2024"
+[[tiles]]
+big = "+{rise_lo}–{rise_hi} m"
+en = "the lake's rise from October in the three strongest-Dipole seasons since 1992; a rise like those would pass the 2024 peak"
+fr = "la hausse du lac depuis octobre lors des trois saisons au dipôle le plus fort depuis 1992 ; une telle hausse dépasserait le pic de 2024"
+[[tiles]]
+big = "{aff_lo}–{aff_hi} M"
+en = "people reported affected by floods in each past El Niño + positive-Dipole season (EM-DAT, 2015/16 and 2023/24)"
+fr = "personnes signalées affectées par les inondations lors de chaque saison El Niño + dipôle positif passée (EM-DAT, 2015/16 et 2023/24)"
+
+[[sections]]
+id = "setup"
+fig = "setup"
+en = "2026 is a strong El Niño with a positive Indian Ocean Dipole building, like 1997, 2015 and 2023"
+fr = "2026 : un El Niño fort et un dipôle de l'océan Indien qui devient positif, comme en 1997, 2015 et 2023"
+note_en = "The comparison holds only if the Dipole stays positive to December. 2015/16, with the weakest Dipole of the three, is the low case throughout."
+note_fr = "La comparaison ne tient que si le dipôle reste positif jusqu'en décembre. 2015/16, au dipôle le plus faible des trois, est partout le cas bas."
+
+[[sections]]
+id = "drivers"
+fig = "drivers"
+en = "September–December: the extra rain comes with the Dipole. El Niño's own effect is small"
+fr = "Septembre–décembre : le surplus de pluie vient avec le dipôle. L'effet propre d'El Niño est faible"
+note_en = "Both rainfall records show a wetter September–December after a positive Dipole, but not in the same places: CHIRPS mostly in the west and centre in September–November, ERA5 mostly in the south-east from October to January. They disagree on January–March: CHIRPS turns drier, ERA5 does not."
+note_fr = "Les deux archives de pluie montrent un septembre–décembre plus humide après un dipôle positif, mais pas aux mêmes endroits : CHIRPS surtout à l'ouest et au centre en septembre–novembre, ERA5 surtout au Sud-Est d'octobre à janvier. Elles divergent pour janvier–mars : CHIRPS devient plus sec, ERA5 non."
+
+[[sections]]
+id = "rain"
+fig = "rain_years"
+en = "Rain in past seasons like this one"
+fr = "La pluie lors des saisons passées comparables"
+
+[[sections]]
+id = "timing"
+fig = "flood_cycle"
+en = "Floods arrive at different times: December–January on the rivers, March–May on Lake Tanganyika and in the south-east"
+fr = "Les crues arrivent à des moments différents : décembre–janvier sur les fleuves, mars–mai sur le lac Tanganyika et au Sud-Est"
+
+[[sections]]
+id = "range"
+fig = "flood_peaks"
+table = "range"
+en = "Congo and Ubangi: the three largest floods since 1998 came in these seasons. Tanganyika and the south-east: the strong-Dipole seasons rank high, but so do 2022/23 and 2025/26, without El Niño"
+fr = "Congo et Oubangui : les trois plus grandes crues depuis 1998 sont survenues lors de ces saisons. Tanganyika et Sud-Est : les saisons au dipôle fort sont en haut du classement, mais aussi 2022/23 et 2025/26, sans El Niño"
+
+[[sections]]
+id = "lake"
+fig = "lake"
+en = "Lake Tanganyika starts the season {lake_gap} m below its 2024 flood peak. The three strongest-Dipole seasons raised it by {rise_lo}–{rise_hi} m"
+fr = "Le lac Tanganyika commence la saison {lake_gap} m sous son pic de crue de 2024. Les trois saisons au dipôle le plus fort l'ont fait monter de {rise_lo} à {rise_hi} m"
+
+[[sections]]
+id = "reported"
+fig = "reported"
+en = "Reported impacts: the two largest flood years were strong-Dipole years. The deadliest floods were flash floods in the Kivus, in any kind of year"
+fr = "Impacts signalés : les deux plus grandes années d'inondation ont été des années de dipôle fort. Les plus meurtrières ont été des crues éclair au Kivu, quelle que soit l'année"
+
+[[sections]]
+id = "needs"
+fig = "needs"
+en = "Flood exposure and humanitarian needs mostly sit in different places. The Kivu flash-flood belt is where they meet"
+fr = "L'exposition aux crues et les besoins humanitaires se situent surtout à des endroits différents. La zone de crues éclair du Kivu est leur point de rencontre"
+
+[[sections]]
+id = "southeast"
+fig = "southeast"
+en = "South-east: a dry January–March and dearer maize after El Niño are possible, not reliable"
+fr = "Sud-Est : un janvier–mars sec et un maïs plus cher après El Niño sont possibles, pas systématiques"
+note_en = "Jan–Mar rain in Haut-Katanga fell in the driest third after {se_dry} of {se_n} strong El Niño events ({se_dry_years}; not {se_wet_years}). Zambia's harvest fell by {zmb_drop}% in 2024 and {zmb_drop98}% in 1998, but not in 2016."
+note_fr = "La pluie de janvier–mars au Haut-Katanga est tombée dans le tiers le plus sec après {se_dry} des {se_n} El Niño forts ({se_dry_years} ; pas {se_wet_years}). La récolte zambienne a baissé de {zmb_drop} % en 2024 et de {zmb_drop98} % en 1998, mais pas en 2016."
+
+[notes]
+en = [
+  "<b>People in flooded areas</b> (FloodScan): the share of each ~1 km cell that satellites see flooded (5% or more) times its WorldPop 2020 population, summed by area, daily since 12 January 1998. It measures river, lake and wetland flooding. It does not see flash floods, landslides or urban run-off.",
+  "<b>People in flooded areas is not people affected.</b> At the height of the 2023/24 floods, FloodScan put about {exposed_2324} M people in flooded areas across the country; EM-DAT reports {affected_2324} M affected that season. Read FloodScan as a consistent yardstick between seasons, and EM-DAT for the humanitarian scale.",
+  "<b>Reported impacts</b> (EM-DAT, CRED/UCLouvain) are a floor: small events and earlier years are under-recorded. The team snapshot runs to {emdat_end}.",
+  "<b>Analogue seasons</b>: strong El Niño with a positive Dipole (Sep–Nov ONI ≥ 1.5 °C, DMI ≥ 0.4 °C): 1997/98, 2015/16, 2023/24 (1972/73 and 1982/83 before the flood record). Very strong positive Dipole with a weak El Niño (DMI ≥ 1.0 °C, ONI < 1.0 °C): 2019/20 only. Strong El Niño in the south-east section: Sep–Nov ONI ≥ 1.5 °C. Three or four seasons give a range, not odds.",
+  "<b>Rainfall</b>: CHIRPS v3 at 0.5°; the Dipole maps also show ERA5, which agrees on September–December but not on January–March. <b>Lake levels</b>: NASA GSFC G-REALM satellite altimetry (EGM2008 datum, not the national gauge datum). <b>Needs</b>: HNRP 2026 people in need (OCHA).",
+]
+fr = [
+  "<b>Personnes en zone inondée</b> (FloodScan) : la part de chaque cellule d'environ 1 km vue inondée par satellite (5 % ou plus), multipliée par sa population WorldPop 2020, sommée par zone, chaque jour depuis le 12 janvier 1998. Elle mesure les crues des fleuves, des lacs et des zones humides. Elle ne voit ni les crues éclair, ni les glissements de terrain, ni le ruissellement urbain.",
+  "<b>Personnes en zone inondée n'est pas personnes affectées.</b> Au plus fort des inondations de 2023/24, FloodScan comptait environ {exposed_2324} M de personnes en zone inondée dans le pays ; EM-DAT signale {affected_2324} M de personnes affectées sur la saison. FloodScan sert d'étalon constant entre saisons, EM-DAT donne l'ordre de grandeur humanitaire.",
+  "<b>Impacts signalés</b> (EM-DAT, CRED/UCLouvain) : un minimum ; les petits événements et les années anciennes sont sous-enregistrés. La copie de l'équipe s'arrête au {emdat_end}.",
+  "<b>Saisons analogues</b> : El Niño fort avec dipôle positif (ONI sept.–nov. ≥ 1,5 °C, DMI ≥ 0,4 °C) : 1997/98, 2015/16, 2023/24 (1972/73 et 1982/83 avant l'archive des crues). Dipôle positif très fort avec El Niño faible (DMI ≥ 1,0 °C, ONI < 1,0 °C) : 2019/20 seulement. El Niño fort dans la section Sud-Est : ONI sept.–nov. ≥ 1,5 °C. Trois ou quatre saisons donnent une fourchette, pas des probabilités.",
+  "<b>Pluie</b> : CHIRPS v3 à 0,5° ; les cartes du dipôle montrent aussi ERA5, en accord pour septembre–décembre mais pas pour janvier–mars. <b>Niveaux des lacs</b> : altimétrie satellite NASA GSFC G-REALM (référence EGM2008, pas celle des échelles nationales). <b>Besoins</b> : personnes dans le besoin HNRP 2026 (OCHA).",
+]
