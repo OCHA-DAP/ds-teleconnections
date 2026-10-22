@@ -538,18 +538,16 @@ NEED_CATS = [
     ("sev12", "zones at severity 2 or less (almost no PiN)", "zones en sévérité 2 ou moins (presque pas de PiN)", "#b0afa8"),
 ]
 NEED_KEYS = [k for k, *_ in NEED_CATS]
-HZ_TERRITORY_FIX = {"CD3306ZS02": "CD3305"}  # Nioki: a health zone under Kutu in the HNRP, its own territory in the CODAB
 
 
 def hz_territory() -> pd.Series:
-    """HNRP health zone -> the FloodScan (CODAB) territory it sits in."""
-    z = pin().set_index("admin3_code")["admin2_code"].replace(HNRP_ADM2_FIX)
-    z.loc[list(HZ_TERRITORY_FIX)] = list(HZ_TERRITORY_FIX.values())
-    return z
+    """HNRP health zone -> its territory as the HNRP nests it (CODAB codes). The 25 CODAB 'villes' with no health zone of
+    their own (Nioki, Bunia, Kolwezi, ...) take their province's mix in need_split."""
+    return pin().set_index("admin3_code")["admin2_code"].replace(HNRP_ADM2_FIX)
 
 
-def need_shares() -> pd.DataFrame:
-    """Per territory, the share of its population in each NEED_CATS class (its health zones summed)."""
+def need_counts() -> pd.DataFrame:
+    """Per territory, people in each NEED_CATS class (its health zones summed)."""
     z = pin().set_index("admin3_code")
     sev = z["final_severity"]
     hz = pd.DataFrame({
@@ -558,22 +556,22 @@ def need_shares() -> pd.DataFrame:
         "out345": (z["population"] - z["final_pin"]).clip(lower=0).where(sev >= 3, 0),
         "sev12": z["population"].where(sev <= 2, 0),
     })
-    c = hz.groupby(hz_territory()).sum()
-    return c.div(c.sum(axis=1), axis=0)
+    return hz.groupby(hz_territory()).sum()
 
 
 def need_split(sm: pd.DataFrame, pk: pd.DataFrame) -> pd.DataFrame:
     """Each region's seasonal peak (region_peaks) split into NEED_CATS. On the peak date, each territory's people in
-    flooded areas are shared out like its population; 91% of people live in health zones at their territory's
-    majority severity, so the territory step loses little."""
-    sh = need_shares()
-    missing = sorted(set(sm.columns[sm.max() > 1000]) - set(sh.index))
-    if missing:
-        raise ValueError(f"flooded territories with no HNRP health zone: {missing}")
+    flooded areas are shared out like its population (91% of people live in health zones at their territory's
+    majority severity, so the territory step loses little); a territory with no health zone takes its province's mix."""
+    c = need_counts()
+    terr_sh = c.div(c.sum(axis=1), axis=0)
+    prov = c.groupby(c.index.str[:4]).sum()
+    prov_sh = prov.div(prov.sum(axis=1), axis=0)
+    sh = pd.DataFrame([terr_sh.loc[t] if t in terr_sh.index else prov_sh.loc[t[:4]] for t in sm.columns], index=sm.columns)
     rows = []
     for _, r in pk.iterrows():
         terr = [c for c in sm.columns if c[:4] in REGIONS[r.region]["pcodes"]]
-        part = sh.reindex(terr).fillna(0).mul(sm.loc[r.date, terr].fillna(0), axis=0).sum()
+        part = sh.loc[terr].mul(sm.loc[r.date, terr].fillna(0), axis=0).sum()
         part = part / part.sum() * r.peak if part.sum() > 0 else part * 0
         rows.append(dict(region=r.region, season=r.season, peak=r.peak, **part.to_dict()))
     return pd.DataFrame(rows)
@@ -587,7 +585,7 @@ def flood_lists(sm: pd.DataFrame) -> pd.DataFrame:
     fr = hnrp_flood_risk()
     risk = fr.groupby(hz_territory().reindex(fr.index)).sum(min_count=1)
     b = boundaries(2).set_index("ADM2_PCODE")
-    return pd.DataFrame({"typical": pk.loc[1998:last_full].median(), 2015: pk.loc[2015], 2023: pk.loc[2023],
+    return pd.DataFrame({"typical": pk.loc[1998:last_full].median(), 2015: pk.loc[2015], 2023: pk.loc[2023], "record": pk.max(),
                          "risk": risk.reindex(pk.columns), "name": b["ADM2_FR"].reindex(pk.columns),
                          "prov": b["ADM1_FR"].reindex(pk.columns)})
 
@@ -605,6 +603,11 @@ def _save(fig, name: str) -> Path:
 def _grid(ax, axis="y"):
     ax.grid(axis=axis, color=GRID, lw=0.6)
     ax.set_axisbelow(True)
+
+
+def _wrap(text: str, width: int) -> str:
+    """Wrap a long source line; non-breaking spaces keep French ' :' and ' ;' on the word before."""
+    return textwrap.fill(text.replace(" :", "\u00a0:").replace(" ;", "\u00a0;"), width)
 
 
 def _source(fig, text: str, y: float = -0.02):
@@ -1095,8 +1098,8 @@ def fig_need_split(sp: pd.DataFrame, pk: pd.DataFrame) -> Path:
     fig.legend(handles=[Patch(color=col, label=_t(en, fr)) for _, en, fr, col in NEED_CATS], loc="lower center", ncol=2,
                fontsize=8, bbox_to_anchor=(0.5, -0.005), title=_t("2026 HNRP status of the health zones flooded", "Statut HNRP 2026 des zones de santé inondées"),
                title_fontsize=8)
-    fig.tight_layout(rect=(0, 0.1, 1, 1))
-    _source(fig, textwrap.fill(_t("FloodScan × WorldPop 2020: each region's peak inside its flood months, as in the table above; *1997/98 from 12 January 1998. "
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    _source(fig, _wrap(_t("FloodScan × WorldPop 2020: each region's peak inside its flood months, as in the table above; *1997/98 from 12 January 1998. "
                     "On the peak date, each territory's people in flooded areas are shared out like its population across its health zones, "
                     "then split by each zone's 2026 PiN share and severity (HNRP 2026 as revised in July 2026).",
                     "FloodScan × WorldPop 2020 : pic de chaque région pendant ses mois de crue, comme dans le tableau ci-dessus ; *1997/98 à partir "
@@ -1107,6 +1110,9 @@ def fig_need_split(sp: pd.DataFrame, pk: pd.DataFrame) -> Path:
 
 
 LIST_TOP = 10
+# Where the part of the HNRP flood list the satellite does not see sits: places the page already calls out as unseen
+LULUA_BLIND = ["CD9204"]  # Luebo, on the Lulua: never seen flooded in the FloodScan record
+UNSEEN_GROUPS = {"kivu": ["CD61", "CD62"], "luebo": LULUA_BLIND, "lake": ["CD7402", "CD7404"]}  # Kivu slopes; Kalemie + Moba
 SEEN_BELOW = 1000  # "almost no one flooded": a territory whose 2023/24 peak stayed under this many people
 
 
@@ -1117,8 +1123,8 @@ def fig_flood_lists(t: pd.DataFrame) -> Path:
     rows = pd.concat([a, b])
     y = list(range(len(a))) + [len(a) + 1.4 + i for i in range(len(b))]
     fig = plt.figure(figsize=(10.5, 7.4))
-    axl = fig.add_axes((0.25, 0.12, 0.30, 0.78))
-    axr = fig.add_axes((0.60, 0.12, 0.38, 0.78))
+    axl = fig.add_axes((0.28, 0.12, 0.28, 0.78))
+    axr = fig.add_axes((0.61, 0.12, 0.37, 0.78))
     for ax in (axl, axr):
         _grid(ax, "x")
         ax.set_ylim(max(y) + 0.7, -1.4)
@@ -1132,7 +1138,7 @@ def fig_flood_lists(t: pd.DataFrame) -> Path:
             axl.text(rk.max() * 0.015, yy, _t("left blank", "non renseigné") if pd.isna(r.risk) else "0", fontsize=7, color=TEXT2, va="center")
     axl.set_xlim(0, rk.max() * 1.08)
     axl.set_xlabel(_t("people listed at flood risk (thousands)", "personnes à risque d'inondation (milliers)"))
-    axl.set_title(_t("HNRP 2026: people at flood risk", "HNRP 2026 : personnes à risque d'inondation"), loc="left", fontsize=9.5)
+    axl.set_title(_t("HNRP 2026: people at flood risk", "HNRP 2026 : à risque d'inondation"), loc="left", fontsize=9.5)
     hi = rows[[2015, 2023]].max(axis=1) / 1000
     axr.hlines(y, rows["typical"] / 1000, hi, color=OTHER_C, lw=1.2)
     axr.scatter(rows["typical"] / 1000, y, s=28, color=OTHER_C, edgecolor=SURFACE, lw=1, zorder=3)
@@ -1146,14 +1152,14 @@ def fig_flood_lists(t: pd.DataFrame) -> Path:
                         Line2D([], [], marker="o", ls="", color=OTHER_C, label=_t("typical season", "saison typique"))],
                loc="center right", fontsize=7.5)
     for yy, txt in ((-1.0, _t(f"Top {LIST_TOP} of the HNRP flood-risk list", f"Les {LIST_TOP} premiers de la liste HNRP")),
-                    (len(a) + 0.5, _t(f"Top {LIST_TOP} other territories in flooded areas, 2023/24", f"Les {LIST_TOP} autres territoires les plus inondés, 2023/24"))):
+                    (len(a) + 0.5, _t(f"{LIST_TOP} most flooded others, 2023/24", f"{LIST_TOP} autres plus inondés, 2023/24"))):
         axl.text(-0.02, yy, txt, transform=axl.get_yaxis_transform(), ha="right", fontsize=8.5, fontweight="bold", va="center")
     fr, n_hz = hnrp_flood_risk(), len(pin())
-    _source(fig, textwrap.fill(_t("Left: column 'Pers à risque inondation' of the 2026 JIAF workbook as revised in July 2026 (OCHA DRC, on HDX), filled for "
-                    f"{fr.notna().sum()} of {n_hz} health zones, summed by territory. Right: FloodScan × WorldPop 2020, seasonal peak of the 15-day running median per territory; "
+    _source(fig, _wrap(_t("Left: column 'Pers à risque inondation' of the 2026 JIAF workbook as revised in July 2026 (OCHA DRC, on HDX), filled for "
+                    f"{fr.notna().sum()} of {n_hz} health zones ({(fr > 0).sum()} above zero), summed by territory. Right: FloodScan × WorldPop 2020, seasonal peak of the 15-day running median per territory; "
                     "typical = median of 1998/99–2025/26.",
                     "Gauche : colonne « Pers à risque inondation » du classeur JIAF 2026 révisé en juillet 2026 (OCHA RDC, sur HDX), renseignée pour "
-                    f"{fr.notna().sum()} des {n_hz} zones de santé, somme par territoire. Droite : FloodScan × WorldPop 2020, pic saisonnier de la médiane glissante sur "
+                    f"{fr.notna().sum()} des {n_hz} zones de santé ({(fr > 0).sum()} non nulles), somme par territoire. Droite : FloodScan × WorldPop 2020, pic saisonnier de la médiane glissante sur "
                     "15 jours par territoire ; typique = médiane de 1998/99–2025/26."), 200), y=0.045)
     return _save(fig, "flood_lists")
 
@@ -1276,13 +1282,21 @@ def values(a: dict) -> dict:
     fs_end = nat.dropna().index.max()
     b = a["split"][a["split"].season.isin(BOTH)].groupby("season")[NEED_KEYS].sum()
     inpin = (b["pin45"] + b["pin3"]) / b.sum(axis=1) * 100
+    i = a["split"][a["split"].season.isin(IOD_ONLY)][NEED_KEYS].sum()
     fl, fr = a["lists"], hnrp_flood_risk()
+    unseen = fl[fl[2023] < SEEN_BELOW]
+    if unseen.loc[LULUA_BLIND, "record"].max() > 0:
+        raise ValueError("Luebo has been seen flooded: reword the hnrp_list note")
+    blind = {k: unseen[unseen.index.str.startswith(tuple(v))]["risk"].sum() / fr.sum() * 100 for k, v in UNSEEN_GROUPS.items()}
+    if sum(blind.values()) <= unseen["risk"].sum() / fr.sum() * 50:
+        raise ValueError("the called-out places no longer hold most of the unseen list: reword the hnrp_list note")
     z = pin().set_index("admin3_code")
     by_sev = z.groupby([hz_territory(), z["final_severity"]])["population"].sum().unstack(fill_value=0)
     return dict(
         pin_total=_num(z["final_pin"].sum() / 1e6, 1), hz_n=len(z),
         maj_share=_num(by_sev.max(axis=1).sum() / by_sev.values.sum() * 100),
-        inpin_lo=_num(inpin.min()), inpin_hi=_num(inpin.max()),
+        inpin_lo=_num(inpin.min()), inpin_hi=_num(inpin.max()), inpin_iod=_num((i["pin45"] + i["pin3"]) / i.sum() * 100),
+        **{f"unseen_{k}": _num(v) for k, v in blind.items()},
         risk_total=_num(fr.sum() / 1e6, 1), risk_hz=int((fr > 0).sum()),
         risk_blind=_num(fl.loc[fl[2023] < SEEN_BELOW, "risk"].sum() / fr.sum() * 100), seen_below=_num(SEEN_BELOW),
         sat_unlisted=_num(fl.loc[~(fl["risk"] > 0), 2023].sum() / fl[2023].sum() * 100),

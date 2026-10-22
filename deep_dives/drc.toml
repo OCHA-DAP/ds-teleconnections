@@ -96,18 +96,18 @@ fr = "L'exposition aux crues et les besoins humanitaires se situent surtout à d
 [[sections]]
 id = "hnrp_split"
 fig = "need_split"
-en = "Against the 2026 HNRP, only {inpin_lo}–{inpin_hi}% of the people in flooded areas in these seasons are already counted in need. On the rivers almost all live in severity-2 health zones, where the plan counts almost no one"
-fr = "Au regard du HNRP 2026, seulement {inpin_lo} à {inpin_hi} % des personnes en zone inondée lors de ces saisons sont déjà comptées dans le besoin. Sur les fleuves, presque toutes vivent dans des zones de santé en sévérité 2, où le plan ne compte presque personne"
+en = "Against the 2026 HNRP, only {inpin_lo}–{inpin_hi}% of the people in flooded areas in the three El Niño + Dipole seasons are already counted in need ({inpin_iod}% in 2019/20). On the rivers almost all live in severity-2 health zones, where the plan counts almost no one"
+fr = "Au regard du HNRP 2026, seulement {inpin_lo} à {inpin_hi} % des personnes en zone inondée lors des trois saisons El Niño + dipôle sont déjà comptées dans le besoin ({inpin_iod} % en 2019/20). Sur les fleuves, presque toutes vivent dans des zones de santé en sévérité 2, où le plan ne compte presque personne"
 note_en = "Each bar is a region's flood peak in that season, split by the 2026 HNRP status of the health zones those people live in."
 note_fr = "Chaque barre est le pic de crue d'une région lors de cette saison, réparti selon le statut HNRP 2026 des zones de santé où vivent ces personnes."
 
 [[sections]]
 id = "hnrp_list"
 fig = "flood_lists"
-en = "The HNRP's own flood list and the satellite see different floods: {risk_blind}% of the {risk_total} M people the 2026 HNRP lists at flood risk are in territories where FloodScan saw almost no one flooded, even in 2023/24"
-fr = "La liste d'inondation du HNRP et le satellite voient des crues différentes : {risk_blind} % des {risk_total} M de personnes que le HNRP 2026 liste à risque d'inondation sont dans des territoires où FloodScan n'a vu presque personne inondé, même en 2023/24"
-note_en = "Almost no one: fewer than {seen_below} people at the 2023/24 peak. The other way round, {sat_unlisted}% of the people in flooded areas in 2023/24 were in territories where the list has no one."
-note_fr = "Presque personne : moins de {seen_below} personnes au pic de 2023/24. Dans l'autre sens, {sat_unlisted} % des personnes en zone inondée en 2023/24 étaient dans des territoires où la liste ne compte personne."
+en = "The HNRP's own flood list and the satellite see different floods: {risk_blind}% of the {risk_total} M people the 2026 HNRP lists at flood risk are in territories where FloodScan saw almost no one flooded in 2023/24"
+fr = "La liste d'inondation du HNRP et le satellite voient des crues différentes : {risk_blind} % des {risk_total} M de personnes que le HNRP 2026 liste à risque d'inondation sont dans des territoires où FloodScan n'a vu presque personne inondé en 2023/24"
+note_en = "Almost no one: fewer than {seen_below} people at the 2023/24 peak. Most of that is in places where the satellite does not see flooding: the Kivu slopes ({unseen_kivu}% of the list), Luebo on the Lulua ({unseen_luebo}%, never seen flooded since 1998) and the lake shore ({unseen_lake}%). The other way round, {sat_unlisted}% of the people in flooded areas in 2023/24 were in territories where the list is blank or zero."
+note_fr = "Presque personne : moins de {seen_below} personnes au pic de 2023/24. L'essentiel se trouve là où le satellite ne voit pas de crue : les pentes du Kivu ({unseen_kivu} % de la liste), Luebo sur la Lulua ({unseen_luebo} %, jamais vu inondé depuis 1998) et la rive du lac ({unseen_lake} %). Dans l'autre sens, {sat_unlisted} % des personnes en zone inondée en 2023/24 étaient dans des territoires où la liste est vide ou à zéro."
 
 [[sections]]
 id = "southeast"
