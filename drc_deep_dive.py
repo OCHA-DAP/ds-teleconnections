@@ -1,4 +1,4 @@
-"""DRC — El Niño, the Indian Ocean Dipole and floods (builder = "drc" in deep_dives/drc.toml).
+"""DRC — El Niño, the Indian Ocean Dipole and floods (builder = "drc" in deep_dives/cod.toml).
 
 Own builder, like Extrême-Nord's: the question is not "does El Niño change the rains" in general but how
 many people the 2026/27 event could put under water, where and when. The page is plot-led and
@@ -7,7 +7,7 @@ deep_dives/private/drc-partner.toml (gitignored) and in the encrypted HTML. Noth
 page is committed: figures are embedded in the HTML before staticrypt runs.
 
     uv run python drc_deep_dive.py                 # build out/drc/ (plaintext, gitignored)
-    SITE_PASSWORD=... uv run python drc_deep_dive.py --encrypt   # + docs/enso/drc/ (staticrypt)
+    SITE_PASSWORD=... uv run python drc_deep_dive.py --encrypt   # + docs/enso/cod/ (staticrypt)
 
 Inputs (cached under cache/drc/; fetched when missing or stale): FloodScan population exposure
 (team prod DB app.floodscan_exposure: SFED flooded fraction >= 5% x WorldPop 2020, daily, ADM1/ADM2),
@@ -46,12 +46,12 @@ from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
 ROOT = Path(__file__).resolve().parent
-SLUG = "drc"
+SLUG = "cod"  # URL and spec name (ISO3, like eri/mwi/zwe); cache, out and the private file keep "drc"
 CACHE = ROOT / "cache" / "drc"
 OUT = ROOT / "out" / "drc"
 FIGDIR = OUT / "fig"
-DOCS = ROOT / "docs" / "enso" / "drc"
-SPEC = ROOT / "deep_dives" / "drc.toml"
+DOCS = ROOT / "docs" / "enso" / SLUG
+SPEC = ROOT / "deep_dives" / f"{SLUG}.toml"
 PRIVATE = ROOT / "deep_dives" / "private" / "drc-partner.toml"
 for d in (CACHE, FIGDIR):
     d.mkdir(parents=True, exist_ok=True)
@@ -1368,7 +1368,7 @@ def render(spec: dict, a: dict, figs: dict) -> str:
 
 
 def encrypt() -> None:
-    """staticrypt both pages into docs/enso/drc/ and check no plaintext survives (password from SITE_PASSWORD)."""
+    """staticrypt both pages into docs/enso/cod/ and check no plaintext survives (password from SITE_PASSWORD)."""
     pw = os.environ.get("SITE_PASSWORD")
     if not pw:
         raise SystemExit("set SITE_PASSWORD to encrypt")
@@ -1463,7 +1463,7 @@ def build(spec: dict | None = None, *_args, encrypt_pages: bool = False) -> dict
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--encrypt", action="store_true", help="also staticrypt into docs/enso/drc/ (needs SITE_PASSWORD)")
+    ap.add_argument("--encrypt", action="store_true", help="also staticrypt into docs/enso/cod/ (needs SITE_PASSWORD)")
     args = ap.parse_args()
     build(encrypt_pages=args.encrypt)
 

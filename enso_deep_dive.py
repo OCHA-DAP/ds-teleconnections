@@ -1864,7 +1864,7 @@ def main() -> None:
             levant_deep_dive.build(spec, grid, gdf, indices)
             continue
         if spec.get("builder") == "drc":
-            # restricted, plot-led flood page; encrypted into docs/enso/drc/ only when SITE_PASSWORD is set
+            # restricted, plot-led flood page; encrypted into docs/enso/cod/ only when SITE_PASSWORD is set
             import drc_deep_dive
             drc_deep_dive.build(spec, grid, gdf, indices, encrypt_pages=bool(os.environ.get("SITE_PASSWORD")))
             continue
