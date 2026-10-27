@@ -843,6 +843,8 @@ EM_LABELS = {  # DisNo.: (label, x offset, y offset in points)
     "2022-0648-VEN": ("Oct 2022, Las Tejerías", -8, 6), "2015-0296-VEN": ("Jun 2015, Apure", 6, -2),
     "2005-0073-VEN": ("Feb 2005: 76 dead", 6, 0), "2010-0616-VEN": ("Nov–Dec 2010", -8, 4), "1987-0156-VEN": ("Sep 1987, Aragua", 6, 0),
     "2002-0445-VEN": ("Jul 2002, Llanos", 0, 10), "1993-0059-VEN": ("Aug 1993, storm Bret", 6, 0)}
+CERF_EMDAT = {  # CERF flood allocation: the EM-DAT event it responded to, and its label
+    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "May 2025, Apure and 9 more states")}
 
 
 def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
@@ -858,6 +860,14 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
             lab, dx, dy = EM_LABELS[r["DisNo."]]
             ax.annotate(lab, (r.date, y), xytext=(dx, dy), textcoords="offset points", fontsize=7, va="center",
                         ha="right" if dx < 0 else "center" if dx == 0 else "left")
+    c = cerf()
+    for _, a in c[c.emergency_type.isin(["Flood", "Storm"])].iterrows():
+        dis, lab = CERF_EMDAT[a.application_code]
+        r = em[em["DisNo."] == dis].iloc[0]
+        ax.scatter(r.date, max(r.affected, 50), s=130, facecolor="none", edgecolor=NOW_C, lw=1.1, zorder=4)
+        ax.annotate(f"{lab}:\nCERF US${a.amount_approved / 1e6:.0f} million ({pd.Timestamp(a.erc_endorsement_date):%b %Y})",
+                    (r.date, max(r.affected, 50)), xytext=(pd.Timestamp(f"{r.date.year + 1}-12-01"), 2.2e5), textcoords="data",
+                    fontsize=7, ha="right", va="center", arrowprops=dict(arrowstyle="-", color=NOW_C, lw=0.6))
     ax.set_yscale("log")
     ax.set_ylim(30, 4e6)
     ax.set_ylabel("people affected (EM-DAT)")
@@ -874,7 +884,8 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
     bx.set_xlabel("people affected per year\n(thousands)")
     bx.set_xlim(0, per["affected"].max() / 1000 * 1.45)
     _source(fig, "Floods, wet landslides and storms reported to EM-DAT since 1980, by the rain year (May–April) they fall in. Marker size: deaths; "
-                 "triangles: no affected figure. Totals per year of each phase. Source: EM-DAT, CRED/UCLouvain (team snapshot).")
+                 "triangles: no affected figure; ring: CERF allocation. Totals per year of each phase. Sources: EM-DAT, CRED/UCLouvain "
+                 "(team snapshot); CERF.")
     v = dict(em_nina_aff=f"{t.loc['nina', 'affected'] / 1e6:.1f}", em_nino_aff=f"{t.loc['nino', 'affected'] / 1e6:.1f}",
              em_nina_dead=f"{t.loc['nina', 'deaths']:,.0f}", em_nino_dead=f"{t.loc['nino', 'deaths']:,.0f}",
              em_ratio=f"{per.loc['nina', 'affected'] / per.loc['nino', 'affected']:.0f}",
@@ -1088,14 +1099,15 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
         _enso_scatter(ax, ph.oni, d, ph, names if crop == "maize" else {}, hollow=CRISIS_NB)
         ok = [t for t in d.dropna().index if t not in CRISIS_NB and t in ph.index]
         rs[crop] = _r(ph.oni, d, ok)
-        ax.set_title(f"{lab} against the ONI\n(r = {rs[crop]:+.2f})".replace("-", "−"), fontsize=10)
+        ax.set_title(f"{lab} against the ONI\nr = {rs[crop]:+.2f}: no clear relation".replace("-", "−"), fontsize=10)
     # does national maize follow rain where it grows? May–Sep, the main season's growing months
     t = period_totals(mon[list(MAIZE_STATES)], [5, 6, 7, 8, 9]).mean(axis=1)
     rain_pct = (t / t.loc[1991:2020].mean() - 1) * 100
     maize = y[y.crop == "maize"].set_index("year")["anom"]
     _enso_scatter(axes[2], rain_pct, maize, ph, {t: str(t) for t in (2002, 2009)}, hollow=CRISIS_NB, oni=False)
     rs["rain"] = _r(rain_pct, maize, [k for k in range(1980, NOW) if k not in CRISIS_NB])
-    axes[2].set_title(f"Maize against May–Sep rain in the maize states\n(r = {rs['rain']:+.2f})".replace("-", "−"), fontsize=10)
+    axes[2].set_title(f"Maize against May–Sep rain in the maize states\nr = {rs['rain']:+.2f}: no clear relation".replace("-", "−"),
+                      fontsize=10)
     axes[2].set_xlabel("rain, % above or below normal: drier ← → wetter")
     axes[0].set_ylabel("yield, % against the two years either side")
     h = [Line2D([], [], marker="o", ls="", color=c, label=l) for c, l in
@@ -1208,17 +1220,13 @@ def era5_agreement(a: dict) -> dict:
     return dict(era5_agree=f"{same.mean() * 100:.0f}", era5_cells=int(m.sum()))
 
 
-def cerf_values(ph: pd.DataFrame) -> dict:
-    """The page's CERF lines: one flood allocation, none for drought; stops if that changes."""
+def cerf_check() -> None:
+    """The page labels one CERF flood allocation and says there has been none for drought; stop if that changes."""
     c = cerf()
     wet, dry = c[c.emergency_type.isin(["Flood", "Storm"])], c[c.emergency_type == "Drought"]
-    if len(wet) != 1 or len(dry):
-        raise ValueError(f"CERF allocations changed ({len(wet)} flood/storm, {len(dry)} drought): reword the CERF lines")
-    w = wet.iloc[0]
-    d = pd.Timestamp(w.erc_endorsement_date)
-    phase = ph.phase[d.year if d.month >= 5 else d.year - 1]
-    return dict(cerf_first=int(c.year.min()), cerf_flood_amt=f"{w.amount_approved / 1e6:.0f}", cerf_flood_when=f"{d:%B %Y}",
-                cerf_flood_phase={"nina": "a La Niña year", "nino": "an El Niño year", "neutral": "a neutral year"}[phase])
+    if set(wet.application_code) != set(CERF_EMDAT) or len(dry):
+        raise ValueError(f"CERF allocations changed ({list(wet.application_code)} flood/storm, {len(dry)} drought): "
+                         "update CERF_EMDAT and the drought line")
 
 
 def figures(a: dict) -> tuple[dict, dict]:
@@ -1230,8 +1238,8 @@ def figures(a: dict) -> tuple[dict, dict]:
     f["now"], x = fig_now(a["mon"], a["mon_e"], ph); v |= x
     f["dry"], x = fig_dry(a["mon"], ph); v |= x
     f["forecast"], x = fig_forecast(a["mon_e"]); v |= x
+    cerf_check()
     f["emdat"], x = fig_emdat(ph); v |= x
-    v |= cerf_values(ph)
     f["desinventar"], x = fig_desinventar(ph); v |= x
     f["guri"], x = fig_guri(ph); v |= x
     f["veg"], x = fig_veg(ph); v |= x

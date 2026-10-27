@@ -68,7 +68,6 @@ note = "{fc_driest} of {fc_cells} state-seasons from October to February rank in
 
 [[sections]]
 part = "Floods"
-part_note = "CERF has made one flood allocation to Venezuela: US${cerf_flood_amt} million in {cerf_flood_when}, for the floods in Apure from May 2025, {cerf_flood_phase}."
 id = "emdat"
 fig = "emdat"
 head = "El Niño years have had far fewer people affected by reported floods, landslides and storms than La Niña years: about {em_nino_yr} a year against {em_nina_yr}"
@@ -82,7 +81,7 @@ note = "In a typical El Niño year each region had {di_nino_lo}–{di_nino_hi} t
 
 [[sections]]
 part = "Drought: water, vegetation, harvests"
-part_note = "CERF has made no drought allocation to Venezuela (allocations there since {cerf_first})."
+part_note = "CERF has made no drought allocation to Venezuela."
 id = "guri"
 fig = "guri"
 head = "The Guri reservoir has fallen {guri_nino} m through the dry season after a typical El Niño year, against {guri_nina} m after La Niña"
@@ -97,5 +96,5 @@ note = "The stronger the El Niño, the poorer the dry season (correlation {veg_r
 [[sections]]
 id = "yields"
 fig = "yields"
-head = "Harvests: little link to ENSO. Maize fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023"
-note = "Correlation with the ONI: maize {maize_r}, rice {rice_r}; other ways of removing the trend and the crisis give maize {maize_r_lo} to {maize_r_hi} and rice {rice_r_lo} to {rice_r_hi}. Maize does not follow May–September rain in the maize states either (right): rain there was {rain_2009}% in 2009 but {rain_2002}% in 2002. 2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the crisis."
+head = "Harvests: no clear relation with El Niño, La Niña or rain"
+note = "In all three panels the points scatter without a pattern (r near 0 means no relation), and other ways of removing the trend and the crisis give the same answer (maize {maize_r_lo} to {maize_r_hi}, rice {rice_r_lo} to {rice_r_hi}). Maize fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023."
