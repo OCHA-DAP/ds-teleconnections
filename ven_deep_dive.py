@@ -883,9 +883,11 @@ def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
                loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
     fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
     _source(fig, _t("El Niño and La Niña: January–April from the year after the event develops, May–December from the year it "
-                    "develops; events 1981–2025. Source: CHIRPS v3, state means averaged over each region.",
+                    "develops; events 1981–2025. 2026 is the calendar year so far: its January–April come before this El Niño. "
+                    "Source: CHIRPS v3, state means averaged over each region.",
                     "El Niño y La Niña: enero–abril del año siguiente al desarrollo del evento, mayo–diciembre del año en que se "
-                    "desarrolla; eventos de 1981–2025. Fuente: CHIRPS v3, medias por estado promediadas en cada región."), y=-0.09)
+                    "desarrolla; eventos de 1981–2025. 2026 es el año calendario hasta ahora: su enero–abril es anterior a este El "
+                    "Niño. Fuente: CHIRPS v3, medias por estado promediadas en cada región."), y=-0.09)
     return _save(fig, "season")
 
 
@@ -1342,6 +1344,8 @@ SEAS5_HATCH_WHITE, SEAS5_HATCH_GREY, SEAS5_CROSS = (1, 1, 1, 0.7), "#9db1b3", "#
 
 def seas5_class(pct: float, r: float, rainy: bool) -> tuple[str, str]:
     """(class, skill) for one forecast cell, as the viewer's classify()."""
+    if np.isnan(pct) or np.isnan(r):
+        raise ValueError("SEAS5 rank or skill missing for a state: the viewer would show it as not monitored")
     if not rainy:
         return "off_season", ""
     if r < SEAS5_T["r_mod"]:
@@ -1378,6 +1382,8 @@ def fig_forecast() -> tuple[Path, dict]:
             if mask.any():
                 g[mask].plot(ax=ax, facecolor="none", edgecolor=colour, hatch=hatch, lw=0)
         st.boundary.plot(ax=ax, color="#ffffff", lw=0.6)
+        if (g.cls == "low_skill").any():
+            g[g.cls == "low_skill"].boundary.plot(ax=ax, color="#c4d0d1", lw=0.6)
         ax.set_title(_cap(_span(FC_SEASONS[code][0], FC_SEASONS[code][-1])), fontsize=9.5)
         ax.set_xlim(-73.6, -59.6)
         ax.set_ylim(0.6, 12.4)
@@ -1388,7 +1394,7 @@ def fig_forecast() -> tuple[Path, dict]:
         ("none", _t("Roughly normal", "Cerca de lo normal")), ("sev_wet", _t("Above normal", "Por encima de lo normal")),
         ("vsev_wet", _t("Strongly above normal", "Muy por encima de lo normal")),
         ("off_season", _t("Outside rainy season", "Fuera de la temporada de lluvias")))]
-    skill = [Patch(facecolor="#ffffff", edgecolor="#c4d0d1", label=_t("High — solid", "Alta — sólido")),
+    skill = [Patch(facecolor="#ffffff", edgecolor="#c4d0d1", label=_t("High — solid", "Alta — liso")),
              Patch(facecolor="#ffffff", edgecolor=SEAS5_HATCH_GREY, hatch="////", label=_t("Moderate — hatched", "Moderada — rayado")),
              Patch(facecolor="#ffffff", edgecolor=SEAS5_CROSS, hatch="xxx", label=_t("Low — not shown", "Baja — no se muestra"))]
     fig.legend(handles=fc, loc="lower center", ncols=6, fontsize=7.5, bbox_to_anchor=(0.5, 0.12), title=_t("Forecast", "Pronóstico"),
@@ -1403,20 +1409,23 @@ def fig_forecast() -> tuple[Path, dict]:
                     "of the year's rain (ERA5). Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.",
                     f"Posición del pronóstico de octubre de {year} entre los 45 pronósticos de octubre de 1981–2025, por estado (media "
                     "del conjunto, sin tendencia), clasificada como en el visor seas5-skill del equipo: muy por debajo o por encima de "
-                    "lo normal = el 10% de pronósticos más seco o más húmedo; por debajo o por encima = el tercio más seco o más "
-                    "húmedo. La destreza es la correlación de los pronósticos retrospectivos con ERA5: alta desde 0,5, moderada "
+                    "lo normal = el 10% más seco o más húmedo de los pronósticos; por debajo o por encima = el tercio más seco o más "
+                    "húmedo. La destreza es la correlación de los pronósticos retrospectivos con ERA5: alta a partir de 0,5, moderada "
                     "0,3–0,5, baja por debajo de 0,3. Fuera de la temporada de lluvias: los tres meses aportan menos del 15% de la "
                     "lluvia del año (ERA5). Fuente: ECMWF SEAS5 y ERA5, estadísticas admin-1 del equipo."), y=-0.06)
     in_season = rainy[["OND", "NDJ", "DJF"]]
+    sk_in = sk[["OND", "NDJ", "DJF"]].where(in_season)
     v = dict(fc_year=year, fc_driest=int(((pr[["OND", "NDJ", "DJF"]] <= 100 / SEAS5_T["vsev_rp"]) & in_season).sum().sum()),
              fc_cells=int(in_season.sum().sum()),
-             fc_r_lo=f"{sk[['OND', 'NDJ', 'DJF']].min().min():.1f}", fc_r_hi=f"{sk[['OND', 'NDJ', 'DJF']].max().max():.1f}",
+             fc_r_lo=f"{sk_in.min().min():.1f}", fc_r_hi=f"{sk_in.max().max():.1f}",
              fc_raw_driest=int(raw.reindex(STATE_ORDER)["NDJ"].sum()), fc_states=len(STATE_ORDER))
     west = [p for r in ("North-west", "Western Llanos", "Centre-north") for p in REGIONS[r][0]]
-    if (v["fc_driest"] < v["fc_cells"] or sk[["OND", "NDJ", "DJF"]].min().min() < SEAS5_T["r_mod"]
-            or pr.loc[west, "FMA"].median() < 66 or sk.loc[west, "FMA"].median() >= SEAS5_T["r_mod"]):
-        raise ValueError("the SEAS5 pattern changed (Oct–Feb strongly below normal in every rainy-season state-season and skilful, Feb–Apr wet with little skill in the west and "
-                         "centre): reword the forecast headline and note")
+    shown = rainy.loc[west, "FMA"] & (sk.loc[west, "FMA"] >= SEAS5_T["r_mod"])
+    if (v["fc_driest"] < v["fc_cells"] or sk_in.min().min() < SEAS5_T["r_mod"]
+            or pr.loc[west, "FMA"].median() < 66 or shown.any()):
+        raise ValueError("the SEAS5 pattern changed (Oct–Feb strongly below normal and skilful in every rainy-season "
+                         "state-season; Feb–Apr wet but masked, low skill or off-season, in the west and centre): reword the "
+                         "forecast headline and note")
     return _save(fig, "forecast"), v
 
 
