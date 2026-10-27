@@ -23,30 +23,30 @@ one_line = "A strong El Niño means a drier dry season everywhere, a slightly we
 
 [page]
 title = "Venezuela: El Niño 2026/27"
-sub = "What past El Niño and La Niña years brought, region by region: rain, floods, the Guri reservoir, vegetation and harvests. Past ranges, not forecasts, except the SEAS5 section."
+sub = "This season's forecast, then what past El Niño and La Niña years brought, region by region: rain, floods, the Guri reservoir, vegetation and harvests."
 dateline = "Rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · SEAS5 issued October {fc_year}"
 
+lead = "For this season, plan on the seasonal forecast below (ECMWF SEAS5, a new one each month), not on past El Niño years: those, further down, show what has happened before, as context, not what will happen this year."
+
+[[tiles]]
+big = "Driest 10%"
+text = "the SEAS5 October {fc_year} forecast for October–February, in all {fc_cells} rainy-season state-seasons, among the driest 10% of past forecasts"
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
 text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
 [[tiles]]
 big = "−{strong_med}%"
-text = "median dry-season (December–March) rain in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
+text = "median December–March rain (most of the dry season) in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
 [[tiles]]
 big = "{di_fewer_lo}–{di_fewer_hi}% fewer"
 text = "flood and landslide reports in a typical El Niño year than in an ordinary year, in every region (DesInventar, 1975–2013)"
 
 [[sections]]
-part = "Rain"
-id = "maps"
-fig = "maps"
-head = "El Niño: the dry season (December–February) is {djf_lo}–{djf_hi}% drier in every region; the rainy season (June–November) loses much less, {jn_lo}–{jn_hi}%"
-note = "In millimetres that is {djf_mm_lo}–{djf_mm_hi} mm less over December–February and {jn_mm_lo}–{jn_mm_hi} mm less over June–November, the most on the north-east coast, in the Andes and in the central and eastern Llanos. March–May shows no consistent change. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño, a minor effect; from June to January it is normal or drier there too."
-
-[[sections]]
-id = "states"
-fig = ["states", "season"]
-head = "By state: the largest percentage shortfalls come in the dry season, in the north-west, the Andes, the east and Guayana"
+part = "This season"
+id = "forecast"
+fig = "forecast"
+head = "SEAS5, October {fc_year}: one of the driest October–February forecasts since 1981, everywhere it is the rainy season"
+note = "All {fc_cells} state-seasons from October to February that fall in the rainy season are strongly below normal (the driest 10% of the 45 past forecasts) once the long-term trend is removed, as in the team's seas5-skill viewer; before that step, it is the driest November–January forecast in {fc_raw_driest} of {fc_states} states. The forecast has skill for these months (hindcast correlation {fc_r_lo}–{fc_r_hi}). The October forecasts in 1997 and 2015 ranked about as dry; the rain that followed was among the driest on record in 1997 and below normal in 2015. February–April leans wet in the west and centre, but there the forecast has low skill or the months fall outside the rainy season, so the map masks it."
 
 [[sections]]
 id = "now"
@@ -55,17 +55,22 @@ head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the six d
 note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which uses gauges, leads here; ERA5 is a reanalysis that does not use gauge rain."
 
 [[sections]]
-id = "dry"
-fig = "dry"
-head = "Dry season (December–March): in the four strong El Niño years, every region had less rain than normal, by a median of {strong_med}%"
-note = "In each region, {dry_third_min}–{dry_third_max} of the {nino_n} El Niño years fell in the driest third (5 would be chance), the fewest in the {dry_third_fewest}."
+part = "Rain in past El Niño and La Niña years"
+id = "maps"
+fig = "maps"
+head = "El Niño: December–February, in the dry season, is {djf_lo}–{djf_hi}% drier; the rainy season (June–November) loses much less, {jn_lo}–{jn_hi}%"
+note = "December–February: every region but the western Llanos, which gets almost no rain then. In millimetres that is {djf_mm_lo}–{djf_mm_hi} mm less over December–February and {jn_mm_lo}–{jn_mm_hi} mm less over June–November; the rainy-season loss is largest on the north-east coast, in the Andes and in the central and eastern Llanos. March–May shows no consistent change. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
 
 [[sections]]
-id = "forecast"
-fig = "forecast"
-head = "SEAS5, October {fc_year}: one of the driest October–February forecasts since 1981, everywhere it is the rainy season"
-note = "All {fc_cells} state-seasons from October to February that fall in the rainy season are strongly below normal (the driest 10% of the 45 past forecasts) once the long-term trend is removed, as in the team's seas5-skill viewer; before that step, it is the driest November–January forecast in {fc_raw_driest} of {fc_states} states. The forecast has skill for these months (hindcast correlation {fc_r_lo}–{fc_r_hi}). The October forecasts in 1997 and 2015 ranked about as dry; the rain that followed was among the driest on record in 1997 and below normal in 2015. February–April leans wet in the west and centre, but there the forecast has low skill or the months fall outside the rainy season, so the map masks it."
+id = "states"
+fig = ["states", "season"]
+head = "By state: the largest percentage shortfalls come from November to February, in the north-west, the Andes, the east and Guayana"
 
+[[sections]]
+id = "dry"
+fig = "dry"
+head = "December–March, most of the dry season: in the four strong El Niño years, every region had less rain than normal, by a median of {strong_med}%"
+note = "In each region, {dry_third_min}–{dry_third_max} of the {nino_n} El Niño years fell in the driest third (5 would be chance), the fewest in the {dry_third_fewest}."
 
 [[sections]]
 part = "Floods"

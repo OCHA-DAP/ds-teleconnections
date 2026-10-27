@@ -821,21 +821,31 @@ def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bo
 
 
 def season_contrast(mon: pd.DataFrame, ph: pd.DataFrame) -> dict:
-    """The maps' headline, by region: El Niño's median change in the December–February dry season and in the June–November
-    rains (% and mm against 1991–2020), and that March–May shows no consistent change."""
+    """The maps' headline, by region: El Niño's median change in December–February (dry season) and in the June–November
+    rains (% and mm against 1991–2020), leaving out regions where December–February is nearly rainless (normal under DRY_MM,
+    as on the maps); that March–May shows no consistent change; and that Apure, the survey map's wetter patch, is normal or
+    drier from June to January."""
     nino = phase_years(ph, "nino")
     reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
     out = {}
     for k, months in (("djf", [12, 13, 14]), ("jn", list(range(6, 12))), ("mam", [15, 16, 17])):
         t = period_totals(reg, months)
         clim, sel = t.loc[1991:2020].mean(), t.loc[[y for y in nino if y in t.index]]
-        out[k] = ((sel / clim - 1) * 100).median(), (sel - clim).median()
-    (djf, djf_mm), (jn, jn_mm), (mam, _) = out["djf"], out["jn"], out["mam"]
+        out[k] = ((sel / clim - 1) * 100).median(), (sel - clim).median(), clim
+    (djf, djf_mm, djf_clim), (jn, jn_mm, _), (mam, _, _) = out["djf"], out["jn"], out["mam"]
+    rainless = sorted(djf_clim.index[djf_clim < DRY_MM])
+    djf, djf_mm = djf.drop(rainless), djf_mm.drop(rainless)
+    apure = []
+    for m0 in range(6, 12):   # three-month windows starting June–November, the year El Niño develops
+        t = period_totals(mon[["VE04"]], [m0, m0 + 1, m0 + 2])["VE04"]
+        apure.append(float((t.loc[[y for y in nino if y in t.index]] / t.loc[1991:2020].mean() - 1).median() * 100))
     most = {"North-east coast", "Andes", "Central and eastern Llanos"}
-    if ((djf > -20).any() or (jn > 0).any() or jn.min() < -15 or mam.abs().max() > 10
-            or set(jn.nsmallest(3).index) != most or set(jn_mm.nsmallest(3).index) != most):
+    if ((djf > -20).any() or (jn > 0).any() or jn.min() <= djf.max() + 10 or not (mam.min() < 0 < mam.max())
+            or mam.abs().max() > 10 or set(jn.nsmallest(3).index) != most or set(jn_mm.nsmallest(3).index) != most
+            or rainless != ["Western Llanos"] or max(apure) > 10):
         raise ValueError(f"the season contrast changed (DJF {djf.round().tolist()}, Jun–Nov {jn.round().tolist()}, "
-                         f"MAM {mam.round().tolist()}): reword the rain-maps headline and note")
+                         f"MAM {mam.round().tolist()}, rainless DJF {rainless}, Apure Jun–Jan {[round(a) for a in apure]}): "
+                         "reword the rain-maps headline and note")
     f = lambda x: f"{x:.0f}"  # noqa: E731
     return dict(djf_lo=f(-djf.max()), djf_hi=f(-djf.min()), djf_mm_lo=f(-djf_mm.max()), djf_mm_hi=f(-djf_mm.min()),
                 jn_lo=f(-jn.max()), jn_hi=f(-jn.min()), jn_mm_lo=f(-jn_mm.max()), jn_mm_hi=f(-jn_mm.min()))
@@ -1000,7 +1010,7 @@ def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     v["dry_third_fewest"] = (" y ".join(REGION_ES_IN[r] for r in fewest) if LANG == "es" else
                              " and the ".join(r.lower() if r != "Western Llanos" else "western Llanos" for r in fewest))
     if v["strong_below"] != v["strong_cells"] or "Western Llanos" not in fewest:
-        raise ValueError("the November–March pattern changed: reword the dry-season headline and note")
+        raise ValueError("the December–March pattern changed: reword the dry-season headline and note")
     return _save(fig, "dry"), v
 
 
@@ -1465,6 +1475,7 @@ section h2{font-size:18px;line-height:1.35}
 .note{font-size:13px;color:var(--n7);margin:-6px 0 14px}
 details{margin:24px 0}details summary{cursor:pointer;font-weight:600}
 details li{font-size:13.5px;margin:0 0 8px;max-width:90ch}
+.lead{font-size:16px;line-height:1.5;border-left:4px solid #b5541b;background:#fff;padding:12px 16px;margin:6px 0 14px;max-width:90ch}
 .lang{display:inline-block;margin:0 0 14px;padding:5px 11px;font-size:13px;font-weight:500;border:1px solid var(--b1);border-radius:4px;background:var(--b05);text-decoration:none}
 """
 
@@ -1534,6 +1545,8 @@ def render(spec: dict, figs: dict, v: dict) -> str:
     out.append(f'<h1>{pg["title"]}</h1><p class="meta">{pg["sub"].format(**v)}<br>{pg["dateline"].format(**v)}</p>')
     out.append('<a class="lang" href="../" lang="en">English version</a>' if es else
                '<a class="lang" href="es/" lang="es">Versión en español</a>')
+    if pg.get("lead"):
+        out.append(f'<p class="lead">{pg["lead"].format(**v)}</p>')
     out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t["big"].format(**v)}</p><p>{t["text"].format(**v)}</p></div>'
                                                 for t in spec["tiles"]) + "</div>")
     for sec in spec["sections"]:
@@ -1579,7 +1592,7 @@ def check_parity(spec: dict, es_spec: dict, pages: dict[str, str]) -> None:
         raise ValueError(f"placeholders differ: EN only {_placeholders(spec) - _placeholders(es_spec)}, "
                          f"ES only {_placeholders(es_spec) - _placeholders(spec)}")
     def shape(sp: dict) -> list:
-        fields = [sp["page"][k] for k in ("title", "sub", "dateline")] + list(sp["notes"])
+        fields = [sp["page"].get(k, "") for k in ("title", "sub", "dateline", "lead")] + list(sp["notes"])
         fields += [t[k] for t in sp["tiles"] for k in ("big", "text")]
         fields += [x.get(k, "") for x in sp["sections"] for k in ("part", "part_note", "head", "note")]
         return ([(x["id"], x["fig"], sorted(x)) for x in sp["sections"]] + [len(sp["tiles"]), len(sp["notes"])]

@@ -24,30 +24,30 @@ one_line = "Un El Niño fuerte significa una estación seca más seca en todas p
 
 [page]
 title = "Venezuela: El Niño 2026/27"
-sub = "Lo que trajeron los años de El Niño y La Niña anteriores, región por región: lluvia, inundaciones, el embalse de Guri, vegetación y cosechas. Rangos del pasado, no pronósticos, salvo la sección de SEAS5."
+sub = "El pronóstico de esta temporada y, después, lo que trajeron los años de El Niño y La Niña anteriores, región por región: lluvia, inundaciones, el embalse de Guri, vegetación y cosechas."
 dateline = "Lluvia hasta {data_end} (CHIRPS) y {era5_end} (ERA5) · SEAS5 emitido en octubre de {fc_year}"
 
+lead = "Para esta temporada, hay que planificar con el pronóstico estacional de abajo (SEAS5 de ECMWF, uno nuevo cada mes), no con los años de El Niño anteriores: esos, más abajo, muestran lo que ha pasado antes, como contexto, no lo que pasará este año."
+
+[[tiles]]
+big = "10% más seco"
+text = "el pronóstico SEAS5 de octubre de {fc_year} para octubre–febrero, en los {fc_cells} pares estado-trimestre de temporada de lluvias, entre el 10% más seco de los pronósticos anteriores"
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
 text = "lluvia de {now_span} de 2026 por región, en % de lo normal: entre los seis años más secos desde 1981 en todas las regiones"
 [[tiles]]
 big = "−{strong_med}%"
-text = "mediana de la lluvia de la estación seca (diciembre–marzo) en los cuatro años de El Niño fuerte, en siete regiones; ninguno de los {strong_cells} casos estuvo por encima de lo normal"
+text = "mediana de la lluvia de diciembre–marzo (la mayor parte de la estación seca) en los cuatro años de El Niño fuerte, en siete regiones; ninguno de los {strong_cells} casos estuvo por encima de lo normal"
 [[tiles]]
 big = "{di_fewer_lo}–{di_fewer_hi}% menos"
 text = "registros de inundaciones y deslizamientos en un año típico de El Niño que en un año ordinario, en todas las regiones (DesInventar, 1975–2013)"
 
 [[sections]]
-part = "Lluvia"
-id = "maps"
-fig = "maps"
-head = "El Niño: la estación seca (diciembre–febrero) es un {djf_lo}–{djf_hi}% más seca en todas las regiones; la temporada de lluvias (junio–noviembre) pierde mucho menos, un {jn_lo}–{jn_hi}%"
-note = "En milímetros son {djf_mm_lo}–{djf_mm_hi} mm menos entre diciembre y febrero y {jn_mm_lo}–{jn_mm_hi} mm menos entre junio y noviembre, sobre todo en la costa nororiental, los Andes y los Llanos centrales y orientales. Marzo–mayo no muestra un cambio consistente. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño, un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
-
-[[sections]]
-id = "states"
-fig = ["states", "season"]
-head = "Por estado: los mayores déficits porcentuales se dan en la estación seca, en el noroeste, los Andes, el oriente y Guayana"
+part = "Esta temporada"
+id = "forecast"
+fig = "forecast"
+head = "SEAS5, octubre de {fc_year}: uno de los pronósticos más secos para octubre–febrero desde 1981, allí donde es temporada de lluvias"
+note = "Los {fc_cells} pares estado-trimestre de octubre a febrero que caen en la temporada de lluvias están todos muy por debajo de lo normal (el 10% más seco de los 45 pronósticos anteriores) una vez quitada la tendencia de largo plazo, como en el visor seas5-skill del equipo; antes de ese paso, es el pronóstico de noviembre–enero más seco en {fc_raw_driest} de {fc_states} estados. El pronóstico tiene destreza para estos meses (correlación de los pronósticos retrospectivos {fc_r_lo}–{fc_r_hi}). Los pronósticos de octubre de 1997 y 2015 salieron casi igual de secos; la lluvia que siguió estuvo entre las más bajas registradas en 1997 y por debajo de lo normal en 2015. Febrero–abril tiende a húmedo en el oeste y el centro, pero allí el pronóstico tiene destreza baja o esos meses quedan fuera de la temporada de lluvias, así que el mapa no lo muestra."
 
 [[sections]]
 id = "now"
@@ -56,17 +56,22 @@ head = "La lluvia de {now_span} de 2026 fue del {now_lo}–{now_hi}% de lo norma
 note = "ERA5 sitúa {now_span} en el {era5_lo}–{era5_hi}% de lo normal. Aquí prevalece CHIRPS, que usa pluviómetros; ERA5 es un reanálisis que no usa la lluvia de los pluviómetros."
 
 [[sections]]
-id = "dry"
-fig = "dry"
-head = "Estación seca (diciembre–marzo): en los cuatro años de El Niño fuerte, todas las regiones tuvieron menos lluvia de lo normal, un {strong_med}% menos en la mediana"
-note = "En cada región, entre {dry_third_min} y {dry_third_max} de los {nino_n} años de El Niño cayeron en el tercio más seco (por azar serían 5); la menor cantidad, en {dry_third_fewest}."
+part = "La lluvia en años anteriores de El Niño y La Niña"
+id = "maps"
+fig = "maps"
+head = "El Niño: diciembre–febrero, en plena estación seca, es un {djf_lo}–{djf_hi}% más seco; la temporada de lluvias (junio–noviembre) pierde mucho menos, un {jn_lo}–{jn_hi}%"
+note = "Diciembre–febrero: todas las regiones salvo los Llanos occidentales, donde casi no llueve en esos meses. En milímetros son {djf_mm_lo}–{djf_mm_hi} mm menos entre diciembre y febrero y {jn_mm_lo}–{jn_mm_hi} mm menos entre junio y noviembre; la pérdida de la temporada de lluvias es mayor en la costa nororiental, los Andes y los Llanos centrales y orientales. Marzo–mayo no muestra un cambio consistente. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (se ve débilmente en el mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
 
 [[sections]]
-id = "forecast"
-fig = "forecast"
-head = "SEAS5, octubre de {fc_year}: uno de los pronósticos más secos para octubre–febrero desde 1981, allí donde es temporada de lluvias"
-note = "Los {fc_cells} pares estado-trimestre de octubre a febrero que caen en la temporada de lluvias están todos muy por debajo de lo normal (el 10% más seco de los 45 pronósticos anteriores) una vez quitada la tendencia de largo plazo, como en el visor seas5-skill del equipo; antes de ese paso, es el pronóstico de noviembre–enero más seco en {fc_raw_driest} de {fc_states} estados. El pronóstico tiene destreza para estos meses (correlación de los pronósticos retrospectivos {fc_r_lo}–{fc_r_hi}). Los pronósticos de octubre de 1997 y 2015 salieron casi igual de secos; la lluvia que siguió estuvo entre las más bajas registradas en 1997 y por debajo de lo normal en 2015. Febrero–abril tiende a húmedo en el oeste y el centro, pero allí el pronóstico tiene destreza baja o esos meses quedan fuera de la temporada de lluvias, así que el mapa no lo muestra."
+id = "states"
+fig = ["states", "season"]
+head = "Por estado: los mayores déficits porcentuales se dan de noviembre a febrero, en el noroeste, los Andes, el oriente y Guayana"
 
+[[sections]]
+id = "dry"
+fig = "dry"
+head = "Diciembre–marzo, la mayor parte de la estación seca: en los cuatro años de El Niño fuerte, todas las regiones tuvieron menos lluvia de lo normal, un {strong_med}% menos en la mediana"
+note = "En cada región, entre {dry_third_min} y {dry_third_max} de los {nino_n} años de El Niño cayeron en el tercio más seco (por azar serían 5); la menor cantidad, en {dry_third_fewest}."
 
 [[sections]]
 part = "Inundaciones"
