@@ -90,10 +90,10 @@ note = "It starts this dry season near full ({guri_peak} m, against {guri_peak15
 id = "veg"
 fig = "veg"
 head = "Vegetation: the three poorest dry seasons since 2000 ({veg_worst}) all followed El Niño; 2023/24 did not"
-note = "Averaged over the El Niño years, cropland in November–April was below normal in {veg_states_neg} of {veg_states_n} states."
+note = "The stronger the El Niño, the poorer the dry season (correlation {veg_r}), with 2023/24 the exception. Averaged over the El Niño years, cropland in November–April was below normal in {veg_states_neg} of {veg_states_n} states."
 
 [[sections]]
 id = "yields"
 fig = "yields"
-head = "Harvests: maize yields fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023. Rice shows no pattern"
-note = "2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the economic crisis."
+head = "Harvests: little link to ENSO. Maize fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023"
+note = "Correlation with the ONI: maize {maize_r}, rice {rice_r}. 2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the economic crisis."

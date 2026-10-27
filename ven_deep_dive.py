@@ -937,21 +937,34 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
     return _save(fig, "guri"), v
 
 
+def _enso_scatter(ax, x: pd.Series, y: pd.Series, ph: pd.DataFrame, label: dict[int, str], hollow: set[int] = frozenset()):
+    """One point per year: Sep–Nov ONI against an outcome, coloured by phase; `hollow` years drawn open (left out of r)."""
+    _grid(ax, "both")
+    for t in y.dropna().index:
+        if t not in x.index:
+            continue
+        c = phase_color(int(t), ph)
+        ax.scatter(x[t], y[t], s=44 if c == STRONG_C else 26, zorder=3, lw=1,
+                   color="none" if t in hollow else c, edgecolor=c if t in hollow else SURFACE)
+        if t in label:
+            ax.annotate(label[t], (x[t], y[t]), xytext=(5, 3), textcoords="offset points", fontsize=7)
+    ax.axhline(0, color="#9a9993", lw=0.6)
+    for v in (-0.5, 0.5):
+        ax.axvline(v, color="#9a9993", lw=0.5, ls=(0, (3, 3)))
+    ax.set_xlabel("ONI, Sep–Nov (°C): La Niña ← → El Niño")
+
+
 def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
     crop, rng = asap_dry(1), asap_dry(2)
     nat = crop.mean()
     nat_r = rng.mean()
-    fig, (ax, bx) = plt.subplots(1, 2, figsize=(11.4, 4.2), gridspec_kw=dict(width_ratios=[2.2, 1]))
-    _grid(ax)
     yrs = [y for y in nat.index if y < NOW]
-    ax.bar(yrs, nat.loc[yrs], color=[phase_color(y, ph) for y in yrs], width=0.75)
-    ax.scatter(yrs, nat_r.loc[yrs], marker="_", s=60, color=NOW_C, zorder=3, label="rangeland")
-    ax.axhline(0, color="#9a9993", lw=0.6)
-    ax.set_ylabel("vegetation (FPAR) z-score, Nov–Apr")
-    ax.set_xticks(yrs[::2], [year_label(y) for y in yrs[::2]], rotation=90, fontsize=7.5)
-    h = [Patch(color=STRONG_C, label="strong El Niño"), Patch(color=NINO_C, label="El Niño"), Patch(color=NEUTRAL_C, label="neutral"),
-         Patch(color=NINA_C, label="La Niña"), Line2D([], [], marker="_", ls="", ms=10, color=NOW_C, label="rangeland")]
-    ax.legend(handles=h, loc="lower left", fontsize=7.5, ncols=5, bbox_to_anchor=(0, 1.0))
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(11.4, 4.4), gridspec_kw=dict(width_ratios=[1.6, 1]))
+    worst = nat.loc[yrs].nsmallest(3)
+    lab = {y: year_label(y) for y in list(worst.index) + [y for y in yrs if ph.loc[y, "strong"]]}
+    _enso_scatter(ax, ph.oni, nat.loc[yrs], ph, lab)
+    ax.set_ylabel("cropland vegetation (FPAR) z-score, Nov–Apr")
+    _phase_legend(ax, ph, loc="lower left", ncols=4, bbox_to_anchor=(0, 1.0))
     st = states()
     nino = [y for y in phase_years(ph, "nino", 2000, NOW - 1)]
     sm = st.merge(crop[nino].mean(axis=1).rename("z"), left_on="pcode", right_index=True, how="left")
@@ -961,57 +974,53 @@ def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
             missing_kwds=dict(color=DRY_GREY))
     bx.set_axis_off()
     bx.set_title(f"Nov–Apr after El Niño, cropland\n(mean of {len(nino)} rain years)", fontsize=9)
-    cax = fig.add_axes([0.72, 0.1, 0.22, 0.025])
+    cax = fig.add_axes([0.66, 0.1, 0.26, 0.025])
     cb = fig.colorbar(plt.cm.ScalarMappable(norm=mcolors.BoundaryNorm(zb, cm.N), cmap=cm), cax=cax, orientation="horizontal")
     cb.set_ticks(zb[1:-1])
     cb.ax.tick_params(labelsize=7)
-    _source(fig, "Bars: cropland, mean of the state values; dashes: rangeland. Z-score of FPAR (the share of sunlight the canopy absorbs) "
-                 "against each 10-day period's 2001–present record, November–April, rain years 2000/01–2025/26. "
-                 "Source: JRC ASAP (MODIS FPAR, GAUL admin-1).")
-    worst = nat.loc[yrs].nsmallest(3)
+    r = float(np.corrcoef(ph.oni.reindex(yrs), nat.loc[yrs])[0, 1])
+    r_rng = float(np.corrcoef(ph.oni.reindex(yrs), nat_r.loc[yrs])[0, 1])
+    _source(fig, f"One point per rain year, 2000/01–{NOW - 1}/{NOW % 100:02d}: cropland, mean of the state values. Z-score of FPAR (the "
+                 "share of sunlight the canopy absorbs) against each 10-day period's 2001–present record, November–April. "
+                 f"Correlation with the ONI: cropland {r:+.2f}, rangeland {r_rng:+.2f}. Source: JRC ASAP (MODIS FPAR, GAUL admin-1).".replace("-0.", "−0."))
     after = [y for y in worst.index if ph.phase.get(y) == "nino"]
     v = dict(veg_worst=", ".join(year_label(y) for y in sorted(worst.index)), veg_worst_nino=len(after),
-             veg_2023=f"{nat.loc[2023]:+.1f}".replace("-", "−"),
+             veg_2023=f"{nat.loc[2023]:+.1f}".replace("-", "−"), veg_r=f"{r:+.2f}".replace("-", "−"),
              veg_states_neg=int((crop[nino].mean(axis=1) < 0).sum()), veg_states_n=int(crop[nino].mean(axis=1).notna().sum()))
     if len(after) != 3 or nat.loc[2023] < -0.1:
         raise ValueError("the vegetation pattern changed: reword the vegetation headline")
     return _save(fig, "veg"), v
 
 
+CRISIS = set(range(2014, 2020))
+
+
 def fig_yields(ph: pd.DataFrame) -> tuple[Path, dict]:
     y = yields()
-    y = y[y.year >= 1980]
-    fig, axes = plt.subplots(2, 1, figsize=(10, 4.8), sharex=True)
+    y = y[(y.year >= 1980) & (y.year < NOW)]
+    fig, axes = plt.subplots(1, 2, figsize=(11, 4.4), sharey=True)
+    rs = {}
     for ax, (crop, lab) in zip(axes, (("maize", "Maize"), ("rice", "Rice"))):
-        d = y[y.crop == crop].set_index("year")
-        _grid(ax)
-        ax.axvspan(2013.5, 2019.5, color="#ebeae6", lw=0)
-        ax.bar(d.index, d.anom, color=[phase_color(int(t), ph) if t < NOW else NEUTRAL_C for t in d.index], width=0.75,
-               hatch=["////" if f != "A" else "" for f in d.flag], edgecolor=SURFACE, lw=0)
-        ax.axhline(0, color="#9a9993", lw=0.6)
-        ax.set_ylabel(f"{lab} yield\n% vs years around", fontsize=8)
-        ax.set_ylim(-30, 30)
-        for t in d.index[(d.anom < -9) & (d.index < 2014)]:
-            if ph.phase.get(t) == "nino":
-                ax.annotate(str(t), (t, d.loc[t, "anom"]), xytext=(0, -9), textcoords="offset points", ha="center", fontsize=7)
-    axes[0].text(2016.5, 26, "economic crisis", ha="center", va="top", fontsize=7.5, color=TEXT2)
-    h = [Patch(color=STRONG_C, label="strong El Niño"), Patch(color=NINO_C, label="El Niño"), Patch(color=NEUTRAL_C, label="neutral"),
-         Patch(color=NINA_C, label="La Niña")]
-    axes[1].legend(handles=h, loc="lower left", fontsize=7.5, ncols=4)
-    _source(fig, "National yield in each calendar year (the main harvest follows the May–October rains) against the mean of the two years "
-                 "either side. Hatched: FAOSTAT estimate, not an official figure. Source: FAOSTAT.")
-    d = y[(y.crop == "maize") & (y.year < 2014)].set_index("year")
-    nino = d.loc[[t for t in phase_years(ph, "nino", 1980, 2013)], "anom"]
-    worst = d["anom"].loc[2000:2013].nsmallest(3)
-    v = dict(maize_worst=", ".join(str(t) for t in sorted(worst.index)),
-             maize_worst_nino=int(sum(ph.phase.get(t) == "nino" for t in worst.index)),
-             maize_strong=", ".join(f"{t} {d.loc[t, 'anom']:+.0f}%".replace("-", "−") for t in (1982, 1997) if t in d.index),
-             maize_nino_med=f"{nino.median():+.0f}".replace("-", "−"), maize_nino_n=len(nino),
+        d = y[y.crop == crop].set_index("year")["anom"]
+        names = {t: str(t) for t in (1982, 1997, 2002, 2009, 2015, 2023)} if crop == "maize" else {}
+        _enso_scatter(ax, ph.oni, d, ph, names, hollow=CRISIS)
+        ok = [t for t in d.dropna().index if t not in CRISIS and t in ph.index]
+        rs[crop] = float(np.corrcoef(ph.oni.reindex(ok), d.loc[ok])[0, 1])
+        ax.set_title(f"{lab} (r = {rs[crop]:+.2f})".replace("-", "−"), fontsize=10)
+    axes[0].set_ylabel("yield, % against the two years either side")
+    h = [Line2D([], [], marker="o", ls="", color=c, label=l) for c, l in
+         ((STRONG_C, "strong El Niño"), (NINO_C, "El Niño"), (NEUTRAL_C, "neutral"), (NINA_C, "La Niña"))]
+    h.append(Line2D([], [], marker="o", ls="", color="none", markeredgecolor=TEXT2, label="2014–2019, economic crisis"))
+    axes[0].legend(handles=h, loc="lower left", fontsize=7.5, ncols=5, bbox_to_anchor=(0, 1.08))
+    _source(fig, f"One point per calendar year, 1980–{NOW - 1} (the main harvest follows the May–October rains). Yield against the mean of "
+                 "the two years either side. r: correlation with the ONI, crisis years left out. Source: FAOSTAT.")
+    v = dict(maize_r=f"{rs['maize']:+.2f}".replace("-", "−"), rice_r=f"{rs['rice']:+.2f}".replace("-", "−"),
              **{f"maize_{t}": f"{abs(y[(y.crop == 'maize') & (y.year == t)].anom.iloc[0]):.0f}"
                 for t in (1982, 1997, 2002, 2009, 2015, 2023)})
     a = {t: y[(y.crop == "maize") & (y.year == t)].anom.iloc[0] for t in (1982, 1997, 2002, 2009, 2015, 2023)}
-    if not (a[2002] < -8 and a[2009] < -8 and a[2015] < -8 and all(abs(a[t]) < 6 for t in (1982, 1997, 2023))):
-        raise ValueError(f"maize anomalies changed {a}: reword the yields headline")
+    if not (a[2002] < -8 and a[2009] < -8 and a[2015] < -8 and all(abs(a[t]) < 6 for t in (1982, 1997, 2023))
+            and abs(rs["maize"]) < 0.3 and abs(rs["rice"]) < 0.3):
+        raise ValueError(f"maize anomalies or correlations changed {a} {rs}: reword the yields headline")
     return _save(fig, "yields"), v
 
 
