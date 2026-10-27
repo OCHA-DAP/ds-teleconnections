@@ -96,4 +96,4 @@ note = "The stronger the El Niño, the poorer the dry season (correlation {veg_r
 id = "yields"
 fig = "yields"
 head = "Harvests: little link to ENSO. Maize fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023"
-note = "Correlation with the ONI: maize {maize_r}, rice {rice_r}. 2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the economic crisis."
+note = "Correlation with the ONI: maize {maize_r}, rice {rice_r}; other ways of removing the trend and the 2014–2019 crisis give maize {maize_r_lo} to {maize_r_hi} and rice {rice_r_lo} to {rice_r_hi}. Maize does not follow May–September rain in the maize states either (right): rain there was {rain_2009}% in 2009 but {rain_2002}% in 2002. 2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the crisis."
