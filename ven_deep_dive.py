@@ -201,6 +201,12 @@ def emdat() -> pd.DataFrame:
     return pd.read_parquet(p)
 
 
+def cerf() -> pd.DataFrame:
+    """CERF allocations to Venezuela (the team's OneGMS mirror in the dev database; regional VZR allocations not included)."""
+    return _db("cerf_ven", "select application_code, year, window_name, emergency_type, title, amount_approved, "
+                           "erc_endorsement_date from aa.cerf_allocation where country_iso3 = 'VEN'", "dev")
+
+
 DI_URL = "https://www.desinventar.net/DesInventar/download/DI_export_ven.zip"
 DI_FIELDS = ["serial", "level0", "level1", "name0", "name1", "evento", "lugar", "fechano", "fechames", "fechadia",
              "muertos", "desaparece", "afectados", "damnificados", "evacuados", "vivdest", "vivafec", "nhectareas", "fuentes"]
@@ -1040,6 +1046,7 @@ def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
 
 
 CRISIS = set(range(2014, 2020))
+CRISIS_NB = set(range(2012, 2022))   # the crisis and the years whose two-either-side comparison reaches into it
 MAIZE_STATES = {"VE18": "Portuguesa", "VE12": "Guárico", "VE06": "Barinas", "VE22": "Yaracuy", "VE09": "Cojedes",
                 "VE03": "Anzoátegui"}
 
@@ -1050,9 +1057,9 @@ def _r(a: pd.Series, b: pd.Series, yrs) -> float:
 
 
 def yield_r_range(ph: pd.DataFrame) -> dict[str, tuple[float, float]]:
-    """Correlation of yield with the ONI under other ways of removing the trend and the crisis: neighbours taken from
-    non-crisis years only; years whose neighbours touch the crisis (2012–2021) left out; deviation from a 9-year running
-    median of non-crisis years; year-on-year change. With the page's own method, the range of all five, per crop."""
+    """Correlation of yield with the ONI under other ways of removing the trend and the crisis: only the crisis years left
+    out; neighbours taken from non-crisis years only; deviation from a 9-year running median of non-crisis years;
+    year-on-year change. With the page's own method, the range of all five, per crop."""
     y = yields()
     out = {}
     for crop in ("maize", "rice"):
@@ -1061,9 +1068,9 @@ def yield_r_range(ph: pd.DataFrame) -> dict[str, tuple[float, float]]:
         base = [k for k in range(1980, NOW) if k not in CRISIS]
         tc = t.where(~t.index.isin(CRISIS))
         nb = pd.concat([tc.shift(k) for k in (-2, -1, 1, 2)], axis=1)
-        rs = [_r(ph.oni, d.anom, base),
+        rs = [_r(ph.oni, d.anom, [k for k in base if k not in CRISIS_NB]),
+              _r(ph.oni, d.anom, base),
               _r(ph.oni, (t / nb.mean(axis=1).where(nb.notna().sum(axis=1) >= 2) - 1) * 100, base),
-              _r(ph.oni, d.anom, [k for k in base if not 2012 <= k <= 2021]),
               _r(ph.oni, np.log(t) - np.log(tc).rolling(9, center=True, min_periods=5).median(), base),
               _r(ph.oni, np.log(t).diff(), [k for k in base if k - 1 not in CRISIS])]
         out[crop] = (min(rs), max(rs))
@@ -1078,25 +1085,26 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     names = {t: str(t) for t in (1982, 1997, 2002, 2009, 2015, 2023)}
     for ax, (crop, lab) in zip(axes, (("maize", "Maize"), ("rice", "Rice"))):
         d = y[y.crop == crop].set_index("year")["anom"]
-        _enso_scatter(ax, ph.oni, d, ph, names if crop == "maize" else {}, hollow=CRISIS)
-        ok = [t for t in d.dropna().index if t not in CRISIS and t in ph.index]
+        _enso_scatter(ax, ph.oni, d, ph, names if crop == "maize" else {}, hollow=CRISIS_NB)
+        ok = [t for t in d.dropna().index if t not in CRISIS_NB and t in ph.index]
         rs[crop] = _r(ph.oni, d, ok)
         ax.set_title(f"{lab} against the ONI\n(r = {rs[crop]:+.2f})".replace("-", "−"), fontsize=10)
     # does national maize follow rain where it grows? May–Sep, the main season's growing months
     t = period_totals(mon[list(MAIZE_STATES)], [5, 6, 7, 8, 9]).mean(axis=1)
     rain_pct = (t / t.loc[1991:2020].mean() - 1) * 100
     maize = y[y.crop == "maize"].set_index("year")["anom"]
-    _enso_scatter(axes[2], rain_pct, maize, ph, {t: str(t) for t in (2002, 2009)}, hollow=CRISIS, oni=False)
-    rs["rain"] = _r(rain_pct, maize, [k for k in range(1980, NOW) if k not in CRISIS])
+    _enso_scatter(axes[2], rain_pct, maize, ph, {t: str(t) for t in (2002, 2009)}, hollow=CRISIS_NB, oni=False)
+    rs["rain"] = _r(rain_pct, maize, [k for k in range(1980, NOW) if k not in CRISIS_NB])
     axes[2].set_title(f"Maize against May–Sep rain in the maize states\n(r = {rs['rain']:+.2f})".replace("-", "−"), fontsize=10)
     axes[2].set_xlabel("rain, % above or below normal: drier ← → wetter")
     axes[0].set_ylabel("yield, % against the two years either side")
     h = [Line2D([], [], marker="o", ls="", color=c, label=l) for c, l in
          ((STRONG_C, "strong El Niño"), (NINO_C, "El Niño"), (NEUTRAL_C, "neutral"), (NINA_C, "La Niña"))]
-    h.append(Line2D([], [], marker="o", ls="", color="none", markeredgecolor=TEXT2, label="2014–2019, economic crisis"))
+    h.append(Line2D([], [], marker="o", ls="", color="none", markeredgecolor=TEXT2, label="2012–2021: the 2014–2019 crisis, or compared with it"))
     fig.legend(handles=h, loc="lower center", fontsize=7.5, ncols=5, bbox_to_anchor=(0.5, 1.0), frameon=False)
     _source(fig, f"One point per calendar year, 1980–{NOW - 1} (the main harvest follows the May–October rains). Detrended: each year's "
-                 "yield against the mean of the two years either side. r: correlation, crisis years left out. Maize states: "
+                 "yield against the mean of the two years either side. Open circles, left out of r: the 2014–2019 economic crisis and the "
+                 "years whose comparison years fall in it. Maize states: "
                  f"{', '.join(MAIZE_STATES.values())} (CHIRPS v3). Sources: FAOSTAT, CHIRPS v3.")
     alt = yield_r_range(ph)
     fmt = lambda x: f"{x:+.2f}".replace("-", "−")  # noqa: E731
@@ -1111,7 +1119,7 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
             and abs(rs["maize"]) < 0.3 and abs(rs["rice"]) < 0.3
             and max(abs(x) for lohi in alt.values() for x in lohi) < 0.3):
         raise ValueError(f"maize anomalies or correlations changed {a} {rs} {alt}: reword the yields headline")
-    if not (rs["rain"] < 0.2 and rain_pct[2002] > 0 and rain_pct[2009] < -10):
+    if not (abs(rs["rain"]) < 0.2 and rain_pct[2002] > 0 and rain_pct[2009] < -10):
         raise ValueError(f"maize vs rain changed (r {rs['rain']:+.2f}, 2002 {rain_pct[2002]:+.0f}%, "
                          f"2009 {rain_pct[2009]:+.0f}%): reword the yields note")
     return _save(fig, "yields"), v
@@ -1200,6 +1208,19 @@ def era5_agreement(a: dict) -> dict:
     return dict(era5_agree=f"{same.mean() * 100:.0f}", era5_cells=int(m.sum()))
 
 
+def cerf_values(ph: pd.DataFrame) -> dict:
+    """The page's CERF lines: one flood allocation, none for drought; stops if that changes."""
+    c = cerf()
+    wet, dry = c[c.emergency_type.isin(["Flood", "Storm"])], c[c.emergency_type == "Drought"]
+    if len(wet) != 1 or len(dry):
+        raise ValueError(f"CERF allocations changed ({len(wet)} flood/storm, {len(dry)} drought): reword the CERF lines")
+    w = wet.iloc[0]
+    d = pd.Timestamp(w.erc_endorsement_date)
+    phase = ph.phase[d.year if d.month >= 5 else d.year - 1]
+    return dict(cerf_first=int(c.year.min()), cerf_flood_amt=f"{w.amount_approved / 1e6:.0f}", cerf_flood_when=f"{d:%B %Y}",
+                cerf_flood_phase={"nina": "a La Niña year", "nino": "an El Niño year", "neutral": "a neutral year"}[phase])
+
+
 def figures(a: dict) -> tuple[dict, dict]:
     ph, f, v = a["ph"], {}, {}
     v |= oni_now()
@@ -1210,6 +1231,7 @@ def figures(a: dict) -> tuple[dict, dict]:
     f["dry"], x = fig_dry(a["mon"], ph); v |= x
     f["forecast"], x = fig_forecast(a["mon_e"]); v |= x
     f["emdat"], x = fig_emdat(ph); v |= x
+    v |= cerf_values(ph)
     f["desinventar"], x = fig_desinventar(ph); v |= x
     f["guri"], x = fig_guri(ph); v |= x
     f["veg"], x = fig_veg(ph); v |= x
@@ -1233,6 +1255,8 @@ def render(spec: dict, figs: dict, v: dict) -> str:
     for sec in spec["sections"]:
         if sec.get("part"):
             out.append(f'<h2 style="margin-top:36px">{sec["part"]}</h2>')
+            if sec.get("part_note"):
+                out.append(f'<p class="note">{sec["part_note"].format(**v)}</p>')
         out.append(f'<section id="{sec["id"]}"><h3>{sec["head"].format(**v)}</h3>')
         if sec.get("note"):
             out.append(f'<p class="note">{sec["note"].format(**v)}</p>')

@@ -7,10 +7,10 @@ builder = "ven"
 notes = [
   "<b>Rain years and phases.</b> A rain year runs from May to April: the May–November rains, then the December–April dry season. It is classed by the Sep–Nov ONI of its first year (NOAA CPC): El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C, La Niña ≤ −0.5 °C. Since 1981: {n_nino} El Niño years ({strong_years} strong) and {n_nina} La Niña years. “Year 1” is the year El Niño develops; “year 2” is the next one. Sep–Nov is used because Venezuela's El Niño effect starts in the developing year; by its peak ONI (+1.5 °C in Nov–Jan) 2009/10, the year of the 2010 power rationing, would count as strong.",
   "<b>Rain.</b> CHIRPS v3 (satellite and gauges) at 0.5°, averaged over each state with area weights, to {data_end}. ERA5 by state (team admin-1 statistics) to {era5_end} is used as a check: it agrees with CHIRPS on the direction of the El Niño change in {era5_agree}% of the {era5_cells} state-seasons where CHIRPS shows ±10% or more. Percentages are against the 1991–2020 normal for the same months; three-month windows with a normal under 60 mm are dry season and left out.",
-  "<b>Floods.</b> FloodScan, the satellite flood-exposure record used on other pages, covers Africa only, so this page has no flood-exposure series for Venezuela. EM-DAT (CRED/UCLouvain, snapshot of {emdat_end}) lists the larger flood, wet-landslide and storm disasters since 1980; one Location field often names many states, so it is used nationally. DesInventar Venezuela (UNDRR) has {di_n} flood, rain, torrent, debris-flow, landslide and storm records by municipality; it stops in early 2016, and its reporting changes several-fold between decades, so each year is compared with the six rain years around it, and the figure shows the median over the years of each phase.",
+  "<b>Floods.</b> FloodScan, the satellite flood-exposure record used on other pages, covers Africa only, so this page has no flood-exposure series for Venezuela. EM-DAT (CRED/UCLouvain, snapshot of {emdat_end}) lists the larger flood, wet-landslide and storm disasters since 1980; one Location field often names many states, so it is used nationally. DesInventar Venezuela (UNDRR) has {di_n} flood, rain, torrent, debris-flow, landslide and storm records by municipality; it stops in early 2016, and its reporting changes several-fold between decades, so each year is compared with the six rain years around it, and the figure shows the median over the years of each phase. CERF allocations: CERF's OneGMS feed (Venezuela only, not the regional allocations).",
   "<b>Guri.</b> NASA GSFC G-REALM satellite altimetry, every ten days since September 1992, in metres above the EGM2008 geoid. This is not the operator's gauge datum: compare falls and past lows within this record, not with published operating levels.",
   "<b>Vegetation.</b> JRC ASAP: z-score of MODIS FPAR (the share of sunlight the canopy absorbs) against the same ten days in 2001–present, averaged over cropland or rangeland in each state (GAUL admin-1), November–April.",
-  "<b>Harvests.</b> FAOSTAT national yields, each year against the two years either side. From 2014 to 2019 the economic crisis drives the numbers and hides any weather signal.",
+  "<b>Harvests.</b> FAOSTAT national yields, each year against the two years either side. From 2014 to 2019 the economic crisis drives the numbers and hides any weather signal; those years, and the years compared with them (2012–2013, 2020–2021), are left out of the correlations.",
   "<b>Forecast.</b> ECMWF SEAS5 ensemble mean by state (team admin-1 statistics; the database holds the ensemble mean only), October issuance. Three-month means are log-transformed, scaled to ERA5 and detrended, as in the team's seas5-skill app; the rank is among the 1981–2025 hindcasts for the same months, and skill is their correlation with ERA5.",
 ]
 
@@ -68,6 +68,7 @@ note = "{fc_driest} of {fc_cells} state-seasons from October to February rank in
 
 [[sections]]
 part = "Floods"
+part_note = "CERF has made one flood allocation to Venezuela: US${cerf_flood_amt} million in {cerf_flood_when}, for the floods in Apure from May 2025, {cerf_flood_phase}."
 id = "emdat"
 fig = "emdat"
 head = "El Niño years have had far fewer people affected by reported floods, landslides and storms than La Niña years: about {em_nino_yr} a year against {em_nina_yr}"
@@ -81,6 +82,7 @@ note = "In a typical El Niño year each region had {di_nino_lo}–{di_nino_hi} t
 
 [[sections]]
 part = "Drought: water, vegetation, harvests"
+part_note = "CERF has made no drought allocation to Venezuela (allocations there since {cerf_first})."
 id = "guri"
 fig = "guri"
 head = "The Guri reservoir has fallen {guri_nino} m through the dry season after a typical El Niño year, against {guri_nina} m after La Niña"
@@ -96,4 +98,4 @@ note = "The stronger the El Niño, the poorer the dry season (correlation {veg_r
 id = "yields"
 fig = "yields"
 head = "Harvests: little link to ENSO. Maize fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023"
-note = "Correlation with the ONI: maize {maize_r}, rice {rice_r}; other ways of removing the trend and the 2014–2019 crisis give maize {maize_r_lo} to {maize_r_hi} and rice {rice_r_lo} to {rice_r_hi}. Maize does not follow May–September rain in the maize states either (right): rain there was {rain_2009}% in 2009 but {rain_2002}% in 2002. 2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the crisis."
+note = "Correlation with the ONI: maize {maize_r}, rice {rice_r}; other ways of removing the trend and the crisis give maize {maize_r_lo} to {maize_r_hi} and rice {rice_r_lo} to {rice_r_hi}. Maize does not follow May–September rain in the maize states either (right): rain there was {rain_2009}% in 2009 but {rain_2002}% in 2002. 2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the crisis."
