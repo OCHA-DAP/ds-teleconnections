@@ -30,7 +30,7 @@ lead = "For this season, plan on the seasonal forecast below (ECMWF SEAS5, a new
 
 [[tiles]]
 big = "Driest 10%"
-text = "the SEAS5 October {fc_year} forecast for October–February, in all {fc_cells} rainy-season state-seasons, among the driest 10% of past forecasts"
+text = "the SEAS5 October {fc_year} forecast for October–February, in every rainy-season state and season ({fc_cells} of them), among the driest 10% of past forecasts"
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
 text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
@@ -59,7 +59,7 @@ part = "Rain in past El Niño and La Niña years"
 id = "maps"
 fig = "maps"
 head = "El Niño: December–February, in the dry season, is {djf_lo}–{djf_hi}% drier; the rainy season (June–November) loses much less, {jn_lo}–{jn_hi}%"
-note = "December–February: every region but the western Llanos, which gets almost no rain then. In millimetres that is {djf_mm_lo}–{djf_mm_hi} mm less over December–February and {jn_mm_lo}–{jn_mm_hi} mm less over June–November; the rainy-season loss is largest on the north-east coast, in the Andes and in the central and eastern Llanos. March–May shows no consistent change. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
+note = "December–February: every region but the western Llanos, where it is nearly rainless on average (the maps blank every area with under 20 mm a month). In millimetres that is {djf_mm_lo}–{djf_mm_hi} mm less over December–February and {jn_mm_lo}–{jn_mm_hi} mm less over June–November; the rainy-season loss is largest on the north-east coast, in the Andes and in the central and eastern Llanos. March–May shows no consistent change. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
 
 [[sections]]
 id = "states"

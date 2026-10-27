@@ -27,11 +27,11 @@ title = "Venezuela: El Niño 2026/27"
 sub = "El pronóstico de esta temporada y, después, lo que trajeron los años de El Niño y La Niña anteriores, región por región: lluvia, inundaciones, el embalse de Guri, vegetación y cosechas."
 dateline = "Lluvia hasta {data_end} (CHIRPS) y {era5_end} (ERA5) · SEAS5 emitido en octubre de {fc_year}"
 
-lead = "Para esta temporada, hay que planificar con el pronóstico estacional de abajo (SEAS5 de ECMWF, uno nuevo cada mes), no con los años de El Niño anteriores: esos, más abajo, muestran lo que ha pasado antes, como contexto, no lo que pasará este año."
+lead = "Para esta temporada, hay que planificar con el pronóstico estacional que sigue (SEAS5 de ECMWF, uno nuevo cada mes), no con los años de El Niño anteriores: esos, más abajo, muestran lo que ha pasado antes, como contexto, no lo que pasará este año."
 
 [[tiles]]
 big = "10% más seco"
-text = "el pronóstico SEAS5 de octubre de {fc_year} para octubre–febrero, en los {fc_cells} pares estado-trimestre de temporada de lluvias, entre el 10% más seco de los pronósticos anteriores"
+text = "el pronóstico SEAS5 de octubre de {fc_year} para octubre–febrero, en todos los estados y trimestres de temporada de lluvias ({fc_cells} en total), entre el 10% más seco de los pronósticos anteriores"
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
 text = "lluvia de {now_span} de 2026 por región, en % de lo normal: entre los seis años más secos desde 1981 en todas las regiones"
@@ -60,7 +60,7 @@ part = "La lluvia en años anteriores de El Niño y La Niña"
 id = "maps"
 fig = "maps"
 head = "El Niño: diciembre–febrero, en plena estación seca, es un {djf_lo}–{djf_hi}% más seco; la temporada de lluvias (junio–noviembre) pierde mucho menos, un {jn_lo}–{jn_hi}%"
-note = "Diciembre–febrero: todas las regiones salvo los Llanos occidentales, donde casi no llueve en esos meses. En milímetros son {djf_mm_lo}–{djf_mm_hi} mm menos entre diciembre y febrero y {jn_mm_lo}–{jn_mm_hi} mm menos entre junio y noviembre; la pérdida de la temporada de lluvias es mayor en la costa nororiental, los Andes y los Llanos centrales y orientales. Marzo–mayo no muestra un cambio consistente. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (se ve débilmente en el mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
+note = "Diciembre–febrero: todas las regiones salvo los Llanos occidentales, donde en promedio casi no llueve (los mapas dejan en blanco toda zona con menos de 20 mm al mes). En milímetros son {djf_mm_lo}–{djf_mm_hi} mm menos entre diciembre y febrero y {jn_mm_lo}–{jn_mm_hi} mm menos entre junio y noviembre; la pérdida de la temporada de lluvias es mayor en la costa nororiental, los Andes y los Llanos centrales y orientales. Marzo–mayo no muestra un cambio consistente. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (se ve débilmente en el mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
 
 [[sections]]
 id = "states"
