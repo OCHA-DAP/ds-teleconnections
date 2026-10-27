@@ -21,6 +21,7 @@ import base64
 import html
 import io
 import os
+import re
 import tarfile
 import textwrap
 import tomllib
@@ -37,6 +38,7 @@ import pandas as pd
 import requests
 import xarray as xr
 from matplotlib import colors as mcolors
+from matplotlib import ticker as mticker
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
 
@@ -78,6 +80,75 @@ BOX = dict(lat=(0.0, 13.0), lon=(-74.0, -59.0))
 
 def year_label(y: int) -> str:
     return f"{y}/{(y + 1) % 100:02d}"
+
+
+# --------------------------------------------------------------------------- #
+# Language: the page is built in English (out/ven/) and again in Spanish (out/ven/es/) from the same analysis,
+# figures included. The narrative lives in deep_dives/ven.toml and deep_dives/i18n/ven.es.toml (kept out of
+# deep_dives/*.toml, which the dispatcher and the card index glob); the strings below are figure labels and captions.
+# --------------------------------------------------------------------------- #
+LANG = "en"
+ES_SPEC = ROOT / "deep_dives" / "i18n" / f"{SLUG}.es.toml"
+MON_EN = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+MON_ES = ["ene", "feb", "mar", "abr", "may", "jun", "jul", "ago", "sep", "oct", "nov", "dic"]
+MONTH_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre",
+            "diciembre"]
+REGION_ES = {"North-west": "Noroeste", "Andes": "Andes", "Western Llanos": "Llanos occidentales", "Centre-north": "Centro-norte",
+             "Central and eastern Llanos": "Llanos centrales y orientales", "North-east coast": "Costa nororiental",
+             "Guayana and Delta": "Guayana y Delta"}
+REGION_ES_IN = {"North-west": "el noroeste", "Andes": "los Andes", "Western Llanos": "los Llanos occidentales",
+                "Centre-north": "el centro-norte", "Central and eastern Llanos": "los Llanos centrales y orientales",
+                "North-east coast": "la costa nororiental", "Guayana and Delta": "Guayana y el Delta"}
+
+
+def set_lang(lang: str) -> None:
+    global LANG, FIGDIR
+    LANG = lang
+    FIGDIR = (OUT / "es" if lang == "es" else OUT) / "fig"
+    FIGDIR.mkdir(parents=True, exist_ok=True)
+
+
+def _t(en: str, es: str) -> str:
+    return es if LANG == "es" else en
+
+
+def _num(s: str) -> str:
+    """A formatted number with a true minus; in Spanish, decimal comma and a point between thousands."""
+    s = s.replace("-", "−")
+    return s.translate(str.maketrans(",.", ".,")) if LANG == "es" else s
+
+
+NUM_RE = re.compile(r"[+−-]?\d{1,3}(?:,\d{3})+(?:\.\d+)?|[+−-]?\d+\.\d+")
+
+
+def _localise(v: dict) -> dict:
+    """Page values that are plain formatted numbers, in the page's language (everything else is left alone)."""
+    return {k: _num(x) if isinstance(x, str) and NUM_RE.fullmatch(x) else x for k, x in v.items()}
+
+
+def _mon(m: int) -> str:
+    """Month abbreviation; m counts on past 12 into the next year."""
+    return (MON_ES if LANG == "es" else MON_EN)[(m - 1) % 12]
+
+
+def _span(m0: int, m1: int) -> str:
+    return f"{_mon(m0)}–{_mon(m1)}"
+
+
+def _cap(s: str) -> str:
+    return s[:1].upper() + s[1:]
+
+
+def _month_year(t: pd.Timestamp) -> str:
+    return f"{MONTH_ES[t.month - 1]} de {t.year}" if LANG == "es" else f"{t:%B %Y}"
+
+
+def _reg(r: str) -> str:
+    return REGION_ES[r] if LANG == "es" else r
+
+
+def _phase_name(p: str) -> str:
+    return {"nino": "El Niño", "neutral": _t("neutral", "neutro"), "nina": "La Niña"}[p]
 
 
 # --------------------------------------------------------------------------- #
@@ -583,6 +654,11 @@ def seas5_rank(issued_month: int = 10) -> tuple[pd.DataFrame, pd.DataFrame, int]
 # Figures
 # --------------------------------------------------------------------------- #
 def _save(fig, name: str) -> Path:
+    if LANG == "es":   # decimal commas on every plain numeric axis (dates, logs and labelled ticks keep their own)
+        for ax in fig.axes:
+            for axis in (ax.xaxis, ax.yaxis):
+                if type(axis.get_major_formatter()) is mticker.ScalarFormatter and axis.get_scale() == "linear":
+                    axis.set_major_formatter(mticker.FuncFormatter(lambda x, _: _num(f"{x:g}")))
     p = FIGDIR / f"{name}.png"
     fig.savefig(p, dpi=160, bbox_inches="tight")
     plt.close(fig)
@@ -594,24 +670,22 @@ def _grid(ax, axis="y"):
     ax.set_axisbelow(True)
 
 
-def _source(fig, text: str, y: float = -0.02):
-    fig.text(0.01, y, textwrap.fill(text, 170), fontsize=7, color=TEXT2, ha="left", va="top")
+def _source(fig, text: str, y: float = -0.02, width: int = 170):
+    fig.text(0.01, y, textwrap.fill(text, width), fontsize=7, color=TEXT2, ha="left", va="top")
 
 
 def _phase_legend(ax, ph: pd.DataFrame, loc="upper left", now: bool = False, **kw):
-    h = [Line2D([], [], marker="o", ls="", color=STRONG_C, label="strong El Niño"),
+    h = [Line2D([], [], marker="o", ls="", color=STRONG_C, label=_t("strong El Niño", "El Niño fuerte")),
          Line2D([], [], marker="o", ls="", color=NINO_C, label="El Niño"),
-         Line2D([], [], marker="o", ls="", color=NEUTRAL_C, label="neutral"),
+         Line2D([], [], marker="o", ls="", color=NEUTRAL_C, label=_phase_name("neutral")),
          Line2D([], [], marker="o", ls="", color=NINA_C, label="La Niña")]
     if now:
         h.append(Line2D([], [], marker="*", ls="", color=NOW_C, ms=10, label="2026"))
     ax.legend(handles=h, loc=loc, fontsize=8, **kw)
 
 
-MONTH = "JFMAMJJASOND"
-SEASON_LABEL = {s: f"{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(m - 1) % 12]}–"
-                   f"{['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][(m + 1) % 12]}"
-                for s, m in SEASON_START.items()}
+def _month_letters() -> str:
+    return _t("JFMAMJJASOND", "EFMAMJJASOND")
 PCT_BOUNDS = [-100, -40, -25, -10, 10, 25, 40, 100]
 PCT_CMAP = mcolors.ListedColormap(DIV)
 PCT_NORM = mcolors.BoundaryNorm(PCT_BOUNDS, PCT_CMAP.N)
@@ -635,8 +709,8 @@ def oni_now() -> dict:
     last = oni().iloc[-1]
     if last.anom < 1.5:
         raise ValueError(f"latest ONI {last.anom:+.2f}: 2026 is no longer a strong El Niño, reword the page")
-    names = {"JJA": "Jun–Aug", "JAS": "Jul–Sep", "ASO": "Aug–Oct", "SON": "Sep–Nov", "MJJ": "May–Jul"}
-    return dict(oni_now=f"{last.anom:+.1f}", oni_seas=names.get(last.seas, last.seas))
+    m0 = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"].index(last.seas)
+    return dict(oni_now=f"{last.anom:+.1f}", oni_seas=_span(m0, m0 + 2) if m0 else _span(12, 14))
 
 
 def _clip(da: xr.DataArray, geom) -> np.ndarray:
@@ -677,7 +751,9 @@ def fig_maps(ph: pd.DataFrame) -> Path:
         ax.pcolormesh(da.lon, da.lat, np.where(_clip(da, st.geometry), da.values.clip(max=NORMAL_BOUNDS[-1] - 1), np.nan),
                       cmap=NORMAL_CMAP, norm=NORMAL_NORM, shading="nearest")
         _map_axes(ax, st)
-        ax.set_title(per + (" (year 1)" if j < 2 else " (year 2)"), fontsize=9.5)
+        mm = MAP_PERIODS[per]
+        ax.set_title(_cap(_span(mm[0], mm[-1])) + (_t(" (year 1)", " (año 1)") if j < 2 else _t(" (year 2)", " (año 2)")),
+                     fontsize=9.5)
     axes[0, 0].text(-0.04, 0.5, "Normal\n1991–2020", transform=axes[0, 0].transAxes, ha="right", va="center",
                     fontsize=9.5, fontweight="bold")
     for i, (lab, yrs) in enumerate(rows, start=1):
@@ -693,24 +769,27 @@ def fig_maps(ph: pd.DataFrame) -> Path:
                           cmap=mcolors.ListedColormap(["#ffffff"]), hatch="////", lw=0)
             _map_axes(ax, st)
             if j == 0:
-                ax.text(-0.04, 0.5, f"{lab}\n{len(yrs)} years", transform=ax.transAxes, ha="right", va="center",
-                        fontsize=9.5, fontweight="bold")
+                ax.text(-0.04, 0.5, f"{lab}\n{len(yrs)} {_t('years', 'años')}", transform=ax.transAxes, ha="right",
+                        va="center", fontsize=9.5, fontweight="bold")
     fig.subplots_adjust(left=0.08, right=0.86, top=0.95, bottom=0.07, wspace=0.03, hspace=0.06)
     top, mid, low = (axes[k, -1].get_position() for k in range(3))
     cb = fig.colorbar(plt.cm.ScalarMappable(norm=NORMAL_NORM, cmap=NORMAL_CMAP), orientation="vertical",
                       cax=fig.add_axes([0.875, top.y0 + 0.01, 0.013, top.height - 0.02]))
     cb.set_ticks(NORMAL_BOUNDS[1:-1])
     cb.ax.tick_params(labelsize=7.5)
-    cb.set_label("rain, mm a month", fontsize=8)
+    cb.set_label(_t("rain, mm a month", "lluvia, mm al mes"), fontsize=8)
     cb = fig.colorbar(plt.cm.ScalarMappable(norm=PCT_NORM, cmap=PCT_CMAP), orientation="vertical",
                       cax=fig.add_axes([0.875, low.y0 + 0.01, 0.013, mid.y1 - low.y0 - 0.02]))
     cb.set_ticks(PCT_BOUNDS[1:-1])
     cb.ax.tick_params(labelsize=7.5)
-    cb.set_label("rain, % above or below normal (median of the years)", fontsize=8)
-    DRY_PATCH.set_label("dry season (under 20 mm a month)")
+    cb.set_label(_t("rain, % above or below normal (median of the years)",
+                    "lluvia, % por encima o por debajo de lo normal (mediana de los años)"), fontsize=8)
+    DRY_PATCH.set_label(_t("dry season (under 20 mm a month)", "estación seca (menos de 20 mm al mes)"))
     fig.legend(handles=[DRY_PATCH], loc="upper right", bbox_to_anchor=(0.99, 0.065), fontsize=8, frameon=False)
-    _source(fig, "Year 1 = the year El Niño or La Niña develops (rain years May–April, 1981/82–2025/26; phase from the Sep–Nov ONI). "
-                 "Source: CHIRPS v3 at 0.5°.", y=0.045)
+    _source(fig, _t("Year 1 = the year El Niño or La Niña develops (rain years May–April, 1981/82–2025/26; phase from the Sep–Nov "
+                    "ONI). Source: CHIRPS v3 at 0.5°.",
+                    "Año 1 = el año en que se desarrolla El Niño o La Niña (años hidrológicos de mayo a abril, 1981/82–2025/26; fase "
+                    "según el ONI de septiembre–noviembre). Fuente: CHIRPS v3 a 0,5°."), y=0.045, width=140)
     return _save(fig, "maps")
 
 
@@ -724,7 +803,7 @@ def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bo
             if not np.isnan(v):
                 ax.text(j, i, f"{v:+.0f}".replace("-", "−"), ha="center", va="center", fontsize=6.5,
                         color="#ffffff" if abs(v) >= 25 else "#0b0b0b")
-    ax.set_xticks(range(len(SEASONS)), [SEASON_LABEL[s] for s in SEASONS], rotation=90, fontsize=7.5)
+    ax.set_xticks(range(len(SEASONS)), [_cap(_span(SEASON_START[s], SEASON_START[s] + 2)) for s in SEASONS], rotation=90, fontsize=7.5)
     ax.set_yticks(range(len(STATE_ORDER)), [names[p] for p in STATE_ORDER] if labels else [], fontsize=7.5)
     ax.tick_params(length=0)
     y = -0.5
@@ -741,17 +820,25 @@ def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
     names = states().set_index("pcode")["name"]
     nino, nina = phase_years(ph, "nino"), phase_years(ph, "nina")
     fig, axes = plt.subplots(1, 2, figsize=(11.6, 7.4), sharey=True)
-    _state_panel(axes[0], composite(tot, nino)[0], names, f"El Niño ({len(nino)} years)", True)
-    _state_panel(axes[1], composite(tot, nina)[0], names, f"La Niña ({len(nina)} years)", False)
+    _state_panel(axes[0], composite(tot, nino)[0], names, f"El Niño ({len(nino)} {_t('years', 'años')})", True)
+    _state_panel(axes[1], composite(tot, nina)[0], names, f"La Niña ({len(nina)} {_t('years', 'años')})", False)
     y = -0.5
     for r, (ps, _) in REGIONS.items():
-        axes[1].text(len(SEASONS) - 0.3, y + len(ps) / 2, r, ha="left", va="center", fontsize=8, fontweight="bold")
+        axes[1].text(len(SEASONS) - 0.3, y + len(ps) / 2, textwrap.fill(_reg(r), 18), ha="left", va="center", fontsize=8,
+                     fontweight="bold")
         y += len(ps)
     fig.subplots_adjust(wspace=0.04, right=0.84)
-    _source(fig, "Each cell: median rain over the El Niño (or La Niña) years, % above or below the state's 1991–2020 normal for "
-                 "those three months. Left of the dashed line: the rains of the year El Niño or La Niña develops; right: the "
-                 "dry season and the next spring. Hatched: dry season (normal under 60 mm in three months). Rain years May–April, 1981/82–2025/26. "
-                 "Distrito Capital, La Guaira and Nueva Esparta rest on one or two partial 0.5° cells. Source: CHIRPS v3, state means.")
+    _source(fig, _t("Each cell: median rain over the El Niño (or La Niña) years, % above or below the state's 1991–2020 normal for "
+                    "those three months. Left of the dashed line: the rains of the year El Niño or La Niña develops; right: the "
+                    "dry season and the next spring. Hatched: dry season (normal under 60 mm in three months). Rain years May–April, "
+                    "1981/82–2025/26. Distrito Capital, La Guaira and Nueva Esparta rest on one or two partial 0.5° cells. Source: "
+                    "CHIRPS v3, state means.",
+                    "Cada celda: mediana de la lluvia en los años de El Niño (o de La Niña), en % por encima o por debajo de la normal "
+                    "1991–2020 del estado para esos tres meses. A la izquierda de la línea discontinua: las lluvias del año en que se "
+                    "desarrolla El Niño o La Niña; a la derecha: la estación seca y el inicio de las lluvias siguientes. Rayado: "
+                    "estación seca (normal inferior a 60 mm en tres meses). Años hidrológicos de mayo a abril, 1981/82–2025/26. "
+                    "Distrito Capital, La Guaira y Nueva Esparta se basan en una o dos celdas parciales de 0,5°. Fuente: CHIRPS v3, "
+                    "medias por estado."))
     return _save(fig, "states")
 
 
@@ -776,19 +863,24 @@ def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
         ax.plot(x, nino[r].values, color=NINO_C, lw=1.4, marker="o", ms=2.5)
         ax.plot(x, nina[r].values, color=NINA_C, lw=1.4, marker="o", ms=2.5)
         ax.plot(x[:len(now)], reg.loc[now, r].values, color=NOW_C, lw=1.4, marker="o", ms=2.5)
-        ax.set_title(textwrap.fill(r, 16), fontsize=8.5)
-        ax.set_xticks(x, [MONTH[(m - 1) % 12] for m in months], fontsize=7)
+        ax.set_title(textwrap.fill(_reg(r), 16), fontsize=8.5)
+        ax.set_xticks(x, [_month_letters()[(m - 1) % 12] for m in months], fontsize=7)
         ax.tick_params(axis="x", length=0)
         ax.spines[["top", "right"]].set_visible(False)
         _grid(ax)
-    axes[0].set_ylabel("rain, mm a month", fontsize=8)
+    axes[0].set_ylabel(_t("rain, mm a month", "lluvia, mm al mes"), fontsize=8)
     fig.legend(handles=[Patch(color=NEUTRAL_C, label="normal (1991–2020)"),
-                        Line2D([], [], color=NINO_C, marker="o", ms=3, label=f"El Niño years (median of {n_nino})"),
-                        Line2D([], [], color=NINA_C, marker="o", ms=3, label=f"La Niña years (median of {n_nina})"),
-                        Line2D([], [], color=NOW_C, marker="o", ms=3, label=f"{NOW} (to {now[-1]:%B})")],
+                        Line2D([], [], color=NINO_C, marker="o", ms=3,
+                               label=_t(f"El Niño years (median of {n_nino})", f"años de El Niño (mediana de {n_nino})")),
+                        Line2D([], [], color=NINA_C, marker="o", ms=3,
+                               label=_t(f"La Niña years (median of {n_nina})", f"años de La Niña (mediana de {n_nina})")),
+                        Line2D([], [], color=NOW_C, marker="o", ms=3,
+                               label=_t(f"{NOW} (to {now[-1]:%B})", f"{NOW} (hasta {MONTH_ES[now[-1].month - 1]})"))],
                loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
     fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
-    _source(fig, "Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.", y=-0.09)
+    _source(fig, _t("Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.",
+                    "Año hidrológico de mayo a abril, 1981/82–2025/26. Fuente: CHIRPS v3, medias por estado promediadas en cada "
+                    "región."), y=-0.09)
     return _save(fig, "season")
 
 
@@ -812,11 +904,11 @@ def _strip(ax, pct: pd.DataFrame, ph: pd.DataFrame, now: bool):
         if i:
             ax.axhline(i - 0.5, color=GRID, lw=0.8)
     ax.axvline(100, color="#9a9993", lw=0.7)
-    ax.set_yticks(range(len(regs)), regs)
+    ax.set_yticks(range(len(regs)), [_reg(r) for r in regs])
     ax.set_ylim(len(regs) - 0.5, -0.5)
     ax.tick_params(axis="y", length=0)
     _grid(ax, "x")
-    ax.set_xlabel("rain, % of the 1991–2020 normal")
+    ax.set_xlabel(_t("rain, % of the 1991–2020 normal", "lluvia, % de la normal 1991–2020"))
 
 
 def _region_pct(mon: pd.DataFrame, months: list[int]) -> pd.DataFrame:
@@ -836,10 +928,13 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     _phase_legend(ax, ph, loc="lower left", now=True, ncols=5, bbox_to_anchor=(0, 1.0))
     rank = pct.rank().loc[NOW]
     rk_e = pe.rank().loc[NOW]
-    span = f"May–{last:%b}"
-    _source(fig, f"{span} rain, each year 1981–{NOW}, one dot per year. 2026 was among the six driest of "
-                 f"{len(pct)} in every region in CHIRPS v3 and among the seven driest in ERA5. Sources: CHIRPS v3 (state means), "
-                 "ERA5 (team admin-1 statistics).")
+    span = _span(5, last.month)
+    _source(fig, _t(f"{span} rain, each year 1981–{NOW}, one dot per year. 2026 was among the six driest of "
+                    f"{len(pct)} in every region in CHIRPS v3 and among the seven driest in ERA5. Sources: CHIRPS v3 (state means), "
+                    "ERA5 (team admin-1 statistics).",
+                    f"Lluvia de {span}, cada año de 1981 a {NOW}, un punto por año. 2026 estuvo entre los seis más secos de "
+                    f"{len(pct)} en todas las regiones según CHIRPS v3 y entre los siete más secos según ERA5. Fuentes: CHIRPS v3 "
+                    "(medias por estado), ERA5 (estadísticas admin-1 del equipo)."))
     v = dict(now_span=span, now_lo=f"{pct.loc[NOW].min():.0f}", now_hi=f"{pct.loc[NOW].max():.0f}",
              now_rank_max=int(rank.max()), now_n=len(pct), era5_rank_max=int(rk_e.max()),
              era5_lo=f"{pe.loc[NOW].min():.0f}", era5_hi=f"{pe.loc[NOW].max():.0f}")
@@ -857,8 +952,9 @@ def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     fig, ax = plt.subplots(figsize=(8.6, 5.2))
     _strip(ax, pct, ph, now=False)
     _phase_legend(ax, ph, loc="lower left", ncols=4, bbox_to_anchor=(0, 1.0))
-    _source(fig, f"November–March rain, rain years 1981/82–{Y1}/{(Y1 + 1) % 100:02d}, one dot per year; strong El Niño: "
-                 + ", ".join(f"{y}/{(y + 1) % 100:02d}" for y in strong) + ". Source: CHIRPS v3, state means.")
+    _source(fig, _t(f"November–March rain, rain years 1981/82–{year_label(Y1)}, one dot per year; strong El Niño: ",
+                    f"Lluvia de noviembre a marzo, años hidrológicos 1981/82–{year_label(Y1)}, un punto por año; El Niño fuerte: ")
+            + ", ".join(year_label(y) for y in strong) + _t(". Source: CHIRPS v3, state means.", ". Fuente: CHIRPS v3, medias por estado."))
     s = pct.loc[strong]
     nino = pct.loc[phase_years(ph, "nino")]
     v = dict(strong_below=int((s < 100).sum().sum()), strong_cells=int(s.size),
@@ -870,19 +966,26 @@ def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     v["dry_third_min"], v["dry_third_max"], v["nino_n"] = min(dry_third.values()), max(dry_third.values()), len(nino)
     v["dry_third_llanos"] = dry_third["Western Llanos"]
     fewest = sorted(r for r, n in dry_third.items() if n == v["dry_third_min"])
-    v["dry_third_fewest"] = " and the ".join(r.lower() if r != "Western Llanos" else "western Llanos" for r in fewest)
+    v["dry_third_fewest"] = (" y ".join(REGION_ES_IN[r] for r in fewest) if LANG == "es" else
+                             " and the ".join(r.lower() if r != "Western Llanos" else "western Llanos" for r in fewest))
     if v["strong_below"] != v["strong_cells"] or "Western Llanos" not in fewest:
         raise ValueError("the November–March pattern changed: reword the dry-season headline and note")
     return _save(fig, "dry"), v
 
 
-EM_LABELS = {  # DisNo.: (label, x offset, y offset in points)
-    "1999-0547-VEN": ("Dec 1999, Vargas: 30,000 dead", 10, 0), "2021-0538-VEN": ("Aug 2021, Mérida and 10+ states", -8, 0),
-    "2022-0648-VEN": ("Oct 2022, Las Tejerías", -8, 6), "2015-0296-VEN": ("Jun 2015, Apure", 6, -2),
-    "2005-0073-VEN": ("Feb 2005: 76 dead", 6, 0), "2010-0616-VEN": ("Nov–Dec 2010", -8, 4), "1987-0156-VEN": ("Sep 1987, Aragua", 6, 0),
-    "2002-0445-VEN": ("Jul 2002, Llanos", 0, 10), "1993-0059-VEN": ("Aug 1993, storm Bret", 6, 0)}
-CERF_EMDAT = {  # CERF flood allocation: the EM-DAT event it responded to, and its label
-    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "the May 2025 floods in Apure and 9 more states")}
+EM_LABELS = {  # DisNo.: (English label, Spanish label, x offset, y offset in points)
+    "1999-0547-VEN": ("Dec 1999, Vargas: 30,000 dead", "dic 1999, Vargas: 30.000 muertos", 10, 0),
+    "2021-0538-VEN": ("Aug 2021, Mérida and 10+ states", "ago 2021, Mérida y más de 10 estados", -8, 0),
+    "2022-0648-VEN": ("Oct 2022, Las Tejerías", "oct 2022, Las Tejerías", -8, 6),
+    "2015-0296-VEN": ("Jun 2015, Apure", "jun 2015, Apure", 6, -2),
+    "2005-0073-VEN": ("Feb 2005: 76 dead", "feb 2005: 76 muertos", 6, 0),
+    "2010-0616-VEN": ("Nov–Dec 2010", "nov–dic 2010", -8, 4),
+    "1987-0156-VEN": ("Sep 1987, Aragua", "sep 1987, Aragua", 6, 0),
+    "2002-0445-VEN": ("Jul 2002, Llanos", "jul 2002, Llanos", 0, 10),
+    "1993-0059-VEN": ("Aug 1993, storm Bret", "ago 1993, tormenta Bret", 6, 0)}
+CERF_EMDAT = {  # CERF flood allocation: the EM-DAT event it responded to, and its label in English and Spanish
+    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "the May 2025 floods in Apure and 9 more states",
+                            "las inundaciones de mayo de 2025 en Apure y otros 9 estados")}
 
 
 def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
@@ -895,23 +998,25 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
         ax.scatter(r.date, y, s=18 + np.sqrt(r.deaths) * 3, color=phase_color(int(r.ry), ph), edgecolor=SURFACE, lw=0.6,
                    zorder=3, marker="o" if r.affected > 0 else "v")
         if r["DisNo."] in EM_LABELS:
-            lab, dx, dy = EM_LABELS[r["DisNo."]]
-            ax.annotate(lab, (r.date, y), xytext=(dx, dy), textcoords="offset points", fontsize=7, va="center",
+            en, es, dx, dy = EM_LABELS[r["DisNo."]]
+            ax.annotate(_t(en, es), (r.date, y), xytext=(dx, dy), textcoords="offset points", fontsize=7, va="center",
                         ha="right" if dx < 0 else "center" if dx == 0 else "left")
     c = cerf()
     cerf_txt = []
     for _, a in c[c.emergency_type.isin(["Flood", "Storm"])].iterrows():
-        dis, lab = CERF_EMDAT[a.application_code]
+        dis, en, es = CERF_EMDAT[a.application_code]
         r = em[em["DisNo."] == dis].iloc[0]
-        amt = f"US${a.amount_approved / 1e6:.0f}"
+        mn = f"{a.amount_approved / 1e6:.0f}"
         ax.scatter(r.date, max(r.affected, 50), s=130, facecolor="none", edgecolor=NOW_C, lw=1.1, zorder=4)
-        ax.annotate(f"CERF\n{amt}M", (r.date, max(r.affected, 50)), xytext=(9, 0), textcoords="offset points", fontsize=7,
-                    ha="left", va="center")
+        ax.annotate(_t(f"CERF\nUS${mn}M", f"CERF\nUS$ {mn} M"), (r.date, max(r.affected, 50)), xytext=(9, 0),
+                    textcoords="offset points", fontsize=7, ha="left", va="center")
         ax.set_xlim(right=pd.Timestamp(f"{r.date.year + 4}-01-01"))
-        cerf_txt.append(f"{lab}, for which CERF allocated {amt} million in {pd.Timestamp(a.erc_endorsement_date):%B %Y}")
+        when = _month_year(pd.Timestamp(a.erc_endorsement_date))
+        cerf_txt.append(_t(f"{en}, for which CERF allocated US${mn} million in {when}",
+                           f"{es}, para las que el CERF asignó {mn} millones de US$ en {when}"))
     ax.set_yscale("log")
     ax.set_ylim(30, 4e6)
-    ax.set_ylabel("people affected (EM-DAT)")
+    ax.set_ylabel(_t("people affected (EM-DAT)", "personas afectadas (EM-DAT)"))
     _phase_legend(ax, ph, loc="upper left", ncols=2)
     t = em.groupby("phase")[["affected", "deaths"]].sum().reindex(["nino", "neutral", "nina"]).fillna(0)
     years = ph.loc[1980:Y1, "phase"].value_counts()
@@ -919,14 +1024,17 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
     for i, (k, c) in enumerate((("nino", NINO_C), ("neutral", NEUTRAL_C), ("nina", NINA_C))):
         w = float(per.loc[k, "affected"]) / 1000
         bx.barh(i, w, color=c, height=0.6)
-        bx.text(w, i, f" {w:,.0f}k", va="center", fontsize=8)
-    bx.set_yticks([0, 1, 2], [f"El Niño\n({years['nino']} yrs)", f"neutral\n({years['neutral']} yrs)", f"La Niña\n({years['nina']} yrs)"])
+        bx.text(w, i, _t(f" {w:,.0f}k", f" {w:,.0f} mil"), va="center", fontsize=8)
+    bx.set_yticks([0, 1, 2], [f"{_phase_name(p)}\n({years[p]} {_t('yrs', 'años')})" for p in ("nino", "neutral", "nina")])
     bx.invert_yaxis()
-    bx.set_xlabel("people affected per year\n(thousands)")
+    bx.set_xlabel(_t("people affected per year\n(thousands)", "personas afectadas por año\n(miles)"))
     bx.set_xlim(0, per["affected"].max() / 1000 * 1.45)
-    _source(fig, "Floods, wet landslides and storms reported to EM-DAT since 1980, by the rain year (May–April) they fall in. Marker size: deaths; "
-                 f"triangles: no affected figure. Ring: {'; '.join(cerf_txt)}. Totals per year of each phase. Sources: EM-DAT, "
-                 "CRED/UCLouvain (team snapshot); CERF.")
+    _source(fig, _t("Floods, wet landslides and storms reported to EM-DAT since 1980, by the rain year (May–April) they fall in. "
+                    f"Marker size: deaths; triangles: no affected figure. Ring: {'; '.join(cerf_txt)}. Totals per year of each phase. "
+                    "Sources: EM-DAT, CRED/UCLouvain (team snapshot); CERF.",
+                    "Inundaciones, deslizamientos por lluvia y tormentas registrados en EM-DAT desde 1980, según el año hidrológico "
+                    "(mayo–abril) en que ocurren. Tamaño del marcador: muertes; triángulos: sin cifra de afectados. Anillo: "
+                    f"{'; '.join(cerf_txt)}. Totales por año de cada fase. Fuentes: EM-DAT, CRED/UCLouvain (copia del equipo); CERF."))
     v = dict(em_nina_aff=f"{t.loc['nina', 'affected'] / 1e6:.1f}", em_nino_aff=f"{t.loc['nino', 'affected'] / 1e6:.1f}",
              em_nina_dead=f"{t.loc['nina', 'deaths']:,.0f}", em_nino_dead=f"{t.loc['nino', 'deaths']:,.0f}",
              em_ratio=f"{per.loc['nina', 'affected'] / per.loc['nino', 'affected']:.0f}",
@@ -950,19 +1058,25 @@ def fig_desinventar(ph: pd.DataFrame) -> tuple[Path, dict]:
         for p, c in (("nino", NINO_C), ("neutral", NEUTRAL_C), ("nina", NINA_C)):
             ax.scatter(m.loc[r, p], i, s=52, color=c, edgecolor=SURFACE, lw=0.8, zorder=3)
     ax.axvline(1, color="#9a9993", lw=0.7)
-    ax.set_yticks(range(len(rows)), [f"{r}" if r != "Venezuela" else "Venezuela (all)" for r in rows])
+    total = _t("Venezuela (all)", "Venezuela (total)")
+    ax.set_yticks(range(len(rows)), [_reg(r) if r != "Venezuela" else total for r in rows])
     for lab in ax.get_yticklabels():
-        if lab.get_text() == "Venezuela (all)":
+        if lab.get_text() == total:
             lab.set_fontweight("bold")
     ax.invert_yaxis()
-    ax.set_xlabel("flood and landslide records, relative to an ordinary year for the period (1 = ordinary); median of the years")
-    ax.legend(handles=[Line2D([], [], marker="o", ls="", color=c, label=f"{lab} ({len(groups[p])} years)")
-                       for p, c, lab in (("nino", NINO_C, "El Niño"), ("neutral", NEUTRAL_C, "neutral"), ("nina", NINA_C, "La Niña"))],
+    ax.set_xlabel(_t("flood and landslide records, relative to an ordinary year for the period (1 = ordinary); median of the years",
+                     "registros de inundaciones y deslizamientos frente a un año ordinario del período (1 = ordinario); mediana de los años"))
+    ax.legend(handles=[Line2D([], [], marker="o", ls="", color=c, label=f"{_phase_name(p)} ({len(groups[p])} {_t('years', 'años')})")
+                       for p, c in (("nino", NINO_C), ("neutral", NEUTRAL_C), ("nina", NINA_C))],
               loc="lower left", fontsize=8, ncols=3, bbox_to_anchor=(0, 1.0))
-    _source(fig, f"Records of floods, heavy rain, torrents, debris flows, landslides and storms, one per event and municipality, rain years "
-                 f"{DI_Y0}/{(DI_Y0 + 1) % 100:02d}–{DI_Y1}/{(DI_Y1 + 1) % 100:02d}. Each year's count is divided by the mean of the three "
-                 "rain years either side, because reporting changes several-fold between decades. Source: DesInventar Venezuela (UNDRR), "
-                 "which stops in early 2016.")
+    _source(fig, _t(f"Records of floods, heavy rain, torrents, debris flows, landslides and storms, one per event and municipality, "
+                    f"rain years {year_label(DI_Y0)}–{year_label(DI_Y1)}. Each year's count is divided by the mean of the three rain "
+                    "years either side, because reporting changes several-fold between decades. Source: DesInventar Venezuela "
+                    "(UNDRR), which stops in early 2016.",
+                    "Registros de inundaciones, lluvias, avenidas torrenciales, flujos de detritos, deslizamientos y tormentas, uno por "
+                    f"evento y municipio, años hidrológicos {year_label(DI_Y0)}–{year_label(DI_Y1)}. El recuento de cada año se divide "
+                    "por la media de los tres años hidrológicos a cada lado, porque el registro cambia varias veces entre décadas. "
+                    "Fuente: DesInventar Venezuela (UNDRR), que termina a principios de 2016."))
     regs = m.drop(index="Venezuela")
     above = regs.index[regs["nina"] > 1]
     v = dict(di_nino_lo=f"{regs['nino'].min():.1f}", di_nino_hi=f"{regs['nino'].max():.1f}",
@@ -983,7 +1097,7 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
     for y in gy.index[(gy.phase == "nino")]:
         ax.axvspan(pd.Timestamp(y, 12, 1), pd.Timestamp(y + 1, 6, 1), color=NINO_C, alpha=0.13, lw=0)
     ax.plot(g.index, g.values, color="#3b3a37", lw=0.8)
-    for yr, lab in ((2009, "2010 rationing"), (2015, "2016 rationing")):
+    for yr, lab in ((2009, _t("2010 rationing", "racionamiento de 2010")), (2015, _t("2016 rationing", "racionamiento de 2016"))):
         lo = gy.loc[yr, "low"]
         d = g[f"{yr + 1}-02-01":f"{yr + 1}-06-30"].idxmin()
         ax.annotate(lab, (d, lo), xytext=(6, -2), textcoords="offset points", fontsize=7.5, va="top")
@@ -992,14 +1106,16 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
     lo_hi = (peak - drops.max(), peak - drops.min())
     x = pd.Timestamp(NOW + 1, 5, 1)
     ax.plot([x, x], lo_hi, color=NOW_C, lw=3, solid_capstyle="butt")
-    ax.annotate(f"May {NOW + 1} if it falls\nlike past El Niño years", (x, lo_hi[0]), xytext=(-8, -2), textcoords="offset points",
+    ax.annotate(_t(f"May {NOW + 1} if it falls\nlike past El Niño years", f"Mayo de {NOW + 1} si baja\ncomo tras otros El Niño"),
+                (x, lo_hi[0]), xytext=(-8, -2), textcoords="offset points",
                 ha="right", va="top", fontsize=7.5, fontweight="bold")
-    ax.set_ylabel("Guri reservoir level (m, satellite)")
+    ax.set_ylabel(_t("Guri reservoir level (m, satellite)", "nivel del embalse de Guri (m, satélite)"))
     ax.set_xlim(pd.Timestamp(1992, 6, 1), pd.Timestamp(NOW + 1, 12, 31))
-    ax.legend(handles=[Patch(color=NINO_C, alpha=0.25, label="dry season after El Niño")], loc="lower left", fontsize=8)
+    ax.legend(handles=[Patch(color=NINO_C, alpha=0.25, label=_t("dry season after El Niño", "estación seca tras El Niño"))],
+              loc="lower left", fontsize=8)
     # right: drawdown per rain year by phase
     _grid(bx)
-    cats = [("nina", "La Niña", NINA_C), ("neutral", "neutral", NEUTRAL_C), ("nino", "El Niño", NINO_C)]
+    cats = [(p, _phase_name(p), c) for p, c in (("nina", NINA_C), ("neutral", NEUTRAL_C), ("nino", NINO_C))]
     for i, (p, lab, c) in enumerate(cats):
         d = -gy.loc[gy.phase == p, "drop"].dropna()
         xs = i + np.linspace(-0.18, 0.18, len(d)) if len(d) > 1 else [i]
@@ -1012,10 +1128,14 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
         bx.hlines(d.median(), i - 0.28, i + 0.28, color=NOW_C, lw=1.2)
     bx.set_xticks(range(3), [lab for _, lab, _ in cats])
     bx.axhline(0, color="#9a9993", lw=0.6)
-    bx.set_ylabel("change, Aug–Nov peak to Feb–Jun low (m)")
-    _source(fig, "Satellite altimetry, 10-day, heights above the EGM2008 geoid (not the operator's gauge datum: compare changes, not "
-                 "levels). Black bar: this year's August–October peak minus the smallest and largest falls after past El Niño years. "
-                 "Lines: medians. Source: NASA GSFC G-REALM (Guri, target 432).")
+    bx.set_ylabel(_t(f"change, {_span(8, 11)} peak to {_span(2, 6)} low (m)",
+                     f"cambio del máximo de {_span(8, 11)}\nal mínimo de {_span(2, 6)} (m)"))
+    _source(fig, _t("Satellite altimetry, 10-day, heights above the EGM2008 geoid (not the operator's gauge datum: compare changes, "
+                    "not levels). Black bar: this year's August–October peak minus the smallest and largest falls after past El Niño "
+                    "years. Lines: medians. Source: NASA GSFC G-REALM (Guri, target 432).",
+                    "Altimetría satelital cada 10 días, alturas sobre el geoide EGM2008 (no el datum de la regla del operador: comparar "
+                    "cambios, no niveles). Barra negra: el máximo de agosto a octubre de este año menos la menor y la mayor bajada tras "
+                    "años de El Niño anteriores. Líneas: medianas. Fuente: NASA GSFC G-REALM (Guri, objetivo 432)."))
     med = gy.groupby("phase")["drop"].median()
     v = dict(guri_nino=f"{med['nino']:.0f}", guri_nina=f"{med['nina']:.0f}", guri_peak=f"{peak:.1f}",
              guri_lo=f"{lo_hi[0]:.0f}", guri_hi=f"{lo_hi[1]:.0f}", guri_low16=f"{gy.loc[2015, 'low']:.0f}",
@@ -1046,14 +1166,14 @@ def _enso_scatter(ax, x: pd.Series, y: pd.Series, ph: pd.DataFrame, label: dict[
         return
     for v in (-0.5, 0.5):
         ax.axvline(v, color="#9a9993", lw=0.5, ls=(0, (3, 3)))
-    ax.set_xlabel("ONI, Sep–Nov (°C): La Niña ← → El Niño")
+    ax.set_xlabel(f"ONI, {_span(9, 11)} (°C): La Niña ← → El Niño")
 
 
 def _oni_now_line(ax):
     """Dashed vertical line at the latest ONI, so this year can be read off the scatter."""
     last = oni().iloc[-1]
     ax.axvline(last.anom, color=NOW_C, lw=1, ls=(0, (4, 3)), zorder=1)
-    ax.annotate(f"{NOW} so far: {last.anom:+.1f} ({oni_now()['oni_seas']})".replace("-", "−"), (last.anom, 1),
+    ax.annotate(f"{NOW} {_t('so far', 'hasta ahora')}: {_num(f'{last.anom:+.1f}')} ({oni_now()['oni_seas']})", (last.anom, 1),
                 xycoords=("data", "axes fraction"), xytext=(-4, -4), textcoords="offset points", ha="right", va="top",
                 fontsize=7.5, color=NOW_C)
 
@@ -1068,7 +1188,7 @@ def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
     lab = {y: year_label(y) for y in list(worst.index) + [y for y in yrs if ph.loc[y, "strong"]]}
     _enso_scatter(ax, ph.oni, nat.loc[yrs], ph, lab)
     _oni_now_line(ax)
-    ax.set_ylabel("cropland vegetation (FPAR) z-score, Nov–Apr")
+    ax.set_ylabel(_t(f"cropland vegetation (FPAR) z-score, {_span(11, 16)}", f"vegetación de cultivos (FPAR), puntaje z, {_span(11, 16)}"))
     _phase_legend(ax, ph, loc="lower left", ncols=4, bbox_to_anchor=(0, 1.0))
     st = states()
     nino = [y for y in phase_years(ph, "nino", 2000, NOW - 1)]
@@ -1078,16 +1198,22 @@ def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
     sm.plot(ax=bx, column="z", cmap=cm, norm=mcolors.BoundaryNorm(zb, cm.N), edgecolor="#ffffff", lw=0.5,
             missing_kwds=dict(color=DRY_GREY))
     bx.set_axis_off()
-    bx.set_title(f"Nov–Apr after El Niño, cropland\n(mean of {len(nino)} rain years)", fontsize=9)
+    bx.set_title(_t(f"Nov–Apr after El Niño, cropland\n(mean of {len(nino)} rain years)",
+                    f"Nov–abr tras El Niño, cultivos\n(media de {len(nino)} años hidrológicos)"), fontsize=9)
     cax = fig.add_axes([0.66, 0.1, 0.26, 0.025])
     cb = fig.colorbar(plt.cm.ScalarMappable(norm=mcolors.BoundaryNorm(zb, cm.N), cmap=cm), cax=cax, orientation="horizontal")
-    cb.set_ticks(zb[1:-1])
+    cb.set_ticks(zb[1:-1], labels=[_num(f"{z:g}") for z in zb[1:-1]])
     cb.ax.tick_params(labelsize=7)
     r = float(np.corrcoef(ph.oni.reindex(yrs), nat.loc[yrs])[0, 1])
     r_rng = float(np.corrcoef(ph.oni.reindex(yrs), nat_r.loc[yrs])[0, 1])
-    _source(fig, f"One point per rain year, 2000/01–{NOW - 1}/{NOW % 100:02d}: cropland, mean of the state values. Z-score of FPAR (the "
-                 "share of sunlight the canopy absorbs) against each 10-day period's 2001–present record, November–April. "
-                 f"Correlation with the ONI: cropland {r:+.2f}, rangeland {r_rng:+.2f}. Source: JRC ASAP (MODIS FPAR, GAUL admin-1).".replace("-0.", "−0."))
+    rc, rr = _num(f"{r:+.2f}"), _num(f"{r_rng:+.2f}")
+    _source(fig, _t(f"One point per rain year, 2000/01–{year_label(NOW - 1)}: cropland, mean of the state values. Z-score of FPAR "
+                    "(the share of sunlight the canopy absorbs) against each 10-day period's 2001–present record, November–April. "
+                    f"Correlation with the ONI: cropland {rc}, rangeland {rr}. Source: JRC ASAP (MODIS FPAR, GAUL admin-1).",
+                    f"Un punto por año hidrológico, 2000/01–{year_label(NOW - 1)}: cultivos, media de los valores por estado. Puntaje z "
+                    "de la FPAR (la fracción de la luz solar que absorbe la cubierta vegetal) frente al registro de cada período de 10 "
+                    "días desde 2001, de noviembre a abril. Correlación con el ONI: cultivos "
+                    f"{rc}, pastizales {rr}. Fuente: JRC ASAP (MODIS FPAR, GAUL admin-1)."))
     after = [y for y in worst.index if ph.phase.get(y) == "nino"]
     v = dict(veg_worst=", ".join(year_label(y) for y in sorted(worst.index)), veg_worst_nino=len(after),
              veg_2023=f"{nat.loc[2023]:+.1f}".replace("-", "−"), veg_r=f"{r:+.2f}".replace("-", "−"),
@@ -1135,30 +1261,38 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     fig, axes = plt.subplots(1, 3, figsize=(12, 4.4), sharey=True)
     rs = {}
     names = {t: str(t) for t in (1982, 1997, 2002, 2009, 2015, 2023)}
-    for ax, (crop, lab) in zip(axes, (("maize", "Maize"), ("rice", "Rice"))):
+    for ax, (crop, lab) in zip(axes, (("maize", _t("Maize", "Maíz")), ("rice", _t("Rice", "Arroz")))):
         d = y[y.crop == crop].set_index("year")["anom"]
         _enso_scatter(ax, ph.oni, d, ph, names if crop == "maize" else {}, hollow=CRISIS_NB)
         ok = [t for t in d.dropna().index if t not in CRISIS_NB and t in ph.index]
         rs[crop] = _r(ph.oni, d, ok)
-        ax.set_title(f"{lab} against the ONI\nr = {rs[crop]:+.2f}: no clear relation".replace("-", "−"), fontsize=10)
+        ax.set_title(f"{lab} {_t('against the ONI', 'frente al ONI')}\nr = {_num(f'{rs[crop]:+.2f}')}: "
+                     f"{_t('no clear relation', 'sin relación clara')}", fontsize=10)
     # does national maize follow rain where it grows? May–Sep, the main season's growing months
     t = period_totals(mon[list(MAIZE_STATES)], [5, 6, 7, 8, 9]).mean(axis=1)
     rain_pct = (t / t.loc[1991:2020].mean() - 1) * 100
     maize = y[y.crop == "maize"].set_index("year")["anom"]
     _enso_scatter(axes[2], rain_pct, maize, ph, {t: str(t) for t in (2002, 2009)}, hollow=CRISIS_NB, oni=False)
     rs["rain"] = _r(rain_pct, maize, [k for k in range(1980, NOW) if k not in CRISIS_NB])
-    axes[2].set_title(f"Maize against May–Sep rain in the maize states\nr = {rs['rain']:+.2f}: no clear relation".replace("-", "−"),
-                      fontsize=10)
-    axes[2].set_xlabel("rain, % above or below normal: drier ← → wetter")
-    axes[0].set_ylabel("yield, % against the two years either side")
+    r_rain = _num(f"{rs['rain']:+.2f}")
+    axes[2].set_title(_t(f"Maize against {_span(5, 9)} rain in the maize states",
+                         f"Maíz frente a la lluvia de {_span(5, 9)}\nen los estados maiceros")
+                      + f"\nr = {r_rain}: {_t('no clear relation', 'sin relación clara')}", fontsize=10)
+    axes[2].set_xlabel(_t("rain, % above or below normal: drier ← → wetter", "lluvia, % sobre o bajo lo normal\nmás seco ← → más húmedo"))
+    axes[0].set_ylabel(_t("yield, % against the two years either side", "rendimiento, % frente a los dos años a cada lado"))
     h = [Line2D([], [], marker="o", ls="", color=c, label=l) for c, l in
-         ((STRONG_C, "strong El Niño"), (NINO_C, "El Niño"), (NEUTRAL_C, "neutral"), (NINA_C, "La Niña"))]
-    h.append(Line2D([], [], marker="o", ls="", color="none", markeredgecolor=TEXT2, label="2012–2021: the 2014–2019 crisis, or compared with it"))
-    fig.legend(handles=h, loc="lower center", fontsize=7.5, ncols=5, bbox_to_anchor=(0.5, 1.0), frameon=False)
-    _source(fig, f"One point per calendar year, 1980–{NOW - 1} (the main harvest follows the May–October rains). Detrended: each year's "
-                 "yield against the mean of the two years either side. Open circles, left out of r: the 2014–2019 economic crisis and the "
-                 "years whose comparison years fall in it. Maize states: "
-                 f"{', '.join(MAIZE_STATES.values())} (CHIRPS v3). Sources: FAOSTAT, CHIRPS v3.")
+         ((STRONG_C, _t("strong El Niño", "El Niño fuerte")), (NINO_C, "El Niño"), (NEUTRAL_C, _phase_name("neutral")), (NINA_C, "La Niña"))]
+    h.append(Line2D([], [], marker="o", ls="", color="none", markeredgecolor=TEXT2,
+                    label=_t("2012–2021: the 2014–2019 crisis, or compared with it", "2012–2021: la crisis de 2014–2019 o comparados con ella")))
+    fig.legend(handles=h, loc="lower center", fontsize=7.5, ncols=5, bbox_to_anchor=(0.5, 1.06 if LANG == "es" else 1.0), frameon=False)
+    _source(fig, _t(f"One point per calendar year, 1980–{NOW - 1} (the main harvest follows the May–October rains). Detrended: each "
+                    "year's yield against the mean of the two years either side. Open circles, left out of r: the 2014–2019 economic "
+                    f"crisis and the years whose comparison years fall in it. Maize states: {', '.join(MAIZE_STATES.values())} "
+                    "(CHIRPS v3). Sources: FAOSTAT, CHIRPS v3.",
+                    f"Un punto por año calendario, 1980–{NOW - 1} (la cosecha principal sigue a las lluvias de mayo a octubre). Sin "
+                    "tendencia: el rendimiento de cada año frente a la media de los dos años a cada lado. Círculos vacíos, excluidos de "
+                    "r: la crisis económica de 2014–2019 y los años cuya comparación incluye años de la crisis. Estados maiceros: "
+                    f"{', '.join(MAIZE_STATES.values())} (CHIRPS v3). Fuentes: FAOSTAT, CHIRPS v3."))
     alt = yield_r_range(ph)
     fmt = lambda x: f"{x:+.2f}".replace("-", "−")  # noqa: E731
     v = dict(maize_r=fmt(rs["maize"]), rice_r=fmt(rs["rice"]), maize_rain_r=fmt(rs["rain"]),
@@ -1185,7 +1319,6 @@ FC_NORM = mcolors.BoundaryNorm(FC_BOUNDS, FC_CMAP.N)
 
 def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
     pr, sk, year, raw = seas5_rank()
-    names = states().set_index("pcode")["name"]
     pr, sk = pr.reindex(STATE_ORDER), sk.reindex(STATE_ORDER)
     clim = {}
     for code, months in FC_SEASONS.items():
@@ -1194,7 +1327,6 @@ def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
     clim = pd.DataFrame(clim).reindex(STATE_ORDER)
     dry = clim < DRY_MM
     st = states()
-    labels = {"OND": "Oct–Dec", "NDJ": "Nov–Jan", "DJF": "Dec–Feb", "JFM": "Jan–Mar", "FMA": "Feb–Apr"}
     fig, axes = plt.subplots(1, len(FC_SEASONS), figsize=(13, 3.6))
     for ax, code in zip(axes, FC_SEASONS):
         g = st.merge(pr[code].rename("p"), left_on="pcode", right_index=True)
@@ -1206,20 +1338,26 @@ def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
         if g["weak"].any():
             g[g["weak"]].plot(ax=ax, facecolor="none", hatch="....", edgecolor="#52514e", lw=0)
         st.boundary.plot(ax=ax, color="#ffffff", lw=0.5)
-        ax.set_title(labels[code], fontsize=9.5)
+        ax.set_title(_cap(_span(FC_SEASONS[code][0], FC_SEASONS[code][-1])), fontsize=9.5)
         ax.set_xlim(-73.6, -59.6)
         ax.set_ylim(0.6, 12.4)
         ax.set_aspect("equal")
         ax.set_axis_off()
     h = [Patch(color=c, label=l) for c, l in zip([DIV[0], DIV[2], "#ebeae6", DIV[4], DIV[6]],
-                                                 ["driest tenth", "drier third", "middle third", "wetter third", "wettest tenth"])]
-    h += [Patch(facecolor="#ffffff", hatch="....", edgecolor="#52514e", lw=0, label="weak skill"), DRY_PATCH]
-    DRY_PATCH.set_label("dry season")
+                                                 [_t("driest tenth", "décimo más seco"), _t("drier third", "tercio más seco"),
+                                                  _t("middle third", "tercio central"), _t("wetter third", "tercio más húmedo"),
+                                                  _t("wettest tenth", "décimo más húmedo")])]
+    h += [Patch(facecolor="#ffffff", hatch="....", edgecolor="#52514e", lw=0, label=_t("weak skill", "poca destreza")), DRY_PATCH]
+    DRY_PATCH.set_label(_t("dry season", "estación seca"))
     fig.legend(handles=h, loc="lower center", ncols=7, fontsize=7.5, bbox_to_anchor=(0.5, 0.0))
     fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.12, wspace=0.03)
-    _source(fig, f"Where the {year} October forecast ranks among the 45 October forecasts for 1981–2025, by state: ensemble mean, "
-                 "detrended. Dotted: weak skill (hindcast correlation with ERA5 under 0.3). Dry season: normal under 60 mm in three months. "
-                 "Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.", y=0.0)
+    _source(fig, _t(f"Where the {year} October forecast ranks among the 45 October forecasts for 1981–2025, by state: ensemble "
+                    "mean, detrended. Dotted: weak skill (hindcast correlation with ERA5 under 0.3). Dry season: normal under 60 mm in "
+                    "three months. Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.",
+                    f"Posición del pronóstico de octubre de {year} entre los 45 pronósticos de octubre de 1981–2025, por estado: media "
+                    "del conjunto, sin tendencia. Punteado: poca destreza (correlación de los pronósticos retrospectivos con ERA5 "
+                    "inferior a 0,3). Estación seca: normal inferior a 60 mm en tres meses. Fuente: ECMWF SEAS5 y ERA5, estadísticas "
+                    "admin-1 del equipo."), y=0.0)
     wet_season = ~dry
     v = dict(fc_year=year, fc_driest=int(((pr[["OND", "NDJ", "DJF"]] < 10) & wet_season[["OND", "NDJ", "DJF"]]).sum().sum()),
              fc_cells=int(wet_season[["OND", "NDJ", "DJF"]].sum().sum()),
@@ -1239,6 +1377,7 @@ section h2{font-size:18px;line-height:1.35}
 .note{font-size:13px;color:var(--n7);margin:-6px 0 14px}
 details{margin:24px 0}details summary{cursor:pointer;font-weight:600}
 details li{font-size:13.5px;margin:0 0 8px;max-width:90ch}
+.lang{display:inline-block;margin:0 0 14px;padding:5px 11px;font-size:13px;font-weight:500;border:1px solid var(--b1);border-radius:4px;background:var(--b05);text-decoration:none}
 """
 
 
@@ -1288,18 +1427,23 @@ def figures(a: dict) -> tuple[dict, dict]:
     f["yields"], x = fig_yields(a["mon"], ph); v |= x
     nino, nina = phase_years(ph, "nino"), phase_years(ph, "nina")
     v |= dict(n_nino=len(nino), n_nina=len(nina), strong_years=", ".join(str(y) for y in ph.index[ph.strong] if y >= Y0),
-              data_end=f"{a['mon'].dropna(how='all').index.max():%B %Y}", era5_end=f"{a['mon_e'].dropna(how='all').index.max():%B %Y}",
+              data_end=_month_year(a["mon"].dropna(how="all").index.max()), era5_end=_month_year(a["mon_e"].dropna(how="all").index.max()),
               emdat_end=str(emdat()["Last Update"].max()) if "Last Update" in emdat() else "")
-    return f, v
+    return f, _localise(v)
 
 
 def render(spec: dict, figs: dict, v: dict) -> str:
+    """The page in the current language; the Spanish page sits one level down, at es/."""
     import enso_deep_dive as edd
     pg = spec["page"]
-    out = [edd.HEAD.format(title=html.escape(pg["title"]), desc=html.escape(pg["sub"]), css=edd.CSS + EXTRA_CSS,
-                           home="../", home_label="ENSO deep dives")]
+    es = LANG == "es"
+    head = edd.HEAD.format(title=html.escape(pg["title"]), desc=html.escape(pg["sub"]), css=edd.CSS + EXTRA_CSS,
+                           home="../../" if es else "../", home_label=_t("ENSO deep dives", "Análisis ENSO por país"))
+    out = [head.replace('<html lang="en">', '<html lang="es">') if es else head]
     out.append('<p class="eyebrow">El Niño 2026/27</p>')
     out.append(f'<h1>{pg["title"]}</h1><p class="meta">{pg["sub"].format(**v)}<br>{pg["dateline"].format(**v)}</p>')
+    out.append('<a class="lang" href="../" lang="en">English version</a>' if es else
+               '<a class="lang" href="es/" lang="es">Versión en español</a>')
     out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t["big"].format(**v)}</p><p>{t["text"].format(**v)}</p></div>'
                                                 for t in spec["tiles"]) + "</div>")
     for sec in spec["sections"]:
@@ -1314,10 +1458,42 @@ def render(spec: dict, figs: dict, v: dict) -> str:
             out.append(f'<figure><img src="{_img(figs[fig])}" alt="{html.escape(sec["head"].format(**v))}"></figure>')
         out.append("</section>")
     notes = "".join(f"<li>{n.format(**v)}</li>" for n in spec["notes"])
-    out.append(f'<details><summary>About the data</summary><ul>{notes}</ul></details>')
-    out.append(f'<p class="small">OCHA Centre for Humanitarian Data · built {pd.Timestamp.now():%Y-%m-%d}</p>')
+    out.append(f'<details><summary>{_t("About the data", "Sobre los datos")}</summary><ul>{notes}</ul></details>')
+    out.append(f'<p class="small">{_t("OCHA Centre for Humanitarian Data · built", "Centro de Datos Humanitarios de OCHA · generado el")} '
+               f'{pd.Timestamp.now():%Y-%m-%d}</p>')
     out.append(edd.FOOT)
     return "\n".join(out)
+
+
+def _placeholders(x) -> set[str]:
+    import string
+    if isinstance(x, str):
+        return {f for _, f, _, _ in string.Formatter().parse(x) if f}
+    if isinstance(x, dict):
+        return set().union(*map(_placeholders, x.values())) if x else set()
+    if isinstance(x, list):
+        return set().union(*map(_placeholders, x)) if x else set()
+    return set()
+
+
+def _numbers(page: str, lang: str) -> list[str]:
+    """Every number in the page's visible text (figures and markup dropped), with the separators normalised."""
+    text = re.sub(r"<img[^>]*>|<[^>]+>", " ", page[page.index("<body>"):])
+    nums = re.findall(r"\d(?:[\d.,]*\d)?", html.unescape(text))
+    return sorted(n.replace(".", "").replace(",", ".") if lang == "es" else n.replace(",", "") for n in nums)
+
+
+def check_parity(spec: dict, es_spec: dict, pages: dict[str, str]) -> None:
+    """The Spanish page must say the same things: same placeholders, same sections, same numbers."""
+    if _placeholders(spec) != _placeholders(es_spec):
+        raise ValueError(f"placeholders differ: EN only {_placeholders(spec) - _placeholders(es_spec)}, "
+                         f"ES only {_placeholders(es_spec) - _placeholders(spec)}")
+    if [(x["id"], x["fig"]) for x in spec["sections"]] != [(x["id"], x["fig"]) for x in es_spec["sections"]]:
+        raise ValueError("sections differ between deep_dives/ven.toml and the Spanish TOML")
+    from collections import Counter
+    en, es = Counter(_numbers(pages["en"], "en")), Counter(_numbers(pages["es"], "es"))
+    if en != es:
+        raise ValueError(f"numbers differ between the English and Spanish pages: EN only {dict(en - es)}, ES only {dict(es - en)}")
 
 
 def write_index() -> None:
@@ -1328,21 +1504,34 @@ def write_index() -> None:
 
 
 def build(spec: dict | None = None, *_args, publish: bool = False) -> dict:
-    """Called by enso_deep_dive.main() for builder = "ven" (grid, gdf, indices unused), or standalone."""
+    """Called by enso_deep_dive.main() for builder = "ven" (grid, gdf, indices unused), or standalone. Builds the English
+    page and, from the same analysis, the Spanish one (deep_dives/i18n/ven.es.toml)."""
     spec = spec or tomllib.loads(SPEC.read_text(encoding="utf-8"))
+    es_spec = tomllib.loads(ES_SPEC.read_text(encoding="utf-8"))
     a = analyse()
-    figs, v = figures(a)
-    page = render(spec, figs, v)
-    OUT.mkdir(parents=True, exist_ok=True)
-    (OUT / "index.html").write_text(page, encoding="utf-8")
-    print("  values:", v)
-    print(f"  wrote {OUT}/index.html")
+    pages, vals = {}, {}
+    try:
+        for lang, sp in (("en", spec), ("es", es_spec)):
+            set_lang(lang)
+            figs, vals[lang] = figures(a)
+            pages[lang] = render(sp, figs, vals[lang])
+    finally:
+        set_lang("en")
+    check_parity(spec, es_spec, pages)
+    for lang, page in pages.items():
+        d = OUT / "es" if lang == "es" else OUT
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "index.html").write_text(page, encoding="utf-8")
+        print(f"  wrote {d}/index.html")
+    print("  values:", vals["en"])
     if publish:
-        DOCS.mkdir(parents=True, exist_ok=True)
-        (DOCS / "index.html").write_text(page, encoding="utf-8")
+        for lang, page in pages.items():
+            d = DOCS / "es" if lang == "es" else DOCS
+            d.mkdir(parents=True, exist_ok=True)
+            (d / "index.html").write_text(page, encoding="utf-8")
         write_index()
-        print(f"  published -> {DOCS}/index.html and docs/enso/index.html")
-    return v
+        print(f"  published -> {DOCS}/index.html, {DOCS}/es/index.html and docs/enso/index.html")
+    return vals["en"]
 
 
 def main() -> None:

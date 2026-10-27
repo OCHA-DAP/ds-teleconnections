@@ -24,7 +24,7 @@ one_line = "A strong El Niño means a drier October–March almost everywhere an
 [page]
 title = "Venezuela: El Niño 2026/27"
 sub = "What past El Niño and La Niña years brought, region by region: rain, floods, the Guri reservoir, vegetation and harvests. Past ranges, not forecasts, except the SEAS5 section."
-dateline = "Draft · rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · SEAS5 issued October {fc_year}"
+dateline = "Rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · SEAS5 issued October {fc_year}"
 
 [[tiles]]
 big = "{now_lo}–{now_hi}%"

@@ -1,0 +1,101 @@
+# Venezuela — versión en español de deep_dives/ven.toml: la misma estructura y los mismos {placeholders}, construida por
+# ven_deep_dive.py junto a la página en inglés. Vive en deep_dives/i18n/ para que el despachador y el índice de tarjetas
+# no la lean como otra página. La compilación se detiene si las secciones, los {placeholders} o las cifras no coinciden
+# con la versión en inglés.
+iso3 = "VEN"
+name = "Venezuela"
+builder = "ven"
+notes = [
+  "<b>Años hidrológicos y fases.</b> El año hidrológico va de mayo a abril: las lluvias de mayo a noviembre y luego la estación seca de diciembre a abril. Se clasifica por el ONI de septiembre–noviembre de su primer año (NOAA CPC): El Niño ≥ +0,5 °C, El Niño fuerte ≥ +1,5 °C, La Niña ≤ −0,5 °C. Desde 1981: {n_nino} años de El Niño ({strong_years} fuertes) y {n_nina} años de La Niña. El «año 1» es el año en que se desarrolla El Niño; el «año 2», el siguiente. Se usa septiembre–noviembre porque el efecto de El Niño en Venezuela empieza en el año en que se desarrolla; con su ONI máximo (+1,5 °C en noviembre–enero), 2009/10, el año del racionamiento eléctrico de 2010, contaría como fuerte.",
+  "<b>Lluvia.</b> CHIRPS v3 (satélite y pluviómetros) a 0,5°, promediado en cada estado con pesos por área, hasta {data_end}. ERA5 por estado (estadísticas admin-1 del equipo) hasta {era5_end} sirve de control: coincide con CHIRPS en el sentido del cambio con El Niño en el {era5_agree}% de los {era5_cells} pares estado-trimestre en que CHIRPS muestra ±10% o más. Los porcentajes se calculan frente a la normal 1991–2020 de los mismos meses; los trimestres con una normal inferior a 60 mm son estación seca y se omiten.",
+  "<b>Inundaciones.</b> FloodScan, el registro satelital de exposición a inundaciones que se usa en otras páginas, solo cubre África, así que esta página no tiene una serie de exposición a inundaciones para Venezuela. EM-DAT (CRED/UCLouvain, copia del {emdat_end}) recoge los desastres mayores por inundaciones, deslizamientos por lluvia y tormentas desde 1980; su campo de ubicación suele nombrar muchos estados, por lo que se usa a escala nacional. DesInventar Venezuela (UNDRR) tiene {di_n} registros de inundaciones, lluvias, avenidas torrenciales, flujos de detritos, deslizamientos y tormentas por municipio; termina a principios de 2016 y su registro cambia varias veces entre décadas, así que cada año se compara con los seis años hidrológicos a su alrededor, y la figura muestra la mediana de los años de cada fase. Asignaciones del Fondo Central para la Acción en Casos de Emergencia (CERF): datos OneGMS del CERF (solo Venezuela, sin las asignaciones regionales).",
+  "<b>Guri.</b> Altimetría satelital NASA GSFC G-REALM, cada diez días desde septiembre de 1992, en metros sobre el geoide EGM2008. No es el datum de la regla del operador: hay que comparar bajadas y mínimos anteriores dentro de este registro, no con los niveles de operación publicados.",
+  "<b>Vegetación.</b> JRC ASAP: puntaje z de la FPAR de MODIS (la fracción de la luz solar que absorbe la cubierta vegetal) frente a los mismos diez días desde 2001, promediado sobre tierras de cultivo o pastizales en cada estado (GAUL admin-1), de noviembre a abril.",
+  "<b>Cosechas.</b> Rendimientos nacionales de FAOSTAT, cada año frente a los dos años a cada lado. De 2014 a 2019 la crisis económica determina las cifras y oculta cualquier señal del clima; esos años, y los años que se comparan con ellos (2012–2013, 2020–2021), se excluyen de las correlaciones.",
+  "<b>Pronóstico.</b> Media del conjunto de ECMWF SEAS5 por estado (estadísticas admin-1 del equipo; la base de datos solo guarda la media del conjunto), emisión de octubre. Las medias trimestrales se transforman con logaritmo, se escalan a ERA5 y se les quita la tendencia, como en la aplicación seas5-skill del equipo; la posición se calcula entre los pronósticos retrospectivos de 1981–2025 para los mismos meses, y la destreza es su correlación con ERA5.",
+]
+
+[catalogue]
+evidence = "moderate"
+
+[assessment]
+evidence = "moderate"
+one_line = "Un El Niño fuerte significa un octubre–marzo más seco casi en todas partes y menos registros de inundaciones y deslizamientos. Mayo–agosto de 2026 ya estuvo entre los más secos registrados, y SEAS5 pronostica un octubre–febrero muy seco."
+
+[page]
+title = "Venezuela: El Niño 2026/27"
+sub = "Lo que trajeron los años de El Niño y La Niña anteriores, región por región: lluvia, inundaciones, el embalse de Guri, vegetación y cosechas. Rangos del pasado, no pronósticos, salvo la sección de SEAS5."
+dateline = "Lluvia hasta {data_end} (CHIRPS) y {era5_end} (ERA5) · SEAS5 emitido en octubre de {fc_year}"
+
+[[tiles]]
+big = "{now_lo}–{now_hi}%"
+text = "lluvia de {now_span} de 2026 por región, en % de lo normal: entre los seis años más secos desde 1981 en todas las regiones"
+[[tiles]]
+big = "−{strong_med}%"
+text = "mediana de la lluvia de noviembre a marzo en los cuatro años de El Niño fuerte, en siete regiones; ninguno de los {strong_cells} casos estuvo por encima de lo normal"
+[[tiles]]
+big = "{di_fewer_lo}–{di_fewer_hi}% menos"
+text = "registros de inundaciones y deslizamientos en un año típico de El Niño que en un año ordinario, en todas las regiones (DesInventar, 1975–2013)"
+
+[[sections]]
+part = "Lluvia"
+id = "maps"
+fig = "maps"
+head = "El Niño: menos lluvia casi en todas partes de octubre a marzo, y algo menos en el norte de junio a septiembre"
+note = "La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño, un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
+
+[[sections]]
+id = "states"
+fig = ["states", "season"]
+head = "Por estado: los mayores déficits se dan de noviembre a marzo, en el noroeste, los Andes, el oriente y Guayana"
+
+[[sections]]
+id = "now"
+fig = "now"
+head = "La lluvia de {now_span} de 2026 fue del {now_lo}–{now_hi}% de lo normal, entre las seis más bajas desde 1981 en todas las regiones"
+note = "ERA5 sitúa {now_span} en el {era5_lo}–{era5_hi}% de lo normal. Aquí manda CHIRPS, que usa pluviómetros; ERA5 es un reanálisis que no usa la lluvia de los pluviómetros."
+
+[[sections]]
+id = "dry"
+fig = "dry"
+head = "Noviembre–marzo: en los cuatro años de El Niño fuerte, todas las regiones tuvieron menos lluvia de lo normal, un {strong_med}% menos en la mediana"
+note = "En cada región, entre {dry_third_min} y {dry_third_max} de los {nino_n} años de El Niño cayeron en el tercio más seco (por azar serían 5); la menor cantidad, en {dry_third_fewest}."
+
+[[sections]]
+id = "forecast"
+fig = "forecast"
+head = "SEAS5, octubre de {fc_year}: uno de los pronósticos más secos para octubre–febrero desde 1981, en casi todos los estados"
+note = "{fc_driest} de {fc_cells} pares estado-trimestre de octubre a febrero se sitúan en el décimo más seco de los 45 pronósticos anteriores, una vez quitada la tendencia de largo plazo (como en la aplicación seas5-skill del equipo); antes de ese paso, es el pronóstico de noviembre–enero más seco en {fc_raw_driest} de {fc_states} estados. El pronóstico tiene destreza para estos meses (correlación de los pronósticos retrospectivos {fc_r_lo}–{fc_r_hi}). Los pronósticos de octubre de 1997 y 2015 salieron casi igual de secos; la lluvia que siguió estuvo entre las más bajas registradas en 1997 y por debajo de lo normal en 2015. Febrero–abril tiende a húmedo en el oeste y el centro, donde el pronóstico tiene poca destreza."
+
+[[sections]]
+part = "Inundaciones"
+id = "emdat"
+fig = "emdat"
+head = "En los años de El Niño ha habido muchas menos personas afectadas por inundaciones, deslizamientos y tormentas registrados que en los de La Niña: unas {em_nino_yr} al año frente a {em_nina_yr}"
+note = "Años neutros: unas {em_neutral_yr}. Sin Vargas 1999 y agosto de 2021, los años de La Niña siguen teniendo {em_ratio_ex} veces la cifra de El Niño. Los años de El Niño no están libres de inundaciones: junio de 2015 en Apure y febrero de 2005 ocurrieron en años de El Niño."
+
+[[sections]]
+id = "desinventar"
+fig = "desinventar"
+head = "Por región: entre un {di_fewer_lo}% y un {di_fewer_hi}% menos registros de inundaciones y deslizamientos en los años de El Niño, en todas partes; más en los años de La Niña en {di_nina_above} de {di_regions} regiones"
+note = "En un año típico de El Niño cada región tuvo entre {di_nino_lo} y {di_nino_hi} veces los registros de un año ordinario. Medianas de La Niña en los Llanos occidentales y el centro-norte: {di_llanos_nina} y {di_cn_nina}. Las medias suben por años aislados (1999, 2011): {di_mean_nina} para La Niña a escala nacional."
+
+[[sections]]
+part = "Sequía: agua, vegetación, cosechas"
+part_note = "El CERF no ha hecho ninguna asignación por sequía para Venezuela."
+id = "guri"
+fig = "guri"
+head = "El embalse de Guri ha bajado {guri_nino} m durante la estación seca tras un año típico de El Niño, frente a {guri_nina} m tras La Niña"
+note = "Empieza esta estación seca casi lleno ({guri_peak} m, frente a {guri_peak15} m antes del mínimo de 2016). Bajadas como las de los años de El Niño anteriores lo llevarían a {guri_lo}–{guri_hi} m en mayo de {next_year}; el extremo inferior queda {guri_gap10} m por encima del mínimo de 2010 ({guri_low10} m). Cuánto baje depende también del agua que se turbine para generar electricidad, no solo de la lluvia."
+
+[[sections]]
+id = "veg"
+fig = "veg"
+head = "Vegetación: las tres peores estaciones secas desde 2000 ({veg_worst}) siguieron a El Niño; 2023/24 no"
+note = "Cuanto más fuerte El Niño, peor la estación seca (correlación {veg_r}), con 2023/24 como excepción. En promedio de los años de El Niño, los cultivos de noviembre a abril estuvieron por debajo de lo normal en {veg_states_neg} de {veg_states_n} estados."
+
+[[sections]]
+id = "yields"
+fig = "yields"
+head = "Cosechas: sin relación clara con El Niño, La Niña ni la lluvia"
+note = "En los tres paneles los puntos se dispersan sin un patrón (una r cercana a 0 indica que no hay relación), y otras formas de quitar la tendencia y la crisis dan la misma respuesta (maíz de {maize_r_lo} a {maize_r_hi}, arroz de {rice_r_lo} a {rice_r_hi}). El maíz cayó un {maize_2002}% en 2002 y un {maize_2009}% en 2009, ambos años de El Niño, pero no en los años de El Niño fuerte 1982, 1997 ni 2023."
