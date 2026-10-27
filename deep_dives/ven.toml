@@ -45,7 +45,7 @@ note = "The small wetter-looking patch inland on the global survey map is Apure 
 
 [[sections]]
 id = "states"
-fig = "states"
+fig = ["states", "season"]
 head = "By state: the largest shortfalls come from November to March, in the north-west, the Andes, the east and Guayana"
 
 [[sections]]

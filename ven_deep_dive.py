@@ -755,6 +755,44 @@ def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
     return _save(fig, "states")
 
 
+def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
+    """Normal monthly rain by region over the rain year, with the median of the El Niño and La Niña years and this year
+    so far on top."""
+    reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
+    months = list(range(5, 17))
+    clim = reg.loc["1991":"2020"].groupby(reg.loc["1991":"2020"].index.month).mean().loc[[(m - 1) % 12 + 1 for m in months]]
+
+    def phase_median(phase: str) -> tuple[pd.DataFrame, int]:
+        yrs = [y for y in phase_years(ph, phase) if all(d in reg.index for d in _dates(y, months))]
+        return pd.DataFrame(np.median([reg.loc[_dates(y, months)].values for y in yrs], axis=0), columns=reg.columns), len(yrs)
+
+    nino, n_nino = phase_median("nino")
+    nina, n_nina = phase_median("nina")
+    now = [d for d in _dates(NOW, months) if d in reg.dropna(how="all").index]
+    fig, axes = plt.subplots(1, len(REGIONS), figsize=(11, 2.7), sharey=True)
+    x = np.arange(len(months))
+    for ax, r in zip(axes, REGIONS):
+        ax.bar(x, clim[r].values, color=NEUTRAL_C, width=0.8)
+        ax.plot(x, nino[r].values, color=NINO_C, lw=1.4, marker="o", ms=2.5)
+        ax.plot(x, nina[r].values, color=NINA_C, lw=1.4, marker="o", ms=2.5)
+        ax.plot(x[:len(now)], reg.loc[now, r].values, color=NOW_C, lw=1.4, marker="o", ms=2.5)
+        ax.set_title(textwrap.fill(r, 16), fontsize=8.5)
+        ax.set_xticks(x, [MONTH[(m - 1) % 12] for m in months], fontsize=7)
+        ax.tick_params(axis="x", length=0)
+        ax.spines[["top", "right"]].set_visible(False)
+        _grid(ax)
+    axes[0].set_ylabel("rain, mm a month", fontsize=8)
+    fig.legend(handles=[Patch(color=NEUTRAL_C, label="normal (1991–2020)"),
+                        Line2D([], [], color=NINO_C, marker="o", ms=3, label=f"El Niño years (median of {n_nino})"),
+                        Line2D([], [], color=NINA_C, marker="o", ms=3, label=f"La Niña years (median of {n_nina})"),
+                        Line2D([], [], color=NOW_C, marker="o", ms=3, label=f"{NOW} (to {now[-1]:%B})")],
+               loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
+    _source(fig, "Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.", y=-0.09)
+    return _save(fig, "season")
+
+
+
 def _strip(ax, pct: pd.DataFrame, ph: pd.DataFrame, now: bool):
     """One row per region, split into El Niño / neutral / La Niña sub-rows; strong El Niño years larger and darker."""
     regs = list(pct.columns)
@@ -1237,6 +1275,7 @@ def figures(a: dict) -> tuple[dict, dict]:
     v |= oni_now()
     f["maps"] = fig_maps(ph)
     f["states"] = fig_states(a["tot"], ph)
+    f["season"] = fig_season(a["mon"], ph)
     v |= era5_agreement(a)
     f["now"], x = fig_now(a["mon"], a["mon_e"], ph); v |= x
     f["dry"], x = fig_dry(a["mon"], ph); v |= x
