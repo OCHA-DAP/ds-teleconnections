@@ -911,9 +911,9 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
     _grid(bx)
     cats = [("nina", "La Niña", NINA_C), ("neutral", "neutral", NEUTRAL_C), ("nino", "El Niño", NINO_C)]
     for i, (p, lab, c) in enumerate(cats):
-        d = gy.loc[gy.phase == p, "drop"].dropna()
+        d = -gy.loc[gy.phase == p, "drop"].dropna()
         xs = i + np.linspace(-0.18, 0.18, len(d)) if len(d) > 1 else [i]
-        for xx, (yr, val) in zip(xs, d.sort_values().items()):
+        for xx, (yr, val) in zip(xs, d.sort_values(ascending=False).items()):
             cc = STRONG_C if gy.loc[yr, "strong"] else c
             bx.scatter(xx, val, s=26, color=cc, edgecolor=SURFACE, lw=0.6, zorder=3)
             if p == "nino" and (gy.loc[yr, "strong"] or yr == 2009):
@@ -921,7 +921,8 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
                             fontsize=6.5, va="center", ha="right" if yr in (2009, 2023) else "left")
         bx.hlines(d.median(), i - 0.28, i + 0.28, color=NOW_C, lw=1.2)
     bx.set_xticks(range(3), [lab for _, lab, _ in cats])
-    bx.set_ylabel("fall from the Aug–Nov peak to the Feb–Jun low (m)")
+    bx.axhline(0, color="#9a9993", lw=0.6)
+    bx.set_ylabel("change, Aug–Nov peak to Feb–Jun low (m)")
     _source(fig, "Satellite altimetry, 10-day, heights above the EGM2008 geoid (not the operator's gauge datum: compare changes, not "
                  "levels). Black bar: this year's August–October peak minus the smallest and largest falls after past El Niño years. "
                  "Lines: medians. Source: NASA GSFC G-REALM (Guri, target 432).")
@@ -1029,35 +1030,33 @@ def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
         clim[code] = period_totals(mon_e, mm).loc[1991:2020].mean()
     clim = pd.DataFrame(clim).reindex(STATE_ORDER)
     dry = clim < DRY_MM
-    fig, ax = plt.subplots(figsize=(6.6, 7.4))
-    ax.imshow(pr.values, cmap=FC_CMAP, norm=FC_NORM, aspect="auto")
-    _hatch_cells(ax, dry.values)
-    for i in range(pr.shape[0]):
-        for j in range(pr.shape[1]):
-            if dry.values[i, j]:
-                ax.text(j, i, "dry", ha="center", va="center", fontsize=6.5, color=TEXT2, zorder=3)
-                continue
-            p, r = pr.values[i, j], sk.values[i, j]
-            ax.text(j, i, f"{p:.0f}" + ("" if r >= 0.3 else "*"), ha="center", va="center", fontsize=7,
-                    color="#ffffff" if p < 10 or p > 90 else "#0b0b0b")
-    ax.set_xticks(range(len(FC_SEASONS)), ["Oct–Dec", "Nov–Jan", "Dec–Feb", "Jan–Mar", "Feb–Apr"], fontsize=8)
-    ax.xaxis.tick_top()
-    ax.set_yticks(range(len(STATE_ORDER)), [names[p] for p in STATE_ORDER], fontsize=7.5)
-    ax.tick_params(length=0)
-    y = -0.5
-    for r, (ps, _) in REGIONS.items():
-        ax.text(len(FC_SEASONS) - 0.35, y + len(ps) / 2, r, ha="left", va="center", fontsize=8, fontweight="bold")
-        y += len(ps)
-        ax.axhline(y, color=SURFACE, lw=2.2)
-    for sp in ax.spines.values():
-        sp.set_visible(False)
+    st = states()
+    labels = {"OND": "Oct–Dec", "NDJ": "Nov–Jan", "DJF": "Dec–Feb", "JFM": "Jan–Mar", "FMA": "Feb–Apr"}
+    fig, axes = plt.subplots(1, len(FC_SEASONS), figsize=(13, 3.6))
+    for ax, code in zip(axes, FC_SEASONS):
+        g = st.merge(pr[code].rename("p"), left_on="pcode", right_index=True)
+        g["dry"] = g.pcode.map(dry[code])
+        g["weak"] = g.pcode.map(sk[code] < 0.3) & ~g["dry"]
+        g[~g["dry"]].plot(ax=ax, column="p", cmap=FC_CMAP, norm=FC_NORM, edgecolor="#ffffff", lw=0.5)
+        if g["dry"].any():
+            g[g["dry"]].plot(ax=ax, facecolor="#ffffff", hatch="////", edgecolor="#c9c8c2", lw=0.5)
+        if g["weak"].any():
+            g[g["weak"]].plot(ax=ax, facecolor="none", hatch="....", edgecolor="#52514e", lw=0)
+        st.boundary.plot(ax=ax, color="#ffffff", lw=0.5)
+        ax.set_title(labels[code], fontsize=9.5)
+        ax.set_xlim(-73.6, -59.6)
+        ax.set_ylim(0.6, 12.4)
+        ax.set_aspect("equal")
+        ax.set_axis_off()
     h = [Patch(color=c, label=l) for c, l in zip([DIV[0], DIV[2], "#ebeae6", DIV[4], DIV[6]],
                                                  ["driest tenth", "drier third", "middle third", "wetter third", "wettest tenth"])]
-    fig.legend(handles=h, loc="lower center", ncols=5, fontsize=7.5, bbox_to_anchor=(0.45, 0.0))
-    fig.subplots_adjust(bottom=0.07, right=0.72)
-    _source(fig, f"Rank of the {year} October forecast among the 45 October forecasts for 1981–2025 (0 = driest ever forecast, "
-                 "100 = wettest), detrended, ensemble mean. *: weak skill (hindcast correlation with ERA5 under 0.3). "
-                 "Dry: normal under 60 mm. Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.", y=-0.03)
+    h += [Patch(facecolor="#ffffff", hatch="....", edgecolor="#52514e", lw=0, label="weak skill"), DRY_PATCH]
+    DRY_PATCH.set_label("dry season")
+    fig.legend(handles=h, loc="lower center", ncols=7, fontsize=7.5, bbox_to_anchor=(0.5, 0.0))
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.12, wspace=0.03)
+    _source(fig, f"Where the {year} October forecast ranks among the 45 October forecasts for 1981–2025, by state: ensemble mean, "
+                 "detrended. Dotted: weak skill (hindcast correlation with ERA5 under 0.3). Dry season: normal under 60 mm in three months. "
+                 "Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.", y=0.0)
     wet_season = ~dry
     v = dict(fc_year=year, fc_driest=int(((pr[["OND", "NDJ", "DJF"]] < 10) & wet_season[["OND", "NDJ", "DJF"]]).sum().sum()),
              fc_cells=int(wet_season[["OND", "NDJ", "DJF"]].sum().sum()),
