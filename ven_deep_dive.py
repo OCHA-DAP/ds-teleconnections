@@ -855,14 +855,15 @@ def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
 
     nino, n_nino = phase_median("nino")
     nina, n_nina = phase_median("nina")
-    now = [d for d in _dates(NOW, months) if d in reg.dropna(how="all").index]
+    cur = reg.reindex(_dates(NOW, months))
+    cur_last = cur.dropna(how="all").index.max()
     fig, axes = plt.subplots(1, len(REGIONS), figsize=(11, 2.7), sharey=True)
     x = np.arange(len(months))
     for ax, r in zip(axes, REGIONS):
         ax.bar(x, clim[r].values, color=NEUTRAL_C, width=0.8)
         ax.plot(x, nino[r].values, color=NINO_C, lw=1.4, marker="o", ms=2.5)
         ax.plot(x, nina[r].values, color=NINA_C, lw=1.4, marker="o", ms=2.5)
-        ax.plot(x[:len(now)], reg.loc[now, r].values, color=NOW_C, lw=1.4, marker="o", ms=2.5)
+        ax.plot(x, cur[r].values, color=NOW_C, lw=1.4, marker="o", ms=2.5)
         ax.set_title(textwrap.fill(_reg(r), 16), fontsize=8.5)
         ax.set_xticks(x, [_month_letters()[(m - 1) % 12] for m in months], fontsize=7)
         ax.tick_params(axis="x", length=0)
@@ -875,7 +876,7 @@ def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
                         Line2D([], [], color=NINA_C, marker="o", ms=3,
                                label=_t(f"La Niña years (median of {n_nina})", f"años de La Niña (mediana de {n_nina})")),
                         Line2D([], [], color=NOW_C, marker="o", ms=3,
-                               label=_t(f"{NOW} (to {now[-1]:%B})", f"{NOW} (hasta {MONTH_ES[now[-1].month - 1]})"))],
+                               label=_t(f"{NOW} (to {cur_last:%B})", f"{NOW} (hasta {MONTH_ES[cur_last.month - 1]})"))],
                loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
     fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
     _source(fig, _t("Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.",
@@ -928,7 +929,7 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     _phase_legend(ax, ph, loc="lower left", now=True, ncols=5, bbox_to_anchor=(0, 1.0))
     rank = pct.rank().loc[NOW]
     rk_e = pe.rank().loc[NOW]
-    span = _span(5, last.month)
+    span = _t(f"May–{last:%B}", f"mayo–{MONTH_ES[last.month - 1]}")
     _source(fig, _t(f"{span} rain, each year 1981–{NOW}, one dot per year. 2026 was among the six driest of "
                     f"{len(pct)} in every region in CHIRPS v3 and among the seven driest in ERA5. Sources: CHIRPS v3 (state means), "
                     "ERA5 (team admin-1 statistics).",
@@ -984,12 +985,17 @@ EM_LABELS = {  # DisNo.: (English label, Spanish label, x offset, y offset in po
     "2002-0445-VEN": ("Jul 2002, Llanos", "jul 2002, Llanos", 0, 10),
     "1993-0059-VEN": ("Aug 1993, storm Bret", "ago 1993, tormenta Bret", 6, 0)}
 CERF_EMDAT = {  # CERF flood allocation: the EM-DAT event it responded to, and its label in English and Spanish
-    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "the May 2025 floods in Apure and 9 more states",
-                            "las inundaciones de mayo de 2025 en Apure y otros 9 estados")}
+    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "the May–June 2025 floods in Apure and 9 more states",
+                            "las inundaciones de mayo–junio de 2025 en Apure y otros 9 estados")}
+CERF_KNOWN = {  # every Venezuela allocation the page's CERF lines were written against (one flood, none for drought)
+    "18-RR-VEN-33275", "19-UF-VEN-38565", "21-UF-VEN-48704", "22-UF-VEN-55398", "23-UF-VEN-61207", "CERF-VEN-25-RR-1490",
+    "CERF-VEN-25-UF-1452", "CERF-VEN-26-RR-1539", "CERF-VEN-26-RR-1555"}
 
 
 def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
     em = emdat_wet()
+    em = em[em.ry.between(1980, Y1)].copy()   # a later event would join a phase total with no year in the denominator
+    snap = str(emdat()["Last Update"].max())
     em["phase"] = ph.phase.reindex(em.ry).values
     fig, (ax, bx) = plt.subplots(1, 2, figsize=(11, 4.4), gridspec_kw=dict(width_ratios=[3.2, 1]))
     _grid(ax)
@@ -1030,11 +1036,14 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
     bx.set_xlabel(_t("people affected per year\n(thousands)", "personas afectadas por año\n(miles)"))
     bx.set_xlim(0, per["affected"].max() / 1000 * 1.45)
     _source(fig, _t("Floods, wet landslides and storms reported to EM-DAT since 1980, by the rain year (May–April) they fall in. "
-                    f"Marker size: deaths; triangles: no affected figure. Ring: {'; '.join(cerf_txt)}. Totals per year of each phase. "
+                    f"Marker size: deaths; triangles: no affected figure. Ring: {'; '.join(cerf_txt)}. Totals per year of each phase, rain "
+                    f"years 1980/81–{year_label(Y1)}; the EM-DAT snapshot ends {snap}, so {year_label(Y1)} is partial. "
                     "Sources: EM-DAT, CRED/UCLouvain (team snapshot); CERF.",
                     "Inundaciones, deslizamientos por lluvia y tormentas registrados en EM-DAT desde 1980, según el año hidrológico "
                     "(mayo–abril) en que ocurren. Tamaño del marcador: muertes; triángulos: sin cifra de afectados. Anillo: "
-                    f"{'; '.join(cerf_txt)}. Totales por año de cada fase. Fuentes: EM-DAT, CRED/UCLouvain (copia del equipo); CERF."))
+                    f"{'; '.join(cerf_txt)}. Totales por año de cada fase, años hidrológicos 1980/81–{year_label(Y1)}; la versión de "
+                    f"EM-DAT termina el {snap}, así que {year_label(Y1)} está incompleto. Fuentes: EM-DAT, CRED/UCLouvain (versión "
+                    "del equipo); CERF."))
     v = dict(em_nina_aff=f"{t.loc['nina', 'affected'] / 1e6:.1f}", em_nino_aff=f"{t.loc['nino', 'affected'] / 1e6:.1f}",
              em_nina_dead=f"{t.loc['nina', 'deaths']:,.0f}", em_nino_dead=f"{t.loc['nino', 'deaths']:,.0f}",
              em_ratio=f"{per.loc['nina', 'affected'] / per.loc['nino', 'affected']:.0f}",
@@ -1042,6 +1051,10 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
              em_n_nino=int((em.phase == "nino").sum()), em_n_nina=int((em.phase == "nina").sum()),
              em_nino_yr=f"{per.loc['nino', 'affected'] / 1000:,.0f},000", em_nina_yr=f"{per.loc['nina', 'affected'] / 1000:,.0f},000",
              em_neutral_yr=f"{per.loc['neutral', 'affected'] / 1000:,.0f},000")
+    ratio_ex = (t.loc['nina', 'affected'] - em.loc[em['DisNo.'].isin(['1999-0547-VEN', '2021-0538-VEN']), 'affected'].sum()) \
+        / years['nina'] / per.loc['nino', 'affected']
+    if per.loc["nina", "affected"] / per.loc["nino", "affected"] < 3 or ratio_ex < 1.5:
+        raise ValueError("the EM-DAT El Niño/La Niña contrast weakened: reword the floods headline and note")
     return _save(fig, "emdat"), v
 
 
@@ -1075,15 +1088,16 @@ def fig_desinventar(ph: pd.DataFrame) -> tuple[Path, dict]:
                     "(UNDRR), which stops in early 2016.",
                     "Registros de inundaciones, lluvias, avenidas torrenciales, flujos de detritos, deslizamientos y tormentas, uno por "
                     f"evento y municipio, años hidrológicos {year_label(DI_Y0)}–{year_label(DI_Y1)}. El recuento de cada año se divide "
-                    "por la media de los tres años hidrológicos a cada lado, porque el registro cambia varias veces entre décadas. "
+                    "por la media de los tres años hidrológicos a cada lado, porque la cantidad de registros se multiplica o se divide "
+                    "varias veces de una década a otra. "
                     "Fuente: DesInventar Venezuela (UNDRR), que termina a principios de 2016."))
     regs = m.drop(index="Venezuela")
     above = regs.index[regs["nina"] > 1]
-    v = dict(di_nino_lo=f"{regs['nino'].min():.1f}", di_nino_hi=f"{regs['nino'].max():.1f}",
+    v = dict(di_nino_lo=f"{regs['nino'].min():.2f}", di_nino_hi=f"{regs['nino'].max():.2f}",
              di_fewer_lo=f"{(1 - regs['nino'].max()) * 100:.0f}", di_fewer_hi=f"{(1 - regs['nino'].min()) * 100:.0f}",
              di_nina_above=len(above), di_regions=len(regs), di_mean_nina=f"{mean_nina:.1f}",
-             di_llanos_nina=f"{m.loc['Western Llanos', 'nina']:.1f}", di_cn_nina=f"{m.loc['Centre-north', 'nina']:.1f}",
-             di_n=int(len(di_wet())))
+             di_llanos_nina=f"{m.loc['Western Llanos', 'nina']:.2f}", di_cn_nina=f"{m.loc['Centre-north', 'nina']:.2f}",
+             di_n=f"{len(di_wet()):,}")
     if (regs["nino"] >= 1).any() or sorted(set(regs.index) - set(above)) != ["Centre-north", "Western Llanos"]:
         raise ValueError(f"the DesInventar pattern changed (La Niña above 1 in {list(above)}): reword the floods headline")
     return _save(fig, "desinventar"), v
@@ -1097,10 +1111,11 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
     for y in gy.index[(gy.phase == "nino")]:
         ax.axvspan(pd.Timestamp(y, 12, 1), pd.Timestamp(y + 1, 6, 1), color=NINO_C, alpha=0.13, lw=0)
     ax.plot(g.index, g.values, color="#3b3a37", lw=0.8)
-    for yr, lab in ((2009, _t("2010 rationing", "racionamiento de 2010")), (2015, _t("2016 rationing", "racionamiento de 2016"))):
+    for yr, lab in ((2009, _t("2010 rationing", "racionamiento\nde 2010")), (2015, _t("2016 rationing", "racionamiento de 2016"))):
         lo = gy.loc[yr, "low"]
         d = g[f"{yr + 1}-02-01":f"{yr + 1}-06-30"].idxmin()
-        ax.annotate(lab, (d, lo), xytext=(6, -2), textcoords="offset points", fontsize=7.5, va="top")
+        ax.annotate(lab, (d, lo), xytext=(-6, -2) if yr == 2009 else (6, -2), textcoords="offset points", fontsize=7.5,
+                    va="top", ha="right" if yr == 2009 else "left")
     drops = gy.loc[gy.phase == "nino", "drop"].dropna()
     peak = float(g[f"{NOW}-08-01":].max())
     lo_hi = (peak - drops.max(), peak - drops.min())
@@ -1133,7 +1148,7 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
     _source(fig, _t("Satellite altimetry, 10-day, heights above the EGM2008 geoid (not the operator's gauge datum: compare changes, "
                     "not levels). Black bar: this year's August–October peak minus the smallest and largest falls after past El Niño "
                     "years. Lines: medians. Source: NASA GSFC G-REALM (Guri, target 432).",
-                    "Altimetría satelital cada 10 días, alturas sobre el geoide EGM2008 (no el datum de la regla del operador: comparar "
+                    "Altimetría satelital cada 10 días, alturas sobre el geoide EGM2008 (no la cota de referencia del operador: comparar "
                     "cambios, no niveles). Barra negra: el máximo de agosto a octubre de este año menos la menor y la mayor bajada tras "
                     "años de El Niño anteriores. Líneas: medianas. Fuente: NASA GSFC G-REALM (Guri, objetivo 432)."))
     med = gy.groupby("phase")["drop"].median()
@@ -1142,7 +1157,7 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
              guri_low10=f"{gy.loc[2009, 'low']:.0f}", guri_peak15=f"{gy.loc[2015, 'peak']:.0f}", guri_n_nino=len(drops),
              next_year=NOW + 1)
     v["guri_gap10"] = f"{lo_hi[0] - gy.loc[2009, 'low']:.0f}"
-    if not 0 < lo_hi[0] - gy.loc[2009, "low"] < 3:
+    if not 0 < lo_hi[0] - gy.loc[2009, "low"] < 3 or peak < g.max() - 3:
         raise ValueError("the Guri range moved against the 2010 low: reword the Guri note")
     return _save(fig, "guri"), v
 
@@ -1218,7 +1233,7 @@ def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
     v = dict(veg_worst=", ".join(year_label(y) for y in sorted(worst.index)), veg_worst_nino=len(after),
              veg_2023=f"{nat.loc[2023]:+.1f}".replace("-", "−"), veg_r=f"{r:+.2f}".replace("-", "−"),
              veg_states_neg=int((crop[nino].mean(axis=1) < 0).sum()), veg_states_n=int(crop[nino].mean(axis=1).notna().sum()))
-    if len(after) != 3 or nat.loc[2023] < -0.1:
+    if len(after) != 3 or nat.loc[2023] < -0.1 or r > -0.4:
         raise ValueError("the vegetation pattern changed: reword the vegetation headline")
     return _save(fig, "veg"), v
 
@@ -1258,6 +1273,7 @@ def yield_r_range(ph: pd.DataFrame) -> dict[str, tuple[float, float]]:
 def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     y = yields()
     y = y[(y.year >= 1980) & (y.year < NOW)]
+    last = int(y.year.max())
     fig, axes = plt.subplots(1, 3, figsize=(12, 4.4), sharey=True)
     rs = {}
     names = {t: str(t) for t in (1982, 1997, 2002, 2009, 2015, 2023)}
@@ -1285,11 +1301,11 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     h.append(Line2D([], [], marker="o", ls="", color="none", markeredgecolor=TEXT2,
                     label=_t("2012–2021: the 2014–2019 crisis, or compared with it", "2012–2021: la crisis de 2014–2019 o comparados con ella")))
     fig.legend(handles=h, loc="lower center", fontsize=7.5, ncols=5, bbox_to_anchor=(0.5, 1.06 if LANG == "es" else 1.0), frameon=False)
-    _source(fig, _t(f"One point per calendar year, 1980–{NOW - 1} (the main harvest follows the May–October rains). Detrended: each "
+    _source(fig, _t(f"One point per calendar year, 1980–{last} (the main harvest follows the May–October rains). Detrended: each "
                     "year's yield against the mean of the two years either side. Open circles, left out of r: the 2014–2019 economic "
                     f"crisis and the years whose comparison years fall in it. Maize states: {', '.join(MAIZE_STATES.values())} "
                     "(CHIRPS v3). Sources: FAOSTAT, CHIRPS v3.",
-                    f"Un punto por año calendario, 1980–{NOW - 1} (la cosecha principal sigue a las lluvias de mayo a octubre). Sin "
+                    f"Un punto por año calendario, 1980–{last} (la cosecha principal sigue a las lluvias de mayo a octubre). Sin "
                     "tendencia: el rendimiento de cada año frente a la media de los dos años a cada lado. Círculos vacíos, excluidos de "
                     "r: la crisis económica de 2014–2019 y los años cuya comparación incluye años de la crisis. Estados maiceros: "
                     f"{', '.join(MAIZE_STATES.values())} (CHIRPS v3). Fuentes: FAOSTAT, CHIRPS v3."))
@@ -1302,7 +1318,7 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
              **{f"maize_{t}": f"{abs(y[(y.crop == 'maize') & (y.year == t)].anom.iloc[0]):.0f}"
                 for t in (1982, 1997, 2002, 2009, 2015, 2023)})
     a = {t: y[(y.crop == "maize") & (y.year == t)].anom.iloc[0] for t in (1982, 1997, 2002, 2009, 2015, 2023)}
-    if not (a[2002] < -8 and a[2009] < -8 and a[2015] < -8 and all(abs(a[t]) < 6 for t in (1982, 1997, 2023))
+    if not (a[2002] < -8 and a[2009] < -8 and all(abs(a[t]) < 6 for t in (1982, 1997, 2023))
             and abs(rs["maize"]) < 0.3 and abs(rs["rice"]) < 0.3
             and max(abs(x) for lohi in alt.values() for x in lohi) < 0.3):
         raise ValueError(f"maize anomalies or correlations changed {a} {rs} {alt}: reword the yields headline")
@@ -1344,9 +1360,9 @@ def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
         ax.set_aspect("equal")
         ax.set_axis_off()
     h = [Patch(color=c, label=l) for c, l in zip([DIV[0], DIV[2], "#ebeae6", DIV[4], DIV[6]],
-                                                 [_t("driest tenth", "décimo más seco"), _t("drier third", "tercio más seco"),
+                                                 [_t("driest tenth", "decil más seco"), _t("drier third", "tercio más seco"),
                                                   _t("middle third", "tercio central"), _t("wetter third", "tercio más húmedo"),
-                                                  _t("wettest tenth", "décimo más húmedo")])]
+                                                  _t("wettest tenth", "decil más húmedo")])]
     h += [Patch(facecolor="#ffffff", hatch="....", edgecolor="#52514e", lw=0, label=_t("weak skill", "poca destreza")), DRY_PATCH]
     DRY_PATCH.set_label(_t("dry season", "estación seca"))
     fig.legend(handles=h, loc="lower center", ncols=7, fontsize=7.5, bbox_to_anchor=(0.5, 0.0))
@@ -1363,6 +1379,11 @@ def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
              fc_cells=int(wet_season[["OND", "NDJ", "DJF"]].sum().sum()),
              fc_r_lo=f"{sk[['OND', 'NDJ', 'DJF']].min().min():.1f}", fc_r_hi=f"{sk[['OND', 'NDJ', 'DJF']].max().max():.1f}",
              fc_raw_driest=int(raw.reindex(STATE_ORDER)["NDJ"].sum()), fc_states=len(STATE_ORDER))
+    west = [p for r in ("North-west", "Western Llanos", "Centre-north") for p in REGIONS[r][0]]
+    if (v["fc_driest"] < 0.8 * v["fc_cells"] or sk[["OND", "NDJ", "DJF"]].min().min() < 0.3
+            or pr.loc[west, "FMA"].median() < 66 or sk.loc[west, "FMA"].median() >= 0.3):
+        raise ValueError("the SEAS5 pattern changed (Oct–Feb dry and skilful, Feb–Apr wet with little skill in the west and "
+                         "centre): reword the forecast headline and note")
     return _save(fig, "forecast"), v
 
 # --------------------------------------------------------------------------- #
@@ -1401,12 +1422,13 @@ def era5_agreement(a: dict) -> dict:
 
 
 def cerf_check() -> None:
-    """The page labels one CERF flood allocation and says there has been none for drought; stop if that changes."""
+    """The page labels one CERF flood allocation and says there has been none for drought; stop if any allocation is added
+    (a drought response might be coded as food insecurity, not Drought) or the flood one changes."""
     c = cerf()
-    wet, dry = c[c.emergency_type.isin(["Flood", "Storm"])], c[c.emergency_type == "Drought"]
-    if set(wet.application_code) != set(CERF_EMDAT) or len(dry):
-        raise ValueError(f"CERF allocations changed ({list(wet.application_code)} flood/storm, {len(dry)} drought): "
-                         "update CERF_EMDAT and the drought line")
+    wet = c[c.emergency_type.isin(["Flood", "Storm"])]
+    if set(c.application_code) != CERF_KNOWN or set(wet.application_code) != set(CERF_EMDAT) or (c.emergency_type == "Drought").any():
+        raise ValueError(f"CERF allocations to Venezuela changed (new: {sorted(set(c.application_code) - CERF_KNOWN)}): "
+                         "check them, then update CERF_KNOWN, CERF_EMDAT and the drought line")
 
 
 def figures(a: dict) -> tuple[dict, dict]:
@@ -1488,8 +1510,15 @@ def check_parity(spec: dict, es_spec: dict, pages: dict[str, str]) -> None:
     if _placeholders(spec) != _placeholders(es_spec):
         raise ValueError(f"placeholders differ: EN only {_placeholders(spec) - _placeholders(es_spec)}, "
                          f"ES only {_placeholders(es_spec) - _placeholders(spec)}")
-    if [(x["id"], x["fig"]) for x in spec["sections"]] != [(x["id"], x["fig"]) for x in es_spec["sections"]]:
-        raise ValueError("sections differ between deep_dives/ven.toml and the Spanish TOML")
+    def shape(sp: dict) -> list:
+        fields = [sp["page"][k] for k in ("title", "sub", "dateline")] + list(sp["notes"])
+        fields += [t[k] for t in sp["tiles"] for k in ("big", "text")]
+        fields += [x.get(k, "") for x in sp["sections"] for k in ("part", "part_note", "head", "note")]
+        return ([(x["id"], x["fig"], sorted(x)) for x in sp["sections"]] + [len(sp["tiles"]), len(sp["notes"])]
+                + [(bool(f), sorted(_placeholders(f))) for f in fields])
+    if shape(spec) != shape(es_spec):
+        diff = [(i, a, b) for i, (a, b) in enumerate(zip(shape(spec), shape(es_spec))) if a != b]
+        raise ValueError(f"the Spanish TOML does not match deep_dives/ven.toml field by field: {diff[:3]}")
     from collections import Counter
     en, es = Counter(_numbers(pages["en"], "en")), Counter(_numbers(pages["es"], "es"))
     if en != es:
