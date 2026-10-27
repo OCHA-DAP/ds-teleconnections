@@ -19,7 +19,7 @@ evidence = "moderate"
 
 [assessment]
 evidence = "moderate"
-one_line = "A strong El Niño means a drier October–March almost everywhere; reported flood disasters cluster in La Niña years instead. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
+one_line = "A strong El Niño means a drier October–March almost everywhere and fewer flood and landslide reports. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
 
 [page]
 title = "Venezuela: El Niño 2026/27"
@@ -27,29 +27,21 @@ sub = "What past El Niño and La Niña years brought, region by region: rain, fl
 dateline = "Draft · rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · SEAS5 issued October {fc_year}"
 
 [[tiles]]
-big = "{oni_now} °C"
-text = "{oni_seas} 2026 ONI: a strong El Niño, like {strong_years}"
-[[tiles]]
 big = "{now_lo}–{now_hi}%"
 text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
 [[tiles]]
 big = "−{strong_med}%"
 text = "median November–March rain in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
 [[tiles]]
-big = "×{em_ratio_ex}–{em_ratio}"
-text = "people affected by floods, landslides and storms per year, La Niña years against El Niño years (EM-DAT, since 1980): ×{em_ratio} with Vargas 1999 and August 2021, ×{em_ratio_ex} without"
+big = "{di_fewer_lo}–{di_fewer_hi}% fewer"
+text = "flood and landslide reports in a typical El Niño year than in an ordinary year, in every region (DesInventar, 1975–2013)"
 
 [[sections]]
 part = "Rain"
-id = "setup"
-fig = "setup"
-head = "2026 is a strong El Niño, like {strong_years}"
-
-[[sections]]
 id = "maps"
 fig = "maps"
 head = "El Niño: less rain almost everywhere from October to March, and somewhat less in the north from June to September"
-note = "The inland patch that looks wetter on the global survey map is mostly Apure and its neighbours. There, the strongest El Niño signal is in February–April of year 2, which has been wetter than normal. From June to January the same area is normal or drier."
+note = "The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño, a minor effect; from June to January it is normal or drier there too."
 
 [[sections]]
 id = "states"
@@ -78,13 +70,13 @@ note = "{fc_driest} of {fc_cells} state-seasons from October to February rank in
 part = "Floods"
 id = "emdat"
 fig = "emdat"
-head = "Reported flood, landslide and storm disasters cluster in La Niña years: {em_ratio} times more people affected per year than in El Niño years"
-note = "Without Vargas 1999 and August 2021, {em_ratio_ex} times. El Niño years still have floods: June 2015 in Apure and February 2005 came in El Niño years."
+head = "El Niño years have had far fewer people affected by reported floods, landslides and storms than La Niña years: about {em_nino_yr} a year against {em_nina_yr}"
+note = "Neutral years: about {em_neutral_yr}. Without Vargas 1999 and August 2021, La Niña years still had {em_ratio_ex} times the El Niño figure. El Niño years are not flood-free: June 2015 in Apure and February 2005 came in El Niño years."
 
 [[sections]]
 id = "desinventar"
 fig = "desinventar"
-head = "By region: fewer flood and landslide reports in El Niño years everywhere; more in La Niña years in {di_nina_above} of {di_regions} regions, not in the western Llanos or the centre-north"
+head = "By region: {di_fewer_lo}–{di_fewer_hi}% fewer flood and landslide reports in El Niño years everywhere; more in La Niña years in {di_nina_above} of {di_regions} regions"
 note = "In a typical El Niño year each region had {di_nino_lo}–{di_nino_hi} times the reports of an ordinary year. La Niña medians in the western Llanos and the centre-north: {di_llanos_nina} and {di_cn_nina}. Means are pulled up by single years (1999, 2011): {di_mean_nina} for La Niña nationally."
 
 [[sections]]

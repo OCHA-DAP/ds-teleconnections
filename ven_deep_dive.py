@@ -332,7 +332,6 @@ REGIONS = {  # name: (pcodes, states)
 }
 PCODE_REGION = {p: r for r, (ps, _) in REGIONS.items() for p in ps}
 STATE_ORDER = [p for ps, _ in REGIONS.values() for p in ps]
-POCKET = REGIONS["Western Llanos"][0]
 
 
 # --------------------------------------------------------------------------- #
@@ -611,30 +610,13 @@ def _hatch_cells(ax, mask: np.ndarray):
 DRY_PATCH = Patch(facecolor="#ffffff", hatch="////", edgecolor="#c9c8c2", lw=0)
 
 
-def fig_setup(ph: pd.DataFrame) -> tuple[Path, dict]:
-    o = oni()
-    last = o.iloc[-1]
-    s = ph.loc[1950:NOW - 1]
+def oni_now() -> dict:
+    """The latest ONI season; the page assumes 2026 is a strong El Niño."""
+    last = oni().iloc[-1]
     if last.anom < 1.5:
         raise ValueError(f"latest ONI {last.anom:+.2f}: 2026 is no longer a strong El Niño, reword the page")
-    fig, ax = plt.subplots(figsize=(9.6, 3.3))
-    _grid(ax)
-    ax.bar(s.index, s.oni, color=[phase_color(y, ph) for y in s.index], width=0.8)
-    ax.bar(NOW, last.anom, color="none", edgecolor=NOW_C, hatch="////", width=0.8, lw=0.8)
     names = {"JJA": "Jun–Aug", "JAS": "Jul–Sep", "ASO": "Aug–Oct", "SON": "Sep–Nov", "MJJ": "May–Jul"}
-    for y in s.index[s.strong]:
-        ax.annotate(str(y), (y, s.loc[y, "oni"]), xytext=(0, 2), textcoords="offset points", ha="center", va="bottom",
-                    fontsize=7.5, color=STRONG_C)
-    for v in (-0.5, 0.5, 1.5):
-        ax.axhline(v, color="#9a9993", lw=0.5, ls=(0, (3, 3)))
-    ax.axhline(0, color="#9a9993", lw=0.6)
-    ax.set_xlim(1949, NOW + 1.5)
-    ax.set_ylabel("ONI, Sep–Nov (°C)")
-    h = [Patch(color=c, label=l) for c, l in ((STRONG_C, "strong El Niño"), (NINO_C, "El Niño"), (NEUTRAL_C, "neutral"), (NINA_C, "La Niña"))]
-    h.append(Patch(facecolor="none", edgecolor=NOW_C, hatch="////", label=f"2026 so far ({names.get(last.seas, last.seas)}): {last.anom:+.1f} °C"))
-    ax.legend(handles=h, loc="lower left", ncols=5, fontsize=8, bbox_to_anchor=(0, 1.0))
-    _source(fig, "El Niño ≥ +0.5 °C, strong ≥ +1.5 °C, La Niña ≤ −0.5 °C (Sep–Nov ONI). Source: NOAA CPC Oceanic Niño Index.")
-    return _save(fig, "setup"), dict(oni_now=f"{last.anom:+.1f}", oni_seas=names.get(last.seas, last.seas))
+    return dict(oni_now=f"{last.anom:+.1f}", oni_seas=names.get(last.seas, last.seas))
 
 
 def _clip(da: xr.DataArray, geom) -> np.ndarray:
@@ -654,7 +636,6 @@ def _edges(c: np.ndarray) -> np.ndarray:
 
 def _map_axes(ax, st):
     st.boundary.plot(ax=ax, color="#ffffff", lw=0.5)
-    st[st.pcode.isin(POCKET)].dissolve().boundary.plot(ax=ax, color=NOW_C, lw=1.1)
     ax.set_xlim(-73.6, -59.6)
     ax.set_ylim(0.6, 12.4)
     ax.set_aspect("equal")
@@ -682,8 +663,6 @@ def fig_maps(ph: pd.DataFrame) -> Path:
             if j == 0:
                 ax.text(-0.04, 0.5, f"{lab}\n{len(yrs)} years", transform=ax.transAxes, ha="right", va="center",
                         fontsize=9.5, fontweight="bold")
-    axes[0, 0].annotate("western\nLlanos", (-69.0, 7.6), xytext=(-72.9, 3.0), fontsize=7.5,
-                        arrowprops=dict(arrowstyle="-", lw=0.6, color=NOW_C))
     cax = fig.add_axes([0.3, 0.1, 0.4, 0.022])
     cb = fig.colorbar(plt.cm.ScalarMappable(norm=PCT_NORM, cmap=PCT_CMAP), cax=cax, orientation="horizontal")
     cb.set_ticks(PCT_BOUNDS[1:-1])
@@ -693,7 +672,7 @@ def fig_maps(ph: pd.DataFrame) -> Path:
                bbox_to_anchor=(0.98, 0.06), fontsize=8)
     fig.subplots_adjust(left=0.08, right=0.99, top=0.94, bottom=0.2, wspace=0.03, hspace=0.06)
     _source(fig, "Year 1 = the year El Niño or La Niña develops (rain years May–April, 1981/82–2025/26; phase from the Sep–Nov ONI). "
-                 "Outlined: Apure, Barinas, Portuguesa, Cojedes. Source: CHIRPS v3 at 0.5°.", y=0.0)
+                 "Source: CHIRPS v3 at 0.5°.", y=0.0)
     return _save(fig, "maps")
 
 
@@ -862,7 +841,9 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
              em_nina_dead=f"{t.loc['nina', 'deaths']:,.0f}", em_nino_dead=f"{t.loc['nino', 'deaths']:,.0f}",
              em_ratio=f"{per.loc['nina', 'affected'] / per.loc['nino', 'affected']:.0f}",
              em_ratio_ex=f"{(t.loc['nina', 'affected'] - em.loc[em['DisNo.'].isin(['1999-0547-VEN', '2021-0538-VEN']), 'affected'].sum()) / years['nina'] / per.loc['nino', 'affected']:.1f}",
-             em_n_nino=int((em.phase == "nino").sum()), em_n_nina=int((em.phase == "nina").sum()))
+             em_n_nino=int((em.phase == "nino").sum()), em_n_nina=int((em.phase == "nina").sum()),
+             em_nino_yr=f"{per.loc['nino', 'affected'] / 1000:,.0f},000", em_nina_yr=f"{per.loc['nina', 'affected'] / 1000:,.0f},000",
+             em_neutral_yr=f"{per.loc['neutral', 'affected'] / 1000:,.0f},000")
     return _save(fig, "emdat"), v
 
 
@@ -881,7 +862,7 @@ def fig_desinventar(ph: pd.DataFrame) -> tuple[Path, dict]:
     ax.axvline(1, color="#9a9993", lw=0.7)
     ax.set_yticks(range(len(rows)), [f"{r}" if r != "Venezuela" else "Venezuela (all)" for r in rows])
     for lab in ax.get_yticklabels():
-        if lab.get_text() in ("Western Llanos", "Venezuela (all)"):
+        if lab.get_text() == "Venezuela (all)":
             lab.set_fontweight("bold")
     ax.invert_yaxis()
     ax.set_xlabel("flood and landslide records, relative to an ordinary year for the period (1 = ordinary); median of the years")
@@ -895,6 +876,7 @@ def fig_desinventar(ph: pd.DataFrame) -> tuple[Path, dict]:
     regs = m.drop(index="Venezuela")
     above = regs.index[regs["nina"] > 1]
     v = dict(di_nino_lo=f"{regs['nino'].min():.1f}", di_nino_hi=f"{regs['nino'].max():.1f}",
+             di_fewer_lo=f"{(1 - regs['nino'].max()) * 100:.0f}", di_fewer_hi=f"{(1 - regs['nino'].min()) * 100:.0f}",
              di_nina_above=len(above), di_regions=len(regs), di_mean_nina=f"{mean_nina:.1f}",
              di_llanos_nina=f"{m.loc['Western Llanos', 'nina']:.1f}", di_cn_nina=f"{m.loc['Centre-north', 'nina']:.1f}",
              di_n=int(len(di_wet())))
@@ -1119,7 +1101,7 @@ def era5_agreement(a: dict) -> dict:
 
 def figures(a: dict) -> tuple[dict, dict]:
     ph, f, v = a["ph"], {}, {}
-    f["setup"], x = fig_setup(ph); v |= x
+    v |= oni_now()
     f["maps"] = fig_maps(ph)
     f["states"] = fig_states(a["tot"], ph)
     v |= era5_agreement(a)
