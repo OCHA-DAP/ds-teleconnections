@@ -405,8 +405,8 @@ def composite(tot: dict[str, pd.DataFrame], years: list[int]) -> tuple[pd.DataFr
 MAP_PERIODS = {"Jun–Sep": [6, 7, 8, 9], "Oct–Dec": [10, 11, 12], "Jan–Mar": [13, 14, 15], "Apr–May": [16, 17]}
 
 
-def map_composite(years: list[int], product: str = "chirps_v3") -> dict[str, tuple[xr.DataArray, np.ndarray]]:
-    """Median % anomaly per 0.5° cell for each map period over `years`, and the dry-season cells (under 20 mm a month)."""
+def _map_stacks(product: str = "chirps_v3") -> dict[str, xr.DataArray]:
+    """Total rain per 0.5° cell for each map period, one layer per rain year."""
     da = rain(product)
     t = pd.DatetimeIndex(da.time.values)
     out = {}
@@ -416,11 +416,25 @@ def map_composite(years: list[int], product: str = "chirps_v3") -> dict[str, tup
             d = _dates(y, months)
             if all(x in t for x in d):
                 tot[y] = da.sel(time=d).sum("time", skipna=False)
-        stack = xr.concat(list(tot.values()), pd.Index(list(tot), name="year"))
+        out[name] = xr.concat(list(tot.values()), pd.Index(list(tot), name="year"))
+    return out
+
+
+def map_normal(product: str = "chirps_v3") -> dict[str, xr.DataArray]:
+    """1991–2020 normal per 0.5° cell for each map period, in mm a month."""
+    return {name: stack.sel(year=slice(1991, 2020)).mean("year") / len(MAP_PERIODS[name])
+            for name, stack in _map_stacks(product).items()}
+
+
+def map_composite(years: list[int], product: str = "chirps_v3") -> dict[str, tuple[xr.DataArray, np.ndarray]]:
+    """Median % anomaly per 0.5° cell for each map period over `years`, and the dry-season cells (under 20 mm a month)."""
+    out = {}
+    for name, stack in _map_stacks(product).items():
+        n = len(MAP_PERIODS[name])
         clim = stack.sel(year=slice(1991, 2020)).mean("year")
-        pct = (stack.sel(year=[y for y in years if y in tot]) / clim * 100 - 100).median("year")
-        dry = (clim < 20 * len(months)).values & clim.notnull().values
-        out[name] = (pct.where(clim >= 20 * len(months)), dry)
+        pct = (stack.sel(year=[y for y in years if y in stack.year]) / clim * 100 - 100).median("year")
+        dry = (clim < 20 * n).values & clim.notnull().values
+        out[name] = (pct.where(clim >= 20 * n), dry)
     return out
 
 
@@ -642,11 +656,25 @@ def _map_axes(ax, st):
     ax.set_axis_off()
 
 
+NORMAL_BOUNDS = [0, 20, 50, 100, 150, 200, 300, 450]
+NORMAL_CMAP = mcolors.ListedColormap(plt.get_cmap("YlGnBu")(np.linspace(0.08, 0.95, len(NORMAL_BOUNDS) - 1)))
+NORMAL_NORM = mcolors.BoundaryNorm(NORMAL_BOUNDS, NORMAL_CMAP.N)
+
+
 def fig_maps(ph: pd.DataFrame) -> Path:
+    """Top row: normal rain per period (the seasonality); below: the El Niño and La Niña medians against it."""
     st = states()
     rows = [("El Niño", phase_years(ph, "nino")), ("La Niña", phase_years(ph, "nina"))]
-    fig, axes = plt.subplots(len(rows), len(MAP_PERIODS), figsize=(11, 5.6))
-    for i, (lab, yrs) in enumerate(rows):
+    fig, axes = plt.subplots(len(rows) + 1, len(MAP_PERIODS), figsize=(11, 6.7))
+    for j, (per, da) in enumerate(map_normal().items()):
+        ax = axes[0, j]
+        ax.pcolormesh(da.lon, da.lat, np.where(_clip(da, st.geometry), da.values.clip(max=NORMAL_BOUNDS[-1] - 1), np.nan),
+                      cmap=NORMAL_CMAP, norm=NORMAL_NORM, shading="nearest")
+        _map_axes(ax, st)
+        ax.set_title(per + (" (year 1)" if j < 2 else " (year 2)"), fontsize=9.5)
+    axes[0, 0].text(-0.04, 0.5, "Normal\n1991–2020", transform=axes[0, 0].transAxes, ha="right", va="center",
+                    fontsize=9.5, fontweight="bold")
+    for i, (lab, yrs) in enumerate(rows, start=1):
         comp = map_composite(yrs)
         for j, (per, (da, dry_cells)) in enumerate(comp.items()):
             ax = axes[i, j]
@@ -658,55 +686,26 @@ def fig_maps(ph: pd.DataFrame) -> Path:
                 ax.pcolor(_edges(da.lon.values), _edges(da.lat.values), np.ma.masked_where(dry == 0, dry),
                           cmap=mcolors.ListedColormap(["#ffffff"]), hatch="////", lw=0)
             _map_axes(ax, st)
-            if i == 0:
-                ax.set_title(per + (" (year 1)" if j < 2 else " (year 2)"), fontsize=9.5)
             if j == 0:
                 ax.text(-0.04, 0.5, f"{lab}\n{len(yrs)} years", transform=ax.transAxes, ha="right", va="center",
                         fontsize=9.5, fontweight="bold")
-    cax = fig.add_axes([0.3, 0.1, 0.4, 0.022])
-    cb = fig.colorbar(plt.cm.ScalarMappable(norm=PCT_NORM, cmap=PCT_CMAP), cax=cax, orientation="horizontal")
+    fig.subplots_adjust(left=0.08, right=0.86, top=0.95, bottom=0.07, wspace=0.03, hspace=0.06)
+    top, mid, low = (axes[k, -1].get_position() for k in range(3))
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=NORMAL_NORM, cmap=NORMAL_CMAP), orientation="vertical",
+                      cax=fig.add_axes([0.875, top.y0 + 0.01, 0.013, top.height - 0.02]))
+    cb.set_ticks(NORMAL_BOUNDS[1:-1])
+    cb.ax.tick_params(labelsize=7.5)
+    cb.set_label("rain, mm a month", fontsize=8)
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=PCT_NORM, cmap=PCT_CMAP), orientation="vertical",
+                      cax=fig.add_axes([0.875, low.y0 + 0.01, 0.013, mid.y1 - low.y0 - 0.02]))
     cb.set_ticks(PCT_BOUNDS[1:-1])
-    cb.set_label("rain, % above or below the 1991–2020 normal (median of the years)", fontsize=8)
+    cb.ax.tick_params(labelsize=7.5)
+    cb.set_label("rain, % above or below normal (median of the years)", fontsize=8)
     DRY_PATCH.set_label("dry season (under 20 mm a month)")
-    fig.legend(handles=[DRY_PATCH], loc="lower right",
-               bbox_to_anchor=(0.98, 0.06), fontsize=8)
-    fig.subplots_adjust(left=0.08, right=0.99, top=0.94, bottom=0.2, wspace=0.03, hspace=0.06)
+    fig.legend(handles=[DRY_PATCH], loc="upper right", bbox_to_anchor=(0.99, 0.065), fontsize=8, frameon=False)
     _source(fig, "Year 1 = the year El Niño or La Niña develops (rain years May–April, 1981/82–2025/26; phase from the Sep–Nov ONI). "
-                 "Source: CHIRPS v3 at 0.5°.", y=0.0)
+                 "Source: CHIRPS v3 at 0.5°.", y=0.045)
     return _save(fig, "maps")
-
-
-def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
-    """Normal monthly rain by region over the rain year, with the median of the El Niño and La Niña years on top."""
-    reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
-    months = list(range(5, 17))
-    clim = reg.loc["1991":"2020"].groupby(reg.loc["1991":"2020"].index.month).mean().loc[[(m - 1) % 12 + 1 for m in months]]
-
-    def phase_median(phase: str) -> tuple[pd.DataFrame, int]:
-        yrs = [y for y in phase_years(ph, phase) if all(d in reg.index for d in _dates(y, months))]
-        return pd.DataFrame(np.median([reg.loc[_dates(y, months)].values for y in yrs], axis=0), columns=reg.columns), len(yrs)
-
-    nino, n_nino = phase_median("nino")
-    nina, n_nina = phase_median("nina")
-    fig, axes = plt.subplots(1, len(REGIONS), figsize=(11, 2.7), sharey=True)
-    x = np.arange(len(months))
-    for ax, r in zip(axes, REGIONS):
-        ax.bar(x, clim[r].values, color=NEUTRAL_C, width=0.8)
-        ax.plot(x, nino[r].values, color=NINO_C, lw=1.4, marker="o", ms=2.5)
-        ax.plot(x, nina[r].values, color=NINA_C, lw=1.4, marker="o", ms=2.5)
-        ax.set_title(textwrap.fill(r, 16), fontsize=8.5)
-        ax.set_xticks(x, [MONTH[(m - 1) % 12] for m in months], fontsize=7)
-        ax.tick_params(axis="x", length=0)
-        ax.spines[["top", "right"]].set_visible(False)
-        _grid(ax)
-    axes[0].set_ylabel("rain, mm a month", fontsize=8)
-    fig.legend(handles=[Patch(color=NEUTRAL_C, label="normal (1991–2020)"),
-                        Line2D([], [], color=NINO_C, marker="o", ms=3, label=f"El Niño years (median of {n_nino})"),
-                        Line2D([], [], color=NINA_C, marker="o", ms=3, label=f"La Niña years (median of {n_nina})")],
-               loc="lower center", ncols=3, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
-    fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
-    _source(fig, "Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.", y=-0.09)
-    return _save(fig, "season")
 
 
 def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bool):
@@ -1204,7 +1203,6 @@ def era5_agreement(a: dict) -> dict:
 def figures(a: dict) -> tuple[dict, dict]:
     ph, f, v = a["ph"], {}, {}
     v |= oni_now()
-    f["season"] = fig_season(a["mon"], ph)
     f["maps"] = fig_maps(ph)
     f["states"] = fig_states(a["tot"], ph)
     v |= era5_agreement(a)
