@@ -414,8 +414,10 @@ STATE_ORDER = [p for ps, _ in REGIONS.values() for p in ps]
 # --------------------------------------------------------------------------- #
 # Rain by state and season
 # --------------------------------------------------------------------------- #
-SEASONS = ["MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ", "DJF", "JFM", "FMA", "MAM"]   # from May of the rain year
-SEASON_START = {s: 5 + i for i, s in enumerate(SEASONS)}                                 # 13 = January of Y+1
+# Three-month windows in calendar order. For El Niño and La Niña years a window starting in January–April is taken from
+# the year after the event develops (the end of its rain year), the rest from the year it develops: 13 = January of Y+1.
+SEASONS = ["JFM", "FMA", "MAM", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ", "DJF"]
+SEASON_START = {s: m + 12 if m < 5 else m for s, m in zip(SEASONS, [1, 2, 3, 5, 6, 7, 8, 9, 10, 11, 12])}
 DRY_MM = 60   # a 3-month normal below this is dry season: percentages of so little rain mean little
 
 
@@ -479,7 +481,7 @@ def composite(tot: dict[str, pd.DataFrame], years: list[int]) -> tuple[pd.DataFr
     return pd.DataFrame(med), pd.DataFrame(agree)
 
 
-MAP_PERIODS = {"Jun–Sep": [6, 7, 8, 9], "Oct–Dec": [10, 11, 12], "Jan–Mar": [13, 14, 15], "Apr–May": [16, 17]}
+MAP_PERIODS = {"Jan–Mar": [13, 14, 15], "Apr–May": [16, 17], "Jun–Sep": [6, 7, 8, 9], "Oct–Dec": [10, 11, 12]}  # same rule
 
 
 def _map_stacks(product: str = "chirps_v3") -> dict[str, xr.DataArray]:
@@ -752,8 +754,7 @@ def fig_maps(ph: pd.DataFrame) -> Path:
                       cmap=NORMAL_CMAP, norm=NORMAL_NORM, shading="nearest")
         _map_axes(ax, st)
         mm = MAP_PERIODS[per]
-        ax.set_title(_cap(_span(mm[0], mm[-1])) + (_t(" (year 1)", " (año 1)") if j < 2 else _t(" (year 2)", " (año 2)")),
-                     fontsize=9.5)
+        ax.set_title(_cap(_span(mm[0], mm[-1])), fontsize=9.5)
     axes[0, 0].text(-0.04, 0.5, "Normal\n1991–2020", transform=axes[0, 0].transAxes, ha="right", va="center",
                     fontsize=9.5, fontweight="bold")
     for i, (lab, yrs) in enumerate(rows, start=1):
@@ -786,10 +787,11 @@ def fig_maps(ph: pd.DataFrame) -> Path:
                     "lluvia, % por encima o por debajo de lo normal (mediana de los años)"), fontsize=8)
     DRY_PATCH.set_label(_t("dry season (under 20 mm a month)", "estación seca (menos de 20 mm al mes)"))
     fig.legend(handles=[DRY_PATCH], loc="upper right", bbox_to_anchor=(0.99, 0.065), fontsize=8, frameon=False)
-    _source(fig, _t("Year 1 = the year El Niño or La Niña develops (rain years May–April, 1981/82–2025/26; phase from the Sep–Nov "
-                    "ONI). Source: CHIRPS v3 at 0.5°.",
-                    "Año 1 = el año en que se desarrolla El Niño o La Niña (años hidrológicos de mayo a abril, 1981/82–2025/26; fase "
-                    "según el ONI de septiembre–noviembre). Fuente: CHIRPS v3 a 0,5°."), y=0.045, width=140)
+    _source(fig, _t("El Niño and La Niña rows: Jan–Mar and Apr–May from the year after the event develops, Jun–Sep and Oct–Dec "
+                    "from the year it develops (phase from the Sep–Nov ONI, 1981–2025). Source: CHIRPS v3 at 0.5°.",
+                    "Filas de El Niño y La Niña: ene–mar y abr–may del año siguiente al desarrollo del evento, jun–sep y oct–dic del "
+                    "año en que se desarrolla (fase según el ONI de septiembre–noviembre, 1981–2025). Fuente: CHIRPS v3 a 0,5°."),
+            y=0.045, width=140)
     return _save(fig, "maps")
 
 
@@ -810,7 +812,7 @@ def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bo
     for r, (ps, _) in REGIONS.items():
         y += len(ps)
         ax.axhline(y, color=SURFACE, lw=2.2)
-    ax.axvline(5.5, color=NOW_C, lw=0.8, ls=(0, (2, 2)))
+    ax.axvline(2.5, color=NOW_C, lw=0.8, ls=(0, (2, 2)))
     ax.set_title(title, fontsize=10)
     for sp in ax.spines.values():
         sp.set_visible(False)
@@ -829,13 +831,14 @@ def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
         y += len(ps)
     fig.subplots_adjust(wspace=0.04, right=0.84)
     _source(fig, _t("Each cell: median rain over the El Niño (or La Niña) years, % above or below the state's 1991–2020 normal for "
-                    "those three months. Left of the dashed line: the rains of the year El Niño or La Niña develops; right: the "
-                    "dry season and the next spring. Hatched: dry season (normal under 60 mm in three months). Rain years May–April, "
+                    "those three months. Left of the dashed line: windows starting January–March, from the year after El Niño or "
+                    "La Niña develops; right: windows starting May–December, from the year it develops. Hatched: dry season (normal under 60 mm in three months). Rain years May–April, "
                     "1981/82–2025/26. Distrito Capital, La Guaira and Nueva Esparta rest on one or two partial 0.5° cells. Source: "
                     "CHIRPS v3, state means.",
                     "Cada celda: mediana de la lluvia en los años de El Niño (o de La Niña), en % por encima o por debajo de la normal "
-                    "1991–2020 del estado para esos tres meses. A la izquierda de la línea discontinua: las lluvias del año en que se "
-                    "desarrolla El Niño o La Niña; a la derecha: la estación seca y el inicio de las lluvias siguientes. Rayado: "
+                    "1991–2020 del estado para esos tres meses. A la izquierda de la línea discontinua: los períodos que empiezan entre "
+                    "enero y marzo, del año siguiente al desarrollo de El Niño o La Niña; a la derecha: los que empiezan entre mayo y "
+                    "diciembre, del año en que se desarrolla. Rayado: "
                     "estación seca (normal inferior a 60 mm en tres meses). Años hidrológicos de mayo a abril, 1981/82–2025/26. "
                     "Distrito Capital, La Guaira y Nueva Esparta se basan en una o dos celdas parciales de 0,5°. Fuente: CHIRPS v3, "
                     "medias por estado."))
@@ -843,10 +846,10 @@ def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
 
 
 def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
-    """Normal monthly rain by region over the rain year, with the median of the El Niño and La Niña years and this year
-    so far on top."""
+    """Normal monthly rain by region, January to December, with the median of the El Niño and La Niña years (January–April
+    from the year after the event develops) and this year so far on top."""
     reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
-    months = list(range(5, 17))
+    months = [13, 14, 15, 16] + list(range(5, 13))
     clim = reg.loc["1991":"2020"].groupby(reg.loc["1991":"2020"].index.month).mean().loc[[(m - 1) % 12 + 1 for m in months]]
 
     def phase_median(phase: str) -> tuple[pd.DataFrame, int]:
@@ -855,7 +858,7 @@ def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
 
     nino, n_nino = phase_median("nino")
     nina, n_nina = phase_median("nina")
-    cur = reg.reindex(_dates(NOW, months))
+    cur = reg.reindex([pd.Timestamp(NOW, m, 1) for m in range(1, 13)])
     cur_last = cur.dropna(how="all").index.max()
     fig, axes = plt.subplots(1, len(REGIONS), figsize=(11, 2.7), sharey=True)
     x = np.arange(len(months))
@@ -879,9 +882,10 @@ def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
                                label=_t(f"{NOW} (to {cur_last:%B})", f"{NOW} (hasta {MONTH_ES[cur_last.month - 1]})"))],
                loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
     fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
-    _source(fig, _t("Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.",
-                    "Año hidrológico de mayo a abril, 1981/82–2025/26. Fuente: CHIRPS v3, medias por estado promediadas en cada "
-                    "región."), y=-0.09)
+    _source(fig, _t("El Niño and La Niña: January–April from the year after the event develops, May–December from the year it "
+                    "develops; events 1981–2025. Source: CHIRPS v3, state means averaged over each region.",
+                    "El Niño y La Niña: enero–abril del año siguiente al desarrollo del evento, mayo–diciembre del año en que se "
+                    "desarrolla; eventos de 1981–2025. Fuente: CHIRPS v3, medias por estado promediadas en cada región."), y=-0.09)
     return _save(fig, "season")
 
 
@@ -1328,63 +1332,93 @@ def fig_yields(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     return _save(fig, "yields"), v
 
 
-FC_BOUNDS = [0, 10, 33.4, 66.6, 90, 100.01]
-FC_CMAP = mcolors.ListedColormap([DIV[0], DIV[2], "#ebeae6", DIV[4], DIV[6]])
-FC_NORM = mcolors.BoundaryNorm(FC_BOUNDS, FC_CMAP.N)
+# The team's seas5-skill viewer (ds-seas5-skill docs/app.js classify() and STYLE, src/season.py): same thresholds,
+# precedence (outside the rainy season, then low skill, then the forecast class) and colours.
+SEAS5_T = {"sev_rp": 3, "vsev_rp": 10, "r_mod": 0.3, "r_high": 0.5, "rainy_share": 0.15}
+SEAS5_FILL = {"vsev_dry": "#7f5619", "sev_dry": "#dda555", "none": "#e2e8e8", "sev_wet": "#74a1e8", "vsev_wet": "#134ead",
+              "off_season": "#b1c1c2", "low_skill": "#ffffff"}
+SEAS5_HATCH_WHITE, SEAS5_HATCH_GREY, SEAS5_CROSS = (1, 1, 1, 0.7), "#9db1b3", "#b1c1c2"
 
 
-def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
+def seas5_class(pct: float, r: float, rainy: bool) -> tuple[str, str]:
+    """(class, skill) for one forecast cell, as the viewer's classify()."""
+    if not rainy:
+        return "off_season", ""
+    if r < SEAS5_T["r_mod"]:
+        return "low_skill", ""
+    v, sev = 100 / SEAS5_T["vsev_rp"], 100 / SEAS5_T["sev_rp"]
+    cls = "vsev" if pct <= v or pct >= 100 - v else "sev" if pct <= sev or pct >= 100 - sev else "none"
+    if cls != "none":
+        cls += "_dry" if pct < 50 else "_wet"
+    return cls, "high" if r >= SEAS5_T["r_high"] else "mod"
+
+
+def seas5_rainy() -> pd.DataFrame:
+    """In season per state × window, as the viewer's src/season.py: the three months carry at least 15% of the year's rain
+    in the full-record ERA5 monthly climatology."""
+    e = era5_adm1()
+    mc = e.groupby(["pcode", e.valid_date.dt.month])["mean"].mean().unstack()
+    return pd.DataFrame({code: 3 * mc[months].mean(axis=1) / mc.sum(axis=1) >= SEAS5_T["rainy_share"]
+                         for code, months in FC_SEASONS.items()})
+
+
+def fig_forecast() -> tuple[Path, dict]:
     pr, sk, year, raw = seas5_rank()
     pr, sk = pr.reindex(STATE_ORDER), sk.reindex(STATE_ORDER)
-    clim = {}
-    for code, months in FC_SEASONS.items():
-        mm = [m if m >= 10 else m + 12 for m in months]
-        clim[code] = period_totals(mon_e, mm).loc[1991:2020].mean()
-    clim = pd.DataFrame(clim).reindex(STATE_ORDER)
-    dry = clim < DRY_MM
+    rainy = seas5_rainy().reindex(STATE_ORDER)
     st = states()
-    fig, axes = plt.subplots(1, len(FC_SEASONS), figsize=(13, 3.6))
+    fig, axes = plt.subplots(1, len(FC_SEASONS), figsize=(13, 3.45))
     for ax, code in zip(axes, FC_SEASONS):
-        g = st.merge(pr[code].rename("p"), left_on="pcode", right_index=True)
-        g["dry"] = g.pcode.map(dry[code])
-        g["weak"] = g.pcode.map(sk[code] < 0.3) & ~g["dry"]
-        g[~g["dry"]].plot(ax=ax, column="p", cmap=FC_CMAP, norm=FC_NORM, edgecolor="#ffffff", lw=0.5)
-        if g["dry"].any():
-            g[g["dry"]].plot(ax=ax, facecolor="#ffffff", hatch="////", edgecolor="#c9c8c2", lw=0.5)
-        if g["weak"].any():
-            g[g["weak"]].plot(ax=ax, facecolor="none", hatch="....", edgecolor="#52514e", lw=0)
-        st.boundary.plot(ax=ax, color="#ffffff", lw=0.5)
+        cls = {pc: seas5_class(pr.loc[pc, code], sk.loc[pc, code], bool(rainy.loc[pc, code])) for pc in STATE_ORDER}
+        g = st.assign(cls=st.pcode.map(lambda pc: cls[pc][0]), skill=st.pcode.map(lambda pc: cls[pc][1]))
+        g.plot(ax=ax, color=g.cls.map(SEAS5_FILL), edgecolor="none", lw=0)
+        for mask, colour, hatch in ((g.cls == "low_skill", SEAS5_CROSS, "xxx"),
+                                    ((g.skill == "mod") & (g.cls != "none"), SEAS5_HATCH_WHITE, "////"),
+                                    ((g.skill == "mod") & (g.cls == "none"), SEAS5_HATCH_GREY, "////")):
+            if mask.any():
+                g[mask].plot(ax=ax, facecolor="none", edgecolor=colour, hatch=hatch, lw=0)
+        st.boundary.plot(ax=ax, color="#ffffff", lw=0.6)
         ax.set_title(_cap(_span(FC_SEASONS[code][0], FC_SEASONS[code][-1])), fontsize=9.5)
         ax.set_xlim(-73.6, -59.6)
         ax.set_ylim(0.6, 12.4)
         ax.set_aspect("equal")
         ax.set_axis_off()
-    h = [Patch(color=c, label=l) for c, l in zip([DIV[0], DIV[2], "#ebeae6", DIV[4], DIV[6]],
-                                                 [_t("driest tenth", "decil más seco"), _t("drier third", "tercio más seco"),
-                                                  _t("middle third", "tercio central"), _t("wetter third", "tercio más húmedo"),
-                                                  _t("wettest tenth", "decil más húmedo")])]
-    h += [Patch(facecolor="#ffffff", hatch="....", edgecolor="#52514e", lw=0, label=_t("weak skill", "poca destreza")), DRY_PATCH]
-    DRY_PATCH.set_label(_t("dry season", "estación seca"))
-    fig.legend(handles=h, loc="lower center", ncols=7, fontsize=7.5, bbox_to_anchor=(0.5, 0.0))
-    fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.12, wspace=0.03)
-    _source(fig, _t(f"Where the {year} October forecast ranks among the 45 October forecasts for 1981–2025, by state: ensemble "
-                    "mean, detrended. Dotted: weak skill (hindcast correlation with ERA5 under 0.3). Dry season: normal under 60 mm in "
-                    "three months. Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.",
-                    f"Posición del pronóstico de octubre de {year} entre los 45 pronósticos de octubre de 1981–2025, por estado: media "
-                    "del conjunto, sin tendencia. Punteado: poca destreza (correlación de los pronósticos retrospectivos con ERA5 "
-                    "inferior a 0,3). Estación seca: normal inferior a 60 mm en tres meses. Fuente: ECMWF SEAS5 y ERA5, estadísticas "
-                    "admin-1 del equipo."), y=0.0)
-    wet_season = ~dry
-    v = dict(fc_year=year, fc_driest=int(((pr[["OND", "NDJ", "DJF"]] < 10) & wet_season[["OND", "NDJ", "DJF"]]).sum().sum()),
-             fc_cells=int(wet_season[["OND", "NDJ", "DJF"]].sum().sum()),
+    fc = [Patch(facecolor=SEAS5_FILL[k], label=lab) for k, lab in (
+        ("vsev_dry", _t("Strongly below normal", "Muy por debajo de lo normal")), ("sev_dry", _t("Below normal", "Por debajo de lo normal")),
+        ("none", _t("Roughly normal", "Cerca de lo normal")), ("sev_wet", _t("Above normal", "Por encima de lo normal")),
+        ("vsev_wet", _t("Strongly above normal", "Muy por encima de lo normal")),
+        ("off_season", _t("Outside rainy season", "Fuera de la temporada de lluvias")))]
+    skill = [Patch(facecolor="#ffffff", edgecolor="#c4d0d1", label=_t("High — solid", "Alta — sólido")),
+             Patch(facecolor="#ffffff", edgecolor=SEAS5_HATCH_GREY, hatch="////", label=_t("Moderate — hatched", "Moderada — rayado")),
+             Patch(facecolor="#ffffff", edgecolor=SEAS5_CROSS, hatch="xxx", label=_t("Low — not shown", "Baja — no se muestra"))]
+    fig.legend(handles=fc, loc="lower center", ncols=6, fontsize=7.5, bbox_to_anchor=(0.5, 0.12), title=_t("Forecast", "Pronóstico"),
+               title_fontsize=8)
+    fig.legend(handles=skill, loc="lower center", ncols=3, fontsize=7.5, bbox_to_anchor=(0.5, -0.02), title=_t("Skill", "Destreza"),
+               title_fontsize=8)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.91, bottom=0.3, wspace=0.03)
+    _source(fig, _t(f"Where the {year} October forecast ranks among the 45 October forecasts for 1981–2025, by state (ensemble "
+                    "mean, detrended), classed as in the team's seas5-skill viewer: strongly below or above normal = the driest or "
+                    "wettest 10% of forecasts, below or above = the driest or wettest third. Skill is the hindcast correlation with "
+                    "ERA5: high from 0.5, moderate 0.3–0.5, low under 0.3. Outside rainy season: the three months bring less than 15% "
+                    "of the year's rain (ERA5). Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.",
+                    f"Posición del pronóstico de octubre de {year} entre los 45 pronósticos de octubre de 1981–2025, por estado (media "
+                    "del conjunto, sin tendencia), clasificada como en el visor seas5-skill del equipo: muy por debajo o por encima de "
+                    "lo normal = el 10% de pronósticos más seco o más húmedo; por debajo o por encima = el tercio más seco o más "
+                    "húmedo. La destreza es la correlación de los pronósticos retrospectivos con ERA5: alta desde 0,5, moderada "
+                    "0,3–0,5, baja por debajo de 0,3. Fuera de la temporada de lluvias: los tres meses aportan menos del 15% de la "
+                    "lluvia del año (ERA5). Fuente: ECMWF SEAS5 y ERA5, estadísticas admin-1 del equipo."), y=-0.06)
+    in_season = rainy[["OND", "NDJ", "DJF"]]
+    v = dict(fc_year=year, fc_driest=int(((pr[["OND", "NDJ", "DJF"]] <= 100 / SEAS5_T["vsev_rp"]) & in_season).sum().sum()),
+             fc_cells=int(in_season.sum().sum()),
              fc_r_lo=f"{sk[['OND', 'NDJ', 'DJF']].min().min():.1f}", fc_r_hi=f"{sk[['OND', 'NDJ', 'DJF']].max().max():.1f}",
              fc_raw_driest=int(raw.reindex(STATE_ORDER)["NDJ"].sum()), fc_states=len(STATE_ORDER))
     west = [p for r in ("North-west", "Western Llanos", "Centre-north") for p in REGIONS[r][0]]
-    if (v["fc_driest"] < 0.8 * v["fc_cells"] or sk[["OND", "NDJ", "DJF"]].min().min() < 0.3
-            or pr.loc[west, "FMA"].median() < 66 or sk.loc[west, "FMA"].median() >= 0.3):
-        raise ValueError("the SEAS5 pattern changed (Oct–Feb dry and skilful, Feb–Apr wet with little skill in the west and "
+    if (v["fc_driest"] < v["fc_cells"] or sk[["OND", "NDJ", "DJF"]].min().min() < SEAS5_T["r_mod"]
+            or pr.loc[west, "FMA"].median() < 66 or sk.loc[west, "FMA"].median() >= SEAS5_T["r_mod"]):
+        raise ValueError("the SEAS5 pattern changed (Oct–Feb strongly below normal in every rainy-season state-season and skilful, Feb–Apr wet with little skill in the west and "
                          "centre): reword the forecast headline and note")
     return _save(fig, "forecast"), v
+
 
 # --------------------------------------------------------------------------- #
 # Page
@@ -1440,7 +1474,7 @@ def figures(a: dict) -> tuple[dict, dict]:
     v |= era5_agreement(a)
     f["now"], x = fig_now(a["mon"], a["mon_e"], ph); v |= x
     f["dry"], x = fig_dry(a["mon"], ph); v |= x
-    f["forecast"], x = fig_forecast(a["mon_e"]); v |= x
+    f["forecast"], x = fig_forecast(); v |= x
     cerf_check()
     f["emdat"], x = fig_emdat(ph); v |= x
     f["desinventar"], x = fig_desinventar(ph); v |= x
