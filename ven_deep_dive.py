@@ -844,7 +844,7 @@ EM_LABELS = {  # DisNo.: (label, x offset, y offset in points)
     "2005-0073-VEN": ("Feb 2005: 76 dead", 6, 0), "2010-0616-VEN": ("Nov–Dec 2010", -8, 4), "1987-0156-VEN": ("Sep 1987, Aragua", 6, 0),
     "2002-0445-VEN": ("Jul 2002, Llanos", 0, 10), "1993-0059-VEN": ("Aug 1993, storm Bret", 6, 0)}
 CERF_EMDAT = {  # CERF flood allocation: the EM-DAT event it responded to, and its label
-    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "May 2025, Apure and 9 more states")}
+    "CERF-VEN-25-RR-1490": ("2025-0541-VEN", "the May 2025 floods in Apure and 9 more states")}
 
 
 def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
@@ -861,13 +861,16 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
             ax.annotate(lab, (r.date, y), xytext=(dx, dy), textcoords="offset points", fontsize=7, va="center",
                         ha="right" if dx < 0 else "center" if dx == 0 else "left")
     c = cerf()
+    cerf_txt = []
     for _, a in c[c.emergency_type.isin(["Flood", "Storm"])].iterrows():
         dis, lab = CERF_EMDAT[a.application_code]
         r = em[em["DisNo."] == dis].iloc[0]
+        amt = f"US${a.amount_approved / 1e6:.0f}"
         ax.scatter(r.date, max(r.affected, 50), s=130, facecolor="none", edgecolor=NOW_C, lw=1.1, zorder=4)
-        ax.annotate(f"{lab}:\nCERF US${a.amount_approved / 1e6:.0f} million ({pd.Timestamp(a.erc_endorsement_date):%b %Y})",
-                    (r.date, max(r.affected, 50)), xytext=(pd.Timestamp(f"{r.date.year + 1}-12-01"), 2.2e5), textcoords="data",
-                    fontsize=7, ha="right", va="center", arrowprops=dict(arrowstyle="-", color=NOW_C, lw=0.6))
+        ax.annotate(f"CERF\n{amt}M", (r.date, max(r.affected, 50)), xytext=(9, 0), textcoords="offset points", fontsize=7,
+                    ha="left", va="center")
+        ax.set_xlim(right=pd.Timestamp(f"{r.date.year + 4}-01-01"))
+        cerf_txt.append(f"{lab}, for which CERF allocated {amt} million in {pd.Timestamp(a.erc_endorsement_date):%B %Y}")
     ax.set_yscale("log")
     ax.set_ylim(30, 4e6)
     ax.set_ylabel("people affected (EM-DAT)")
@@ -884,8 +887,8 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
     bx.set_xlabel("people affected per year\n(thousands)")
     bx.set_xlim(0, per["affected"].max() / 1000 * 1.45)
     _source(fig, "Floods, wet landslides and storms reported to EM-DAT since 1980, by the rain year (May–April) they fall in. Marker size: deaths; "
-                 "triangles: no affected figure; ring: CERF allocation. Totals per year of each phase. Sources: EM-DAT, CRED/UCLouvain "
-                 "(team snapshot); CERF.")
+                 f"triangles: no affected figure. Ring: {'; '.join(cerf_txt)}. Totals per year of each phase. Sources: EM-DAT, "
+                 "CRED/UCLouvain (team snapshot); CERF.")
     v = dict(em_nina_aff=f"{t.loc['nina', 'affected'] / 1e6:.1f}", em_nino_aff=f"{t.loc['nino', 'affected'] / 1e6:.1f}",
              em_nina_dead=f"{t.loc['nina', 'deaths']:,.0f}", em_nino_dead=f"{t.loc['nino', 'deaths']:,.0f}",
              em_ratio=f"{per.loc['nina', 'affected'] / per.loc['nino', 'affected']:.0f}",
