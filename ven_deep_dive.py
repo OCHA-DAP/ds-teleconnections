@@ -676,6 +676,39 @@ def fig_maps(ph: pd.DataFrame) -> Path:
     return _save(fig, "maps")
 
 
+def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
+    """Normal monthly rain by region over the rain year, with the median of the El Niño and La Niña years on top."""
+    reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
+    months = list(range(5, 17))
+    clim = reg.loc["1991":"2020"].groupby(reg.loc["1991":"2020"].index.month).mean().loc[[(m - 1) % 12 + 1 for m in months]]
+
+    def phase_median(phase: str) -> tuple[pd.DataFrame, int]:
+        yrs = [y for y in phase_years(ph, phase) if all(d in reg.index for d in _dates(y, months))]
+        return pd.DataFrame(np.median([reg.loc[_dates(y, months)].values for y in yrs], axis=0), columns=reg.columns), len(yrs)
+
+    nino, n_nino = phase_median("nino")
+    nina, n_nina = phase_median("nina")
+    fig, axes = plt.subplots(1, len(REGIONS), figsize=(11, 2.7), sharey=True)
+    x = np.arange(len(months))
+    for ax, r in zip(axes, REGIONS):
+        ax.bar(x, clim[r].values, color=NEUTRAL_C, width=0.8)
+        ax.plot(x, nino[r].values, color=NINO_C, lw=1.4, marker="o", ms=2.5)
+        ax.plot(x, nina[r].values, color=NINA_C, lw=1.4, marker="o", ms=2.5)
+        ax.set_title(textwrap.fill(r, 16), fontsize=8.5)
+        ax.set_xticks(x, [MONTH[(m - 1) % 12] for m in months], fontsize=7)
+        ax.tick_params(axis="x", length=0)
+        ax.spines[["top", "right"]].set_visible(False)
+        _grid(ax)
+    axes[0].set_ylabel("rain, mm a month", fontsize=8)
+    fig.legend(handles=[Patch(color=NEUTRAL_C, label="normal (1991–2020)"),
+                        Line2D([], [], color=NINO_C, marker="o", ms=3, label=f"El Niño years (median of {n_nino})"),
+                        Line2D([], [], color=NINA_C, marker="o", ms=3, label=f"La Niña years (median of {n_nina})")],
+               loc="lower center", ncols=3, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
+    _source(fig, "Rain year May–April, 1981/82–2025/26. Source: CHIRPS v3, state means averaged over each region.", y=-0.09)
+    return _save(fig, "season")
+
+
 def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bool):
     m = med.reindex(STATE_ORDER)
     ax.imshow(m.values, cmap=PCT_CMAP, norm=PCT_NORM, aspect="auto")
@@ -1110,6 +1143,7 @@ def era5_agreement(a: dict) -> dict:
 def figures(a: dict) -> tuple[dict, dict]:
     ph, f, v = a["ph"], {}, {}
     v |= oni_now()
+    f["season"] = fig_season(a["mon"], ph)
     f["maps"] = fig_maps(ph)
     f["states"] = fig_states(a["tot"], ph)
     v |= era5_agreement(a)
@@ -1143,7 +1177,9 @@ def render(spec: dict, figs: dict, v: dict) -> str:
         out.append(f'<section id="{sec["id"]}"><h3>{sec["head"].format(**v)}</h3>')
         if sec.get("note"):
             out.append(f'<p class="note">{sec["note"].format(**v)}</p>')
-        out.append(f'<figure><img src="{_img(figs[sec["fig"]])}" alt="{html.escape(sec["head"].format(**v))}"></figure></section>')
+        for fig in [sec["fig"]] if isinstance(sec["fig"], str) else sec["fig"]:
+            out.append(f'<figure><img src="{_img(figs[fig])}" alt="{html.escape(sec["head"].format(**v))}"></figure>')
+        out.append("</section>")
     notes = "".join(f"<li>{n.format(**v)}</li>" for n in spec["notes"])
     out.append(f'<details><summary>About the data</summary><ul>{notes}</ul></details>')
     out.append(f'<p class="small">OCHA Centre for Humanitarian Data · built {pd.Timestamp.now():%Y-%m-%d}</p>')

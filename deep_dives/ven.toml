@@ -39,7 +39,7 @@ text = "flood and landslide reports in a typical El Niño year than in an ordina
 [[sections]]
 part = "Rain"
 id = "maps"
-fig = "maps"
+fig = ["season", "maps"]
 head = "El Niño: less rain almost everywhere from October to March, and somewhat less in the north from June to September"
 note = "The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño, a minor effect; from June to January it is normal or drier there too."
 
