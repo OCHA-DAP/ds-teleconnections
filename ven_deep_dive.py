@@ -481,7 +481,9 @@ def composite(tot: dict[str, pd.DataFrame], years: list[int]) -> tuple[pd.DataFr
     return pd.DataFrame(med), pd.DataFrame(agree)
 
 
-MAP_PERIODS = {"Jan–Mar": [13, 14, 15], "Apr–May": [16, 17], "Jun–Sep": [6, 7, 8, 9], "Oct–Dec": [10, 11, 12]}  # same rule
+# Standard three-month seasons, as FEWS NET uses for Venezuela (rains about May–November, dry December–April). Same rule:
+# Dec–Feb starts in December, so it is the year the event develops running into the next; Mar–May is the year after.
+MAP_PERIODS = {"Dec–Feb": [12, 13, 14], "Mar–May": [15, 16, 17], "Jun–Aug": [6, 7, 8], "Sep–Nov": [9, 10, 11]}
 
 
 def _map_stacks(product: str = "chirps_v3") -> dict[str, xr.DataArray]:
@@ -787,11 +789,11 @@ def fig_maps(ph: pd.DataFrame) -> Path:
                     "lluvia, % por encima o por debajo de lo normal (mediana de los años)"), fontsize=8)
     DRY_PATCH.set_label(_t("dry season (under 20 mm a month)", "estación seca (menos de 20 mm al mes)"))
     fig.legend(handles=[DRY_PATCH], loc="upper right", bbox_to_anchor=(0.99, 0.065), fontsize=8, frameon=False)
-    _source(fig, _t("El Niño and La Niña rows: Jan–Mar and Apr–May from the year after the event develops, Jun–Sep and Oct–Dec "
-                    "from the year it develops (phase from the Sep–Nov ONI, 1981–2025). Source: CHIRPS v3 at 0.5°.",
-                    "Filas de El Niño y La Niña: ene–mar y abr–may del año siguiente al desarrollo del evento, jun–sep y oct–dic del "
-                    "año en que se desarrolla (fase según el ONI de septiembre–noviembre, 1981–2025). Fuente: CHIRPS v3 a 0,5°."),
-            y=0.045, width=140)
+    _source(fig, _t("El Niño and La Niña rows: Jun–Aug, Sep–Nov and Dec–Feb from the year the event develops (Dec–Feb runs into "
+                    "the next year), Mar–May from the year after (phase from the Sep–Nov ONI, 1981–2025). Source: CHIRPS v3 at 0.5°.",
+                    "Filas de El Niño y La Niña: jun–ago, sep–nov y dic–feb del año en que se desarrolla el evento (dic–feb se extiende "
+                    "al año siguiente), mar–may del año siguiente (fase según el ONI de septiembre–noviembre, 1981–2025). Fuente: "
+                    "CHIRPS v3 a 0,5°."), y=0.045, width=140)
     return _save(fig, "maps")
 
 
@@ -816,6 +818,27 @@ def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bo
     ax.set_title(title, fontsize=10)
     for sp in ax.spines.values():
         sp.set_visible(False)
+
+
+def season_contrast(mon: pd.DataFrame, ph: pd.DataFrame) -> dict:
+    """The maps' headline, by region: El Niño's median change in the December–February dry season and in the June–November
+    rains (% and mm against 1991–2020), and that March–May shows no consistent change."""
+    nino = phase_years(ph, "nino")
+    reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
+    out = {}
+    for k, months in (("djf", [12, 13, 14]), ("jn", list(range(6, 12))), ("mam", [15, 16, 17])):
+        t = period_totals(reg, months)
+        clim, sel = t.loc[1991:2020].mean(), t.loc[[y for y in nino if y in t.index]]
+        out[k] = ((sel / clim - 1) * 100).median(), (sel - clim).median()
+    (djf, djf_mm), (jn, jn_mm), (mam, _) = out["djf"], out["jn"], out["mam"]
+    most = {"North-east coast", "Andes", "Central and eastern Llanos"}
+    if ((djf > -20).any() or (jn > 0).any() or jn.min() < -15 or mam.abs().max() > 10
+            or set(jn.nsmallest(3).index) != most or set(jn_mm.nsmallest(3).index) != most):
+        raise ValueError(f"the season contrast changed (DJF {djf.round().tolist()}, Jun–Nov {jn.round().tolist()}, "
+                         f"MAM {mam.round().tolist()}): reword the rain-maps headline and note")
+    f = lambda x: f"{x:.0f}"  # noqa: E731
+    return dict(djf_lo=f(-djf.max()), djf_hi=f(-djf.min()), djf_mm_lo=f(-djf_mm.max()), djf_mm_hi=f(-djf_mm.min()),
+                jn_lo=f(-jn.max()), jn_hi=f(-jn.min()), jn_mm_lo=f(-jn_mm.max()), jn_mm_hi=f(-jn_mm.min()))
 
 
 def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
@@ -951,7 +974,7 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
 
 
 def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
-    months = [11, 12, 13, 14, 15]
+    months = [12, 13, 14, 15]   # December–March: the dry season (rains about May–November)
     pct = _region_pct(mon, months).loc[1981:Y1]
     strong = [y for y in ph.index[ph.strong] if Y0 <= y <= Y1]
     if len(strong) != 4:
@@ -959,8 +982,9 @@ def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     fig, ax = plt.subplots(figsize=(8.6, 5.2))
     _strip(ax, pct, ph, now=False)
     _phase_legend(ax, ph, loc="lower left", ncols=4, bbox_to_anchor=(0, 1.0))
-    _source(fig, _t(f"November–March rain, rain years 1981/82–{year_label(Y1)}, one dot per year; strong El Niño: ",
-                    f"Lluvia de noviembre a marzo, años hidrológicos 1981/82–{year_label(Y1)}, un punto por año; El Niño fuerte: ")
+    _source(fig, _t(f"Dry-season (December–March) rain, rain years 1981/82–{year_label(Y1)}, one dot per year; strong El Niño: ",
+                    f"Lluvia de la estación seca (diciembre–marzo), años hidrológicos 1981/82–{year_label(Y1)}, un punto por año; "
+                    "El Niño fuerte: ")
             + ", ".join(year_label(y) for y in strong) + _t(". Source: CHIRPS v3, state means.", ". Fuente: CHIRPS v3, medias por estado."))
     s = pct.loc[strong]
     nino = pct.loc[phase_years(ph, "nino")]
@@ -1478,6 +1502,7 @@ def figures(a: dict) -> tuple[dict, dict]:
     ph, f, v = a["ph"], {}, {}
     v |= oni_now()
     f["maps"] = fig_maps(ph)
+    v |= season_contrast(a["mon"], ph)
     f["states"] = fig_states(a["tot"], ph)
     f["season"] = fig_season(a["mon"], ph)
     v |= era5_agreement(a)

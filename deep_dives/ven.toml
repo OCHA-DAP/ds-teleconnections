@@ -19,7 +19,7 @@ evidence = "moderate"
 
 [assessment]
 evidence = "moderate"
-one_line = "A strong El Niño means a drier October–March almost everywhere and fewer flood and landslide reports. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
+one_line = "A strong El Niño means a drier dry season everywhere, a slightly weaker rainy season and fewer flood and landslide reports. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
 
 [page]
 title = "Venezuela: El Niño 2026/27"
@@ -31,7 +31,7 @@ big = "{now_lo}–{now_hi}%"
 text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
 [[tiles]]
 big = "−{strong_med}%"
-text = "median November–March rain in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
+text = "median dry-season (December–March) rain in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
 [[tiles]]
 big = "{di_fewer_lo}–{di_fewer_hi}% fewer"
 text = "flood and landslide reports in a typical El Niño year than in an ordinary year, in every region (DesInventar, 1975–2013)"
@@ -40,13 +40,13 @@ text = "flood and landslide reports in a typical El Niño year than in an ordina
 part = "Rain"
 id = "maps"
 fig = "maps"
-head = "El Niño: less rain almost everywhere from October to March, and somewhat less in the north from June to September"
-note = "The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño, a minor effect; from June to January it is normal or drier there too."
+head = "El Niño: the dry season (December–February) is {djf_lo}–{djf_hi}% drier in every region; the rainy season (June–November) loses much less, {jn_lo}–{jn_hi}%"
+note = "In millimetres that is {djf_mm_lo}–{djf_mm_hi} mm less over December–February and {jn_mm_lo}–{jn_mm_hi} mm less over June–November, the most on the north-east coast, in the Andes and in the central and eastern Llanos. March–May shows no consistent change. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño, a minor effect; from June to January it is normal or drier there too."
 
 [[sections]]
 id = "states"
 fig = ["states", "season"]
-head = "By state: the largest shortfalls come from November to March, in the north-west, the Andes, the east and Guayana"
+head = "By state: the largest percentage shortfalls come in the dry season, in the north-west, the Andes, the east and Guayana"
 
 [[sections]]
 id = "now"
@@ -57,7 +57,7 @@ note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which 
 [[sections]]
 id = "dry"
 fig = "dry"
-head = "November–March: in the four strong El Niño years, every region had less rain than normal, by a median of {strong_med}%"
+head = "Dry season (December–March): in the four strong El Niño years, every region had less rain than normal, by a median of {strong_med}%"
 note = "In each region, {dry_third_min}–{dry_third_max} of the {nino_n} El Niño years fell in the driest third (5 would be chance), the fewest in the {dry_third_fewest}."
 
 [[sections]]
