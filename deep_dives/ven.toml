@@ -5,9 +5,9 @@ iso3 = "VEN"
 name = "Venezuela"
 builder = "ven"
 notes = [
-  "<b>Rain years and phases.</b> A rain year runs from May to April: the May–November rains, then the December–April dry season. It is classed by the Sep–Nov ONI of its first year (NOAA CPC): El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C, La Niña ≤ −0.5 °C. Since 1981: {n_nino} El Niño years ({strong_years} strong) and {n_nina} La Niña years. “Year 1” is the year El Niño develops; “year 2” is the next one.",
+  "<b>Rain years and phases.</b> A rain year runs from May to April: the May–November rains, then the December–April dry season. It is classed by the Sep–Nov ONI of its first year (NOAA CPC): El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C, La Niña ≤ −0.5 °C. Since 1981: {n_nino} El Niño years ({strong_years} strong) and {n_nina} La Niña years. “Year 1” is the year El Niño develops; “year 2” is the next one. Sep–Nov is used because Venezuela's El Niño effect starts in the developing year; by its peak ONI (+1.5 °C in Nov–Jan) 2009/10, the year of the 2010 power rationing, would count as strong.",
   "<b>Rain.</b> CHIRPS v3 (satellite and gauges) at 0.5°, averaged over each state with area weights, to {data_end}. ERA5 by state (team admin-1 statistics) to {era5_end} is used as a check: it agrees with CHIRPS on the direction of the El Niño change in {era5_agree}% of the {era5_cells} state-seasons where CHIRPS shows ±10% or more. Percentages are against the 1991–2020 normal for the same months; three-month windows with a normal under 60 mm are dry season and left out.",
-  "<b>Floods.</b> FloodScan, the satellite flood-exposure record used on other pages, covers Africa only, so this page has no flood-exposure series for Venezuela. EM-DAT (CRED/UCLouvain, snapshot of {emdat_end}) lists the larger flood, wet-landslide and storm disasters since 1980; one Location field often names many states, so it is used nationally. DesInventar Venezuela (UNDRR) has {di_n} flood, rain, torrent, debris-flow, landslide and storm records by municipality; it stops in early 2016, and its reporting changes several-fold between decades, so each year is compared with the six rain years around it.",
+  "<b>Floods.</b> FloodScan, the satellite flood-exposure record used on other pages, covers Africa only, so this page has no flood-exposure series for Venezuela. EM-DAT (CRED/UCLouvain, snapshot of {emdat_end}) lists the larger flood, wet-landslide and storm disasters since 1980; one Location field often names many states, so it is used nationally. DesInventar Venezuela (UNDRR) has {di_n} flood, rain, torrent, debris-flow, landslide and storm records by municipality; it stops in early 2016, and its reporting changes several-fold between decades, so each year is compared with the six rain years around it, and the figure shows the median over the years of each phase.",
   "<b>Guri.</b> NASA GSFC G-REALM satellite altimetry, every ten days since September 1992, in metres above the EGM2008 geoid. This is not the operator's gauge datum: compare falls and past lows within this record, not with published operating levels.",
   "<b>Vegetation.</b> JRC ASAP: z-score of MODIS FPAR (the share of sunlight the canopy absorbs) against the same ten days in 2001–present, averaged over cropland or rangeland in each state (GAUL admin-1), November–April.",
   "<b>Harvests.</b> FAOSTAT national yields, each year against the two years either side. From 2014 to 2019 the economic crisis drives the numbers and hides any weather signal.",
@@ -19,7 +19,7 @@ evidence = "moderate"
 
 [assessment]
 evidence = "moderate"
-one_line = "A strong El Niño means a drier November–March almost everywhere and fewer reported floods, except in the western Llanos. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
+one_line = "A strong El Niño means a drier October–March almost everywhere; reported flood disasters cluster in La Niña years instead. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
 
 [page]
 title = "Venezuela: El Niño 2026/27"
@@ -28,7 +28,7 @@ dateline = "Draft · rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · SEAS5 
 
 [[tiles]]
 big = "{oni_now} °C"
-text = "Jul–Sep 2026 ONI: a strong El Niño, like {strong_years}"
+text = "{oni_seas} 2026 ONI: a strong El Niño, like {strong_years}"
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
 text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
@@ -36,8 +36,8 @@ text = "{now_span} 2026 rain by region, as % of normal: among the six driest sin
 big = "−{strong_med}%"
 text = "median November–March rain in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
 [[tiles]]
-big = "×{em_ratio}"
-text = "people affected by floods and landslides per year, La Niña years against El Niño years (EM-DAT, since 1980)"
+big = "×{em_ratio_ex}–{em_ratio}"
+text = "people affected by floods, landslides and storms per year, La Niña years against El Niño years (EM-DAT, since 1980): ×{em_ratio} with Vargas 1999 and August 2021, ×{em_ratio_ex} without"
 
 [[sections]]
 part = "Rain"
@@ -48,7 +48,7 @@ head = "2026 is a strong El Niño, like {strong_years}"
 [[sections]]
 id = "maps"
 fig = "maps"
-head = "El Niño brings less rain to almost all of Venezuela from June to March"
+head = "El Niño: less rain almost everywhere from October to March, and somewhat less in the north from June to September"
 note = "The inland patch that looks wetter on the global survey map is mostly Apure and its neighbours. There, the strongest El Niño signal is in February–April of year 2, which has been wetter than normal. From June to January the same area is normal or drier."
 
 [[sections]]
@@ -60,39 +60,39 @@ head = "By state: the largest shortfalls come from November to March, in the nor
 id = "now"
 fig = "now"
 head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the six driest since 1981 in every region"
-note = "ERA5, to September, puts it at {era5_lo}–{era5_hi}% of normal."
+note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which uses gauges, leads here; ERA5 is a reanalysis that does not use gauge rain."
 
 [[sections]]
 id = "dry"
 fig = "dry"
 head = "November–March: in the four strong El Niño years, every region had less rain than normal, by a median of {strong_med}%"
-note = "In each region, {dry_third_min}–{dry_third_max} of the {nino_n} El Niño years fell in the driest third (5 would be chance), the fewest in the western Llanos."
+note = "In each region, {dry_third_min}–{dry_third_max} of the {nino_n} El Niño years fell in the driest third (5 would be chance), the fewest in the {dry_third_fewest}."
 
 [[sections]]
 id = "forecast"
 fig = "forecast"
-head = "SEAS5, October {fc_year}: the driest October–February forecast since 1981 in almost every state"
-note = "{fc_driest} of {fc_cells} state-seasons from October to February rank in the driest tenth of the 45 past forecasts; for those months the forecast has skill (hindcast correlation {fc_r_lo}–{fc_r_hi}). February–April leans wet in the west and centre, where the forecast has little skill."
+head = "SEAS5, October {fc_year}: one of the driest October–February forecasts since 1981, in almost every state"
+note = "{fc_driest} of {fc_cells} state-seasons from October to February rank in the driest tenth of the 45 past forecasts, once the long-term trend is removed (as in the team's seas5-skill app); before that step, it is the driest November–January forecast in {fc_raw_driest} of {fc_states} states. The forecast has skill for these months (hindcast correlation {fc_r_lo}–{fc_r_hi}). The October forecasts in 1997 and 2015 ranked about as dry; the rain that followed was among the driest on record in 1997 and below normal in 2015. February–April leans wet in the west and centre, where the forecast has little skill."
 
 [[sections]]
 part = "Floods"
 id = "emdat"
 fig = "emdat"
-head = "Reported flood and landslide disasters cluster in La Niña years: {em_ratio} times more people affected per year than in El Niño years"
+head = "Reported flood, landslide and storm disasters cluster in La Niña years: {em_ratio} times more people affected per year than in El Niño years"
 note = "Without Vargas 1999 and August 2021, {em_ratio_ex} times. El Niño years still have floods: June 2015 in Apure and February 2005 came in El Niño years."
 
 [[sections]]
 id = "desinventar"
 fig = "desinventar"
-head = "By region, La Niña years bring more flood and landslide reports everywhere except the western Llanos"
-note = "Nationally, El Niño years had {di_nino} times the reports of an ordinary year and La Niña years {di_nina} times; in the western Llanos, {di_llanos_nino} and {di_llanos_nina}."
+head = "By region: fewer flood and landslide reports in El Niño years everywhere; more in La Niña years in {di_nina_above} of {di_regions} regions, not in the western Llanos or the centre-north"
+note = "In a typical El Niño year each region had {di_nino_lo}–{di_nino_hi} times the reports of an ordinary year. La Niña medians in the western Llanos and the centre-north: {di_llanos_nina} and {di_cn_nina}. Means are pulled up by single years (1999, 2011): {di_mean_nina} for La Niña nationally."
 
 [[sections]]
 part = "Drought: water, vegetation, harvests"
 id = "guri"
 fig = "guri"
 head = "The Guri reservoir has fallen {guri_nino} m through the dry season after a typical El Niño year, against {guri_nina} m after La Niña"
-note = "It starts this dry season near full ({guri_peak} m, against {guri_peak15} m before the 2016 low). Falls like those after past El Niño years would take it to {guri_lo}–{guri_hi} m by May {next_year}, above the 2010 and 2016 lows ({guri_low10} and {guri_low16} m)."
+note = "It starts this dry season near full ({guri_peak} m, against {guri_peak15} m before the 2016 low). Falls like those after past El Niño years would take it to {guri_lo}–{guri_hi} m by May {next_year}; the low end is {guri_gap10} m above the 2010 low ({guri_low10} m). How far it falls also depends on how much water is released for power, not only on rain."
 
 [[sections]]
 id = "veg"
@@ -104,3 +104,4 @@ note = "Averaged over the El Niño years, cropland in November–April was below
 id = "yields"
 fig = "yields"
 head = "Harvests: maize yields fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023. Rice shows no pattern"
+note = "2015, also a strong El Niño year, fell {maize_2015}%, but it falls inside the economic crisis."

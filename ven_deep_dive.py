@@ -219,7 +219,7 @@ def desinventar() -> pd.DataFrame:
                     rows.append({k: (el.findtext(k) or "").strip() for k in DI_FIELDS})
                     el.clear()
         df = pd.DataFrame(rows)
-        for c in DI_FIELDS[8:-1]:
+        for c in DI_FIELDS[7:-1]:
             df[c] = pd.to_numeric(df[c], errors="coerce")
         df.to_parquet(p, index=False)
     df = pd.read_parquet(p)
@@ -450,7 +450,7 @@ def di_wet() -> pd.DataFrame:
     di = desinventar()
     di = di[di.evento.isin(DI_WET)].copy()
     di["pcode"] = "VE" + di.level0.astype(str).str.zfill(2)
-    m = di.fechames.fillna(6).clip(1, 12).astype(int)
+    m = di.fechames.replace(0, np.nan).fillna(6).clip(1, 12).astype(int)
     di["ry"] = di.fechano.astype(int) - (m < 5)
     di["region"] = di.pcode.map(PCODE_REGION)
     return di[di.region.notna()]
@@ -529,7 +529,7 @@ def seas5_rank(issued_month: int = 10) -> tuple[pd.DataFrame, pd.DataFrame, int]
     s, e = seas5_adm1(), era5_adm1()
     s = s[s.issued_date.dt.month == issued_month].dropna(subset=["mean"])
     year = int(s.issued_date.dt.year.max())
-    pct, skill = {}, {}
+    pct, skill, raw = {}, {}, {}
     for code, months in FC_SEASONS.items():
         wraps = 1 in months and 12 in months
         for pc in STATE_ORDER:
@@ -537,6 +537,7 @@ def seas5_rank(issued_month: int = 10) -> tuple[pd.DataFrame, pd.DataFrame, int]
             f = f.groupby(f.issued_date.dt.year)["mean"].mean()
             if not wraps and min(months) < issued_month:
                 f.index = f.index + 1
+            raw_f = f.copy()
             o = e[(e.pcode == pc) & e.valid_date.dt.month.isin(months)]
             sy = np.where((o.valid_date.dt.month > 6) | (not wraps), o.valid_date.dt.year, o.valid_date.dt.year - 1)
             g = o.groupby(sy)["mean"]
@@ -554,8 +555,9 @@ def seas5_rank(issued_month: int = 10) -> tuple[pd.DataFrame, pd.DataFrame, int]
                 raise ValueError(f"{code}: the latest SEAS5 issuance is already observed")
             h = f[hist].values
             pct.setdefault(code, {})[pc] = 100.0 * float((h < f[cur]).sum()) / len(h)
+            raw.setdefault(code, {})[pc] = bool(raw_f.drop(cur).min() > raw_f[cur])
             skill.setdefault(code, {})[pc] = float(np.corrcoef(f[hist].values, o[hist].values)[0, 1])
-    return pd.DataFrame(pct), pd.DataFrame(skill), year
+    return pd.DataFrame(pct), pd.DataFrame(skill), year, pd.DataFrame(raw)
 
 
 # --------------------------------------------------------------------------- #
@@ -613,6 +615,8 @@ def fig_setup(ph: pd.DataFrame) -> tuple[Path, dict]:
     o = oni()
     last = o.iloc[-1]
     s = ph.loc[1950:NOW - 1]
+    if last.anom < 1.5:
+        raise ValueError(f"latest ONI {last.anom:+.2f}: 2026 is no longer a strong El Niño, reword the page")
     fig, ax = plt.subplots(figsize=(9.6, 3.3))
     _grid(ax)
     ax.bar(s.index, s.oni, color=[phase_color(y, ph) for y in s.index], width=0.8)
@@ -730,7 +734,7 @@ def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
     _source(fig, "Each cell: median rain over the El Niño (or La Niña) years, % above or below the state's 1991–2020 normal for "
                  "those three months. Left of the dashed line: the rains of the year El Niño or La Niña develops; right: the "
                  "dry season and the next spring. Hatched: dry season (normal under 60 mm in three months). Rain years May–April, 1981/82–2025/26. "
-                 "Source: CHIRPS v3, state means.")
+                 "Distrito Capital, La Guaira and Nueva Esparta rest on one or two partial 0.5° cells. Source: CHIRPS v3, state means.")
     return _save(fig, "states")
 
 
@@ -793,6 +797,8 @@ def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
     months = [11, 12, 13, 14, 15]
     pct = _region_pct(mon, months).loc[1981:Y1]
     strong = [y for y in ph.index[ph.strong] if Y0 <= y <= Y1]
+    if len(strong) != 4:
+        raise ValueError(f"strong El Niño years are now {strong}: reword 'four strong El Niño years'")
     fig, ax = plt.subplots(figsize=(8.6, 5.2))
     _strip(ax, pct, ph, now=False)
     _phase_legend(ax, ph, loc="lower left", ncols=4, bbox_to_anchor=(0, 1.0))
@@ -808,7 +814,9 @@ def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
         dry_third[r] = int((nino[r] <= q).sum())
     v["dry_third_min"], v["dry_third_max"], v["nino_n"] = min(dry_third.values()), max(dry_third.values()), len(nino)
     v["dry_third_llanos"] = dry_third["Western Llanos"]
-    if v["strong_below"] != v["strong_cells"] or v["dry_third_llanos"] != v["dry_third_min"]:
+    fewest = sorted(r for r, n in dry_third.items() if n == v["dry_third_min"])
+    v["dry_third_fewest"] = " and the ".join(r.lower() if r != "Western Llanos" else "western Llanos" for r in fewest)
+    if v["strong_below"] != v["strong_cells"] or "Western Llanos" not in fewest:
         raise ValueError("the November–March pattern changed: reword the dry-season headline and note")
     return _save(fig, "dry"), v
 
@@ -838,7 +846,7 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
     ax.set_ylabel("people affected (EM-DAT)")
     _phase_legend(ax, ph, loc="upper left", ncols=2)
     t = em.groupby("phase")[["affected", "deaths"]].sum().reindex(["nino", "neutral", "nina"]).fillna(0)
-    years = ph.loc[1980:em.ry.max(), "phase"].value_counts()
+    years = ph.loc[1980:Y1, "phase"].value_counts()
     per = t.div(years, axis=0)
     for i, (k, c) in enumerate((("nino", NINO_C), ("neutral", NEUTRAL_C), ("nina", NINA_C))):
         w = float(per.loc[k, "affected"]) / 1000
@@ -861,7 +869,8 @@ def fig_emdat(ph: pd.DataFrame) -> tuple[Path, dict]:
 def fig_desinventar(ph: pd.DataFrame) -> tuple[Path, dict]:
     idx = di_index(di_wet())
     groups = {p: phase_years(ph, p, DI_Y0, DI_Y1) for p in ("nino", "neutral", "nina")}
-    m = pd.DataFrame({p: idx[ys].mean(axis=1) for p, ys in groups.items()})
+    m = pd.DataFrame({p: idx[ys].median(axis=1) for p, ys in groups.items()})
+    mean_nina = float(idx[groups["nina"]].mean(axis=1)["Venezuela"])
     rows = list(m.index)
     fig, ax = plt.subplots(figsize=(8.4, 4.4))
     _grid(ax, "x")
@@ -875,19 +884,22 @@ def fig_desinventar(ph: pd.DataFrame) -> tuple[Path, dict]:
         if lab.get_text() in ("Western Llanos", "Venezuela (all)"):
             lab.set_fontweight("bold")
     ax.invert_yaxis()
-    ax.set_xlabel("flood and landslide records, relative to an ordinary year for the period (1 = ordinary)")
+    ax.set_xlabel("flood and landslide records, relative to an ordinary year for the period (1 = ordinary); median of the years")
     ax.legend(handles=[Line2D([], [], marker="o", ls="", color=c, label=f"{lab} ({len(groups[p])} years)")
                        for p, c, lab in (("nino", NINO_C, "El Niño"), ("neutral", NEUTRAL_C, "neutral"), ("nina", NINA_C, "La Niña"))],
-              loc="lower right", fontsize=8)
+              loc="lower left", fontsize=8, ncols=3, bbox_to_anchor=(0, 1.0))
     _source(fig, f"Records of floods, heavy rain, torrents, debris flows, landslides and storms, one per event and municipality, rain years "
                  f"{DI_Y0}/{(DI_Y0 + 1) % 100:02d}–{DI_Y1}/{(DI_Y1 + 1) % 100:02d}. Each year's count is divided by the mean of the three "
                  "rain years either side, because reporting changes several-fold between decades. Source: DesInventar Venezuela (UNDRR), "
                  "which stops in early 2016.")
-    v = dict(di_nino=f"{m.loc['Venezuela', 'nino']:.1f}", di_nina=f"{m.loc['Venezuela', 'nina']:.1f}",
-             di_llanos_nino=f"{m.loc['Western Llanos', 'nino']:.1f}", di_llanos_nina=f"{m.loc['Western Llanos', 'nina']:.1f}",
+    regs = m.drop(index="Venezuela")
+    above = regs.index[regs["nina"] > 1]
+    v = dict(di_nino_lo=f"{regs['nino'].min():.1f}", di_nino_hi=f"{regs['nino'].max():.1f}",
+             di_nina_above=len(above), di_regions=len(regs), di_mean_nina=f"{mean_nina:.1f}",
+             di_llanos_nina=f"{m.loc['Western Llanos', 'nina']:.1f}", di_cn_nina=f"{m.loc['Centre-north', 'nina']:.1f}",
              di_n=int(len(di_wet())))
-    if not (m.loc["Western Llanos", "nina"] < 1.1 and m.loc["Venezuela", "nina"] > 1.2):
-        raise ValueError("the DesInventar pattern changed: reword the floods headline")
+    if (regs["nino"] >= 1).any() or sorted(set(regs.index) - set(above)) != ["Centre-north", "Western Llanos"]:
+        raise ValueError(f"the DesInventar pattern changed (La Niña above 1 in {list(above)}): reword the floods headline")
     return _save(fig, "desinventar"), v
 
 
@@ -936,8 +948,9 @@ def fig_guri(ph: pd.DataFrame) -> tuple[Path, dict]:
              guri_lo=f"{lo_hi[0]:.0f}", guri_hi=f"{lo_hi[1]:.0f}", guri_low16=f"{gy.loc[2015, 'low']:.0f}",
              guri_low10=f"{gy.loc[2009, 'low']:.0f}", guri_peak15=f"{gy.loc[2015, 'peak']:.0f}", guri_n_nino=len(drops),
              next_year=NOW + 1)
-    if not lo_hi[0] > max(gy.loc[2009, "low"], gy.loc[2015, "low"]):
-        raise ValueError("the Guri range now reaches the 2010/2016 lows: reword the Guri note")
+    v["guri_gap10"] = f"{lo_hi[0] - gy.loc[2009, 'low']:.0f}"
+    if not 0 < lo_hi[0] - gy.loc[2009, "low"] < 3:
+        raise ValueError("the Guri range moved against the 2010 low: reword the Guri note")
     return _save(fig, "guri"), v
 
 
@@ -1011,10 +1024,10 @@ def fig_yields(ph: pd.DataFrame) -> tuple[Path, dict]:
              maize_worst_nino=int(sum(ph.phase.get(t) == "nino" for t in worst.index)),
              maize_strong=", ".join(f"{t} {d.loc[t, 'anom']:+.0f}%".replace("-", "−") for t in (1982, 1997) if t in d.index),
              maize_nino_med=f"{nino.median():+.0f}".replace("-", "−"), maize_nino_n=len(nino),
-             **{f"maize_{t}": f"{abs(d.loc[t, 'anom']) if t < 2014 else abs(y[(y.crop == 'maize') & (y.year == t)].anom.iloc[0]):.0f}"
-                for t in (1982, 1997, 2002, 2009, 2023)})
-    a = {t: y[(y.crop == "maize") & (y.year == t)].anom.iloc[0] for t in (1982, 1997, 2002, 2009, 2023)}
-    if not (a[2002] < -8 and a[2009] < -8 and all(abs(a[t]) < 6 for t in (1982, 1997, 2023))):
+             **{f"maize_{t}": f"{abs(y[(y.crop == 'maize') & (y.year == t)].anom.iloc[0]):.0f}"
+                for t in (1982, 1997, 2002, 2009, 2015, 2023)})
+    a = {t: y[(y.crop == "maize") & (y.year == t)].anom.iloc[0] for t in (1982, 1997, 2002, 2009, 2015, 2023)}
+    if not (a[2002] < -8 and a[2009] < -8 and a[2015] < -8 and all(abs(a[t]) < 6 for t in (1982, 1997, 2023))):
         raise ValueError(f"maize anomalies changed {a}: reword the yields headline")
     return _save(fig, "yields"), v
 
@@ -1025,7 +1038,7 @@ FC_NORM = mcolors.BoundaryNorm(FC_BOUNDS, FC_CMAP.N)
 
 
 def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
-    pr, sk, year = seas5_rank()
+    pr, sk, year, raw = seas5_rank()
     names = states().set_index("pcode")["name"]
     pr, sk = pr.reindex(STATE_ORDER), sk.reindex(STATE_ORDER)
     clim = {}
@@ -1066,7 +1079,8 @@ def fig_forecast(mon_e: pd.DataFrame) -> tuple[Path, dict]:
     wet_season = ~dry
     v = dict(fc_year=year, fc_driest=int(((pr[["OND", "NDJ", "DJF"]] < 10) & wet_season[["OND", "NDJ", "DJF"]]).sum().sum()),
              fc_cells=int(wet_season[["OND", "NDJ", "DJF"]].sum().sum()),
-             fc_r_lo=f"{sk[['OND', 'NDJ', 'DJF']].min().min():.1f}", fc_r_hi=f"{sk[['OND', 'NDJ', 'DJF']].max().max():.1f}")
+             fc_r_lo=f"{sk[['OND', 'NDJ', 'DJF']].min().min():.1f}", fc_r_hi=f"{sk[['OND', 'NDJ', 'DJF']].max().max():.1f}",
+             fc_raw_driest=int(raw.reindex(STATE_ORDER)["NDJ"].sum()), fc_states=len(STATE_ORDER))
     return _save(fig, "forecast"), v
 
 # --------------------------------------------------------------------------- #
