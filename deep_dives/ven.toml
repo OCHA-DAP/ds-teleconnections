@@ -7,6 +7,8 @@ builder = "ven"
 notes = [
   "<b>Rain years and phases.</b> A rain year runs from May to April: the May–November rains, then the December–April dry season. It is classed by the Sep–Nov ONI of its first year (NOAA CPC): El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C, La Niña ≤ −0.5 °C. Since 1981: {n_nino} El Niño years ({strong_years} strong) and {n_nina} La Niña years. Month axes run January to December: for El Niño and La Niña, months and windows starting January–April come from the year after the event develops, the rest from the year it develops. Sep–Nov is used because Venezuela's El Niño effect starts in the developing year; by its peak ONI (+1.5 °C in Nov–Jan) 2009/10, the year of the 2010 power rationing, would count as strong.",
   "<b>Rain.</b> CHIRPS v3 (satellite and gauges) at 0.5°, averaged over each state with area weights, to {data_end}. ERA5 by state (team admin-1 statistics) to {era5_end} is used as a check: it agrees with CHIRPS on the direction of the El Niño change in {era5_agree}% of the {era5_cells} state-seasons where CHIRPS shows ±10% or more. Percentages are against the 1991–2020 normal for the same months; three-month windows with a normal under 60 mm are dry season and left out.",
+  "<b>Zones and seasons.</b> INAMEH's map of rainy-season onset (five zones, from early April in the far south to late June on the northern coast), digitized onto the 0.5° grid, so zone edges are approximate. Each zone's rainy season runs from its onset month to November, the end FEWS NET uses; its dry season from December until the onset.",
+  "<b>FEWS NET.</b> The seasonal calendar and the strong-El-Niño maps are FEWS NET's, reproduced with credit: the calendar from FEWS NET's Venezuela page, the maps from pages 4–6 of its August 2026 El Niño briefing.",
   "<b>Floods.</b> FloodScan, the satellite flood-exposure record used on other pages, covers Africa only, so this page has no flood-exposure series for Venezuela. EM-DAT (CRED/UCLouvain, snapshot of {emdat_end}) lists the larger flood, wet-landslide and storm disasters since 1980; one Location field often names many states, so it is used nationally. DesInventar Venezuela (UNDRR) has {di_n} flood, rain, torrent, debris-flow, landslide and storm records by municipality; it stops in early 2016, and its reporting changes several-fold between decades, so each year is compared with the six rain years around it, and the figure shows the median over the years of each phase. CERF allocations: CERF allocation data (cerf.un.org; Venezuela only, not the regional allocations).",
   "<b>Guri.</b> NASA GSFC G-REALM satellite altimetry, every ten days since September 1992, in metres above the EGM2008 geoid. This is not the operator's gauge datum: compare falls and past lows within this record, not with published operating levels.",
   "<b>Vegetation.</b> JRC ASAP: z-score of MODIS FPAR (the share of sunlight the canopy absorbs) against the same ten days in 2001–present, averaged over cropland or rangeland in each state (GAUL admin-1), November–April.",
@@ -19,7 +21,7 @@ evidence = "moderate"
 
 [assessment]
 evidence = "moderate"
-one_line = "A strong El Niño means a drier dry season everywhere, a slightly weaker rainy season and fewer flood and landslide reports. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
+one_line = "A strong El Niño means a drier dry season in the south, a weaker rainy season in the north and fewer flood and landslide reports. May–August 2026 was already among the driest on record, and SEAS5 forecasts a very dry October–February."
 
 [page]
 title = "Venezuela: El Niño 2026/27"
@@ -35,8 +37,8 @@ text = "the SEAS5 October {fc_year} forecast for October–February, in every ra
 big = "{now_lo}–{now_hi}%"
 text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
 [[tiles]]
-big = "−{strong_med}%"
-text = "median December–March rain (most of the dry season) in the four strong El Niño years, across seven regions; none of the {strong_cells} was above normal"
+big = "{ab_dry_lo}–{ab_dry_hi}% less"
+text = "dry-season rain in the south (INAMEH zones A and B) in a typical El Niño year; {ab_dry_below} or more of the {n_nino} El Niño years were below normal in each"
 [[tiles]]
 big = "{di_fewer_lo}–{di_fewer_hi}% fewer"
 text = "flood and landslide reports in a typical El Niño year than in an ordinary year, in every region (DesInventar, 1975–2013)"
@@ -49,6 +51,12 @@ head = "SEAS5, October {fc_year}: one of the driest October–February forecasts
 note = "All {fc_cells} state-seasons from October to February that fall in the rainy season are strongly below normal (the driest 10% of the 45 past forecasts) once the long-term trend is removed, as in the team's seas5-skill viewer; before that step, it is the driest November–January forecast in {fc_raw_driest} of {fc_states} states. The forecast has skill for these months (hindcast correlation {fc_r_lo}–{fc_r_hi}). The October forecasts in 1997 and 2015 ranked about as dry; the rain that followed was among the driest on record in 1997 and below normal in 2015. February–April leans wet in the west and centre, but there the forecast has low skill or the months fall outside the rainy season, so the map masks it."
 
 [[sections]]
+id = "calendar"
+fig = "calendar"
+head = "FEWS NET's seasonal calendar: the forecast months cover the summer planting of maize and rice and the coffee and sugar-cane harvest; the lean season is June–August"
+note = "From <a href='https://fews.net/latin-america-and-caribbean/venezuela'>FEWS NET's Venezuela page</a>. FEWS NET's <a href='https://fews.net/sites/default/files/2026-09/FEWS%20NET%20El%20Ni%C3%B1o%20Western%20Hemisphere%20Briefing%20(August%202026).pdf'>El Niño briefing of August 2026</a>: below-average rain and heat caused localized soil-moisture deficits in rainfed areas, but crops were mostly well established thanks to earlier rain and irrigation, with no major losses. For October 2026 to January 2027 it expects localized rainfed losses with limited impact, given irrigation and imports, and Stressed (IPC Phase 2) outcomes. It puts Venezuela's peak needs in August–October 2026, driven by the earthquake and the economy rather than by El Niño."
+
+[[sections]]
 id = "now"
 fig = "now"
 head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the six driest since 1981 in every region"
@@ -56,21 +64,21 @@ note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which 
 
 [[sections]]
 part = "Rain in past El Niño and La Niña years"
+id = "zones"
+fig = ["season", "zones"]
+head = "By INAMEH rainy-season zone: El Niño cuts the dry season in the south (zones A and B, {ab_dry_lo}–{ab_dry_hi}% less) and the rainy season in the north (zones C to E, {cde_rain_lo}–{cde_rain_hi}% less)"
+note = "Medians over the {n_nino} El Niño years; in zones A and B, {ab_dry_below} or more of them had a below-normal dry season. The south's rainy season barely changes (within ±{ab_rain_max}%), and the north's dry season loses {cde_dry_lo}–{cde_dry_hi}%. Zone A is never truly dry: December–March averages {a_dry_mm} mm a month."
+
+[[sections]]
 id = "maps"
-fig = "maps"
-head = "El Niño: December–February, in the dry season, is {djf_lo}–{djf_hi}% drier; the rainy season (June–November) loses much less, {jn_lo}–{jn_hi}%"
-note = "December–February: every region but the western Llanos, where it is nearly rainless on average (the maps blank every area with under 20 mm a month). In millimetres that is {djf_mm_lo}–{djf_mm_hi} mm less over December–February and {jn_mm_lo}–{jn_mm_hi} mm less over June–November; the rainy-season loss is largest on the north-east coast, in the Andes and in the central and eastern Llanos. March–May shows no consistent change. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
+fig = ["maps", "fewsnet"]
+head = "By three-month season: drier almost everywhere in December–February, less so from June to November, and no consistent change in March–May"
+note = "The second figure is FEWS NET's analysis of strong and very strong El Niño events since 1950: below-normal rain over much of Venezuela from June to February. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
 
 [[sections]]
 id = "states"
-fig = ["states", "season"]
+fig = "states"
 head = "By state: the largest percentage shortfalls come from November to February, in the north-west, the Andes, the east and Guayana"
-
-[[sections]]
-id = "dry"
-fig = "dry"
-head = "December–March, most of the dry season: in the four strong El Niño years, every region had less rain than normal, by a median of {strong_med}%"
-note = "In each region, {dry_third_min}–{dry_third_max} of the {nino_n} El Niño years fell in the driest third (5 would be chance), the fewest in the {dry_third_fewest}."
 
 [[sections]]
 part = "Floods"

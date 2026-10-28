@@ -8,6 +8,8 @@ builder = "ven"
 notes = [
   "<b>Años hidrológicos y fases.</b> El año hidrológico va de mayo a abril: las lluvias de mayo a noviembre y luego la estación seca de diciembre a abril. Se clasifica por el ONI de septiembre–noviembre de su primer año (NOAA CPC): El Niño ≥ +0,5 °C, El Niño fuerte ≥ +1,5 °C, La Niña ≤ −0,5 °C. Desde 1981: {n_nino} años de El Niño ({strong_years} fuertes) y {n_nina} años de La Niña. Los ejes de meses van de enero a diciembre: para El Niño y La Niña, los meses y períodos que empiezan entre enero y abril corresponden al año siguiente al desarrollo del evento, y el resto al año en que se desarrolla. Se usa septiembre–noviembre porque el efecto de El Niño en Venezuela empieza en el año en que se desarrolla; con su ONI máximo (+1,5 °C en noviembre–enero), 2009/10, el año del racionamiento eléctrico de 2010, contaría como fuerte.",
   "<b>Lluvia.</b> CHIRPS v3 (satélite y pluviómetros) a 0,5°, promediado en cada estado con pesos por área, hasta {data_end}. ERA5 por estado (estadísticas admin-1 del equipo) hasta {era5_end} sirve de control: coincide con CHIRPS en el sentido del cambio con El Niño en el {era5_agree}% de los {era5_cells} pares estado-trimestre en que CHIRPS muestra ±10% o más. Los porcentajes se calculan frente a la normal 1991–2020 de los mismos meses; los trimestres con una normal inferior a 60 mm son estación seca y se omiten.",
+  "<b>Zonas y temporadas.</b> El mapa del INAMEH de inicio de la temporada de lluvias (cinco zonas, desde inicios de abril en el extremo sur hasta fines de junio en la costa norte), digitalizado en la malla de 0,5°, así que los bordes de las zonas son aproximados. La temporada de lluvias de cada zona va del mes de inicio a noviembre, el fin que usa FEWS NET; la estación seca, de diciembre hasta el inicio.",
+  "<b>FEWS NET.</b> El calendario estacional y los mapas de El Niño fuerte son de FEWS NET, reproducidos citando la fuente: el calendario de su página de Venezuela y los mapas de las páginas 4–6 de su informe sobre El Niño de agosto de 2026.",
   "<b>Inundaciones.</b> FloodScan, el registro satelital de exposición a inundaciones que se usa en otras páginas, solo cubre África, así que esta página no tiene una serie de exposición a inundaciones para Venezuela. EM-DAT (CRED/UCLouvain, versión del {emdat_end}) recoge los desastres mayores por inundaciones, deslizamientos por lluvia y tormentas desde 1980; su campo de ubicación suele nombrar muchos estados, por lo que se usa a escala nacional. DesInventar Venezuela (UNDRR) tiene {di_n} registros de inundaciones, lluvias, avenidas torrenciales, flujos de detritos, deslizamientos y tormentas por municipio; termina a principios de 2016 y la cantidad de registros se multiplica o se divide varias veces de una década a otra, así que cada año se compara con los seis años hidrológicos a su alrededor, y la figura muestra la mediana de los años de cada fase. Asignaciones del Fondo Central para la Acción en Casos de Emergencia (CERF): datos de asignaciones del CERF (cerf.un.org; solo Venezuela, sin las asignaciones regionales).",
   "<b>Guri.</b> Altimetría satelital NASA GSFC G-REALM, cada diez días desde septiembre de 1992, en metros sobre el geoide EGM2008. No es la cota de referencia del operador: hay que comparar bajadas y mínimos anteriores dentro de este registro, no con los niveles de operación publicados.",
   "<b>Vegetación.</b> JRC ASAP: puntaje z de la FPAR de MODIS (la fracción de la luz solar que absorbe la cubierta vegetal) frente a los mismos diez días desde 2001, promediado sobre tierras de cultivo o pastizales en cada estado (GAUL admin-1), de noviembre a abril.",
@@ -20,7 +22,7 @@ evidence = "moderate"
 
 [assessment]
 evidence = "moderate"
-one_line = "Un El Niño fuerte significa una estación seca más seca en todas partes, una temporada de lluvias algo más débil y menos registros de inundaciones y deslizamientos. Mayo–agosto de 2026 ya estuvo entre los más secos registrados, y SEAS5 pronostica un octubre–febrero muy seco."
+one_line = "Un El Niño fuerte significa una estación seca más seca en el sur, una temporada de lluvias más débil en el norte y menos registros de inundaciones y deslizamientos. Mayo–agosto de 2026 ya estuvo entre los más secos registrados, y SEAS5 pronostica un octubre–febrero muy seco."
 
 [page]
 title = "Venezuela: El Niño 2026/27"
@@ -36,8 +38,8 @@ text = "el pronóstico SEAS5 de octubre de {fc_year} para octubre–febrero, en 
 big = "{now_lo}–{now_hi}%"
 text = "lluvia de {now_span} de 2026 por región, en % de lo normal: entre los seis años más secos desde 1981 en todas las regiones"
 [[tiles]]
-big = "−{strong_med}%"
-text = "mediana de la lluvia de diciembre–marzo (la mayor parte de la estación seca) en los cuatro años de El Niño fuerte, en siete regiones; ninguno de los {strong_cells} casos estuvo por encima de lo normal"
+big = "{ab_dry_lo}–{ab_dry_hi}% menos"
+text = "lluvia de la estación seca en el sur (zonas A y B del INAMEH) en un año típico de El Niño; {ab_dry_below} o más de los {n_nino} años de El Niño estuvieron por debajo de lo normal en cada una"
 [[tiles]]
 big = "{di_fewer_lo}–{di_fewer_hi}% menos"
 text = "registros de inundaciones y deslizamientos en un año típico de El Niño que en un año ordinario, en todas las regiones (DesInventar, 1975–2013)"
@@ -50,6 +52,12 @@ head = "SEAS5, octubre de {fc_year}: uno de los pronósticos más secos para oct
 note = "Los {fc_cells} pares estado-trimestre de octubre a febrero que caen en la temporada de lluvias están todos muy por debajo de lo normal (el 10% más seco de los 45 pronósticos anteriores) una vez quitada la tendencia de largo plazo, como en el visor seas5-skill del equipo; antes de ese paso, es el pronóstico de noviembre–enero más seco en {fc_raw_driest} de {fc_states} estados. El pronóstico tiene destreza para estos meses (correlación de los pronósticos retrospectivos {fc_r_lo}–{fc_r_hi}). Los pronósticos de octubre de 1997 y 2015 salieron casi igual de secos; la lluvia que siguió estuvo entre las más bajas registradas en 1997 y por debajo de lo normal en 2015. Febrero–abril tiende a húmedo en el oeste y el centro, pero allí el pronóstico tiene destreza baja o esos meses quedan fuera de la temporada de lluvias, así que el mapa no lo muestra."
 
 [[sections]]
+id = "calendar"
+fig = "calendar"
+head = "Calendario estacional de FEWS NET: los meses del pronóstico abarcan la siembra de verano de maíz y arroz y la cosecha de café y caña de azúcar; la temporada de escasez es junio–agosto"
+note = "De la <a href='https://fews.net/latin-america-and-caribbean/venezuela'>página de Venezuela de FEWS NET</a> (en inglés). El <a href='https://fews.net/sites/default/files/2026-09/FEWS%20NET%20El%20Ni%C3%B1o%20Western%20Hemisphere%20Briefing%20(August%202026).pdf'>informe de FEWS NET sobre El Niño de agosto de 2026</a>: la lluvia inferior al promedio y el calor causaron déficits localizados de humedad del suelo en zonas de secano, pero los cultivos se establecieron en general bien gracias a las lluvias anteriores y al riego, sin pérdidas importantes. Para octubre de 2026 a enero de 2027 prevé pérdidas localizadas en secano con impacto limitado, dado el riego y las importaciones, y resultados de Estrés (Fase 2 de la CIF). Sitúa el pico de necesidades de Venezuela en agosto–octubre de 2026, impulsado por el terremoto y la economía más que por El Niño."
+
+[[sections]]
 id = "now"
 fig = "now"
 head = "La lluvia de {now_span} de 2026 fue del {now_lo}–{now_hi}% de lo normal, entre las seis más bajas desde 1981 en todas las regiones"
@@ -57,21 +65,21 @@ note = "ERA5 sitúa {now_span} en el {era5_lo}–{era5_hi}% de lo normal. Aquí 
 
 [[sections]]
 part = "La lluvia en años anteriores de El Niño y La Niña"
+id = "zones"
+fig = ["season", "zones"]
+head = "Por zona de temporada de lluvias del INAMEH: El Niño recorta la estación seca en el sur (zonas A y B, un {ab_dry_lo}–{ab_dry_hi}% menos) y la temporada de lluvias en el norte (zonas C a E, un {cde_rain_lo}–{cde_rain_hi}% menos)"
+note = "Medianas de los {n_nino} años de El Niño; en las zonas A y B, {ab_dry_below} o más de ellos tuvieron una estación seca por debajo de lo normal. La temporada de lluvias del sur apenas cambia (dentro de ±{ab_rain_max}%) y la estación seca del norte pierde un {cde_dry_lo}–{cde_dry_hi}%. La zona A nunca es realmente seca: diciembre–marzo promedia {a_dry_mm} mm al mes."
+
+[[sections]]
 id = "maps"
-fig = "maps"
-head = "El Niño: diciembre–febrero, en plena estación seca, es un {djf_lo}–{djf_hi}% más seco; la temporada de lluvias (junio–noviembre) pierde mucho menos, un {jn_lo}–{jn_hi}%"
-note = "Diciembre–febrero: todas las regiones salvo los Llanos occidentales, donde en promedio casi no llueve (los mapas dejan en blanco toda zona con menos de 20 mm al mes). En milímetros son {djf_mm_lo}–{djf_mm_hi} mm menos entre diciembre y febrero y {jn_mm_lo}–{jn_mm_hi} mm menos entre junio y noviembre; la pérdida de la temporada de lluvias es mayor en la costa nororiental, los Andes y los Llanos centrales y orientales. Marzo–mayo no muestra un cambio consistente. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (se ve débilmente en el mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
+fig = ["maps", "fewsnet"]
+head = "Por trimestre: más seco casi en todas partes en diciembre–febrero, menos de junio a noviembre y sin cambio consistente en marzo–mayo"
+note = "La segunda figura es el análisis de FEWS NET de los eventos de El Niño fuertes y muy fuertes desde 1950: lluvia por debajo de lo normal en buena parte de Venezuela de junio a febrero. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (se ve débilmente en el mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
 
 [[sections]]
 id = "states"
-fig = ["states", "season"]
+fig = "states"
 head = "Por estado: los mayores déficits porcentuales se dan de noviembre a febrero, en el noroeste, los Andes, el oriente y Guayana"
-
-[[sections]]
-id = "dry"
-fig = "dry"
-head = "Diciembre–marzo, la mayor parte de la estación seca: en los cuatro años de El Niño fuerte, todas las regiones tuvieron menos lluvia de lo normal, un {strong_med}% menos en la mediana"
-note = "En cada región, entre {dry_third_min} y {dry_third_max} de los {nino_n} años de El Niño cayeron en el tercio más seco (por azar serían 5); la menor cantidad, en {dry_third_fewest}."
 
 [[sections]]
 part = "Inundaciones"

@@ -60,6 +60,7 @@ STRONG_C = "#7a2d0b"
 NINA_C = "#2a78d6"
 NEUTRAL_C = "#c9c8c2"
 NOW_C = "#0b0b0b"
+RAINY_C = "#e6f0f7"
 TEXT2 = "#52514e"
 GRID = "#e6e5e1"
 SURFACE = "#fcfcfb"
@@ -144,7 +145,7 @@ def _month_year(t: pd.Timestamp) -> str:
 
 
 def _reg(r: str) -> str:
-    return REGION_ES[r] if LANG == "es" else r
+    return REGION_ES.get(r, r) if LANG == "es" else r
 
 
 def _phase_name(p: str) -> str:
@@ -445,6 +446,37 @@ def state_monthly(product: str = "chirps_v3") -> pd.DataFrame:
         for pc, w in _state_weights(da, states()).items():
             ok = ~np.isnan(v).any(0) & (w > 0)
             out[pc] = (v[:, ok] * w[ok]).sum(1) / w[ok].sum()
+        pd.DataFrame(out, index=pd.DatetimeIndex(da.time.values)).to_parquet(p)
+    return pd.read_parquet(p)
+
+
+# --------------------------------------------------------------------------- #
+# INAMEH rainy-season zones: deep_dives/data/ven_inameh_zones.py digitizes INAMEH's map of rainy-season onset. Each zone's
+# rainy season runs from its onset month to November (the end FEWS NET uses), its dry season from December to the onset.
+# --------------------------------------------------------------------------- #
+ZONES_FILE = ROOT / "deep_dives" / "data" / "ven_inameh_rainy_season_zones.geojson"
+ZONE_ONSET = {"A": 4, "B": 4, "C": 5, "D": 6, "E": 6}   # month of INAMEH's onset fortnight
+ZONE_ONSET_TXT = {"A": ("early April", "inicios de abril"), "B": ("late April", "fines de abril"),
+                  "C": ("late May", "fines de mayo"), "D": ("early June", "inicios de junio"), "E": ("late June", "fines de junio")}
+ZONE_FILL = {"A": "#cfe5da", "B": "#a6d0e2", "C": "#6fb1b0", "D": "#9fb7e1", "E": "#4d84cc"}
+FEWS_DIR = ROOT / "deep_dives" / "data" / "fewsnet"   # FEWS NET figures, reproduced with credit (see the page notes)
+
+
+def zones() -> gpd.GeoDataFrame:
+    return gpd.read_file(ZONES_FILE)
+
+
+def zone_monthly(product: str = "chirps_v3") -> pd.DataFrame:
+    """Monthly rain (mm) per INAMEH zone, area-weighted from the 0.5° cube as for the states."""
+    p = CACHE / f"{product}_zone_monthly.parquet"
+    da = rain(product)
+    if (not p.exists() or p.stat().st_mtime < ZONES_FILE.stat().st_mtime
+            or pd.Timestamp(pd.read_parquet(p).index.max()) < pd.Timestamp(da.time.values[-1])):
+        v = da.values
+        out = {}
+        for z, w in _state_weights(da, zones().rename(columns={"zone": "pcode"})).items():
+            ok = ~np.isnan(v).any(0) & (w > 0)
+            out[z] = (v[:, ok] * w[ok]).sum(1) / w[ok].sum()
         pd.DataFrame(out, index=pd.DatetimeIndex(da.time.values)).to_parquet(p)
     return pd.read_parquet(p)
 
@@ -851,6 +883,97 @@ def season_contrast(mon: pd.DataFrame, ph: pd.DataFrame) -> dict:
                 jn_lo=f(-jn.max()), jn_hi=f(-jn.min()), jn_mm_lo=f(-jn_mm.max()), jn_mm_hi=f(-jn_mm.min()))
 
 
+def zone_seasons(zm: pd.DataFrame) -> dict[str, tuple[pd.DataFrame, pd.Series]]:
+    """Per zone and rain year: rainy-season (onset month to November) and dry-season (December to the onset, into the next
+    calendar year) rain as % of the 1991–2020 normal, with the normals in mm."""
+    out = {}
+    for season in ("rainy", "dry"):
+        pct, norm = {}, {}
+        for z, m0 in ZONE_ONSET.items():
+            t = period_totals(zm[[z]], list(range(m0, 12)) if season == "rainy" else list(range(12, m0 + 12)))[z]
+            norm[z] = t.loc[1991:2020].mean()
+            pct[z] = t / norm[z] * 100
+        out[season] = (pd.DataFrame(pct), pd.Series(norm))
+    return out
+
+
+def zone_values(zs: dict, zm: pd.DataFrame, ph: pd.DataFrame) -> dict:
+    """The zones headline: El Niño cuts the dry season in the south (A, B) and the rainy season in the north (C–E)."""
+    nino = phase_years(ph, "nino")
+    (rain_pct, _), (dry_pct, dry_norm) = zs["rainy"], zs["dry"]
+    rm, dm = (rain_pct.reindex(nino) - 100).median(), (dry_pct.reindex(nino) - 100).median()
+    below = (dry_pct.reindex(nino) < 100).sum()
+    south, north = ["A", "B"], ["C", "D", "E"]
+    clim = zm.loc["1991":"2020"].groupby(zm.loc["1991":"2020"].index.month).mean()
+    onset = [int(clim.index[(clim[z] >= clim[z].mean()).values][0]) for z in ZONE_ONSET]
+    if ((dm[south] > -15).any() or below[south].min() < 12 or (rm[south].abs() > 5).any() or (rm[north] > -5).any()
+            or not ((dm[north] < 0) & (dm[north] > dm[south].max())).all() or onset != sorted(onset)):
+        raise ValueError(f"the zone pattern changed (rainy {rm.round().tolist()}, dry {dm.round().tolist()}, below {below.tolist()}, "
+                         f"onset order {onset}): reword the zones headline, note and tile")
+    f = lambda x: f"{x:.0f}"  # noqa: E731
+    return dict(ab_dry_lo=f(-dm[south].max()), ab_dry_hi=f(-dm[south].min()), ab_dry_below=int(below[south].min()),
+                ab_rain_max=f(np.ceil(rm[south].abs().max())), cde_rain_lo=f(-rm[north].max()), cde_rain_hi=f(-rm[north].min()),
+                cde_dry_lo=f(-dm[north].max()), cde_dry_hi=f(-dm[north].min()), a_dry_mm=f(dry_norm["A"] / ZONE_ONSET["A"]))
+
+
+def _zone_label(z: str) -> str:
+    return f"{z} · {_t(*ZONE_ONSET_TXT[z])}"
+
+
+def fig_zones(zs: dict, ph: pd.DataFrame) -> Path:
+    """Left: the INAMEH zones; middle and right: each zone's rainy and dry season, one dot per rain year, by ENSO phase."""
+    z, st = zones(), states()
+    fig = plt.figure(figsize=(13.2, 4.8))
+    gs = fig.add_gridspec(1, 4, width_ratios=[1.0, 0.42, 1, 1], wspace=0.08)   # the second column leaves room for zone labels
+    ax, r1, r2 = fig.add_subplot(gs[0]), fig.add_subplot(gs[2]), fig.add_subplot(gs[3])
+    z.plot(ax=ax, color=z.zone.map(ZONE_FILL), edgecolor="none")
+    _map_axes(ax, st)
+    for _, row in z.iterrows():
+        pt = max(getattr(row.geometry, "geoms", [row.geometry]), key=lambda q: q.area).representative_point()
+        ax.text(pt.x, pt.y, row.zone, ha="center", va="center", fontsize=12, fontweight="bold", color="#0b0b0b")
+    ax.set_title(_t("INAMEH rainy-season zones", "Zonas de temporada de lluvias del INAMEH"), fontsize=9.5)
+    labels = {k: _zone_label(k) for k in ZONE_ONSET}
+    for axx, season, title in ((r1, "rainy", _t("Rainy season\n(onset month to November)", "Temporada de lluvias\n(del inicio a noviembre)")),
+                               (r2, "dry", _t("Dry season\n(December to onset; zone A: less rainy)",
+                                              "Estación seca\n(de diciembre al inicio; zona A: menos lluviosa)"))):
+        _strip(axx, zs[season][0].loc[Y0:Y1].rename(columns=labels), ph, now=False)
+        axx.set_title(title, fontsize=9.5)
+    r2.tick_params(labelleft=False)
+    fig.legend(handles=[Line2D([], [], marker="o", ls="", color=c, label=l) for c, l in (
+        (STRONG_C, _t("strong El Niño", "El Niño fuerte")), (NINO_C, "El Niño"), (NEUTRAL_C, _phase_name("neutral")), (NINA_C, "La Niña"))],
+        loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.66, 0.93), frameon=False)
+    fig.subplots_adjust(top=0.8)
+    _source(fig, _t(f"Each dot is one rain year, 1981/82–{year_label(Y1)}: the zone's rain in its rainy and dry season, as % of the "
+                    "1991–2020 normal. Zones digitized from INAMEH's map of rainy-season onset onto the 0.5° grid (edges approximate); "
+                    "the rainy season runs from the onset month to November, as FEWS NET. Sources: CHIRPS v3; zones: INAMEH.",
+                    f"Cada punto es un año hidrológico, 1981/82–{year_label(Y1)}: la lluvia de la zona en su temporada de lluvias y en "
+                    "su estación seca, en % de la normal 1991–2020. Zonas digitalizadas del mapa del INAMEH de inicio de la temporada "
+                    "de lluvias en la malla de 0,5° (bordes aproximados); la temporada de lluvias va del mes de inicio a noviembre, "
+                    "como en FEWS NET. Fuentes: CHIRPS v3; zonas: INAMEH."), y=0.0)
+    return _save(fig, "zones")
+
+
+def fig_fewsnet() -> Path:
+    """FEWS NET's maps of below/above-normal rain frequency in strong El Niño events, cropped to northern South America."""
+    fig, axes = plt.subplots(1, 3, figsize=(11, 3.1))
+    for ax, (k, m0, m1) in zip(axes, (("jja", 6, 8), ("son", 9, 11), ("djf", 12, 14))):
+        ax.imshow(plt.imread(FEWS_DIR / f"elnino_precip_{k}.png"))
+        ax.set_title(_cap(_span(m0, m1)), fontsize=9.5)
+        ax.set_axis_off()
+    cax = fig.add_axes([0.28, 0.0, 0.44, 0.13])
+    cax.imshow(plt.imread(FEWS_DIR / "elnino_precip_colorbar.png"))
+    cax.set_axis_off()
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.16, wspace=0.03)
+    _source(fig, _t("FEWS NET: how often rain was below (brown) or above (green) normal in strong and very strong El Niño events, "
+                    "1950–2025; a frequency, not an amount. From the FEWS NET El Niño Western Hemisphere briefing, August 2026 "
+                    "(pages 4–6), cropped to northern South America.",
+                    "FEWS NET: con qué frecuencia la lluvia estuvo por debajo (marrón) o por encima (verde) de lo normal en los eventos "
+                    "de El Niño fuertes y muy fuertes, 1950–2025; una frecuencia, no una cantidad. Del informe de FEWS NET sobre El "
+                    "Niño en el hemisferio occidental, agosto de 2026 (páginas 4–6, en inglés), recortado al norte de Sudamérica."),
+            y=-0.02)
+    return _save(fig, "fewsnet")
+
+
 def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
     names = states().set_index("pcode")["name"]
     nino, nina = phase_years(ph, "nino"), phase_years(ph, "nina")
@@ -878,51 +1001,53 @@ def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
     return _save(fig, "states")
 
 
-def fig_season(mon: pd.DataFrame, ph: pd.DataFrame) -> Path:
-    """Normal monthly rain by region, January to December, with the median of the El Niño and La Niña years (January–April
-    from the year after the event develops) and this year so far on top."""
-    reg = pd.DataFrame({r: mon[ps].mean(axis=1) for r, (ps, _) in REGIONS.items()})
+def fig_season(zm: pd.DataFrame, ph: pd.DataFrame) -> Path:
+    """Normal monthly rain by INAMEH zone, January to December, each zone's rainy season shaded, with the median of the
+    El Niño and La Niña years (January–April from the year after the event develops) and this year so far on top."""
     months = [13, 14, 15, 16] + list(range(5, 13))
-    clim = reg.loc["1991":"2020"].groupby(reg.loc["1991":"2020"].index.month).mean().loc[[(m - 1) % 12 + 1 for m in months]]
+    clim = zm.loc["1991":"2020"].groupby(zm.loc["1991":"2020"].index.month).mean().loc[[(m - 1) % 12 + 1 for m in months]]
 
     def phase_median(phase: str) -> tuple[pd.DataFrame, int]:
-        yrs = [y for y in phase_years(ph, phase) if all(d in reg.index for d in _dates(y, months))]
-        return pd.DataFrame(np.median([reg.loc[_dates(y, months)].values for y in yrs], axis=0), columns=reg.columns), len(yrs)
+        yrs = [y for y in phase_years(ph, phase) if all(d in zm.index for d in _dates(y, months))]
+        return pd.DataFrame(np.median([zm.loc[_dates(y, months)].values for y in yrs], axis=0), columns=zm.columns), len(yrs)
 
     nino, n_nino = phase_median("nino")
     nina, n_nina = phase_median("nina")
-    cur = reg.reindex([pd.Timestamp(NOW, m, 1) for m in range(1, 13)])
+    cur = zm.reindex([pd.Timestamp(NOW, m, 1) for m in range(1, 13)])
     cur_last = cur.dropna(how="all").index.max()
-    fig, axes = plt.subplots(1, len(REGIONS), figsize=(11, 2.7), sharey=True)
+    fig, axes = plt.subplots(1, len(ZONE_ONSET), figsize=(11, 2.8), sharey=True)
     x = np.arange(len(months))
-    for ax, r in zip(axes, REGIONS):
-        ax.bar(x, clim[r].values, color=NEUTRAL_C, width=0.8)
-        ax.plot(x, nino[r].values, color=NINO_C, lw=1.4, marker="o", ms=2.5)
-        ax.plot(x, nina[r].values, color=NINA_C, lw=1.4, marker="o", ms=2.5)
-        ax.plot(x, cur[r].values, color=NOW_C, lw=1.4, marker="o", ms=2.5)
-        ax.set_title(textwrap.fill(_reg(r), 16), fontsize=8.5)
+    for ax, z in zip(axes, ZONE_ONSET):
+        ax.axvspan(ZONE_ONSET[z] - 1.5, 10.5, color=RAINY_C, lw=0, zorder=0)
+        ax.bar(x, clim[z].values, color=NEUTRAL_C, width=0.8, zorder=1)
+        ax.plot(x, nino[z].values, color=NINO_C, lw=1.4, marker="o", ms=2.5, zorder=3)
+        ax.plot(x, nina[z].values, color=NINA_C, lw=1.4, marker="o", ms=2.5, zorder=3)
+        ax.plot(x, cur[z].values, color=NOW_C, lw=1.4, marker="o", ms=2.5, zorder=4)
+        ax.set_title(_zone_label(z), fontsize=8.5)
         ax.set_xticks(x, [_month_letters()[(m - 1) % 12] for m in months], fontsize=7)
         ax.tick_params(axis="x", length=0)
         ax.spines[["top", "right"]].set_visible(False)
         _grid(ax)
     axes[0].set_ylabel(_t("rain, mm a month", "lluvia, mm al mes"), fontsize=8)
     fig.legend(handles=[Patch(color=NEUTRAL_C, label="normal (1991–2020)"),
+                        Patch(color=RAINY_C, label=_t("rainy season", "temporada de lluvias")),
                         Line2D([], [], color=NINO_C, marker="o", ms=3,
                                label=_t(f"El Niño years (median of {n_nino})", f"años de El Niño (mediana de {n_nino})")),
                         Line2D([], [], color=NINA_C, marker="o", ms=3,
                                label=_t(f"La Niña years (median of {n_nina})", f"años de La Niña (mediana de {n_nina})")),
                         Line2D([], [], color=NOW_C, marker="o", ms=3,
                                label=_t(f"{NOW} (to {cur_last:%B})", f"{NOW} (hasta {MONTH_ES[cur_last.month - 1]})"))],
-               loc="lower center", ncols=4, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
-    fig.subplots_adjust(left=0.06, right=0.99, top=0.84, bottom=0.2, wspace=0.12)
-    _source(fig, _t("El Niño and La Niña: January–April from the year after the event develops, May–December from the year it "
+               loc="lower center", ncols=5, fontsize=8, bbox_to_anchor=(0.5, -0.06), frameon=False)
+    fig.subplots_adjust(left=0.06, right=0.99, top=0.86, bottom=0.2, wspace=0.12)
+    _source(fig, _t("INAMEH rainy-season zones, titled by the onset fortnight; shaded: rainy season, from the onset month to November. "
+                    "El Niño and La Niña: January–April from the year after the event develops, May–December from the year it "
                     "develops; events 1981–2025. 2026 is the calendar year so far: its January–April come before this El Niño. "
-                    "Source: CHIRPS v3, state means averaged over each region.",
-                    "El Niño y La Niña: enero–abril del año siguiente al desarrollo del evento, mayo–diciembre del año en que se "
-                    "desarrolla; eventos de 1981–2025. 2026 es el año calendario hasta ahora: su enero–abril es anterior a este El "
-                    "Niño. Fuente: CHIRPS v3, medias por estado promediadas en cada región."), y=-0.09)
+                    "Sources: CHIRPS v3; zones: INAMEH.",
+                    "Zonas de temporada de lluvias del INAMEH, tituladas por la quincena de inicio; sombreado: temporada de lluvias, "
+                    "del mes de inicio a noviembre. El Niño y La Niña: enero–abril del año siguiente al desarrollo del evento, "
+                    "mayo–diciembre del año en que se desarrolla; eventos de 1981–2025. 2026 es el año calendario hasta ahora: su "
+                    "enero–abril es anterior a este El Niño. Fuentes: CHIRPS v3; zonas: INAMEH."), y=-0.09)
     return _save(fig, "season")
-
 
 
 def _strip(ax, pct: pd.DataFrame, ph: pd.DataFrame, now: bool):
@@ -981,37 +1106,6 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     if v["now_rank_max"] > 6 or v["era5_rank_max"] > 7:
         raise ValueError(f"2026 ranks changed ({v['now_rank_max']}, {v['era5_rank_max']}): reword the fig_now note")
     return _save(fig, "now"), v
-
-
-def fig_dry(mon: pd.DataFrame, ph: pd.DataFrame) -> tuple[Path, dict]:
-    months = [12, 13, 14, 15]   # December–March: the dry season (rains about May–November)
-    pct = _region_pct(mon, months).loc[1981:Y1]
-    strong = [y for y in ph.index[ph.strong] if Y0 <= y <= Y1]
-    if len(strong) != 4:
-        raise ValueError(f"strong El Niño years are now {strong}: reword 'four strong El Niño years'")
-    fig, ax = plt.subplots(figsize=(8.6, 5.2))
-    _strip(ax, pct, ph, now=False)
-    _phase_legend(ax, ph, loc="lower left", ncols=4, bbox_to_anchor=(0, 1.0))
-    _source(fig, _t(f"Dry-season (December–March) rain, rain years 1981/82–{year_label(Y1)}, one dot per year; strong El Niño: ",
-                    f"Lluvia de la estación seca (diciembre–marzo), años hidrológicos 1981/82–{year_label(Y1)}, un punto por año; "
-                    "El Niño fuerte: ")
-            + ", ".join(year_label(y) for y in strong) + _t(". Source: CHIRPS v3, state means.", ". Fuente: CHIRPS v3, medias por estado."))
-    s = pct.loc[strong]
-    nino = pct.loc[phase_years(ph, "nino")]
-    v = dict(strong_below=int((s < 100).sum().sum()), strong_cells=int(s.size),
-             strong_med=f"{100 - s.stack().median():.0f}")
-    dry_third = {}
-    for r in pct.columns:
-        q = pct[r].quantile(1 / 3)
-        dry_third[r] = int((nino[r] <= q).sum())
-    v["dry_third_min"], v["dry_third_max"], v["nino_n"] = min(dry_third.values()), max(dry_third.values()), len(nino)
-    v["dry_third_llanos"] = dry_third["Western Llanos"]
-    fewest = sorted(r for r, n in dry_third.items() if n == v["dry_third_min"])
-    v["dry_third_fewest"] = (" y ".join(REGION_ES_IN[r] for r in fewest) if LANG == "es" else
-                             " and the ".join(r.lower() if r != "Western Llanos" else "western Llanos" for r in fewest))
-    if v["strong_below"] != v["strong_cells"] or "Western Llanos" not in fewest:
-        raise ValueError("the December–March pattern changed: reword the dry-season headline and note")
-    return _save(fig, "dry"), v
 
 
 EM_LABELS = {  # DisNo.: (English label, Spanish label, x offset, y offset in points)
@@ -1515,10 +1609,15 @@ def figures(a: dict) -> tuple[dict, dict]:
     f["maps"] = fig_maps(ph)
     v |= season_contrast(a["mon"], ph)
     f["states"] = fig_states(a["tot"], ph)
-    f["season"] = fig_season(a["mon"], ph)
+    zm = zone_monthly()
+    zs = zone_seasons(zm)
+    v |= zone_values(zs, zm, ph)
+    f["season"] = fig_season(zm, ph)
+    f["zones"] = fig_zones(zs, ph)
+    f["fewsnet"] = fig_fewsnet()
+    f["calendar"] = FEWS_DIR / "ve_seasonal_calendar_rural.png"
     v |= era5_agreement(a)
     f["now"], x = fig_now(a["mon"], a["mon_e"], ph); v |= x
-    f["dry"], x = fig_dry(a["mon"], ph); v |= x
     f["forecast"], x = fig_forecast(); v |= x
     cerf_check()
     f["emdat"], x = fig_emdat(ph); v |= x
