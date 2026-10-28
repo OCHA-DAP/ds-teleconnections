@@ -291,6 +291,8 @@ def _chirps_recent(cube: xr.Dataset) -> xr.Dataset | None:
             r = requests.get(CHIRPS_TIF.format(y=t.year, m=t.month), timeout=300)
             if r.status_code != 200:
                 break
+            if r.content[:4] not in (b"II*\x00", b"MM\x00*"):   # an error page served as 200: don't cache it as a tif
+                raise ValueError(f"CHC returned something other than a GeoTIFF for {t:%Y-%m}")
             f.parent.mkdir(parents=True, exist_ok=True)
             f.write_bytes(r.content)
         with rasterio.open(f) as src:
@@ -1173,7 +1175,7 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     v = dict(now_span=span, now_lo=f"{pct.loc[NOW].min():.0f}", now_hi=f"{pct.loc[NOW].max():.0f}", now_rank_txt=_words(int(rank.max())),
              now_rank_max=int(rank.max()), now_n=len(pct), era5_rank_max=int(rk_e.max()),
              era5_lo=f"{pe.loc[NOW].min():.0f}", era5_hi=f"{pe.loc[NOW].max():.0f}")
-    if v["now_rank_max"] > 6 or v["era5_rank_max"] > 7:
+    if not 2 <= v["now_rank_max"] <= 6 or v["era5_rank_max"] > 7:   # rank 1 everywhere needs "the driest", not "among the"
         raise ValueError(f"2026 ranks changed ({v['now_rank_max']}, {v['era5_rank_max']}): reword the fig_now note")
     return _save(fig, "now"), v
 
@@ -1471,7 +1473,8 @@ def fig_vegnow() -> tuple[Path, dict]:
                  fontsize=8)
     crop, last = cur[1]
     d0 = last.day
-    when = _t(f"{d0}–{d0 + 9} {last:%B %Y}", f"{d0}–{d0 + 9} de {MONTH_ES[last.month - 1]} de {last.year}")
+    d1 = last.days_in_month if d0 == 21 else d0 + 9   # ASAP dekads: 1–10, 11–20, 21–end of month
+    when = _t(f"{d0}–{d1} {last:%B %Y}", f"{d0}–{d1} de {MONTH_ES[last.month - 1]} de {last.year}")
     fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.27, wspace=0.05)
     _source(fig, _t(f"{when}. JRC ASAP: z-score of MODIS FPAR (the share of sunlight the canopy absorbs) against the same ten days in "
                     "2001–present, averaged over cropland or rangeland in each state (GAUL admin-1). Grey: no data.",

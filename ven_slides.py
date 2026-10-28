@@ -33,6 +33,7 @@ PAGE_URL = "https://ocha-dap.github.io/ds-teleconnections/enso/ven/"
 FEWS_VEN = "https://fews.net/latin-america-and-caribbean/venezuela"
 DARK, LIGHT, PAPER, INK, MUTED, ACCENT, PANEL = "3A2414", "FBF7F2", "FBF8F4", "1F2328", "5B6168", "B5541B", "F1ECE5"
 VEN_XLIM, VEN_YLIM = (-73.6, -59.6), (0.6, 12.4)
+TITLE_MAX = 125   # characters: two lines of the 26 pt bold title across 12.1 in
 plt.rcParams.update({"font.size": 13, "axes.titlesize": 15})
 
 
@@ -119,17 +120,21 @@ def fig_forecast() -> Path:
         g = st.assign(cls=st.pcode.map(lambda pc: cls[pc][0]), skill=st.pcode.map(lambda pc: cls[pc][1]))
         g.plot(ax=ax, color=g.cls.map(V.SEAS5_FILL), edgecolor="none")
         hatch = (g.skill == "mod") & (g.cls != "none")
-        if hatch.any():
-            g[hatch].plot(ax=ax, facecolor="none", edgecolor=V.SEAS5_HATCH_WHITE, hatch="////", lw=0)
+        for mask, colour, h in ((g.cls == "low_skill", V.SEAS5_CROSS, "xxx"), (hatch, V.SEAS5_HATCH_WHITE, "////"),
+                                ((g.skill == "mod") & (g.cls == "none"), V.SEAS5_HATCH_GREY, "////")):
+            if mask.any():
+                g[mask].plot(ax=ax, facecolor="none", edgecolor=colour, hatch=h, lw=0)
         st.boundary.plot(ax=ax, color="#ffffff", lw=0.5)
         seen |= set(g.cls)
         mod |= bool(hatch.any())
         m = V.FC_SEASONS[code]
         ax.set_title(V._cap(V._span(m[0], m[-1])), fontsize=16, fontweight="bold")
         _ven_axes(ax)
-    labels = {"vsev_dry": "Strongly below normal (driest 10%)", "sev_dry": "Below normal", "none": "Roughly normal",
+    labels = {"vsev_dry": "Strongly below normal (driest 10% of forecasts)", "sev_dry": "Below normal", "none": "Roughly normal",
               "sev_wet": "Above normal", "vsev_wet": "Strongly above normal", "off_season": "Outside the rainy season"}
     handles = [Patch(color=V.SEAS5_FILL[k], label=lab) for k, lab in labels.items() if k in seen]
+    if "low_skill" in seen:
+        handles.append(Patch(facecolor="#ffffff", edgecolor=V.SEAS5_CROSS, hatch="xxx", label="Low skill, not shown"))
     if mod:
         handles.append(Patch(facecolor=V.SEAS5_FILL["vsev_dry"], edgecolor="#ffffff", hatch="////", label="Hatched: moderate skill"))
     fig.legend(handles=handles, loc="lower center", ncols=len(handles), fontsize=12, frameon=False, bbox_to_anchor=(0.5, -0.03))
@@ -198,8 +203,8 @@ def content(v: dict, rain: pd.Series) -> dict:
                           f"take it to {v['guri_lo']}–{v['guri_hi']} m by May {v['next_year']}",
                  "note": f"The low end is {v['guri_gap10']} m above the 2010 low. How far it falls also depends on releases for power. "
                          "NASA G-REALM satellite altimetry."},
-        "forecast": {"title": "SEAS5 forecasts one of the driest October–February periods since 1981, wherever it is the "
-                              "rainy season",
+        "forecast": {"title": f"SEAS5, October {yr}: one of the driest October–February forecasts since 1981, wherever it is "
+                              "the rainy season",
                      "bullets": [f"Every rainy-season state and season ({v['fc_cells']} in all) is among the driest 10% of forecasts "
                                  "since 1981",
                                  f"The forecast has skill for these months (correlation {v['fc_r_lo']}–{v['fc_r_hi']})",
@@ -218,6 +223,8 @@ def content(v: dict, rain: pd.Series) -> dict:
                               "Cropland warnings in the north-west and north-east (JRC ASAP, every ten days)"],
                   "link": PAGE_URL},
         "notes": {
+            "cover": "Three parts: what past El Niño years brought, how this year has gone so far, and the seasonal forecast "
+                     "for the coming months. For this season, plan on the forecast; past years are context.",
             "summary": "One line for each part of the deck: what past El Niño years brought, how this year has gone, and what "
                        "the forecast says. Past years are context; the forecast is what to plan on.",
             "zones": "INAMEH’s zones by rainy-season onset run from early April in the far south (A) to late June on the "
@@ -262,14 +269,22 @@ def build_pptx(c: dict, figs: dict[str, Path], path: Path) -> None:
     from pptx.dml.color import RGBColor
     from pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION
     from pptx.enum.shapes import MSO_SHAPE
-    from pptx.enum.text import MSO_ANCHOR, PP_ALIGN
+    from pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
     from pptx.oxml.ns import qn
-    from pptx.util import Inches, Pt
+    from pptx.enum.shapes import PP_PLACEHOLDER
+    from pptx.util import Emu, Inches, Pt
 
     rgb = RGBColor.from_string
     prs = Presentation()
-    prs.slide_width = Inches(13.333)
-    _fit_layouts(prs, 13.333 / 10)
+    prs.slide_width = Emu(12192000)   # PowerPoint's Widescreen, 13.333 × 7.5 in
+    prs._element.find(qn("p:sldSz")).attrib.pop("type", None)
+    _fit_layouts(prs, 12192000 / 9144000)
+    master = prs.slide_master
+    master.background.fill.solid()
+    master.background.fill.fore_color.rgb = rgb(PAPER)
+    mt = next(p for p in master.placeholders if p.placeholder_format.type == PP_PLACEHOLDER.TITLE)
+    mt.left, mt.top, mt.width, mt.height = Inches(0.6), Inches(0.75), Inches(12.1), Inches(1.15)
+    mt.text_frame.vertical_anchor = MSO_ANCHOR.TOP
     TITLE, TITLE_ONLY = prs.slide_layouts[0], prs.slide_layouts[5]
     n = c["notes"]
 
@@ -323,7 +338,10 @@ def build_pptx(c: dict, figs: dict[str, Path], path: Path) -> None:
         t.left, t.top, t.width, t.height = Inches(0.6), Inches(0.75), Inches(12.1), Inches(1.15)
         t.text_frame.vertical_anchor = MSO_ANCHOR.TOP
         t.text_frame.word_wrap = True
+        if len(title) > TITLE_MAX:
+            raise ValueError(f"slide title over {TITLE_MAX} characters would run to three lines: shorten it ({title!r})")
         t.text = title
+        t.text_frame.auto_size = MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
         for r in t.text_frame.paragraphs[0].runs:
             r.font.color.rgb = rgb(INK)
         if eyebrow:
@@ -352,6 +370,7 @@ def build_pptx(c: dict, figs: dict[str, Path], path: Path) -> None:
     for r in sub.text_frame.paragraphs[0].runs:
         r.font.size, r.font.color.rgb = Pt(22), rgb("E9DCCD")
     text(s, 1.0, 6.4, 11.3, 0.5, c["byline"], size=14, color="CDB9A4", name="Byline")
+    s.notes_slide.notes_text_frame.text = n["cover"]
 
     # 2 summary
     s = slide(c["summary_title"], notes=n["summary"])
@@ -398,7 +417,7 @@ def build_pptx(c: dict, figs: dict[str, Path], path: Path) -> None:
     pl.series[0].format.fill.solid()
     pl.series[0].format.fill.fore_color.rgb = rgb(ACCENT)
     va = ch.value_axis
-    va.minimum_scale, va.maximum_scale, va.major_unit = 0, 100, 20
+    va.minimum_scale, va.maximum_scale, va.major_unit = 0, max(100, -(-max(r["values"]) // 20) * 20), 20
     va.has_major_gridlines = True
     va.major_gridlines.format.line.color.rgb = rgb("DCD8D2")
     va.tick_labels.number_format, va.tick_labels.number_format_is_linked = '0"%"', False
@@ -477,7 +496,7 @@ figure{{margin:0 0 18px;background:#fff;border:1px solid var(--line);border-radi
 figure img{{display:block;width:100%;height:auto}}
 </style></head><body><main>
 <div class="top"><a class="btn" href="../">← Full analysis</a><a class="btn primary" href="{pptx}" download>Download the PowerPoint (editable)</a></div>
-<h1>{title}: slides</h1>
+<h1>{title} — slides</h1>
 <p class="meta">{n} slides, the short version of <a href="../">the full analysis</a> (also <a href="../es/">in Spanish</a>). The
 PowerPoint has editable text and a native chart; sources are on each slide and in the speaker notes.</p>
 {figs}
