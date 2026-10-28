@@ -25,17 +25,11 @@ one_line = "A strong El Niño means a drier dry season, most of all in the south
 
 [page]
 title = "Venezuela: El Niño 2026/27"
-sub = "This season's forecast, then what past El Niño and La Niña years brought, region by region: rain, floods, the Guri reservoir, vegetation and harvests."
-dateline = "Rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · SEAS5 issued October {fc_year}"
+sub = "What past El Niño and La Niña years brought, how this year has gone so far, and the forecast for the coming months: rain, floods, the Guri reservoir, vegetation and harvests."
+dateline = "Rain to {data_end} (CHIRPS) and {era5_end} (ERA5) · vegetation to {veg_now_date} · SEAS5 issued October {fc_year}"
 
-lead = "For this season, plan on the seasonal forecast below (ECMWF SEAS5, a new one each month), not on past El Niño years: those, further down, show what has happened before, as context, not what will happen this year."
+lead = "For this season, plan on the seasonal forecast (section 3: ECMWF SEAS5, a new one each month), not on past El Niño years: those show what has happened before, as context, not what will happen this year."
 
-[[tiles]]
-big = "Driest 10%"
-text = "the SEAS5 October {fc_year} forecast for October–February, in every rainy-season state and season ({fc_cells} of them), among the driest 10% of past forecasts"
-[[tiles]]
-big = "{now_lo}–{now_hi}%"
-text = "{now_span} 2026 rain by region, as % of normal: among the six driest since 1981 in every region"
 [[tiles]]
 big = "{ab_dry_lo}–{ab_dry_hi}% less"
 text = "dry-season rain in the south (INAMEH zones A and B) in a typical El Niño year; {ab_dry_below} or more of the {n_nino} El Niño years were below normal in each"
@@ -43,27 +37,14 @@ text = "dry-season rain in the south (INAMEH zones A and B) in a typical El Niñ
 big = "{di_fewer_lo}–{di_fewer_hi}% fewer"
 text = "flood and landslide reports in a typical El Niño year than in an ordinary year, in every region (DesInventar, 1975–2013)"
 
+[[tiles]]
+big = "{now_lo}–{now_hi}%"
+text = "{now_span} 2026 rain by region, as % of normal: among the {now_rank_txt} driest since 1981 in every region"
+[[tiles]]
+big = "Driest 10%"
+text = "the SEAS5 October {fc_year} forecast for October–February, in every rainy-season state and season ({fc_cells} of them), among the driest 10% of past forecasts"
 [[sections]]
-part = "This season"
-id = "forecast"
-fig = "forecast"
-head = "SEAS5, October {fc_year}: one of the driest October–February forecasts since 1981, everywhere it is the rainy season"
-note = "All {fc_cells} state-seasons from October to February that fall in the rainy season are strongly below normal (the driest 10% of the 45 past forecasts) once the long-term trend is removed, as in the team's seas5-skill viewer; before that step, it is the driest November–January forecast in {fc_raw_driest} of {fc_states} states. The forecast has skill for these months (hindcast correlation {fc_r_lo}–{fc_r_hi}). The October forecasts in 1997 and 2015 ranked about as dry; the rain that followed was among the driest on record in 1997 and below normal in 2015. February–April leans wet in the west and centre, but there the forecast has low skill or the months fall outside the rainy season, so the map masks it."
-
-[[sections]]
-id = "calendar"
-fig = "calendar"
-head = "FEWS NET's seasonal calendar: the forecast months cover the summer planting of maize and rice and the coffee and sugar-cane harvest; the lean season is June–August"
-note = "From <a href='https://fews.net/latin-america-and-caribbean/venezuela'>FEWS NET's Venezuela page</a>. FEWS NET's <a href='https://fews.net/sites/default/files/2026-09/FEWS%20NET%20El%20Ni%C3%B1o%20Western%20Hemisphere%20Briefing%20(August%202026).pdf'>El Niño briefing of August 2026</a>: below-average rain and heat caused localized soil-moisture deficits in some rainfed areas; crops were mostly well established thanks to earlier rain and irrigation, with localized impacts on small producers but no major losses. For October 2026 to January 2027 it expects localized rainfed losses with limited impact, given irrigation and imports, and Stressed (IPC Phase 2) outcomes. It puts Venezuela's peak needs in August–October 2026, with the earthquake and the economy, not weather, as the key shocks."
-
-[[sections]]
-id = "now"
-fig = "now"
-head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the six driest since 1981 in every region"
-note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which uses gauges, leads here; ERA5 is a reanalysis that does not use gauge rain."
-
-[[sections]]
-part = "Rain in past El Niño and La Niña years"
+part = "1. What past El Niño years brought"
 id = "zones"
 fig = ["season", "zones"]
 head = "By INAMEH rainy-season zone: El Niño cuts dry-season rain in the south (zones A and B, {ab_dry_lo}–{ab_dry_hi}% less) and rainy-season rain in the north (zones C to E, {cde_rain_lo}–{cde_rain_hi}% less)"
@@ -82,7 +63,6 @@ head = "By zone: in El Niño years every zone is {core_lo}–{core_hi}% drier fr
 note = "Each cell is the median over the El Niño (or La Niña) years for that three-month window. The zone dry seasons above (December to the onset) lose less in the north because they run into April–May, when El Niño makes little difference."
 
 [[sections]]
-part = "Floods"
 id = "emdat"
 fig = "emdat"
 head = "El Niño years have had far fewer people affected by reported floods, landslides and storms than La Niña years: about {em_nino_yr} a year against {em_nina_yr}"
@@ -95,21 +75,45 @@ head = "By region: {di_fewer_lo}–{di_fewer_hi}% fewer flood and landslide repo
 note = "In a typical El Niño year each region had {di_nino_lo}–{di_nino_hi} times the reports of an ordinary year. La Niña medians in the western Llanos and the centre-north: {di_llanos_nina} and {di_cn_nina}. Means are pulled up by single years (1999, 2011): {di_mean_nina} for La Niña nationally."
 
 [[sections]]
-part = "Drought: water, vegetation, harvests"
-part_note = "CERF has made no drought allocation to Venezuela."
-id = "guri"
-fig = "guri"
-head = "The Guri reservoir has fallen {guri_nino} m through the dry season after a typical El Niño year, against {guri_nina} m after La Niña"
-note = "It starts this dry season near full ({guri_peak} m, against {guri_peak15} m before the 2016 low). Falls like those after past El Niño years would take it to {guri_lo}–{guri_hi} m by May {next_year}; the low end is {guri_gap10} m above the 2010 low ({guri_low10} m). How far it falls also depends on how much water is released for power, not only on rain."
-
-[[sections]]
 id = "veg"
 fig = "veg"
 head = "Vegetation: the three poorest dry seasons since 2000 ({veg_worst}) all followed El Niño; 2023/24 did not"
-note = "The stronger the El Niño, the poorer the dry season (correlation {veg_r}), with 2023/24 the exception. Averaged over the El Niño years, cropland in November–April was below normal in {veg_states_neg} of {veg_states_n} states."
+note = "The stronger the El Niño, the poorer the dry season (correlation {veg_r}), with 2023/24 the exception. Averaged over the El Niño years, cropland in November–April was below normal in {veg_states_neg} of {veg_states_n} states. CERF has made no drought allocation to Venezuela."
 
 [[sections]]
 id = "yields"
 fig = "yields"
 head = "Harvests: no clear relation with El Niño, La Niña or rain"
 note = "In all three panels the points scatter without a pattern: every correlation is between −0.3 and +0.3, and other ways of removing the trend and the crisis give the same answer (maize {maize_r_lo} to {maize_r_hi}, rice {rice_r_lo} to {rice_r_hi}). Maize fell {maize_2002}% in 2002 and {maize_2009}% in 2009, both El Niño years, but not in the strong El Niño years 1982, 1997 or 2023."
+[[sections]]
+part = "2. This year so far: rain, vegetation and the Guri reservoir"
+id = "now"
+fig = "now"
+head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the {now_rank_txt} driest since 1981 in every region"
+note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which uses gauges, leads here; ERA5 is a reanalysis that does not use gauge rain. October data come out in November."
+
+[[sections]]
+id = "vegnow"
+fig = "vegnow"
+head = "Vegetation in mid-October: near normal nationally, but cropland below ASAP's warning level in {veg_warn}"
+note = "Cropland below normal in {veg_now_below} of {veg_now_n} states ({veg_now_date}). FEWS NET's August briefing also reported localized soil-moisture deficits in rainfed areas."
+
+[[sections]]
+id = "guri"
+fig = "guri"
+head = "The Guri reservoir starts this dry season near full ({guri_peak} m); falls like those after past El Niño years would take it to {guri_lo}–{guri_hi} m by May {next_year}"
+note = "After a typical El Niño year it has fallen {guri_nino} m through the dry season, against {guri_nina} m after La Niña. The low end of that range is {guri_gap10} m above the 2010 low ({guri_low10} m), the year of power rationing; the peak before the 2016 low was {guri_peak15} m. How far it falls also depends on how much water is released for power, not only on rain."
+
+[[sections]]
+part = "3. The forecast for the coming months"
+id = "forecast"
+fig = "forecast"
+head = "SEAS5, October {fc_year}: one of the driest October–February forecasts since 1981, everywhere it is the rainy season"
+note = "All {fc_cells} state-seasons from October to February that fall in the rainy season are strongly below normal (the driest 10% of the 45 past forecasts) once the long-term trend is removed, as in the team's seas5-skill viewer; before that step, it is the driest November–January forecast in {fc_raw_driest} of {fc_states} states. The forecast has skill for these months (hindcast correlation {fc_r_lo}–{fc_r_hi}). The October forecasts in 1997 and 2015 ranked about as dry; the rain that followed was among the driest on record in 1997 and below normal in 2015. February–April leans wet in the west and centre, but there the forecast has low skill or the months fall outside the rainy season, so the map masks it."
+
+[[sections]]
+id = "calendar"
+fig = "calendar"
+head = "FEWS NET's seasonal calendar: the forecast months cover the summer planting of maize and rice and the coffee and sugar-cane harvest; the lean season is June–August"
+note = "From <a href='https://fews.net/latin-america-and-caribbean/venezuela'>FEWS NET's Venezuela page</a>. FEWS NET's <a href='https://fews.net/sites/default/files/2026-09/FEWS%20NET%20El%20Ni%C3%B1o%20Western%20Hemisphere%20Briefing%20(August%202026).pdf'>El Niño briefing of August 2026</a>: below-average rain and heat caused localized soil-moisture deficits in some rainfed areas; crops were mostly well established thanks to earlier rain and irrigation, with localized impacts on small producers but no major losses. For October 2026 to January 2027 it expects localized rainfed losses with limited impact, given irrigation and imports, and Stressed (IPC Phase 2) outcomes. It puts Venezuela's peak needs in August–October 2026, with the earthquake and the economy, not weather, as the key shocks."
+

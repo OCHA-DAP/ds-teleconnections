@@ -144,6 +144,14 @@ def _month_year(t: pd.Timestamp) -> str:
     return f"{MONTH_ES[t.month - 1]} de {t.year}" if LANG == "es" else f"{t:%B %Y}"
 
 
+NUM_WORDS = {2: ("two", "dos"), 3: ("three", "tres"), 4: ("four", "cuatro"), 5: ("five", "cinco"), 6: ("six", "seis"),
+             7: ("seven", "siete"), 8: ("eight", "ocho"), 9: ("nine", "nueve"), 10: ("ten", "diez")}
+
+
+def _words(n: int) -> str:
+    return _t(*NUM_WORDS[n]) if n in NUM_WORDS else str(n)
+
+
 def _reg(r: str) -> str:
     return REGION_ES.get(r, r) if LANG == "es" else r
 
@@ -259,10 +267,44 @@ def rain(product: str = "chirps_v3") -> xr.DataArray:
         lat = slice(*BOX["lat"]) if ds.lat.values[0] < ds.lat.values[-1] else slice(*BOX["lat"][::-1])
         ds.sel(lat=lat, lon=slice(*BOX["lon"])).load().to_netcdf(p)
     ds = xr.open_dataset(p)
+    if product == "chirps_v3":
+        ext = _chirps_recent(ds)
+        if ext is not None:
+            ds = xr.concat([ds, ext], "time")
     da = ds["precip"]
     if "valid_frac" in ds:
         da = da.where(ds["valid_frac"] > 0.5)
     return da.sortby("lat")
+
+
+CHIRPS_TIF = "https://data.chc.ucsb.edu/products/CHIRPS/v3.0/monthly/latam/tifs/chirps-v3.0.{y}.{m:02d}.tif"
+
+
+def _chirps_recent(cube: xr.Dataset) -> xr.Dataset | None:
+    """CHIRPS v3 months newer than the team cube, from CHC's monthly tifs, put on the cube's 0.5° grid the way the cube is
+    made (mean of the valid 0.05° cells, and their share as valid_frac); for August 2026, where both exist, identical."""
+    import rasterio
+    out, t = [], pd.Timestamp(cube.time.values[-1]) + pd.DateOffset(months=1)
+    while t < pd.Timestamp.now().normalize().replace(day=1):
+        f = CACHE / "chirps_v3_tifs" / f"chirps-v3.0.{t.year}.{t.month:02d}.tif"
+        if not f.exists():
+            r = requests.get(CHIRPS_TIF.format(y=t.year, m=t.month), timeout=300)
+            if r.status_code != 200:
+                break
+            f.parent.mkdir(parents=True, exist_ok=True)
+            f.write_bytes(r.content)
+        with rasterio.open(f) as src:
+            arr, tr = src.read(1).astype(float), src.transform
+        arr[arr < 0] = np.nan
+        g = xr.DataArray(arr, dims=("lat", "lon"), coords=dict(lat=tr.f + tr.e * (np.arange(arr.shape[0]) + 0.5),
+                                                               lon=tr.c + tr.a * (np.arange(arr.shape[1]) + 0.5)))
+        g = g.sel(lat=slice(BOX["lat"][1], BOX["lat"][0]), lon=slice(*BOX["lon"]))
+        grid = dict(lat=cube.lat, lon=cube.lon, method="nearest", tolerance=0.01)
+        mean = g.coarsen(lat=10, lon=10, boundary="trim").mean().reindex(**grid)
+        frac = g.notnull().coarsen(lat=10, lon=10, boundary="trim").mean().reindex(**grid)
+        out.append(xr.Dataset(dict(precip=mean, valid_frac=frac)).expand_dims(time=[t]))
+        t += pd.DateOffset(months=1)
+    return xr.concat(out, "time") if out else None
 
 
 def emdat() -> pd.DataFrame:
@@ -1120,13 +1162,15 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     rank = pct.rank().loc[NOW]
     rk_e = pe.rank().loc[NOW]
     span = _t(f"May–{last:%B}", f"mayo–{MONTH_ES[last.month - 1]}")
-    _source(fig, _t(f"{span} rain, each year 1981–{NOW}, one dot per year. 2026 was among the six driest of "
-                    f"{len(pct)} in every region in CHIRPS v3 and among the seven driest in ERA5. Sources: CHIRPS v3 (state means), "
+    _source(fig, _t(f"{span} rain, each year 1981–{NOW}, one dot per year. 2026 was among the {_words(int(rank.max()))} driest of "
+                    f"{len(pct)} in every region in CHIRPS v3 and among the {_words(int(rk_e.max()))} driest in ERA5. October data come "
+                    "out in November. Sources: CHIRPS v3 (state means), "
                     "ERA5 (team admin-1 statistics).",
-                    f"Lluvia de {span}, cada año de 1981 a {NOW}, un punto por año. 2026 estuvo entre los seis más secos de "
-                    f"{len(pct)} en todas las regiones según CHIRPS v3 y entre los siete más secos según ERA5. Fuentes: CHIRPS v3 "
+                    f"Lluvia de {span}, cada año de 1981 a {NOW}, un punto por año. 2026 estuvo entre los {_words(int(rank.max()))} más "
+                    f"secos de {len(pct)} en todas las regiones según CHIRPS v3 y entre los {_words(int(rk_e.max()))} más secos según "
+                    "ERA5. Los datos de octubre salen en noviembre. Fuentes: CHIRPS v3 "
                     "(medias por estado), ERA5 (estadísticas admin-1 del equipo)."))
-    v = dict(now_span=span, now_lo=f"{pct.loc[NOW].min():.0f}", now_hi=f"{pct.loc[NOW].max():.0f}",
+    v = dict(now_span=span, now_lo=f"{pct.loc[NOW].min():.0f}", now_hi=f"{pct.loc[NOW].max():.0f}", now_rank_txt=_words(int(rank.max())),
              now_rank_max=int(rank.max()), now_n=len(pct), era5_rank_max=int(rk_e.max()),
              era5_lo=f"{pe.loc[NOW].min():.0f}", era5_hi=f"{pe.loc[NOW].max():.0f}")
     if v["now_rank_max"] > 6 or v["era5_rank_max"] > 7:
@@ -1398,6 +1442,51 @@ def fig_veg(ph: pd.DataFrame) -> tuple[Path, dict]:
     return _save(fig, "veg"), v
 
 
+def fig_vegnow() -> tuple[Path, dict]:
+    """The latest JRC ASAP dekad: FPAR z-score by state over cropland and over rangeland."""
+    st = states()
+    lookup = {_norm(n): pc for pc, n in zip(st.pcode, st.name)}
+    names = st.set_index("pcode")["name"]
+    zb = [-3, -1.5, -1, -0.5, 0.5, 1, 1.5, 3]
+    cm, nm = mcolors.ListedColormap(DIV), mcolors.BoundaryNorm(zb, len(DIV))
+    fig, axes = plt.subplots(1, 2, figsize=(10.4, 4.6))
+    cur = {}
+    for ax, cid, title in zip(axes, (1, 2), (_t("Cropland", "Cultivos"), _t("Rangeland", "Pastizales"))):
+        a = asap(220, cid, 2)
+        last = a.date.max()
+        z = a[a.date == last].assign(pcode=lambda d: d.region_name.map(lambda n: lookup.get(_norm(n)))).set_index("pcode")["value"]
+        cur[cid] = (z, last)
+        st.merge(z.rename("z"), left_on="pcode", right_index=True, how="left").plot(
+            ax=ax, column="z", cmap=cm, norm=nm, edgecolor="#ffffff", lw=0.5, missing_kwds=dict(color=DRY_GREY))
+        ax.set_xlim(-73.6, -59.6)
+        ax.set_ylim(0.6, 12.4)
+        ax.set_aspect("equal")
+        ax.set_axis_off()
+        ax.set_title(title, fontsize=10)
+    cax = fig.add_axes([0.3, 0.17, 0.4, 0.03])
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=nm, cmap=cm), cax=cax, orientation="horizontal")
+    cb.set_ticks(zb[1:-1], labels=[_num(f"{t:g}") for t in zb[1:-1]])
+    cb.ax.tick_params(labelsize=8)
+    cb.set_label(_t("vegetation (FPAR) z-score; ASAP's warning level is −1", "vegetación (FPAR), puntaje z; el umbral de alerta de ASAP es −1"),
+                 fontsize=8)
+    crop, last = cur[1]
+    d0 = last.day
+    when = _t(f"{d0}–{d0 + 9} {last:%B %Y}", f"{d0}–{d0 + 9} de {MONTH_ES[last.month - 1]} de {last.year}")
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.9, bottom=0.27, wspace=0.05)
+    _source(fig, _t(f"{when}. JRC ASAP: z-score of MODIS FPAR (the share of sunlight the canopy absorbs) against the same ten days in "
+                    "2001–present, averaged over cropland or rangeland in each state (GAUL admin-1). Grey: no data.",
+                    f"{when}. JRC ASAP: puntaje z de la FPAR de MODIS (la fracción de la luz solar que absorbe la cubierta vegetal) frente "
+                    "a los mismos diez días desde 2001, promediado sobre cultivos o pastizales en cada estado (GAUL admin-1). Gris: sin "
+                    "datos."), y=0.03)
+    warn = [names[pc] for pc in crop.sort_values().index if crop[pc] < -1]
+    nat = float(crop.mean())
+    if not (abs(nat) < 0.3 and 1 <= len(warn) <= 5):
+        raise ValueError(f"the vegetation-now pattern changed (national {nat:+.2f}, under −1: {warn}): reword the section")
+    joined = (", ".join(warn[:-1]) + _t(" and ", " y ") + warn[-1]) if len(warn) > 1 else warn[0]
+    return _save(fig, "vegnow"), dict(veg_now_date=when, veg_warn=joined, veg_now_below=int((crop < 0).sum()),
+                                      veg_now_n=int(crop.notna().sum()))
+
+
 CRISIS = set(range(2014, 2020))
 CRISIS_NB = set(range(2012, 2022))   # the crisis and the years whose two-either-side comparison reaches into it
 MAIZE_STATES = {"VE18": "Portuguesa", "VE12": "Guárico", "VE06": "Barinas", "VE22": "Yaracuy", "VE09": "Cojedes",
@@ -1650,6 +1739,7 @@ def figures(a: dict) -> tuple[dict, dict]:
     f["desinventar"], x = fig_desinventar(ph); v |= x
     f["guri"], x = fig_guri(ph); v |= x
     f["veg"], x = fig_veg(ph); v |= x
+    f["vegnow"], x = fig_vegnow(); v |= x
     f["yields"], x = fig_yields(a["mon"], ph); v |= x
     nino, nina = phase_years(ph, "nino"), phase_years(ph, "nina")
     v |= dict(n_nino=len(nino), n_nina=len(nina), strong_years=", ".join(str(y) for y in ph.index[ph.strong] if y >= Y0),
