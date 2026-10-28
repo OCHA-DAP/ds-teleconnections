@@ -72,13 +72,14 @@ note = "Medians over the {n_nino} El Niño years; in zones A and B, {ab_dry_belo
 [[sections]]
 id = "maps"
 fig = ["maps", "fewsnet"]
-head = "By three-month season: drier almost everywhere in December–February, less so from June to November, and no consistent change in March–May"
-note = "The second figure is FEWS NET's analysis of strong and very strong El Niño events since 1950: below-normal rain over much of Venezuela from June to February. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
+head = "As FEWS NET maps it: in El Niño years the season was in the driest third at least half the time over {djf50}% of the mapped area in December–February, about {jn50}% from June to November, and almost nowhere in March–May"
+note = "Brown: how often the season fell in the driest third of 1991–2020 in the {n_nino} El Niño years since 1981; green: the wettest third; white: neither reaches 40% (a third would be chance); hatched dry-season areas are left out. FEWS NET's maps, in the second figure, use the same scale for strong and very strong El Niño events since 1950. The small wetter-looking patch inland on the global survey map is Apure in February–April after El Niño (faintly visible in the March–May map), a minor effect; from June to January it is normal or drier there too."
 
 [[sections]]
 id = "states"
 fig = "states"
-head = "By state: the largest percentage shortfalls come from November to February, in the north-west, the Andes, the east and Guayana"
+head = "By zone: in El Niño years every zone is {core_lo}–{core_hi}% drier from November to March; the northern coast (zone E) also loses {e_rain_lo}–{e_rain_hi}% from June to November"
+note = "Each cell is the median over the El Niño (or La Niña) years for that three-month window. The zone dry seasons above (December to the onset) lose less in the north because they run into April–May, when El Niño makes little difference."
 
 [[sections]]
 part = "Floods"

@@ -513,11 +513,9 @@ def composite(tot: dict[str, pd.DataFrame], years: list[int]) -> tuple[pd.DataFr
     return pd.DataFrame(med), pd.DataFrame(agree)
 
 
-# Standard three-month seasons, as FEWS NET uses for Venezuela (rains about May–November, dry December–April). Same rule:
-# Dec–Feb starts in December, so it is the year the event develops running into the next; Mar–May is the year after.
-MAP_PERIODS = {"Dec–Feb": [12, 13, 14], "Mar–May": [15, 16, 17], "Jun–Aug": [6, 7, 8], "Sep–Nov": [9, 10, 11]}
-
-
+# Three-month seasons in FEWS NET's order (its El Niño maps show June–August, September–November, December–February),
+# then March–May. Same rule as elsewhere: Dec–Feb starts in December, the year the event develops; Mar–May is the year after.
+MAP_PERIODS = {"Jun–Aug": [6, 7, 8], "Sep–Nov": [9, 10, 11], "Dec–Feb": [12, 13, 14], "Mar–May": [15, 16, 17]}
 def _map_stacks(product: str = "chirps_v3") -> dict[str, xr.DataArray]:
     """Total rain per 0.5° cell for each map period, one layer per rain year."""
     da = rain(product)
@@ -540,14 +538,19 @@ def map_normal(product: str = "chirps_v3") -> dict[str, xr.DataArray]:
 
 
 def map_composite(years: list[int], product: str = "chirps_v3") -> dict[str, tuple[xr.DataArray, np.ndarray]]:
-    """Median % anomaly per 0.5° cell for each map period over `years`, and the dry-season cells (under 20 mm a month)."""
+    """Per 0.5° cell and map period, as FEWS NET maps El Niño: how often `years` fell in the driest third (negative %) or the
+    wettest third (positive %) of 1991–2020, whichever is more frequent; and the dry-season cells (under 20 mm a month)."""
     out = {}
     for name, stack in _map_stacks(product).items():
         n = len(MAP_PERIODS[name])
-        clim = stack.sel(year=slice(1991, 2020)).mean("year")
-        pct = (stack.sel(year=[y for y in years if y in stack.year]) / clim * 100 - 100).median("year")
+        base = stack.sel(year=slice(1991, 2020))
+        clim = base.mean("year")
+        sel = stack.sel(year=[y for y in years if y in stack.year])
+        below = (sel < base.quantile(1 / 3, "year")).mean("year") * 100
+        above = (sel > base.quantile(2 / 3, "year")).mean("year") * 100
+        freq = xr.where(below >= above, -below, above)
         dry = (clim < 20 * n).values & clim.notnull().values
-        out[name] = (pct.where(clim >= 20 * n), dry)
+        out[name] = (freq.where(clim >= 20 * n), dry)
     return out
 
 
@@ -772,13 +775,19 @@ def _map_axes(ax, st):
     ax.set_axis_off()
 
 
+# FEWS NET's frequency scale (its colour bar, sampled): driest-third frequency in browns, wettest-third in greens, white under 40%
+FREQ_BOUNDS = [-100, -80, -70, -60, -50, -40, 40, 50, 60, 70, 80, 100]
+FREQ_CMAP = mcolors.ListedColormap(["#84540c", "#b17a28", "#d5a45f", "#eacfa0", "#f6ebcb", "#ffffff",
+                                    "#ceecea", "#9bdad1", "#6ab2af", "#2c8d86", "#08615d"])
+FREQ_NORM = mcolors.BoundaryNorm(FREQ_BOUNDS, FREQ_CMAP.N)
 NORMAL_BOUNDS = [0, 20, 50, 100, 150, 200, 300, 450]
 NORMAL_CMAP = mcolors.ListedColormap(plt.get_cmap("YlGnBu")(np.linspace(0.08, 0.95, len(NORMAL_BOUNDS) - 1)))
 NORMAL_NORM = mcolors.BoundaryNorm(NORMAL_BOUNDS, NORMAL_CMAP.N)
 
 
-def fig_maps(ph: pd.DataFrame) -> Path:
-    """Top row: normal rain per period (the seasonality); below: the El Niño and La Niña medians against it."""
+def fig_maps(ph: pd.DataFrame) -> tuple[Path, dict]:
+    """Top row: normal rain per period (the seasonality); below: how often El Niño and La Niña years fell in the driest or
+    wettest third, on FEWS NET's scale, so the figure reads beside FEWS NET's maps."""
     st = states()
     rows = [("El Niño", phase_years(ph, "nino")), ("La Niña", phase_years(ph, "nina"))]
     fig, axes = plt.subplots(len(rows) + 1, len(MAP_PERIODS), figsize=(11, 6.7))
@@ -791,6 +800,7 @@ def fig_maps(ph: pd.DataFrame) -> Path:
         ax.set_title(_cap(_span(mm[0], mm[-1])), fontsize=9.5)
     axes[0, 0].text(-0.04, 0.5, "Normal\n1991–2020", transform=axes[0, 0].transAxes, ha="right", va="center",
                     fontsize=9.5, fontweight="bold")
+    share50 = {}
     for i, (lab, yrs) in enumerate(rows, start=1):
         comp = map_composite(yrs)
         for j, (per, (da, dry_cells)) in enumerate(comp.items()):
@@ -798,7 +808,9 @@ def fig_maps(ph: pd.DataFrame) -> Path:
             inside = _clip(da, st.geometry)
             v = np.where(inside, da.values, np.nan)
             dry = (inside & dry_cells).astype(float)
-            ax.pcolormesh(da.lon, da.lat, v, cmap=PCT_CMAP, norm=PCT_NORM, shading="nearest")
+            if i == 1:   # El Niño: share of the (not dry-season) country in the driest third at least half the time
+                share50[per] = float(np.nanmean(np.where(np.isnan(v[inside]), np.nan, v[inside] <= -50)) * 100)
+            ax.pcolormesh(da.lon, da.lat, v, cmap=FREQ_CMAP, norm=FREQ_NORM, shading="nearest")
             if dry.any():
                 ax.pcolor(_edges(da.lon.values), _edges(da.lat.values), np.ma.masked_where(dry == 0, dry),
                           cmap=mcolors.ListedColormap(["#ffffff"]), hatch="////", lw=0)
@@ -813,39 +825,48 @@ def fig_maps(ph: pd.DataFrame) -> Path:
     cb.set_ticks(NORMAL_BOUNDS[1:-1])
     cb.ax.tick_params(labelsize=7.5)
     cb.set_label(_t("rain, mm a month", "lluvia, mm al mes"), fontsize=8)
-    cb = fig.colorbar(plt.cm.ScalarMappable(norm=PCT_NORM, cmap=PCT_CMAP), orientation="vertical",
+    cb = fig.colorbar(plt.cm.ScalarMappable(norm=FREQ_NORM, cmap=FREQ_CMAP), orientation="vertical",
                       cax=fig.add_axes([0.875, low.y0 + 0.01, 0.013, mid.y1 - low.y0 - 0.02]))
-    cb.set_ticks(PCT_BOUNDS[1:-1])
+    ticks = [-80, -70, -60, -50, -40, 40, 50, 60, 70, 80]
+    cb.set_ticks(ticks, labels=[f"{abs(t)}%" for t in ticks])
     cb.ax.tick_params(labelsize=7.5)
-    cb.set_label(_t("rain, % above or below normal (median of the years)",
-                    "lluvia, % por encima o por debajo de lo normal (mediana de los años)"), fontsize=8)
+    cb.set_label(_t("% of the years in the driest third (brown) or wettest third (green)",
+                    "% de los años en el tercio más seco (marrón) o más húmedo (verde)"), fontsize=8)
     DRY_PATCH.set_label(_t("dry season (under 20 mm a month)", "estación seca (menos de 20 mm al mes)"))
     fig.legend(handles=[DRY_PATCH], loc="upper right", bbox_to_anchor=(0.99, 0.065), fontsize=8, frameon=False)
-    _source(fig, _t("El Niño and La Niña rows: Jun–Aug, Sep–Nov and Dec–Feb from the year the event develops (Dec–Feb runs into "
-                    "the next year), Mar–May from the year after (phase from the Sep–Nov ONI, 1981–2025). Source: CHIRPS v3 at 0.5°.",
-                    "Filas de El Niño y La Niña: jun–ago, sep–nov y dic–feb del año en que se desarrolla el evento (dic–feb se extiende "
-                    "al año siguiente), mar–may del año siguiente (fase según el ONI de septiembre–noviembre, 1981–2025). Fuente: "
-                    "CHIRPS v3 a 0,5°."), y=0.045, width=140)
-    return _save(fig, "maps")
+    _source(fig, _t("El Niño and La Niña rows: how often the season fell in the driest or wettest third of 1991–2020; white: "
+                    "neither reaches 40% (a third would be chance), the scale FEWS NET uses. Jun–Aug, Sep–Nov and Dec–Feb from the year "
+                    "the event develops (Dec–Feb runs into the next year), Mar–May from the year after (phase from the Sep–Nov ONI, "
+                    "1981–2025). Source: CHIRPS v3 at 0.5°.",
+                    "Filas de El Niño y La Niña: con qué frecuencia la temporada cayó en el tercio más seco o más húmedo de 1991–2020; "
+                    "blanco: ninguno llega al 40% (por azar sería un tercio), la escala de FEWS NET. Jun–ago, sep–nov y dic–feb del año "
+                    "en que se desarrolla el evento (dic–feb se extiende al año siguiente), mar–may del año siguiente (fase según el ONI "
+                    "de septiembre–noviembre, 1981–2025). Fuente: CHIRPS v3 a 0,5°."), y=0.045, width=140)
+    jn = (share50["Jun–Aug"] + share50["Sep–Nov"]) / 2
+    if (share50["Dec–Feb"] < 60 or not 15 <= jn <= 45 or share50["Mar–May"] > 10
+            or max(share50["Jun–Aug"], share50["Sep–Nov"]) >= share50["Dec–Feb"]):
+        raise ValueError(f"the El Niño driest-third pattern changed ({ {k: round(x) for k, x in share50.items()} }): reword the maps headline")
+    return _save(fig, "maps"), dict(djf50=f"{share50['Dec–Feb']:.0f}", jn50=f"{jn:.0f}")
 
 
-def _state_panel(ax, med: pd.DataFrame, names: pd.Series, title: str, labels: bool):
-    m = med.reindex(STATE_ORDER)
-    ax.imshow(m.values, cmap=PCT_CMAP, norm=PCT_NORM, aspect="auto")
-    _hatch_cells(ax, m.isna().values)
-    for i in range(m.shape[0]):
-        for j in range(m.shape[1]):
-            v = m.values[i, j]
+def _grid_panel(ax, med: pd.DataFrame, labels: list[str] | None, title: str):
+    """Rows × three-month windows of median % change, numbers in the cells; dry-season windows hatched."""
+    ax.imshow(med.values, cmap=PCT_CMAP, norm=PCT_NORM, aspect="auto")
+    _hatch_cells(ax, med.isna().values)
+    for i in range(med.shape[0]):
+        for j in range(med.shape[1]):
+            v = med.values[i, j]
             if not np.isnan(v):
-                ax.text(j, i, f"{v:+.0f}".replace("-", "−"), ha="center", va="center", fontsize=6.5,
+                ax.text(j, i, f"{v:+.0f}".replace("-", "−"), ha="center", va="center", fontsize=7.5,
                         color="#ffffff" if abs(v) >= 25 else "#0b0b0b")
     ax.set_xticks(range(len(SEASONS)), [_cap(_span(SEASON_START[s], SEASON_START[s] + 2)) for s in SEASONS], rotation=90, fontsize=7.5)
-    ax.set_yticks(range(len(STATE_ORDER)), [names[p] for p in STATE_ORDER] if labels else [], fontsize=7.5)
+    if labels:
+        ax.set_yticks(range(med.shape[0]), labels, fontsize=8)
+    else:   # shared y axis: hide this panel's labels without clearing the other's
+        ax.tick_params(labelleft=False)
     ax.tick_params(length=0)
-    y = -0.5
-    for r, (ps, _) in REGIONS.items():
-        y += len(ps)
-        ax.axhline(y, color=SURFACE, lw=2.2)
+    for i in range(1, med.shape[0]):
+        ax.axhline(i - 0.5, color=SURFACE, lw=1.5)
     ax.axvline(2.5, color=NOW_C, lw=0.8, ls=(0, (2, 2)))
     ax.set_title(title, fontsize=10)
     for sp in ax.spines.values():
@@ -906,7 +927,7 @@ def zone_values(zs: dict, zm: pd.DataFrame, ph: pd.DataFrame) -> dict:
     south, north = ["A", "B"], ["C", "D", "E"]
     clim = zm.loc["1991":"2020"].groupby(zm.loc["1991":"2020"].index.month).mean()
     onset = [int(clim.index[(clim[z] >= clim[z].mean()).values][0]) for z in ZONE_ONSET]
-    lat = zones().set_index("zone").geometry.centroid.y.loc[list(ZONE_ONSET)]
+    lat = zones().set_index("zone").geometry.to_crs(3857).centroid.y.loc[list(ZONE_ONSET)]
     a_dry_mm = dry_norm["A"] / ZONE_ONSET["A"]
     if ((dm[south] > -15).any() or below[south].min() < 12 or (rm[south].abs() > 5).any() or (rm[north] > -5).any()
             or not ((dm[north] < 0) & (dm[north] > dm[south].max())).all() or onset != sorted(onset)
@@ -978,31 +999,32 @@ def fig_fewsnet() -> Path:
     return _save(fig, "fewsnet")
 
 
-def fig_states(tot: dict, ph: pd.DataFrame) -> Path:
-    names = states().set_index("pcode")["name"]
+def fig_states(totz: dict, ph: pd.DataFrame) -> tuple[Path, dict]:
+    """By INAMEH zone and three-month window: median change in the El Niño and the La Niña years."""
     nino, nina = phase_years(ph, "nino"), phase_years(ph, "nina")
-    fig, axes = plt.subplots(1, 2, figsize=(11.6, 7.4), sharey=True)
-    _state_panel(axes[0], composite(tot, nino)[0], names, f"El Niño ({len(nino)} {_t('years', 'años')})", True)
-    _state_panel(axes[1], composite(tot, nina)[0], names, f"La Niña ({len(nina)} {_t('years', 'años')})", False)
-    y = -0.5
-    for r, (ps, _) in REGIONS.items():
-        axes[1].text(len(SEASONS) - 0.3, y + len(ps) / 2, textwrap.fill(_reg(r), 18), ha="left", va="center", fontsize=8,
-                     fontweight="bold")
-        y += len(ps)
-    fig.subplots_adjust(wspace=0.04, right=0.84)
-    _source(fig, _t("Each cell: median rain over the El Niño (or La Niña) years, % above or below the state's 1991–2020 normal for "
+    med_nino, med_nina = composite(totz, nino)[0].loc[list(ZONE_ONSET)], composite(totz, nina)[0].loc[list(ZONE_ONSET)]
+    fig, axes = plt.subplots(1, 2, figsize=(11.6, 3.4), sharey=True)
+    _grid_panel(axes[0], med_nino, [_zone_label(z) for z in ZONE_ONSET], f"El Niño ({len(nino)} {_t('years', 'años')})")
+    _grid_panel(axes[1], med_nina, None, f"La Niña ({len(nina)} {_t('years', 'años')})")
+    fig.subplots_adjust(wspace=0.04)
+    _source(fig, _t("Each cell: median rain over the El Niño (or La Niña) years, % above or below the zone's 1991–2020 normal for "
                     "those three months. Left of the dashed line: windows starting January–March, from the year after El Niño or "
-                    "La Niña develops; right: windows starting May–December, from the year it develops. Hatched: dry season (normal under 60 mm in three months). Rain years May–April, "
-                    "1981/82–2025/26. Distrito Capital, La Guaira and Nueva Esparta rest on one or two partial 0.5° cells. Source: "
-                    "CHIRPS v3, state means.",
+                    "La Niña develops; right: windows starting May–December, from the year it develops. Hatched: dry season (normal "
+                    "under 60 mm in three months). Rain years May–April, 1981/82–2025/26. Sources: CHIRPS v3; zones: INAMEH.",
                     "Cada celda: mediana de la lluvia en los años de El Niño (o de La Niña), en % por encima o por debajo de la normal "
-                    "1991–2020 del estado para esos tres meses. A la izquierda de la línea discontinua: los períodos que empiezan entre "
+                    "1991–2020 de la zona para esos tres meses. A la izquierda de la línea discontinua: los períodos que empiezan entre "
                     "enero y marzo, del año siguiente al desarrollo de El Niño o La Niña; a la derecha: los que empiezan entre mayo y "
-                    "diciembre, del año en que se desarrolla. Rayado: "
-                    "estación seca (normal inferior a 60 mm en tres meses). Años hidrológicos de mayo a abril, 1981/82–2025/26. "
-                    "Distrito Capital, La Guaira y Nueva Esparta se basan en una o dos celdas parciales de 0,5°. Fuente: CHIRPS v3, "
-                    "medias por estado."))
-    return _save(fig, "states")
+                    "diciembre, del año en que se desarrolla. Rayado: estación seca (normal inferior a 60 mm en tres meses). Años "
+                    "hidrológicos de mayo a abril, 1981/82–2025/26. Fuentes: CHIRPS v3; zonas: INAMEH."), y=-0.12)
+    core = med_nino[["NDJ", "DJF", "JFM"]]
+    rains = med_nino[["JJA", "JAS", "ASO", "SON"]]
+    if (core.isna().any().any() or (core > -15).any().any() or (rains.loc["E"] > -12).any()
+            or rains.loc[["A", "B", "C", "D"]].abs().max().max() >= rains.loc["E"].abs().min()
+            or (med_nino.loc[["C", "D", "E"], ["FMA", "MAM"]] <= -10).any().any()):
+        raise ValueError(f"the zone × season pattern changed:\n{med_nino.round()}\nreword the grid headline and note")
+    f = lambda x: f"{x:.0f}"  # noqa: E731
+    return _save(fig, "states"), dict(core_lo=f(-core.max().max()), core_hi=f(-core.min().min()),
+                                      e_rain_lo=f(-rains.loc["E"].max()), e_rain_hi=f(-rains.loc["E"].min()))
 
 
 def fig_season(zm: pd.DataFrame, ph: pd.DataFrame) -> Path:
@@ -1610,10 +1632,10 @@ def cerf_check() -> None:
 def figures(a: dict) -> tuple[dict, dict]:
     ph, f, v = a["ph"], {}, {}
     v |= oni_now()
-    f["maps"] = fig_maps(ph)
+    f["maps"], x = fig_maps(ph); v |= x
     v |= season_contrast(a["mon"], ph)
-    f["states"] = fig_states(a["tot"], ph)
     zm = zone_monthly()
+    f["states"], x = fig_states(season_totals(zm), ph); v |= x
     zs = zone_seasons(zm)
     v |= zone_values(zs, zm, ph)
     f["season"] = fig_season(zm, ph)
