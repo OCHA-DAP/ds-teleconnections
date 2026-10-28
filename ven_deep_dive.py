@@ -1763,8 +1763,8 @@ def render(spec: dict, figs: dict, v: dict) -> str:
     out.append(f'<h1>{pg["title"]}</h1><p class="meta">{pg["sub"].format(**v)}<br>{pg["dateline"].format(**v)}</p>')
     out.append('<a class="lang" href="../" lang="en">English version</a>' if es else
                '<a class="lang" href="es/" lang="es">Versión en español</a>')
-    out.append(f'<a class="lang" href="{"../slides/" if es else "slides/"}">'   # the short deck (ven_slides.py), in English only
-               f'{_t("Slides (PowerPoint)", "Diapositivas, en inglés (PowerPoint)")}</a>')
+    out.append(f'<a class="lang" href="{"../slides/es/" if es else "slides/"}">'   # the short deck (ven_slides.py)
+               f'{_t("Slides (PowerPoint)", "Diapositivas (PowerPoint)")}</a>')
     if pg.get("lead"):
         out.append(f'<p class="lead">{pg["lead"].format(**v)}</p>')
     out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t["big"].format(**v)}</p><p>{t["text"].format(**v)}</p></div>'
