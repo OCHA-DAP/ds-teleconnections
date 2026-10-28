@@ -1043,6 +1043,56 @@ def fig_fewsnet() -> Path:
     return _save(fig, "fewsnet")
 
 
+CALENDAR_FILE = FEWS_DIR / "ve_seasonal_calendar_rural.csv"   # digitized by deep_dives/data/fewsnet/ve_seasonal_calendar_digitize.py
+CAL_FILL = {"hurricane": "#1d3a5f", "prep": "#4f352e", "harvest": "#0d5d40", "labour": "#434343"}   # FEWS NET's colours
+CAL_RAINY, CAL_LEAN = (4, 11), (5, 8)   # months from 1 January: FEWS NET's rainy season May–Nov, lean season Jun–Aug
+
+
+def fig_calendar(k: float = 1.0) -> Path:
+    """FEWS NET's seasonal calendar for rural Venezuela, redrawn from the digitized table so it can be labelled in Spanish.
+    k > 1: type k times larger and no caption, for a slide (ven_slides.py), saved as calendar_slide."""
+    cal = pd.read_csv(CALENDAR_FILE, keep_default_na=False)
+    rows = cal.drop_duplicates("order").set_index("order")[_t("row_en", "row_es")]
+    fig, ax = plt.subplots(figsize=(11.5, 5.6))
+    ax.axvspan(*CAL_RAINY, color="#bddce8", lw=0, zorder=0)
+    ax.text(sum(CAL_RAINY) / 2, -1.05, _t("Rainy season", "Temporada de lluvias"), ha="center", va="center", fontsize=10.5 * k,
+            style="italic", color="#2b4c8c")
+    for r in cal.itertuples():
+        ax.barh(r.order, r.end - r.start, left=r.start, height=0.5, color=CAL_FILL[r.kind], edgecolor=SURFACE, lw=1.5, zorder=2)
+        label = r.text_es if LANG == "es" else r.text_en
+        if label:   # shrink a label to fit its bar: bold characters are up to about 0.75 of the font size wide
+            month_pt = fig.get_figwidth() * 72 * (0.99 - 0.24) / 12
+            size = min(8.5 * k, 0.9 * (r.end - r.start) * month_pt / (0.75 * len(label)))
+            ax.text((r.start + r.end) / 2, r.order, label, ha="center", va="center", fontsize=size, color="#ffffff",
+                    fontweight="bold", zorder=3)
+    for y in np.arange(len(rows) - 1) + 0.5:
+        ax.axhline(y, color="#9a9993", lw=0.5, ls=(0, (1, 2)), zorder=1)
+    lean = plt.Rectangle((CAL_LEAN[0], -0.62), CAL_LEAN[1] - CAL_LEAN[0], len(rows) + 0.3, fill=False, edgecolor="#e8383d", lw=2,
+                         zorder=4, clip_on=False)
+    ax.add_patch(lean)
+    ax.text(sum(CAL_LEAN) / 2, len(rows) - 0.05, _t("Lean season", "Temporada de escasez"), ha="center", va="top", fontsize=10.5 * k,
+            fontweight="bold", color="#e8383d")
+    ax.set_xlim(0, 12)
+    ax.set_ylim(len(rows) + 0.75, -1.45)
+    ax.set_yticks(rows.index, rows.values, fontsize=9.5 * k)
+    ax.set_xticks(np.arange(12) + 0.5, [_mon(m).upper() for m in range(1, 13)], fontsize=9.5 * k)
+    ax.xaxis.tick_top()
+    ax.tick_params(length=0)
+    ax.spines[["left", "right", "bottom"]].set_visible(False)
+    ax.set_title(_t("Rural areas", "Zonas rurales"), fontsize=11 * k, fontweight="bold", pad=24 * k)
+    if k > 1:
+        return _save(fig, "calendar_slide")
+    _source(fig, _t("Redrawn from FEWS NET’s seasonal calendar for Venezuela (rural areas), fews.net/latin-america-and-caribbean/"
+                    "venezuela. Winter and summer are Venezuela’s two crop cycles: winter crops are planted with the rains (April–"
+                    "June), summer crops from about October; a bar reaching December carries on into January.",
+                    "Redibujado del calendario estacional de FEWS NET para Venezuela (zonas rurales), fews.net/latin-america-and-"
+                    "caribbean/venezuela. Invierno y verano son los dos ciclos de cultivo de Venezuela: los de invierno se siembran con "
+                    "las lluvias (abril–junio), los de verano desde octubre aproximadamente; una barra que llega a diciembre sigue en "
+                    "enero."), y=0.0, width=150)
+    fig.subplots_adjust(left=0.24, right=0.99, top=0.88, bottom=0.1)
+    return _save(fig, "calendar")
+
+
 def fig_states(totz: dict, ph: pd.DataFrame) -> tuple[Path, dict]:
     """By INAMEH zone and three-month window: median change in the El Niño and the La Niña years."""
     nino, nina = phase_years(ph, "nino"), phase_years(ph, "nina")
@@ -1733,7 +1783,7 @@ def figures(a: dict) -> tuple[dict, dict]:
     f["season"] = fig_season(zm, ph)
     f["zones"] = fig_zones(zs, ph)
     f["fewsnet"] = fig_fewsnet()
-    f["calendar"] = FEWS_DIR / "ve_seasonal_calendar_rural.png"
+    f["calendar"] = fig_calendar()
     v |= era5_agreement(a)
     f["now"], x = fig_now(a["mon"], a["mon_e"], ph); v |= x
     f["forecast"], x = fig_forecast(); v |= x

@@ -203,7 +203,7 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
              _t(f"{V._cap(span)} rain was {v['now_lo']}–{v['now_hi']}% of normal, among the {v['now_rank_txt']} driest since 1981. "
                 f"Cropland is below the warning level in {v['veg_warn']}. Guri is near full.",
                 f"La lluvia de {span} fue del {v['now_lo']}–{v['now_hi']}% de lo normal, entre las {v['now_rank_txt']} más bajas "
-                f"desde 1981. Los cultivos están por debajo del umbral de alerta en {v['veg_warn']}. Guri está casi lleno.")],
+                f"desde 1981. Los cultivos están por debajo del umbral de alerta en {v['veg_warn']}. El Guri está casi lleno.")],
             ["3", _t("The forecast", "El pronóstico"),
              _t(f"SEAS5 (October {yr}): October–February among the driest 10% of forecasts since 1981, wherever it is the rainy "
                 "season. For this season, plan on the forecast.",
@@ -224,7 +224,7 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
                              "temporada de lluvias. Lluvia: CHIRPS v3.")},
         "impacts": {"title": _t("El Niño years also had fewer flood reports, a larger fall in the Guri reservoir and poorer "
                                 "dry-season vegetation",
-                                "Con El Niño también hubo menos inundaciones registradas, más bajada del Guri y peor vegetación en "
+                                "Con El Niño también hubo menos inundaciones registradas, mayor bajada del Guri y peor vegetación en "
                                 "la estación seca"),
                     "cards": [[f"{v['di_fewer_lo']}–{v['di_fewer_hi']}%",
                                _t("fewer flood and landslide reports in a typical El Niño year (DesInventar, 1975–2013)",
@@ -261,8 +261,8 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
                            "es −1.")},
         "guri": {"title": _t(f"The Guri reservoir is near full ({v['guri_peak']} m); falls like those after past El Niño years "
                              f"would take it to {v['guri_lo']}–{v['guri_hi']} m by May {v['next_year']}",
-                             f"Guri está casi lleno ({v['guri_peak']} m); bajadas como tras otros años de El Niño lo llevarían a "
-                             f"{v['guri_lo']}–{v['guri_hi']} m en mayo de {v['next_year']}"),
+                             f"El Guri está casi lleno ({v['guri_peak']} m); bajadas como tras años de El Niño anteriores lo "
+                             f"llevarían a {v['guri_lo']}–{v['guri_hi']} m en mayo de {v['next_year']}"),
                  "note": _t(f"The low end is {v['guri_gap10']} m above the 2010 low. How far it falls also depends on releases for "
                             "power. NASA G-REALM satellite altimetry.",
                             f"El extremo inferior queda {v['guri_gap10']} m por encima del mínimo de 2010. Cuánto baje depende "
@@ -279,8 +279,8 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
                                     f"El pronóstico tiene destreza para estos meses (correlación {v['fc_r_lo']}–{v['fc_r_hi']})"),
                                  _t("ECMWF issues a new forecast every month", "ECMWF emite un pronóstico nuevo cada mes")],
                      "note": _t(f"ECMWF SEAS5, issued October {yr}, detrended; classes as in the team’s seas5-skill viewer.",
-                                f"SEAS5 de ECMWF, emitido en octubre de {yr}, sin tendencia; clases como en el visor seas5-skill del "
-                                "equipo.")},
+                                f"SEAS5 de ECMWF, emitido en octubre de {yr}, con la tendencia de largo plazo quitada; clases como en el "
+                                "visor seas5-skill del equipo.")},
         "calendar": {"title": _t("The forecast months cover the summer planting of maize and rice and the coffee and sugar-cane "
                                  "harvest",
                                  "Los meses del pronóstico abarcan la siembra de verano de maíz y arroz y la cosecha de café y caña "
@@ -291,17 +291,18 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
                                     "Prevé pérdidas localizadas en secano con impacto limitado, dado el riego y las importaciones"),
                                  _t("It puts peak needs in August–October 2026, driven by the earthquake and the economy",
                                     "Sitúa el pico de necesidades en agosto–octubre de 2026, por el terremoto y la economía")],
-                     "note": _t("FEWS NET: seasonal calendar (Venezuela page) and El Niño briefing, August 2026.",
-                                "FEWS NET: calendario estacional (página de Venezuela, en inglés) e informe sobre El Niño, agosto "
-                                "de 2026.")},
-        "watch": {"title": _t("What to watch next", "Qué vigilar a continuación"),
+                     "note": _t("Calendar redrawn from FEWS NET’s Venezuela page; outlook from FEWS NET’s El Niño briefing, "
+                                "August 2026.",
+                                "Calendario redibujado de la página de Venezuela de FEWS NET; perspectivas del informe de FEWS NET "
+                                "sobre El Niño, agosto de 2026.")},
+        "watch": {"title": _t("What to watch next", "Qué vigilar en las próximas semanas"),
                   "bullets": [_t("The November SEAS5 forecast, out in early November",
                                  "El pronóstico SEAS5 de noviembre, a principios de noviembre"),
                               _t("October rain, from CHIRPS and ERA5 in November", "La lluvia de octubre, de CHIRPS y ERA5 en noviembre"),
                               _t("The Guri reservoir level through the dry season",
                                  "El nivel del embalse de Guri durante la estación seca"),
                               _t("Cropland warnings in the north-west and north-east (JRC ASAP, every ten days)",
-                                 "Alertas en los cultivos del noroeste y el nordeste (JRC ASAP, cada diez días)")],
+                                 "Alertas en los cultivos del noroeste y del nororiente (JRC ASAP, cada diez días)")],
                   "link_label": _t("Full analysis, in English and Spanish: ", "Análisis completo, en español y en inglés: "),
                   "link": PAGE_URL[lang]},
         "notes": {
@@ -323,11 +324,11 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
             "impacts": _t("Floods: DesInventar records, each year against the years around it. Guri: NASA G-REALM satellite "
                           "altimetry since 1992. Vegetation: JRC ASAP FPAR, November–April, since 2000; 2023/24, a strong El Niño, "
                           "was not among the poorest.",
-                          "Inundaciones: registros de DesInventar, cada año frente a los años de alrededor. Guri: altimetría "
+                          "Inundaciones: registros de DesInventar, cada año frente a los años vecinos. Guri: altimetría "
                           "satelital NASA G-REALM desde 1992. Vegetación: FPAR de JRC ASAP, noviembre–abril, desde 2000; 2023/24, "
                           "un El Niño fuerte, no estuvo entre las peores."),
             "rain": _t("Each region’s total for the months so far this rain year, as a share of its 1991–2020 normal.",
-                       "El total de cada región en los meses transcurridos de este año de lluvias, como porcentaje de su normal "
+                       "El total de cada región en los meses transcurridos de este año hidrológico, como porcentaje de su normal "
                        "de 1991–2020."),
             "veg": _t("The full page also maps rangeland. ASAP updates every ten days.",
                       "La página completa también cartografía los pastizales. ASAP se actualiza cada diez días."),
@@ -573,8 +574,8 @@ def build_pptx(c: dict, figs: dict[str, Path], path: Path) -> None:
     # 9 calendar
     k = c["calendar"]
     s = slide(k["title"], PART3, k["note"], n["calendar"])
-    s.shapes.add_picture(str(figs["calendar"]), Inches(0.6), Inches(2.1), width=Inches(8.2))
-    bullets(s, 9.1, 2.2, 3.65, 4.4, k["bullets"], size=17)
+    s.shapes.add_picture(str(figs["calendar"]), Inches(0.45), Inches(2.1), width=Inches(8.9))
+    bullets(s, 9.55, 2.2, 3.25, 4.5, k["bullets"], size=16)
 
     # 10 what to watch
     w = c["watch"]
@@ -588,6 +589,9 @@ def build_pptx(c: dict, figs: dict[str, Path], path: Path) -> None:
 
     if c["lang"] == "es":
         _set_language(prs, MSO_LANGUAGE_ID.SPANISH_VENEZUELA)
+        for part in (prs.slide_master, *prs.slide_layouts):   # defaults for text typed into new boxes and slides
+            for el in part._element.iter(qn("a:defRPr"), qn("a:endParaRPr"), qn("a:rPr")):
+                el.set("lang", "es-VE")
     prs.core_properties.title = c["title"]
     prs.core_properties.author = _t("OCHA Centre for Humanitarian Data", "Centro de Datos Humanitarios de OCHA")
     prs.core_properties.language = _t("en-GB", "es-VE")
@@ -674,7 +678,7 @@ def main() -> None:
             c = content(v, rain, lang)
             figs = dict(zone_map=fig_zone_map(), vegnow=fig_vegnow(), guri=fig_guri(), forecast=fig_forecast(),
                         rain2026=fig_rain2026(c["rain"]["regions"], c["rain"]["values"]),
-                        calendar=V.FEWS_DIR / "ve_seasonal_calendar_rural.png")
+                        calendar=V.fig_calendar(k=1.35))   # the page's figure, in larger type
             (_DIR / "content.json").write_text(json.dumps(c, ensure_ascii=False, indent=1), encoding="utf-8")
             build_pptx(c, figs, _DIR / PPTX[lang])
             pngs[lang] = render_pngs(_DIR / PPTX[lang])
