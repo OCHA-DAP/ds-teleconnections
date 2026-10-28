@@ -1054,6 +1054,7 @@ def fig_calendar(k: float = 1.0) -> Path:
     cal = pd.read_csv(CALENDAR_FILE, keep_default_na=False)
     rows = cal.drop_duplicates("order").set_index("order")[_t("row_en", "row_es")]
     fig, ax = plt.subplots(figsize=(11.5, 5.6))
+    fig.subplots_adjust(left=0.24, right=0.99, top=0.88, bottom=0.1)   # before the labels, which are sized to the month width
     ax.axvspan(*CAL_RAINY, color="#bddce8", lw=0, zorder=0)
     ax.text(sum(CAL_RAINY) / 2, -1.05, _t("Rainy season", "Temporada de lluvias"), ha="center", va="center", fontsize=10.5 * k,
             style="italic", color="#2b4c8c")
@@ -1082,14 +1083,16 @@ def fig_calendar(k: float = 1.0) -> Path:
     ax.set_title(_t("Rural areas", "Zonas rurales"), fontsize=11 * k, fontweight="bold", pad=24 * k)
     if k > 1:
         return _save(fig, "calendar_slide")
+    if cal.loc[cal.wraps.astype(str) == "True", "row_en"].unique().tolist() != ["Cash crop harvest"]:
+        raise ValueError("the calendar's year-end crossing changed: reword the caption")
     _source(fig, _t("Redrawn from FEWS NET’s seasonal calendar for Venezuela (rural areas), fews.net/latin-america-and-caribbean/"
                     "venezuela. Winter and summer are Venezuela’s two crop cycles: winter crops are planted with the rains (April–"
-                    "June), summer crops from about October; a bar reaching December carries on into January.",
+                    "June), summer crops from about October. The coffee and sugar-cane harvest runs from October to March, across the "
+                    "year end; the other bars stop where they end.",
                     "Redibujado del calendario estacional de FEWS NET para Venezuela (zonas rurales), fews.net/latin-america-and-"
                     "caribbean/venezuela. Invierno y verano son los dos ciclos de cultivo de Venezuela: los de invierno se siembran con "
-                    "las lluvias (abril–junio), los de verano desde octubre aproximadamente; una barra que llega a diciembre sigue en "
-                    "enero."), y=0.0, width=150)
-    fig.subplots_adjust(left=0.24, right=0.99, top=0.88, bottom=0.1)
+                    "las lluvias (abril–junio), los de verano desde octubre aproximadamente. La cosecha de café y caña de azúcar va de "
+                    "octubre a marzo, de un año al siguiente; las demás barras terminan donde acaban."), y=0.0, width=150)
     return _save(fig, "calendar")
 
 

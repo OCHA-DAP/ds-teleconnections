@@ -1,23 +1,23 @@
-order,row_en,row_es,kind,start,end,text_en,text_es
-0,Hurricane season,Temporada de huracanes,hurricane,5.0,11.0,,
-1,Land preparation: maize,Preparación de tierras: maíz,prep,3.0,5.0,Winter,Invierno
-1,Land preparation: maize,Preparación de tierras: maíz,prep,8.0,10.0,Summer,Verano
-2,Planting: maize,Siembra: maíz,prep,4.0,6.0,Winter,Invierno
-2,Planting: maize,Siembra: maíz,prep,9.0,11.0,Summer,Verano
-3,Maize harvest,Cosecha de maíz,harvest,1.0,4.0,Summer,Verano
-3,Maize harvest,Cosecha de maíz,harvest,7.0,10.0,Winter,Invierno
-4,Land preparation: rice,Preparación de tierras: arroz,prep,2.0,4.0,Winter,Invierno
-4,Land preparation: rice,Preparación de tierras: arroz,prep,8.0,10.0,Summer,Verano
-5,Planting: rice,Siembra: arroz,prep,3.0,6.0,Winter,Invierno
-5,Planting: rice,Siembra: arroz,prep,9.0,12.0,Summer,Verano
-6,Rice harvest,Cosecha de arroz,harvest,1.0,4.0,Summer,Verano
-6,Rice harvest,Cosecha de arroz,harvest,7.0,10.0,Winter,Invierno
-7,Potatoes,Papa,harvest,2.5,3.5,Harvest,Cosecha
-7,Potatoes,Papa,prep,9.5,10.5,Land prep,Preparación
-7,Potatoes,Papa,prep,10.5,12.0,Planting,Siembra
-8,Vegetable harvest,Cosecha de hortalizas,harvest,5.0,6.0,Summer,Verano
-8,Vegetable harvest,Cosecha de hortalizas,harvest,9.0,10.0,Winter,Invierno
-9,Cash crop harvest,Cosecha de cultivos comerciales,harvest,0.0,3.0,Coffee and sugar cane,Café y caña de azúcar
-9,Cash crop harvest,Cosecha de cultivos comerciales,harvest,9.0,12.0,Coffee and sugar cane,Café y caña de azúcar
-10,Peak demand: agricultural labour,Pico de demanda: mano de obra agrícola,labour,1.0,4.0,,
-10,Peak demand: agricultural labour,Pico de demanda: mano de obra agrícola,labour,8.0,11.0,,
+order,row_en,row_es,kind,start,end,text_en,text_es,wraps
+0,Hurricane season,Temporada de huracanes,hurricane,5.0,11.0,,,False
+1,Land preparation: maize,Preparación de tierras: maíz,prep,3.0,5.0,Winter,Invierno,False
+1,Land preparation: maize,Preparación de tierras: maíz,prep,8.0,10.0,Summer,Verano,False
+2,Planting: maize,Siembra: maíz,prep,4.0,6.0,Winter,Invierno,False
+2,Planting: maize,Siembra: maíz,prep,9.0,11.0,Summer,Verano,False
+3,Maize harvest,Cosecha de maíz,harvest,1.0,4.0,Summer,Verano,False
+3,Maize harvest,Cosecha de maíz,harvest,7.0,10.0,Winter,Invierno,False
+4,Land preparation: rice,Preparación de tierras: arroz,prep,2.0,4.0,Winter,Invierno,False
+4,Land preparation: rice,Preparación de tierras: arroz,prep,8.0,10.0,Summer,Verano,False
+5,Planting: rice,Siembra: arroz,prep,3.0,6.0,Winter,Invierno,False
+5,Planting: rice,Siembra: arroz,prep,9.0,12.0,Summer,Verano,False
+6,Rice harvest,Cosecha de arroz,harvest,1.0,4.0,Summer,Verano,False
+6,Rice harvest,Cosecha de arroz,harvest,7.0,10.0,Winter,Invierno,False
+7,Potatoes,Papa,harvest,2.5,3.5,Harvest,Cosecha,False
+7,Potatoes,Papa,prep,9.5,10.5,Land prep,Preparación,False
+7,Potatoes,Papa,prep,10.5,12.0,Planting,Siembra,False
+8,Vegetable harvest,Cosecha de hortalizas,harvest,5.0,6.0,Summer,Verano,False
+8,Vegetable harvest,Cosecha de hortalizas,harvest,9.0,10.0,Winter,Invierno,False
+9,Cash crop harvest,Cosecha de cultivos comerciales,harvest,0.0,3.0,Coffee and sugar cane,Café y caña de azúcar,True
+9,Cash crop harvest,Cosecha de cultivos comerciales,harvest,9.0,12.0,Coffee and sugar cane,Café y caña de azúcar,True
+10,Peak demand: agricultural labour,Pico de demanda: mano de obra agrícola,labour,1.0,4.0,,,False
+10,Peak demand: agricultural labour,Pico de demanda: mano de obra agrícola,labour,8.0,11.0,,,False
