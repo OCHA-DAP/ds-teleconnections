@@ -74,13 +74,13 @@ note = "Medianas de los {n_nino} años de El Niño; en las zonas A y B, {ab_dry_
 id = "maps"
 fig = ["maps", "fewsnet"]
 head = "Como lo muestra FEWS NET: en los años de El Niño la temporada cayó en el tercio más seco al menos la mitad de las veces en el {djf50}% del área cartografiada en diciembre–febrero, en cerca del {jn50}% de junio a noviembre y casi en ningún lugar en marzo–mayo"
-note = "Marrón: con qué frecuencia la temporada cayó en el tercio más seco de 1991–2020 en los {n_nino} años de El Niño desde 1981; verde: el tercio más húmedo; blanco: ninguno llega al 40% (por azar sería un tercio); las zonas rayadas de estación seca quedan fuera. Los mapas de FEWS NET, en la segunda figura, usan la misma escala para los eventos de El Niño fuertes y muy fuertes desde 1950. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (se ve débilmente en el mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
+note = "Marrón: con qué frecuencia la temporada cayó en el tercio más seco de 1991–2020 en los {n_nino} años de El Niño desde 1981; verde: el tercio más húmedo; blanco: ninguno llega al 40% (por azar sería un tercio); las zonas rayadas de estación seca quedan fuera. Los mapas de FEWS NET, en la segunda figura, usan la misma escala para los eventos de El Niño fuertes y muy fuertes desde 1950. La pequeña zona más húmeda en el interior que aparece en el mapa mundial es Apure en febrero–abril después de El Niño (la mancha verde del mapa de marzo–mayo), un efecto menor; de junio a enero allí también la lluvia es normal o inferior."
 
 [[sections]]
 id = "states"
 fig = "states"
 head = "Por zona: en los años de El Niño todas las zonas son un {core_lo}–{core_hi}% más secas de noviembre a marzo; la costa norte (zona E) además pierde un {e_rain_lo}–{e_rain_hi}% de junio a noviembre"
-note = "Cada celda es la mediana de los años de El Niño (o de La Niña) para esa ventana de tres meses. Las estaciones secas por zona de arriba (de diciembre al inicio) pierden menos en el norte porque se extienden a abril–mayo, cuando El Niño cambia poco."
+note = "Cada celda es la mediana de los años de El Niño (o de La Niña) para esa ventana de tres meses. Las estaciones secas por zona de la sección anterior (de diciembre al inicio de las lluvias) pierden menos en el norte porque llegan hasta abril–mayo, cuando El Niño apenas influye."
 
 [[sections]]
 part = "Inundaciones"
