@@ -906,14 +906,18 @@ def zone_values(zs: dict, zm: pd.DataFrame, ph: pd.DataFrame) -> dict:
     south, north = ["A", "B"], ["C", "D", "E"]
     clim = zm.loc["1991":"2020"].groupby(zm.loc["1991":"2020"].index.month).mean()
     onset = [int(clim.index[(clim[z] >= clim[z].mean()).values][0]) for z in ZONE_ONSET]
+    lat = zones().set_index("zone").geometry.centroid.y.loc[list(ZONE_ONSET)]
+    a_dry_mm = dry_norm["A"] / ZONE_ONSET["A"]
     if ((dm[south] > -15).any() or below[south].min() < 12 or (rm[south].abs() > 5).any() or (rm[north] > -5).any()
-            or not ((dm[north] < 0) & (dm[north] > dm[south].max())).all() or onset != sorted(onset)):
+            or not ((dm[north] < 0) & (dm[north] > dm[south].max())).all() or onset != sorted(onset)
+            or not lat.is_monotonic_increasing or a_dry_mm < DRY_MM):
         raise ValueError(f"the zone pattern changed (rainy {rm.round().tolist()}, dry {dm.round().tolist()}, below {below.tolist()}, "
                          f"onset order {onset}): reword the zones headline, note and tile")
     f = lambda x: f"{x:.0f}"  # noqa: E731
     return dict(ab_dry_lo=f(-dm[south].max()), ab_dry_hi=f(-dm[south].min()), ab_dry_below=int(below[south].min()),
                 ab_rain_max=f(np.ceil(rm[south].abs().max())), cde_rain_lo=f(-rm[north].max()), cde_rain_hi=f(-rm[north].min()),
-                cde_dry_lo=f(-dm[north].max()), cde_dry_hi=f(-dm[north].min()), a_dry_mm=f(dry_norm["A"] / ZONE_ONSET["A"]))
+                cde_dry_lo=f(-dm[north].max()), cde_dry_hi=f(-dm[north].min()), a_dry_mm=f(a_dry_mm),
+                a_dry_span=_span(12, 11 + ZONE_ONSET["A"]))
 
 
 def _zone_label(z: str) -> str:

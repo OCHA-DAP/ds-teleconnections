@@ -6,11 +6,12 @@ Output: ven_inameh_rainy_season_zones.geojson, read by ven_deep_dive.py. Run fro
     uv run python deep_dives/data/ven_inameh_zones.py
 
 How: each pixel is classed by hue and saturation (relief shading changes brightness, not hue) against the five legend
-colours; a 9-pixel majority filter and nearest-neighbour fill remove labels and lines; the map is georeferenced by fitting a
+colours; a 9×9-pixel majority filter and nearest-neighbour fill remove labels and lines; the map is georeferenced by fitting a
 lon/lat scale and offset that best overlaps the zone pixels with the country outline (CODAB, IoU 0.63; the fit is in GEOREF);
 water drawn in light blue (lakes, Guri, sea round Margarita) is pulled out of zones it cannot belong to, per INAMEH's legend.
-Checked against the legend state by state (e.g. Mérida 100% B, Falcón 53% D / 47% E, Nueva Esparta 97% E) and against the
-CHIRPS climatology (rains start in the order A, B, C, D, E). Edges are approximate: use it on the 0.5° grid, not for maps of
+Checked against the map, and against the legend where it names a state (e.g. Mérida 100% B, Falcón 53% D / 46% E, Nueva
+Esparta mostly E; its small islands Coche and Cubagua are lost at 0.025°), and against the CHIRPS climatology (rains start
+in the order A, B, C, D, E). Edges are approximate: use it on the 0.5° grid, not for maps of
 municipalities.
 """
 from pathlib import Path
