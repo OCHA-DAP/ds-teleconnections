@@ -1685,7 +1685,7 @@ section h2{font-size:18px;line-height:1.35}
 details{margin:24px 0}details summary{cursor:pointer;font-weight:600}
 details li{font-size:13.5px;margin:0 0 8px;max-width:90ch}
 .lead{font-size:16px;line-height:1.5;border-left:4px solid #b5541b;background:#fff;padding:12px 16px;margin:6px 0 14px;max-width:90ch}
-.lang{display:inline-block;margin:0 0 14px;padding:5px 11px;font-size:13px;font-weight:500;border:1px solid var(--b1);border-radius:4px;background:var(--b05);text-decoration:none}
+.lang{display:inline-block;margin:0 8px 14px 0;padding:5px 11px;font-size:13px;font-weight:500;border:1px solid var(--b1);border-radius:4px;background:var(--b05);text-decoration:none}
 """
 
 
@@ -1760,6 +1760,8 @@ def render(spec: dict, figs: dict, v: dict) -> str:
     out.append(f'<h1>{pg["title"]}</h1><p class="meta">{pg["sub"].format(**v)}<br>{pg["dateline"].format(**v)}</p>')
     out.append('<a class="lang" href="../" lang="en">English version</a>' if es else
                '<a class="lang" href="es/" lang="es">Versión en español</a>')
+    out.append(f'<a class="lang" href="{"../slides/" if es else "slides/"}">'   # the short deck (ven_slides.py), in English only
+               f'{_t("Slides (PowerPoint)", "Diapositivas, en inglés (PowerPoint)")}</a>')
     if pg.get("lead"):
         out.append(f'<p class="lead">{pg["lead"].format(**v)}</p>')
     out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t["big"].format(**v)}</p><p>{t["text"].format(**v)}</p></div>'
