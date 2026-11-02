@@ -41,7 +41,6 @@ import xarray as xr
 from matplotlib import colors as mcolors
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
-from scipy import stats
 
 ROOT = Path(__file__).resolve().parent
 SLUG = "ago"
@@ -261,7 +260,14 @@ def rain(product: str = "chirps_v3") -> xr.DataArray:
         while t < pd.Timestamp.now().normalize().replace(day=1):
             f = CACHE / "chirps_v3_tifs" / f"chirps-v3.0.{t.year}.{t.month:02d}.tif"
             if not f.exists():
-                r = requests.get(CHIRPS_MONTHLY.format(y=t.year, m=t.month), timeout=300)
+                latest = t + pd.DateOffset(months=1) >= pd.Timestamp.now().normalize().replace(day=1)
+                try:
+                    r = requests.get(CHIRPS_MONTHLY.format(y=t.year, m=t.month), timeout=(30, 300))
+                except requests.exceptions.ConnectionError:
+                    if not latest:           # only the month just ended may be missing
+                        raise
+                    print(f"  CHC unreachable: CHIRPS monthly for {t:%Y-%m} not checked (preliminary pentads cover it)")
+                    break
                 if r.status_code != 200:
                     break
                 if r.content[:4] not in (b"II*\x00", b"MM\x00*"):
@@ -492,19 +498,14 @@ def _skill_stats(f: pd.Series, o: pd.Series) -> dict:
         raise ValueError("the latest SEAS5 issuance is already observed")
     h = f[hist].values
     r = float(np.corrcoef(h, o[hist].values)[0, 1])
-    mu_o = float(o.mean())
-    T = float(o.quantile(1 / 3))
-    resid = o[hist].values - ((1 - r) * mu_o + r * h)
-    sig = max(float(resid.std(ddof=1)), 1e-9)
-    prob = float(stats.norm.cdf(T, loc=(1 - r) * mu_o + r * f[cur], scale=sig))
     return dict(year=cur, n=len(h), pct=100.0 * float((h <= f[cur]).sum()) / len(h),
                 rp_dry=(len(h) + 1) / (int((h < f[cur]).sum()) + 1), rp_wet=(len(h) + 1) / (int((h > f[cur]).sum()) + 1),
-                r=r, prob=prob, z=float((f[cur] - h.mean()) / h.std(ddof=1)),
+                r=r, z=float((f[cur] - h.mean()) / h.std(ddof=1)),
                 raw_driest=bool(raw.drop(cur).loc[hist].min() > raw[cur]), f=f, o=o, hist=hist)
 
 
 def seas5_table(issued_month: int) -> dict[str, pd.DataFrame]:
-    """{window: DataFrame(index=unit) of year, n, pct, rp_dry, rp_wet, r, prob, z, raw_driest} for the five trimesters and
+    """{window: DataFrame(index=unit) of year, n, pct, rp_dry, rp_wet, r, z, raw_driest} for the five trimesters and
     the Nov–Mar season."""
     out = {}
     for code, months in list(WINDOWS.items()) + [("season", SEASON)]:
@@ -635,46 +636,6 @@ def fig_forecast(tab: dict[str, pd.DataFrame], rainy: pd.DataFrame, issued: str)
                  f"{SEASON_LBL} map is the five-month total and is shown for every province. Source: ECMWF SEAS5 and ERA5, team "
                  "admin-1 statistics.", y=-0.07)
     return _save(fig, "forecast")
-
-
-def fig_forecast_prob(tab: dict[str, pd.DataFrame], issued: str) -> Path:
-    """Season (Nov–Mar): chance of a driest-third season allowing for skill, per province and group, with the forecast RP."""
-    t = tab["season"]
-    units = list(provinces().pcode) + list(GROUPS) + ["AO"]
-    t = t.loc[units]
-    fig, ax = plt.subplots(figsize=(8.6, 0.27 * len(units) + 1.2))
-    y = np.arange(len(units))[::-1]
-    for yi, u in zip(y, units):
-        row = t.loc[u]
-        cls, _ = seas5_class(row.pct, row.r, True)
-        low = cls == "low_skill"
-        col = SEAS5_FILL[seas5_class(row.pct, 0.9, True)[0]]   # the forecast class whatever the skill
-        ax.plot([1 / 3 * 100, row.prob * 100], [yi, yi], color="#d9d7d0", lw=1.2, zorder=1)
-        ax.scatter([row.prob * 100], [yi], s=60, facecolor="#ffffff" if low else col,
-                   edgecolor=(col if col != SEAS5_FILL["none"] else "#9aa3ad") if low else TEXT, lw=1.4 if low else 0.8, zorder=3)
-        side = f"1 in {row.rp_dry:.0f} dry" if row.pct < 50 else f"1 in {row.rp_wet:.0f} wet"
-        ax.text(101, yi, f"{side}   r = {row.r:.2f}", va="center", fontsize=7.5, color=TEXT if row.r >= SEAS5_T["r_mod"] else TEXT2)
-    ax.axvline(100 / 3, color=TEXT2, lw=0.8, ls="--")
-    ax.text(100 / 3, len(units) - 0.3, " 33% = no information", fontsize=7, color=TEXT2, va="bottom")
-    ax.set_title(f"SEAS5 {issued}: {SEASON_LBL} by province", fontsize=9.5, loc="left", pad=14)
-    ax.set_yticks(y, [unit_name(u) for u in units], fontsize=8)
-    for lab, u in zip(ax.get_yticklabels(), units):
-        if u in GROUPS or u == "AO":
-            lab.set_fontweight("bold")
-    ax.set_xlim(0, 100)
-    ax.set_ylim(-0.7, len(units) - 0.1)
-    ax.set_xlabel(f"Chance that {SEASON_LBL} rain falls in the driest third, allowing for forecast skill (%)", fontsize=8.5)
-    ax.grid(axis="x", color=GRID, lw=0.6)
-    ax.set_axisbelow(True)
-    for s in ("top", "right"):
-        ax.spines[s].set_visible(False)
-    ax.tick_params(labelsize=8)
-    ax.text(101, len(units) - 0.3, "forecast return period · skill", fontsize=7.5, color=TEXT2, va="bottom")
-    _source(fig, f"SEAS5 issued {issued}. Chance computed as in the seas5-skill viewer: the forecast is shrunk toward normal by its "
-                 "hindcast correlation r with ERA5, with the spread of the hindcast errors; with r = 0 the chance is 33%. Return "
-                 f"period: Weibull, (n + 1) / rank among the {int(t.n.iloc[0])} hindcasts ({int(t.n.iloc[0]) + 1} = drier than "
-                 "every one). Dot colour: forecast class; hollow = low skill (r < 0.3), not shown on the maps above.", y=-0.01, width=125)
-    return _save(fig, "forecast_prob")
 
 
 # ---- 2. rain so far --------------------------------------------------------------------------------------------------
@@ -1114,7 +1075,6 @@ def province_table(tab: dict[str, pd.DataFrame], en: pd.DataFrame, sf: dict, par
     t = tab["season"]
     head = ("<tr><th>Province</th>"
             f"<th class='num'>Forecast {SEASON_LBL}<br>(return period)</th><th class='num'>Skill r</th>"
-            "<th class='num'>Chance of driest third</th>"
             "<th class='num'>2026 forecast (SD) / ENSO part<br>(hindcast r with ONI)</th>"
             "<th class='num'>El Niño seasons<br>driest / wettest third</th><th class='num'>Rain–ONI r</th>"
             f"<th class='num'>{SEASON_LBL} {season_label(NOW - 1)}<br>% of normal</th>"
@@ -1127,11 +1087,9 @@ def province_table(tab: dict[str, pd.DataFrame], en: pd.DataFrame, sf: dict, par
         early = bool(sf["early"].get(u, False))
         so = "—" if early else f"{sf['share'][u]:.0f}%"
         rows.append(f"<tr{cls}><td>{html.escape(unit_name(u))}</td><td class='num'>{_fmt_rp(r)}</td>"
-                    f"<td class='num'>{r.r:.2f}</td>"
-                    + (f"<td class='num' style='color:#9aa3ad'>{r.prob * 100:.0f}% (low skill)</td>" if r.r < SEAS5_T["r_mod"]
-                       else f"<td class='num'>{r.prob * 100:.0f}%</td>")
-                    + ""
-                    f"<td class='num'>{p['z']:+.1f} / {p['enso']:+.1f} ({p['r_oni']:+.2f})</td>"
+                    + (f"<td class='num' style='color:#9aa3ad'>{r.r:.2f} (low)</td>" if r.r < SEAS5_T["r_mod"]
+                       else f"<td class='num'>{r.r:.2f}</td>")
+                    + f"<td class='num'>{p['z']:+.1f} / {p['enso']:+.1f} ({p['r_oni']:+.2f})</td>"
                     f"<td class='num'>{e.nino_dry:.0f} / {e.nino_wet:.0f} of {e.n_nino:.0f}</td><td class='num'>{e.r:+.2f}</td>"
                     f"<td class='num'>{sf['last_share'][u]:.0f}%</td>"
                     f"<td class='num'>{so}</td>"
@@ -1167,6 +1125,7 @@ details{margin:24px 0}details summary{cursor:pointer;font-weight:600}
 details li{font-size:13.5px;margin:0 0 8px;max-width:90ch}
 .wrap{max-width:1120px}
 table.skill td{white-space:nowrap}table.skill th{font-size:11.5px;vertical-align:bottom}
+table.lit td{font-size:13px;vertical-align:top}table.lit th{font-size:11.5px}table.lit td:first-child{white-space:nowrap}
 """
 
 
@@ -1190,10 +1149,8 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     tab = seas5_table(im)
     rainy = seas5_rainy()
     f["forecast"] = fig_forecast(tab, rainy, issued)
-    f["forecast_prob"] = fig_forecast_prob(tab, issued)
     sf = so_far(mon, cube)
     a = asap_biomass(1)
-    last = a[a.date == a.date.max()].set_index("pcode")[["value", "date"]]
     # end of last season = last dekad of April 2026, kept beside the latest dekad
     eos = a[(a.date.dt.month == 4) & (a.date.dt.day == 21)]
     eos_last = eos[eos.date.dt.year == NOW].set_index("pcode")[["value", "date"]]
@@ -1251,13 +1208,12 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     hp = parts[sk]
     v |= dict(
         issued=issued, fc_year=int(s.year), n_hind=int(s.n), hl_label=GROUPS[sk]["label"],
-        hl_rp=f"{s.rp_dry:.0f}", hl_pct=f"{s.pct:.0f}", hl_r=f"{s.r:.2f}", hl_prob=f"{s.prob * 100:.0f}",
+        hl_rp=f"{s.rp_dry:.0f}", hl_pct=f"{s.pct:.0f}", hl_r=f"{s.r:.2f}",
         hl_z=f"{hp['z']:+.1f}", hl_enso=f"{hp['enso']:+.1f}",
         n_dry=len(dry), dry_names=", ".join(unit_name(u) for u in dry), n_wet=len(wet), wet_names=", ".join(unit_name(u) for u in wet),
         nat_pct=f"{S.loc['AO', 'pct']:.0f}",
         dry_r_lo=f"{S.loc[dry, 'r'].min():.2f}", dry_r_hi=f"{S.loc[dry, 'r'].max():.2f}",
         wet_r_lo=f"{S.loc[wet, 'r'].min():.2f}", wet_r_hi=f"{S.loc[wet, 'r'].max():.2f}",
-        dry_prob_lo=f"{S.loc[dry, 'prob'].min() * 100:.0f}", dry_prob_hi=f"{S.loc[dry, 'prob'].max() * 100:.0f}",
         raw_driest=int(S.loc[dry, "raw_driest"].sum()),
         so_end=sf["end_day"], last_season=season_label(NOW - 1),
         n_cerf=len(cf), n_cerf_nino=len(nino_cerf), n_cerf_nina=len(nina_cerf),
@@ -1321,8 +1277,7 @@ def analyse(spec: dict) -> tuple[dict, dict]:
         raise ValueError("FEWS NET Phase 3 areas now reach beyond the south: reword the food-security headline")
     skilled = [u for u in dry if S.loc[u, "r"] >= SEAS5_T["r_mod"]]
     unskilled = [u for u in dry if S.loc[u, "r"] < SEAS5_T["r_mod"]]
-    v |= dict(sk_prob_lo=f"{S.loc[skilled, 'prob'].min() * 100:.0f}", sk_prob_hi=f"{S.loc[skilled, 'prob'].max() * 100:.0f}",
-              sk_names=" and ".join(unit_name(u) for u in skilled), unsk_names=", ".join(unit_name(u) for u in unskilled),
+    v |= dict(sk_names=" and ".join(unit_name(u) for u in skilled), unsk_names=", ".join(unit_name(u) for u in unskilled),
               hl_r_oni=f"{hp['r_oni']:.2f}", early_names=", ".join(unit_name(u) for u in provinces().pcode if bool(sf["early"][u])))
     if not skilled:
         raise ValueError("no dry province with skill ≥ 0.3: reword the skill headline")
@@ -1333,6 +1288,14 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     if set(ipcv.index) != {2019, 2021}:
         raise ValueError(f"IPC analyses for Angola changed ({sorted(ipcv.index)}): reword 'analysed twice'")
     return f, v | dict(table=table)
+
+
+def literature_table(items: list[dict]) -> str:
+    """Published studies on El Niño and Angola's rains, as listed in the TOML ([[literature]]): one row each, linked."""
+    head = "<tr><th>Study</th><th>Area, season</th><th>Angola in it</th><th>Finding</th></tr>"
+    rows = "".join(f"<tr><td><a href='{html.escape(x['url'])}'>{html.escape(x['cite'])}</a></td><td>{html.escape(x['area'])}</td>"
+                   f"<td>{html.escape(x['angola'])}</td><td>{html.escape(x['finding'])}</td></tr>" for x in items)
+    return f'<div style="overflow-x:auto"><table class="lit">{head}{rows}</table></div>'
 
 
 def render(spec: dict, figs: dict, v: dict) -> str:
@@ -1353,6 +1316,8 @@ def render(spec: dict, figs: dict, v: dict) -> str:
         for fig in [sec["fig"]] if isinstance(sec["fig"], str) else sec["fig"]:
             if fig == "table":
                 out.append(v["table"])
+            elif fig == "literature":
+                out.append(literature_table(spec["literature"]))
             else:
                 out.append(f'<figure><img src="{_img(figs[fig])}" alt="{html.escape(sec["head"].format(**v))}"></figure>')
         out.append("</section>")

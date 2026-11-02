@@ -10,7 +10,7 @@ record_group = "south"       # group shown in the season-by-season record
 
 notes = [
   "<b>Seasons and phases.</b> The season is November–March, the core of the rains in every province and inside the October forecast. Seasons are labelled by the year they start and classed by the Sep–Nov ONI (NOAA CPC) of that year: El Niño ≥ +0.5 °C, strong ≥ +1.5 °C ({strong_years}), La Niña ≤ −0.5 °C.",
-  "<b>Forecast.</b> ECMWF SEAS5 ensemble mean by province (team admin-1 statistics), {issued} issuance, computed as in the team's seas5-skill viewer: three- or five-month means, log-transformed, scaled to ERA5 and detrended; rank among the {n_hind} hindcasts for the same months ({hind_years}); return period (n + 1) / rank; skill = correlation with ERA5; chance of the driest third from the viewer's regression on the forecast with the hindcast error spread. Groups are area-weighted means of their provinces. ENSO part: a straight-line fit of the hindcast z-scores on the Jul–Sep ONI, at this year's {oni_jas} °C.",
+  "<b>Forecast.</b> ECMWF SEAS5 ensemble mean by province (team admin-1 statistics), {issued} issuance, computed as in the team's seas5-skill viewer: three- or five-month means, log-transformed, scaled to ERA5 and detrended; rank among the {n_hind} hindcasts for the same months ({hind_years}); return period (n + 1) / rank; skill = correlation with ERA5. Groups are area-weighted means of their provinces. ENSO part: a straight-line fit of the hindcast z-scores on the Jul–Sep ONI, at this year's {oni_jas} °C.",
   "<b>Rain.</b> CHIRPS v3 (satellite and gauges) at 0.5°, area-weighted by province; final to September 2026, preliminary pentads for October. ERA5 is used as a check. Normals are 1991–2020.",
   "<b>Vegetation.</b> JRC ASAP zFPARc: cumulative anomaly of the light absorbed by crops through the growing cycle (MODIS), GAUL admin-1, last dekad of April.",
   "<b>Food security.</b> FEWS NET classification via the team's mirror, population estimates from the FEWS NET Data Warehouse (national ranges). IPC: the team's mirror of the IPC API. CERF: allocations coded Drought in OneGMS.",
@@ -43,15 +43,12 @@ one_line = "2026/27: SEAS5's October forecast for Nov–Mar in the south is drie
 
 [page]
 title = "Angola: the 2026/27 rainy season and El Niño"
-sub = "How dry the season is forecast to be, rain so far, how much of it is El Niño, and food security."
+sub = "How dry the season is forecast to be, rain so far, how much of it is El Niño, food security, and published studies on El Niño and Angola's rain."
 dateline = "SEAS5 issued {issued} · rain to {so_end} October 2026 (CHIRPS, preliminary) · ONI {oni_seas} 2026 {oni_now} °C · FEWS NET {fews_round}"
 
 [[tiles]]
 big = "1 in {hl_rp}"
-text = "SEAS5 ({issued}) forecast of Nov–Mar rain in the south: return period among the {n_hind} past October forecasts"
-[[tiles]]
-big = "{hl_prob}%"
-text = "chance of a driest-third Nov–Mar in the south, allowing for the forecast's skill there (r = {hl_r}); 33% = no information"
+text = "SEAS5 ({issued}) forecast of Nov–Mar rain in the south: return period among the {n_hind} past October forecasts; skill r = {hl_r}"
 [[tiles]]
 big = "{hl_enso_share}%"
 text = "of the south's forecast anomaly ({hl_z} SD) goes with El Niño, if SEAS5's weak past relation to the ONI (r = {hl_r_oni}) is extended to this year's record {oni_jas} °C"
@@ -67,13 +64,7 @@ part = "1. The forecast"
 id = "forecast"
 fig = "forecast"
 head = "SEAS5, {issued}: dry in the south, wet in the north and centre; nationally the two cancel ({nat_pct}th percentile)"
-note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones. The November forecast comes out around 6 November."
-
-[[sections]]
-id = "prob"
-fig = "forecast_prob"
-head = "Allowing for skill: a {sk_prob_lo}–{sk_prob_hi}% chance of a driest-third Nov–Mar in {sk_names}, against 33% with no forecast; skill is too low to use in {unsk_names}"
-note = "A return period of {rp_cap} means drier than every past October forecast. This does not come from removing the trend: without that step the forecast is still the driest on record in {raw_driest} of the {n_dry} dry provinces."
+note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones; of the dry provinces only {sk_names} reach 0.3. A return period of {rp_cap} means drier than every past October forecast; without removing the trend it is still the driest in {raw_driest} of the {n_dry} dry provinces. The November forecast comes out around 6 November."
 
 [[sections]]
 id = "table"
@@ -113,3 +104,96 @@ id = "fews"
 fig = "fews"
 head = "FEWS NET ({fews_round}): {fews_n3} of {fews_units} areas projected in Crisis (Phase 3) for October 2026–January 2027: {fews_p3_prov}"
 note = "FEWS NET estimates {fews_cs} people in Phase 3+ in {fews_cs_month} and {fews_peak} at the peak ({fews_peak_win}). Its seasonal calendar: rains October–May, lean season November–February, main cereal harvest March–June. IPC has analysed Angola twice, in the southern provinces only: 2019 ({ipc19} in Phase 3+) and 2021 ({ipc21})."
+
+[[sections]]
+part = "5. Published studies"
+id = "literature"
+fig = "literature"
+head = "El Niño dries southern and south-eastern Angola, though not in every El Niño season; no attribution study has covered Angola"
+note = "Attribution studies exist for 2015/16 and 2023/24 elsewhere in southern Africa; none covers the 2019–2021 drought in the south of Angola."
+
+# Checked 2 November 2026: each DOI resolves and each finding is in the abstract or summary (Magadzire: also the preprint).
+[[literature]]
+cite = "Kimutai et al. 2024 (World Weather Attribution)"
+url = "https://www.worldweatherattribution.org/el-nino-key-driver-of-drought-in-highly-vulnerable-southern-african-countries/"
+area = "Zimbabwe, Botswana, southern Zambia and Mozambique; Dec–Feb 2023/24"
+angola = "No"
+finding = "El Niño made a drought like 2023/24 about twice as likely; climate change was not a significant driver."
+[[literature]]
+cite = "Funk et al. 2018"
+url = "https://doi.org/10.1175/BAMS-D-17-0112.1"
+area = "Southern Africa; Dec–Feb 2015/16"
+angola = "Not stated"
+finding = "Warming likely made the 2015/16 El Niño stronger, which deepened the drought and the crop losses."
+[[literature]]
+cite = "Lombe et al. 2026"
+url = "https://doi.org/10.3390/land15050728"
+area = "Cunene, Huíla, Namibe; 1980–2024"
+angola = "Yes"
+finding = "2019 and 2021 were extreme drought years, made worse by heat. ENSO is not tested; the only published study of that drought we found."
+[[literature]]
+cite = "Lourenço et al. 2023"
+url = "https://doi.org/10.1007/s00704-022-04281-4"
+area = "Angolan highlands; 1981–2020"
+angola = "Yes"
+finding = "Eight drought periods since 1981; only two fell solely in El Niño years."
+[[literature]]
+cite = "Moses et al. 2025"
+url = "https://doi.org/10.1007/s00704-025-05593-x"
+area = "Okavango basin, including the Cubango and Cuito headwaters; Dec–Feb, 1981–2024"
+angola = "South-east"
+finding = "Over the Angolan headwaters the weak 2018/19 El Niño was drier than the strong 2023/24 one; more Atlantic moisture reached the basin in 2023/24."
+[[literature]]
+cite = "Maphugwi et al. 2025"
+url = "https://doi.org/10.1007/s00704-025-05539-3"
+area = "Eastern Congo Air Boundary region; Jan–Mar, 1979–2024"
+angola = "Unclear"
+finding = "All five driest late summers were El Niño years, 2023/24 the driest. The strong 1997/98 El Niño was not dry because the Angola Low did not weaken."
+[[literature]]
+cite = "Magadzire et al. 2026"
+url = "https://doi.org/10.1016/j.cliser.2026.100756"
+area = "Southern Africa; rainy season, skill highest Dec–Feb"
+angola = "Partly (skill scored south of 15°S)"
+finding = "El Niño dries the central and southern interior, more so in moderate-to-strong events; little signal over central Angola and a wetter tilt in the west (preprint maps). Skill highest in south-eastern Angola."
+[[literature]]
+cite = "Howard et al. 2019"
+url = "https://doi.org/10.1029/2019JD030803"
+area = "Southern Africa; Dec–Feb"
+angola = "Yes"
+finding = "Rain-bearing tropical lows shift north in El Niño and south in La Niña; they carry much of Angola's year-to-year rainfall variation."
+[[literature]]
+cite = "Crétat et al. 2019"
+url = "https://doi.org/10.1007/s00382-018-4222-3"
+area = "Angola and neighbouring countries; Nov–Mar, 1980/81–2014/15"
+angola = "Yes"
+finding = "A weak or northward Angola Low brings rain to tropical and drought to subtropical southern Africa; the Angola Low tracks rainfall more closely than ENSO does."
+[[literature]]
+cite = "Pomposi et al. 2018"
+url = "https://doi.org/10.1088/1748-9326/aacc4c"
+area = "15–35°S; Dec–Feb, 1981/82–2015/16"
+angola = "South of 15°S"
+finding = "Below-normal rain in about 80% of strong El Niño seasons and just over 60% of moderate-to-weak ones; strong events weaken the Angola Low."
+[[literature]]
+cite = "Hoell et al. 2015"
+url = "https://doi.org/10.1007/s00382-014-2414-z"
+area = "South of 15°S; Dec–Mar, 1950–2010"
+angola = "South of 15°S"
+finding = "El Niño with a warm Indian Ocean brings less rain; El Niño with a cool Indian Ocean brings more."
+[[literature]]
+cite = "Blamey et al. 2018"
+url = "https://doi.org/10.1002/joc.5668"
+area = "Southern Africa; Oct–Mar, 2015/16 against past El Niños"
+angola = "Partly"
+finding = "2015/16 was drier early in the season than past El Niños of similar strength because the Angola Low and the South Indian Ocean High were weak."
+[[literature]]
+cite = "Nicholson and Kim 1997"
+url = "https://doi.org/10.1002/(SICI)1097-0088(199702)17:2<117::AID-JOC84>3.0.CO;2-O"
+area = "Africa; 1901–1990"
+angola = "Yes"
+finding = "ENSO tends to bring opposite rainfall anomalies to equatorial and southern Africa."
+[[literature]]
+cite = "Rouault et al. 2003"
+url = "https://doi.org/10.1029/2002GL014840"
+area = "Coast of Angola and Namibia; Feb–Apr"
+angola = "Coast"
+finding = "Warm sea off Angola and Namibia (Benguela Niños) goes with above-average rain on the coast, sometimes inland too."
