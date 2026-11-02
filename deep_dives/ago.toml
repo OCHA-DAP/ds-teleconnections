@@ -64,7 +64,7 @@ part = "1. The forecast"
 id = "forecast"
 fig = "forecast"
 head = "SEAS5, {issued}: dry in the south, wet in the north and centre; nationally the two cancel ({nat_pct}th percentile)"
-note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones; of the dry provinces only {sk_names} reach 0.3. A return period of {rp_cap} means drier than every past October forecast; without removing the trend it is still the driest in {raw_driest} of the {n_dry} dry provinces. The November forecast comes out around 6 November."
+note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones; of the dry provinces, skill is 0.3 or more only in {sk_names}. A return period of {rp_cap} means drier than every past October forecast; without removing the trend it is still the driest in {raw_driest} of the {n_dry} dry provinces. The November forecast comes out around 6 November."
 
 [[sections]]
 id = "table"
@@ -109,14 +109,15 @@ note = "FEWS NET estimates {fews_cs} people in Phase 3+ in {fews_cs_month} and {
 part = "5. Published studies"
 id = "literature"
 fig = "literature"
-head = "El Niño dries southern and south-eastern Angola, though not in every El Niño season; no attribution study has covered Angola"
-note = "Attribution studies exist for 2015/16 and 2023/24 elsewhere in southern Africa; none covers the 2019–2021 drought in the south of Angola."
+head = "El Niño dries southern and south-eastern Angola, though not in every El Niño season; no attribution study is specific to Angola"
+note = "Attribution studies exist for 2015/16 and 2023/24 in southern Africa: the 2023/24 study leaves Angola out, the 2015/16 study does not say. We found none on the 2019–2021 drought in the south of Angola."
 
-# Checked 2 November 2026: each DOI resolves and each finding is in the abstract or summary (Magadzire: also the preprint).
+# Checked 2 November 2026: each DOI resolves and each finding is in the abstract or summary (Lombe, Maphugwi: also the full
+# text; Magadzire: also the preprint).
 [[literature]]
 cite = "Kimutai et al. 2024 (World Weather Attribution)"
 url = "https://www.worldweatherattribution.org/el-nino-key-driver-of-drought-in-highly-vulnerable-southern-african-countries/"
-area = "Zimbabwe, Botswana, southern Zambia and Mozambique; Dec–Feb 2023/24"
+area = "Zimbabwe, Botswana, and the southern parts of Zambia and Mozambique; Dec–Feb 2023/24"
 angola = "No"
 finding = "El Niño made a drought like 2023/24 about twice as likely; climate change was not a significant driver."
 [[literature]]
@@ -130,7 +131,7 @@ cite = "Lombe et al. 2026"
 url = "https://doi.org/10.3390/land15050728"
 area = "Cunene, Huíla, Namibe; 1980–2024"
 angola = "Yes"
-finding = "2019 and 2021 were extreme drought years, made worse by heat. ENSO is not tested; the only published study of that drought we found."
+finding = "2019 and 2021 were extreme drought years in all three provinces, more so once evaporative demand is counted. ENSO is not tested; the only study we found that is specific to that drought."
 [[literature]]
 cite = "Lourenço et al. 2023"
 url = "https://doi.org/10.1007/s00704-022-04281-4"
@@ -148,13 +149,13 @@ cite = "Maphugwi et al. 2025"
 url = "https://doi.org/10.1007/s00704-025-05539-3"
 area = "Eastern Congo Air Boundary region; Jan–Mar, 1979–2024"
 angola = "Unclear"
-finding = "All five driest late summers were El Niño years, 2023/24 the driest. The strong 1997/98 El Niño was not dry because the Angola Low did not weaken."
+finding = "All five driest late summers were El Niño years, 2023/24 the driest. The strong 1997/98 El Niño brought no drought there; the paper attributes this to an Angola Low that did not weaken."
 [[literature]]
 cite = "Magadzire et al. 2026"
 url = "https://doi.org/10.1016/j.cliser.2026.100756"
 area = "Southern Africa; rainy season, skill highest Dec–Feb"
 angola = "Partly (skill scored south of 15°S)"
-finding = "El Niño dries the central and southern interior, more so in moderate-to-strong events; little signal over central Angola and a wetter tilt in the west (preprint maps). Skill highest in south-eastern Angola."
+finding = "El Niño dries the central and southern interior, more so in moderate-to-strong events; little signal over central Angola and a wetter tilt in the west. Rainfall skill is higher in the north of the scored area, including south-eastern Angola (both from the preprint)."
 [[literature]]
 cite = "Howard et al. 2019"
 url = "https://doi.org/10.1029/2019JD030803"
@@ -166,7 +167,7 @@ cite = "Crétat et al. 2019"
 url = "https://doi.org/10.1007/s00382-018-4222-3"
 area = "Angola and neighbouring countries; Nov–Mar, 1980/81–2014/15"
 angola = "Yes"
-finding = "A weak or northward Angola Low brings rain to tropical and drought to subtropical southern Africa; the Angola Low tracks rainfall more closely than ENSO does."
+finding = "A weak or northward Angola Low brings rain to tropical and drought to subtropical southern Africa; weak Angola Low states correlate with rainfall more strongly than ENSO does."
 [[literature]]
 cite = "Pomposi et al. 2018"
 url = "https://doi.org/10.1088/1748-9326/aacc4c"

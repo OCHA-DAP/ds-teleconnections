@@ -263,7 +263,7 @@ def rain(product: str = "chirps_v3") -> xr.DataArray:
                 latest = t + pd.DateOffset(months=1) >= pd.Timestamp.now().normalize().replace(day=1)
                 try:
                     r = requests.get(CHIRPS_MONTHLY.format(y=t.year, m=t.month), timeout=(30, 300))
-                except requests.exceptions.ConnectionError:
+                except (requests.exceptions.ConnectionError, requests.exceptions.Timeout):
                     if not latest:           # only the month just ended may be missing
                         raise
                     print(f"  CHC unreachable: CHIRPS monthly for {t:%Y-%m} not checked (preliminary pentads cover it)")
@@ -1277,10 +1277,11 @@ def analyse(spec: dict) -> tuple[dict, dict]:
         raise ValueError("FEWS NET Phase 3 areas now reach beyond the south: reword the food-security headline")
     skilled = [u for u in dry if S.loc[u, "r"] >= SEAS5_T["r_mod"]]
     unskilled = [u for u in dry if S.loc[u, "r"] < SEAS5_T["r_mod"]]
-    v |= dict(sk_names=" and ".join(unit_name(u) for u in skilled), unsk_names=", ".join(unit_name(u) for u in unskilled),
+    skn = [unit_name(u) for u in skilled]
+    v |= dict(sk_names=", ".join(skn[:-1]) + " and " + skn[-1] if len(skn) > 1 else "".join(skn),
               hl_r_oni=f"{hp['r_oni']:.2f}", early_names=", ".join(unit_name(u) for u in provinces().pcode if bool(sf["early"][u])))
-    if not skilled:
-        raise ValueError("no dry province with skill ≥ 0.3: reword the skill headline")
+    if not skilled or not unskilled:
+        raise ValueError("all or none of the dry provinces have skill ≥ 0.3: reword 'only' in the forecast note")
     if not 10 <= abs(hp["enso"] / hp["z"]) * 100 <= 40:
         raise ValueError("ENSO share outside 10–40%: reword the tile and the strong-section headline")
     if not 25 <= S.loc["AO", "pct"] <= 75:
