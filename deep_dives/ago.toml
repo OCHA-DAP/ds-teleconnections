@@ -22,12 +22,24 @@ notes = [
 label = "South (Namibe, Huíla, Cunene, Cuando Cubango)"
 pcodes = ["AO16", "AO09", "AO08", "AO05"]
 
+# CERF drought allocations → the season (year it starts) whose failed rains they responded to. Checked by hand against
+# titles and dates: Jan 2020 came two months into a wet 2019/20 and followed the 2018/19 drought; Dec 2021 (UF) and
+# Aug 2021 both followed 2020/21. A new allocation stops the build until it is added here.
+[cerf_season]
+"12-RR-AGO-251" = 2011
+"16-RR-AGO-18644" = 2015
+"19-RR-AGO-35794" = 2018
+"20-RR-AGO-40795" = 2018
+"21-RR-AGO-48651" = 2020
+"22-UF-AGO-51281" = 2020
+"24-RR-AGO-64769" = 2023
+
 [catalogue]
 evidence = "moderate"
 
 [assessment]
 evidence = "moderate"
-one_line = "2026/27: SEAS5 forecasts the driest Nov–Mar on record in the south and a wet north and centre. In the south about a quarter of the dry forecast is what SEAS5 usually gives with El Niño; past El Niño seasons were drier than normal mainly in the south-east and wetter in the north and centre."
+one_line = "2026/27: SEAS5's October forecast for Nov–Mar in the south is drier than any of its 45 past October forecasts; the north and centre are forecast wet. In the south about a quarter of the dry forecast is what SEAS5 usually gives with El Niño; past El Niño seasons were drier than normal mainly in the south-east and wetter in the north and centre."
 
 [page]
 title = "Angola: the 2026/27 rainy season and El Niño"
@@ -42,13 +54,13 @@ big = "{hl_prob}%"
 text = "chance of a driest-third Nov–Mar in the south, allowing for the forecast's skill there (r = {hl_r}); 33% = no information"
 [[tiles]]
 big = "{hl_enso_share}%"
-text = "of the south's forecast anomaly ({hl_z} SD) is what SEAS5 has given in past years for this ONI ({hl_enso} SD)"
+text = "of the south's forecast anomaly ({hl_z} SD) goes with El Niño, if SEAS5's weak past relation to the ONI (r = {hl_r_oni}) is extended to this year's record {oni_jas} °C"
 [[tiles]]
 big = "{n_cerf_nino} of {n_cerf}"
-text = "CERF drought allocations to Angola came after El Niño seasons; {n_cerf_nina} after La Niña seasons"
+text = "CERF drought allocations to Angola responded to El Niño seasons ({n_cerf_nino_seasons} seasons); {n_cerf_nina} to La Niña seasons ({n_cerf_nina_seasons})"
 [[tiles]]
 big = "{fews_peak}"
-text = "people in Phase 3+ at the peak ({fews_peak_win}), FEWS NET {fews_round}"
+text = "people in Phase 3+ at the peak ({fews_peak_win}), FEWS NET estimate of {fews_peak_round}"
 
 [[sections]]
 part = "1. The forecast"
@@ -60,7 +72,7 @@ note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_na
 [[sections]]
 id = "prob"
 fig = "forecast_prob"
-head = "Allowing for skill: a {dry_prob_lo}–{dry_prob_hi}% chance of a driest-third Nov–Mar in the dry provinces, against 33% with no forecast"
+head = "Allowing for skill: a {sk_prob_lo}–{sk_prob_hi}% chance of a driest-third Nov–Mar in {sk_names}, against 33% with no forecast; skill is too low to use in {unsk_names}"
 note = "A return period of {rp_cap} means drier than every past October forecast. This does not come from removing the trend: without that step the forecast is still the driest on record in {raw_driest} of the {n_dry} dry provinces."
 
 [[sections]]
@@ -73,7 +85,7 @@ note = "Target areas will be added as rows once known."
 part = "2. Rain so far"
 id = "now"
 fig = "now"
-head = "Too early to judge the south, where the rains normally start in November–December"
+head = "Too early to judge {early_names}: under 40 mm of rain normally falls there by the end of October"
 note = "Since 1 September: below 75% of normal in {so_low}. Last season ({last_season}) the south had {last_south}% of normal Nov–Mar rain; it was the driest on record in {last_driest}."
 
 [[sections]]
@@ -86,14 +98,14 @@ note = "Nov–Mar rain correlates with the ONI at −0.25 or below only in {en_r
 [[sections]]
 id = "strong"
 fig = "strong"
-head = "About a quarter of the south's dry forecast is what SEAS5 usually gives with El Niño; in {unlike} it is unlike any past strong El Niño forecast"
-note = "South: forecast {hl_z} SD, of which {hl_enso} SD goes with the ONI. Past October forecasts were also among the driest in {alike} ({alike_years}). Of the {n_strong} strong El Niño seasons, {strong_out_dry} brought a driest-third Nov–Mar to the south ({strong_out_dry_years}). ENSO accounts for about {hl_r2}% of the year-to-year variation in the south's Nov–Mar rain (r = {hl_en_r})."
+head = "About a quarter of the south's dry forecast goes with El Niño, on SEAS5's own past forecasts; in {unlike} the forecast is unlike any past strong El Niño forecast"
+note = "South: forecast {hl_z} SD, of which {hl_enso} SD goes with the ONI, from a weak relation (r = {hl_r_oni}) extended beyond any past ONI. October forecasts were also among the driest in {alike} in {alike_years}. Of the {n_strong} strong El Niño seasons, {strong_out_dry} brought a driest-third Nov–Mar to the south ({strong_out_dry_years}). ENSO goes with about {hl_r2}% of the year-to-year variation in the south's Nov–Mar rain (r = {hl_en_r})."
 
 [[sections]]
 id = "record"
 fig = "record"
 head = "The south's five driest seasons since 1981: {driest5}"
-note = "CERF drought allocations after El Niño seasons: {cerf_nino_seasons}; after La Niña: {cerf_nina_seasons}. The largest FEWS NET needs (2.5–5 million, 2021) followed the 2020/21 La Niña season."
+note = "CERF drought allocations for El Niño seasons: {cerf_nino_seasons}; for La Niña seasons: {cerf_nina_seasons}. The largest FEWS NET needs (2.5–5 million, 2021) followed the 2020/21 La Niña season."
 
 [[sections]]
 part = "4. Food security"

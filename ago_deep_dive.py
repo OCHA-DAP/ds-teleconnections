@@ -647,10 +647,11 @@ def fig_forecast_prob(tab: dict[str, pd.DataFrame], issued: str) -> Path:
     for yi, u in zip(y, units):
         row = t.loc[u]
         cls, _ = seas5_class(row.pct, row.r, True)
-        col = SEAS5_FILL[cls] if cls != "low_skill" else SEAS5_FILL[seas5_class(row.pct, 0.9, True)[0]]
+        low = cls == "low_skill"
+        col = SEAS5_FILL[seas5_class(row.pct, 0.9, True)[0]]   # the forecast class whatever the skill
         ax.plot([1 / 3 * 100, row.prob * 100], [yi, yi], color="#d9d7d0", lw=1.2, zorder=1)
-        ax.scatter([row.prob * 100], [yi], s=60, color=col, edgecolor=TEXT if row.r >= SEAS5_T["r_mod"] else "#9aa3ad",
-                   lw=0.8 if row.r >= SEAS5_T["r_mod"] else 0.6, zorder=3, hatch=None)
+        ax.scatter([row.prob * 100], [yi], s=60, facecolor="#ffffff" if low else col,
+                   edgecolor=(col if col != SEAS5_FILL["none"] else "#9aa3ad") if low else TEXT, lw=1.4 if low else 0.8, zorder=3)
         side = f"1 in {row.rp_dry:.0f} dry" if row.pct < 50 else f"1 in {row.rp_wet:.0f} wet"
         ax.text(101, yi, f"{side}   r = {row.r:.2f}", va="center", fontsize=7.5, color=TEXT if row.r >= SEAS5_T["r_mod"] else TEXT2)
     ax.axvline(100 / 3, color=TEXT2, lw=0.8, ls="--")
@@ -672,7 +673,7 @@ def fig_forecast_prob(tab: dict[str, pd.DataFrame], issued: str) -> Path:
     _source(fig, f"SEAS5 issued {issued}. Chance computed as in the seas5-skill viewer: the forecast is shrunk toward normal by its "
                  "hindcast correlation r with ERA5, with the spread of the hindcast errors; with r = 0 the chance is 33%. Return "
                  f"period: Weibull, (n + 1) / rank among the {int(t.n.iloc[0])} hindcasts ({int(t.n.iloc[0]) + 1} = drier than "
-                 "every one). Dot colour: forecast class; grey outline = low skill (r < 0.3).", y=-0.01, width=125)
+                 "every one). Dot colour: forecast class; hollow = low skill (r < 0.3), not shown on the maps above.", y=-0.01, width=125)
     return _save(fig, "forecast_prob")
 
 
@@ -749,6 +750,9 @@ def october_to_date(cube: xr.DataArray) -> tuple[pd.DataFrame, int]:
     return pd.DataFrame(out).T, npent
 
 
+EARLY_MM = 40
+
+
 def so_far(mon: pd.DataFrame, cube: xr.DataArray) -> dict:
     """Rain since 1 September 2026 (CHIRPS final September + prelim October to date) against the same dates since 1981,
     and the last full season."""
@@ -761,9 +765,8 @@ def so_far(mon: pd.DataFrame, cube: xr.DataArray) -> dict:
     normal = tot.loc[1991:2020].mean()
     share = tot.loc[NOW] / normal * 100
     rank = pct_rank(tot, NOW)
-    # the dates' share of the annual normal: under 5% = before the rains, left out of the map
-    ann = mon.loc["1991":"2020"].groupby(mon.loc["1991":"2020"].index.year).sum().mean()
-    early = normal / ann < 0.05
+    # under 40 mm normally falls on these dates: before the rains, percentages of so little mean little; left out
+    early = normal < EARLY_MM
     last = season_totals(mon, SEASON)
     return dict(share=share, rank=rank, rp=rp_dry(tot, NOW), early=early, normal=normal, end_day=31 if npent == 6 else 5 * npent,
                 last_rank=pct_rank(last, NOW - 1, Y0, Y1 - 1), last_share=last.loc[NOW - 1] / last.loc[1991:2020].mean() * 100,
@@ -814,10 +817,10 @@ def fig_now(sf: dict, veg: pd.DataFrame) -> Path:
     cb2.set_ticks(vb[1:-1])
     cb2.set_label("z-score (below −1: ASAP warning level)", fontsize=8)
     cb2.ax.tick_params(labelsize=7.5)
-    DRY = Patch(facecolor="#ffffff", hatch="////", edgecolor="#c9c8c2", lw=0, label="rains not started\n(under 5% of the\nyear's rain)")
+    DRY = Patch(facecolor="#ffffff", hatch="////", edgecolor="#c9c8c2", lw=0, label=f"rains not started\n(normal under\n{EARLY_MM} mm)")
     axes[1].legend(handles=[DRY], loc="upper right", bbox_to_anchor=(1.02, 1.0), fontsize=6.8, frameon=False,
                    handlelength=1.5)
-    _source(fig, f"Rank = percentile among {Y0}–{NOW} for the same dates (0 = driest). CHIRPS v3: final through September, "
+    _source(fig, f"Rank = percentile among the past seasons ({Y0}–{NOW - 1}; {Y0}–{NOW - 2} for last season) for the same dates (0 = driest). CHIRPS v3: final through September, "
                  f"preliminary pentads for 1–{sf['end_day']} October 2026; same pentads in past years. Biomass: JRC ASAP cumulative "
                  "FPAR anomaly over cropland during the growing cycle, GAUL admin-1.", y=-0.06, width=180)
     return _save(fig, "now")
@@ -933,6 +936,13 @@ def enso_by_unit(mon: pd.DataFrame, ph: pd.DataFrame) -> pd.DataFrame:
                              strong_dry=t.loc[strong].le(lo).sum(), n_strong=len(strong)))
 
 
+def clim_pos(ref: pd.Series, x: float) -> float:
+    """Position of x in the 1991–2020 distribution, 0–1, the inverse of the (linear) quantile used for the terciles, so
+    x is in the driest third exactly when the result is ≤ 1/3."""
+    q = np.linspace(0, 1, 1001)
+    return float(np.interp(x, np.quantile(ref.dropna().values, q), q))
+
+
 def fig_strong(ss: dict[str, dict], tot: pd.DataFrame, ph: pd.DataFrame, issued: str) -> tuple[Path, dict]:
     """Left: the October SEAS5 forecast of the season in past strong El Niño years and now; right: the rain that came."""
     strong = phase_years(ph, "nino", True)
@@ -948,12 +958,12 @@ def fig_strong(ss: dict[str, dict], tot: pd.DataFrame, ph: pd.DataFrame, issued:
             fp = 100 * (h <= h.loc[yr]).sum() / len(h)
             axes[0].scatter(fp, yi, marker=markers[yr], s=22, facecolor="none", edgecolor=STRONG_C, lw=0.9, zorder=3)
         axes[0].scatter(s["pct"], yi, marker="*", s=90, color=NOW_C, zorder=4)
-        t = tot[u].loc[Y0:Y1]
+        t = tot[u]
         for yr in strong:
-            op = 100 * (t <= t.loc[yr]).sum() / len(t)
+            op = 100 * clim_pos(t.loc[1991:2020], t.loc[yr])
             axes[1].scatter(op, yi, marker=markers[yr], s=22, facecolor="none", edgecolor=STRONG_C, lw=0.9, zorder=3)
     for ax, title in ((axes[0], f"October SEAS5 forecast of {SEASON_LBL}\n(rank among forecasts, %)"),
-                      (axes[1], f"{SEASON_LBL} rain that followed\n(CHIRPS, rank among seasons, %)")):
+                      (axes[1], f"{SEASON_LBL} rain that followed\n(CHIRPS, position in 1991–2020, %)")):
         ax.axvspan(0, 100 / 3, color="#f6ebcb", zorder=0)
         ax.axvspan(200 / 3, 100, color="#e3eef9", zorder=0)
         ax.set_xlim(-2, 102)
@@ -1037,8 +1047,8 @@ def fig_record(tot: pd.DataFrame, veg_season: pd.DataFrame, ph: pd.DataFrame, cf
     for i, (_, r) in enumerate(cf.sort_values("erc_endorsement_date").iterrows()):
         ax2.scatter([r.sy], [r.amount_approved / 1e6], marker="v", s=46, color=TEXT, zorder=5)
         ax2.annotate(f"{pd.Timestamp(r.erc_endorsement_date):%b %Y}", (r.sy, r.amount_approved / 1e6),
-                     xytext=(-16 if i % 2 else 16, 6),
-                     textcoords="offset points", fontsize=6.3, ha="center", color=TEXT2)
+                     xytext=(7, 0), va="center", ha="left",
+                     textcoords="offset points", fontsize=6.3, color=TEXT2)
     ax2.set_ylim(0, 9)
     ax2.set_ylabel("CERF drought\nallocation (US$ M)", fontsize=8.5)
     ax.set_ylim(0, max(5.2, pop.high_value.max() / 1e6 + 0.3) if len(pop) else 5)
@@ -1058,15 +1068,16 @@ def fig_record(tot: pd.DataFrame, veg_season: pd.DataFrame, ph: pd.DataFrame, cf
     _source(fig, f"Seasons labelled by the year they start ({season_label(2015)} = Nov 2015 – Mar 2016), coloured by the Sep–Nov ONI. "
                  f"Rain: CHIRPS v3, area mean of {lbl}. Biomass: JRC ASAP zFPARc on cropland, last dekad of April, area-weighted "
                  "over the same provinces. FEWS NET peak needs: the year's highest national Phase 3+ estimate (FEWS NET Data "
-                 "Warehouse), placed on the season before the peak. IPC: the two Angola analyses (2019, 2021; southern provinces "
-                 "only). CERF: allocations coded Drought (OneGMS), placed on the season before the allocation.", y=0.03, width=175)
+                 "Warehouse), placed on the season under way or last ended at the middle of its window. IPC: the two Angola analyses "
+                 "(2019, 2021; southern provinces only). CERF: allocations coded Drought (OneGMS), placed on the season whose failed "
+                 "rains they responded to.", y=0.03, width=175)
     return _save(fig, "record"), {}
 
 
 def fig_fews(fews: dict, pop: pd.DataFrame) -> Path:
     st = provinces()
-    order = [sc for sc in ("CS", "ML1", "ML2") if sc in fews["picks"]]
-    fig, axes = plt.subplots(1, len(order), figsize=(4.3 * len(order), 4.6))
+    order = [sc for sc in ("CS", "ML2") if sc in fews["picks"]]
+    fig, axes = plt.subplots(1, len(order), figsize=(4.6 * len(order), 4.8))
     gdf = fews["gdf"].to_crs(st.crs)
     for ax, sc in zip(np.atleast_1d(axes), order):
         pk = fews["picks"][sc]
@@ -1077,8 +1088,8 @@ def fig_fews(fews: dict, pop: pd.DataFrame) -> Path:
             sub = g[g.phase == ph_]
             if len(sub):
                 sub.plot(ax=ax, color=col, edgecolor="white", lw=0.3)
-        st.boundary.plot(ax=ax, color=TEXT2, lw=0.5)
         _map_axes(ax)
+        st.boundary.plot(ax=ax, color=TEXT2, lw=0.5)
         lbl = {"CS": "Current situation", "ML1": "Projection", "ML2": "Projection"}[sc]
         a, b = pd.Timestamp(pk["start"]), pd.Timestamp(pk["end"])
         win = f"{a:%b %Y}" if (a.year, a.month) == (b.year, b.month) else f"{a:%b %Y} – {b:%b %Y}"
@@ -1087,7 +1098,7 @@ def fig_fews(fews: dict, pop: pd.DataFrame) -> Path:
                frameon=False, fontsize=8, loc="lower center", ncol=6, bbox_to_anchor=(0.5, -0.02))
     fig.subplots_adjust(wspace=0.02, bottom=0.08)
     _source(fig, "FEWS NET acute food insecurity classification (IPC-compatible), on FEWS NET's own livelihood-zone × admin units; grey "
-                 "lines: provinces. Via the team's FEWS NET mirror.", y=0.0, width=170)
+                 "lines: provinces. Via the team's FEWS NET mirror.", y=-0.03, width=170)
     return _save(fig, "fews")
 
 
@@ -1104,7 +1115,7 @@ def province_table(tab: dict[str, pd.DataFrame], en: pd.DataFrame, sf: dict, par
     head = ("<tr><th>Province</th>"
             f"<th class='num'>Forecast {SEASON_LBL}<br>(return period)</th><th class='num'>Skill r</th>"
             "<th class='num'>Chance of driest third</th>"
-            "<th class='num'>2026 forecast (SD)<br>/ ENSO part</th>"
+            "<th class='num'>2026 forecast (SD) / ENSO part<br>(hindcast r with ONI)</th>"
             "<th class='num'>El Niño seasons<br>driest / wettest third</th><th class='num'>Rain–ONI r</th>"
             f"<th class='num'>{SEASON_LBL} {season_label(NOW - 1)}<br>% of normal</th>"
             f"<th class='num'>1 Sep–{sf['end_day']} Oct 2026<br>% of normal</th>"
@@ -1117,7 +1128,7 @@ def province_table(tab: dict[str, pd.DataFrame], en: pd.DataFrame, sf: dict, par
         so = "—" if early else f"{sf['share'][u]:.0f}%"
         rows.append(f"<tr{cls}><td>{html.escape(unit_name(u))}</td><td class='num'>{_fmt_rp(r)}</td>"
                     f"<td class='num'>{r.r:.2f}</td><td class='num'>{r.prob * 100:.0f}%</td>"
-                    f"<td class='num'>{p['z']:+.1f} / {p['enso']:+.1f}</td>"
+                    f"<td class='num'>{p['z']:+.1f} / {p['enso']:+.1f} ({p['r_oni']:+.2f})</td>"
                     f"<td class='num'>{e.nino_dry:.0f} / {e.nino_wet:.0f} of {e.n_nino:.0f}</td><td class='num'>{e.r:+.2f}</td>"
                     f"<td class='num'>{sf['last_share'][u]:.0f}%</td>"
                     f"<td class='num'>{so}</td>"
@@ -1191,14 +1202,19 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     en = enso_by_unit(mon, ph)
     ss = seas5_series(im, SEASON)
     f["strong"], parts = fig_strong(ss, tot, ph, issued)
-    # CERF drought allocations → season before the allocation (Nov Y–Mar Y+1 with Y = allocation year − 1)
+    # CERF drought allocations → the season whose failed rains they responded to (hand-checked in the TOML)
     cf = cerf()
     cf = cf[cf.emergency_type == "Drought"].copy()
-    cf["sy"] = pd.to_datetime(cf.erc_endorsement_date).dt.year - 1
-    # FEWS NET peak needs (national, Phase 3+), placed on the season before the peak window starts
+    known = {k: int(x) for k, x in spec["cerf_season"].items()}
+    if set(cf.application_code) != set(known):
+        raise ValueError(f"CERF drought allocations to Angola changed: new {sorted(set(cf.application_code) - set(known))}, "
+                         f"gone {sorted(set(known) - set(cf.application_code))}: add their season to [cerf_season]")
+    cf["sy"] = cf.application_code.map(known)
+    # FEWS NET peak needs (national, Phase 3+) → the season under way or last ended at the middle of the peak window
     pop = fews_population()
     pk = pop[(pop.scenario_name == "Peak Needs") & (pop.phase.astype(str) == "3+")].copy()
-    pk["sy"] = pk.projection_start.dt.year - 1
+    mid = pk.projection_start + (pk.projection_end - pk.projection_start) / 2
+    pk["sy"] = np.where(mid.dt.month >= 11, mid.dt.year, mid.dt.year - 1)
     pk = pk.sort_values("reporting_date").groupby("sy").tail(1)
     # IPC Phase 3+ (current period) per analysis
     ip = ipc()
@@ -1242,8 +1258,10 @@ def analyse(spec: dict) -> tuple[dict, dict]:
         raw_driest=int(S.loc[dry, "raw_driest"].sum()),
         so_end=sf["end_day"], last_season=season_label(NOW - 1),
         n_cerf=len(cf), n_cerf_nino=len(nino_cerf), n_cerf_nina=len(nina_cerf),
-        cerf_nino_seasons=", ".join(season_label(y) for y in sorted(nino_cerf.sy)),
-        cerf_nina_seasons=", ".join(season_label(y) for y in sorted(set(nina_cerf.sy))),
+        cerf_nino_seasons=", ".join(season_label(y) + (f" ({n})" if n > 1 else "") for y, n in nino_cerf.sy.value_counts().sort_index().items()),
+        cerf_nina_seasons=", ".join(season_label(y) + (f" ({n})" if n > 1 else "") for y, n in nina_cerf.sy.value_counts().sort_index().items()),
+        n_cerf_nino_seasons=nino_cerf.sy.nunique(), n_cerf_nina_seasons=nina_cerf.sy.nunique(),
+        fews_peak_round=f"{latest_pk.reporting_date:%B %Y}",
         fews_n3=n3, fews_units=len(ml2["phase"]), fews_round=f"{pd.Timestamp(ml2['round'] + '-01'):%B %Y}",
         fews_peak=latest_pk.description.replace(" - ", "–"), fews_peak_win=f"{latest_pk.projection_start:%b %Y} – {latest_pk.projection_end:%b %Y}",
         fews_cs=cs.description.replace(" - ", "–"), fews_cs_month=f"{cs.projection_start:%B %Y}",
@@ -1277,7 +1295,9 @@ def analyse(spec: dict) -> tuple[dict, dict]:
         h = ss[u]["f"].loc[ss[u]["hist"]]
         return 100 * (h <= h.loc[yr]).sum() / len(h)
     tt = tot.loc[Y0:Y1]
-    opct = {yr: 100 * (tt[sk] <= tt.loc[yr, sk]).sum() / len(tt) for yr in strong}
+    opct = {yr: 100 * clim_pos(tot[sk].loc[1991:2020], tot.loc[yr, sk]) for yr in strong}
+    if sum(o <= 100 / 3 for o in opct.values()) != int(en.loc[sk, "strong_dry"]):
+        raise ValueError("strong El Niño driest-third count disagrees with the tercile count")
     v |= dict(n_strong=len(strong), strong_out_dry=sum(o <= 100 / 3 for o in opct.values()),
               strong_out_dry_years=", ".join(season_label(y) for y, o in opct.items() if o <= 100 / 3),
               unlike=", ".join(unit_name(u) for u in south if min(fpct(u, yr) for yr in strong) > 100 / 3),
@@ -1296,6 +1316,15 @@ def analyse(spec: dict) -> tuple[dict, dict]:
               fews_p3_prov=", ".join(unit_name(u) for u in provinces().pcode if fmax.get(u) == IPC_LABELS[3]))
     if not set(u for u in provinces().pcode if fmax.get(u) == IPC_LABELS[3]) <= set(GROUPS[sk]["pcodes"]) | {"AO02"}:
         raise ValueError("FEWS NET Phase 3 areas now reach beyond the south: reword the food-security headline")
+    skilled = [u for u in dry if S.loc[u, "r"] >= SEAS5_T["r_mod"]]
+    unskilled = [u for u in dry if S.loc[u, "r"] < SEAS5_T["r_mod"]]
+    v |= dict(sk_prob_lo=f"{S.loc[skilled, 'prob'].min() * 100:.0f}", sk_prob_hi=f"{S.loc[skilled, 'prob'].max() * 100:.0f}",
+              sk_names=" and ".join(unit_name(u) for u in skilled), unsk_names=", ".join(unit_name(u) for u in unskilled),
+              hl_r_oni=f"{hp['r_oni']:.2f}", early_names=", ".join(unit_name(u) for u in provinces().pcode if bool(sf["early"][u])))
+    if not skilled:
+        raise ValueError("no dry province with skill ≥ 0.3: reword the skill headline")
+    if not 10 <= abs(hp["enso"] / hp["z"]) * 100 <= 40:
+        raise ValueError("ENSO share outside 10–40%: reword 'about a quarter'")
     if not 25 <= S.loc["AO", "pct"] <= 75:
         raise ValueError("the national forecast is no longer near the middle: reword 'the two cancel'")
     if set(ipcv.index) != {2019, 2021}:
