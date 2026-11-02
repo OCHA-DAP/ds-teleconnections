@@ -1232,6 +1232,8 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     v = dict(now_span=span, now_lo=f"{pct.loc[NOW].min():.0f}", now_hi=f"{pct.loc[NOW].max():.0f}", now_rank_txt=_words(int(rank.max())),
              now_rank_max=int(rank.max()), now_n=len(pct), era5_rank_max=int(rk_e.max()),
              era5_lo=f"{pe.loc[NOW].min():.0f}", era5_hi=f"{pe.loc[NOW].max():.0f}")
+    if len(pe) != len(pct):   # the caption ranks both products against the same "all N years"
+        raise ValueError(f"ERA5 ranks {len(pe)} years, CHIRPS {len(pct)}: reword the fig_now caption")
     if not 2 <= v["now_rank_max"] <= 6 or v["era5_rank_max"] > 7:   # rank 1 everywhere needs "the driest", not "among the"
         raise ValueError(f"2026 ranks changed ({v['now_rank_max']}, {v['era5_rank_max']}): reword the fig_now note")
     return _save(fig, "now"), v
