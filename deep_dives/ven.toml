@@ -39,7 +39,7 @@ text = "flood and landslide reports in a typical El Niño year than in an ordina
 
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
-text = "{now_span} 2026 rain by region, as % of normal: among the {now_rank_txt} driest since 1981 in every region"
+text = "{now_span} 2026 rain by region, as % of normal: among the {now_rank_txt} driest of all {now_n} years since 1981 (not just El Niño years) in every region"
 [[tiles]]
 big = "Driest 10%"
 text = "the SEAS5 October {fc_year} forecast for October–February, in every rainy-season state and season ({fc_cells} of them), among the driest 10% of past forecasts"
@@ -89,7 +89,7 @@ note = "In all three panels the points scatter without a pattern: every correlat
 part = "2. This year so far: rain, vegetation and the Guri reservoir"
 id = "now"
 fig = "now"
-head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the {now_rank_txt} driest since 1981 in every region"
+head = "{now_span} 2026 rain was {now_lo}–{now_hi}% of normal, among the {now_rank_txt} driest of all {now_n} years since 1981 (not just El Niño years) in every region"
 note = "ERA5 puts {now_span} at {era5_lo}–{era5_hi}% of normal. CHIRPS, which uses gauges, leads here; ERA5 is a reanalysis that does not use gauge rain. October data come out in November."
 
 [[sections]]

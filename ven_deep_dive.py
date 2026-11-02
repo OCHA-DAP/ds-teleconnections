@@ -1044,7 +1044,7 @@ def fig_fewsnet() -> Path:
 
 
 CALENDAR_FILE = FEWS_DIR / "ve_seasonal_calendar_rural.csv"   # digitized by deep_dives/data/fewsnet/ve_seasonal_calendar_digitize.py
-CAL_FILL = {"hurricane": "#1d3a5f", "prep": "#4f352e", "harvest": "#0d5d40", "labour": "#434343"}   # FEWS NET's colours
+CAL_FILL = {"prep": "#4f352e", "harvest": "#0d5d40", "labour": "#434343"}   # FEWS NET's colours
 CAL_RAINY, CAL_LEAN = (4, 11), (5, 8)   # months from 1 January: FEWS NET's rainy season May–Nov, lean season Jun–Aug
 
 
@@ -1052,6 +1052,8 @@ def fig_calendar(k: float = 1.0) -> Path:
     """FEWS NET's seasonal calendar for rural Venezuela, redrawn from the digitized table so it can be labelled in Spanish.
     k > 1: type k times larger and no caption, for a slide (ven_slides.py), saved as calendar_slide."""
     cal = pd.read_csv(CALENDAR_FILE, keep_default_na=False)
+    cal = cal[cal.kind != "hurricane"]   # FEWS NET's hurricane-season row left out (user's call, 2026-11-02)
+    cal = cal.assign(order=cal.order.rank(method="dense").astype(int) - 1)
     rows = cal.drop_duplicates("order").set_index("order")[_t("row_en", "row_es")]
     fig, ax = plt.subplots(figsize=(11.5, 5.6))
     fig.subplots_adjust(left=0.24, right=0.99, top=0.88, bottom=0.1)   # before the labels, which are sized to the month width
@@ -1086,11 +1088,11 @@ def fig_calendar(k: float = 1.0) -> Path:
     if cal.loc[cal.wraps.astype(str) == "True", "row_en"].unique().tolist() != ["Cash crop harvest"]:
         raise ValueError("the calendar's year-end crossing changed: reword the caption")
     _source(fig, _t("Redrawn from FEWS NET’s seasonal calendar for Venezuela (rural areas), fews.net/latin-america-and-caribbean/"
-                    "venezuela. Winter and summer are Venezuela’s two crop cycles: winter crops are planted with the rains (April–"
+                    "venezuela, without its hurricane-season row. Winter and summer are Venezuela’s two crop cycles: winter crops are planted with the rains (April–"
                     "June), summer crops from about October. The coffee and sugar-cane harvest runs from October to March, across the "
                     "year end; the other bars stop where they end.",
                     "Redibujado del calendario estacional de FEWS NET para Venezuela (zonas rurales), fews.net/latin-america-and-"
-                    "caribbean/venezuela. Invierno y verano son los dos ciclos de cultivo de Venezuela: los de invierno se siembran con "
+                    "caribbean/venezuela, sin su fila de temporada de huracanes. Invierno y verano son los dos ciclos de cultivo de Venezuela: los de invierno se siembran con "
                     "las lluvias (abril–junio), los de verano desde octubre aproximadamente. La cosecha de café y caña de azúcar va de "
                     "octubre a marzo, de un año al siguiente; las demás barras terminan donde acaban."), y=0.0, width=150)
     return _save(fig, "calendar")
@@ -1217,12 +1219,14 @@ def fig_now(mon: pd.DataFrame, mon_e: pd.DataFrame, ph: pd.DataFrame) -> tuple[P
     rank = pct.rank().loc[NOW]
     rk_e = pe.rank().loc[NOW]
     span = _t(f"May–{last:%B}", f"mayo–{MONTH_ES[last.month - 1]}")
-    _source(fig, _t(f"{span} rain, each year 1981–{NOW}, one dot per year. 2026 was among the {_words(int(rank.max()))} driest of "
-                    f"{len(pct)} in every region in CHIRPS v3 and among the {_words(int(rk_e.max()))} driest in ERA5. October data come "
+    _source(fig, _t(f"{span} rain, each year 1981–{NOW}, one dot per year. Ranked against all {len(pct)} years, not just the El "
+                    f"Niño years, 2026 was among the {_words(int(rank.max()))} driest in every region in CHIRPS v3 and among the "
+                    f"{_words(int(rk_e.max()))} driest in ERA5. October data come "
                     "out in November. Sources: CHIRPS v3 (state means), "
                     "ERA5 (team admin-1 statistics).",
-                    f"Lluvia de {span}, cada año de 1981 a {NOW}, un punto por año. 2026 estuvo entre los {_words(int(rank.max()))} más "
-                    f"secos de {len(pct)} en todas las regiones según CHIRPS v3 y entre los {_words(int(rk_e.max()))} más secos según "
+                    f"Lluvia de {span}, cada año de 1981 a {NOW}, un punto por año. Frente a los {len(pct)} años, no solo los de El "
+                    f"Niño, 2026 estuvo entre los {_words(int(rank.max()))} más secos en todas las regiones según CHIRPS v3 y entre los "
+                    f"{_words(int(rk_e.max()))} más secos según "
                     "ERA5. Los datos de octubre salen en noviembre. Fuentes: CHIRPS v3 "
                     "(medias por estado), ERA5 (estadísticas admin-1 del equipo)."))
     v = dict(now_span=span, now_lo=f"{pct.loc[NOW].min():.0f}", now_hi=f"{pct.loc[NOW].max():.0f}", now_rank_txt=_words(int(rank.max())),

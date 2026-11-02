@@ -200,10 +200,11 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
                 f"Estación seca más seca en el sur ({v['ab_dry_lo']}–{v['ab_dry_hi']}% menos lluvia) y lluvias más débiles en el norte "
                 f"({v['cde_rain_lo']}–{v['cde_rain_hi']}% menos); menos registros de inundaciones; el embalse de Guri bajó más.")],
             ["2", _t("This year so far", "Este año hasta ahora"),
-             _t(f"{V._cap(span)} rain was {v['now_lo']}–{v['now_hi']}% of normal, among the {v['now_rank_txt']} driest since 1981. "
-                f"Cropland is below the warning level in {v['veg_warn']}. Guri is near full.",
+             _t(f"{V._cap(span)} rain was {v['now_lo']}–{v['now_hi']}% of normal, among the {v['now_rank_txt']} driest of all "
+                f"{v['now_n']} years since 1981 (not just El Niño years). Cropland is below the warning level in {v['veg_warn']}. Guri is near full.",
                 f"La lluvia de {span} fue del {v['now_lo']}–{v['now_hi']}% de lo normal, entre las {v['now_rank_txt']} más bajas "
-                f"desde 1981. Los cultivos están por debajo del umbral de alerta en {v['veg_warn']}. El Guri está casi lleno.")],
+                f"de los {v['now_n']} años desde 1981 (todos, no solo los de El Niño). Los cultivos están bajo el umbral de alerta "
+                f"en {v['veg_warn']}. El Guri está casi lleno.")],
             ["3", _t("The forecast", "El pronóstico"),
              _t(f"SEAS5 (October {yr}): October–February among the driest 10% of forecasts since 1981, wherever it is the rainy "
                 "season. For this season, plan on the forecast.",
@@ -240,13 +241,15 @@ def content(v: dict, rain: pd.Series, lang: str) -> dict:
                     "note": _t("Harvests show no clear link with El Niño (FAOSTAT maize and rice yields).",
                                "Las cosechas no muestran una relación clara con El Niño (rendimientos de maíz y arroz de FAOSTAT).")},
         "rain": {"title": _t(f"{V._cap(span)} 2026 rain was {v['now_lo']}–{v['now_hi']}% of normal, among the {v['now_rank_txt']} "
-                             "driest since 1981",
+                             f"driest of all {v['now_n']} years since 1981",
                              f"La lluvia de {span} de 2026 fue del {v['now_lo']}–{v['now_hi']}% de lo normal, entre las "
-                             f"{v['now_rank_txt']} más bajas desde 1981"),
+                             f"{v['now_rank_txt']} más bajas de los {v['now_n']} años desde 1981"),
                  "regions": [V._reg(x) for x in r.index], "values": [round(float(x)) for x in r.values],
-                 "note": _t(f"CHIRPS v3 to {v['data_end']}, % of the 1991–2020 normal. ERA5 gives {v['era5_lo']}–{v['era5_hi']}%. "
+                 "note": _t(f"Ranked against every year since 1981, not just El Niño years. CHIRPS v3 to {v['data_end']}, % of the "
+                            f"1991–2020 normal. ERA5 gives {v['era5_lo']}–{v['era5_hi']}%. "
                             "October data come out in November.",
-                            f"CHIRPS v3 hasta {v['data_end']}, % de lo normal de 1991–2020. ERA5 da {v['era5_lo']}–{v['era5_hi']}%. "
+                            f"Frente a todos los años desde 1981, no solo los de El Niño. CHIRPS v3 hasta {v['data_end']}, % de lo "
+                            f"normal de 1991–2020. ERA5 da {v['era5_lo']}–{v['era5_hi']}%. "
                             "Los datos de octubre salen en noviembre.")},
         "veg": {"title": _t(f"Mid-October: vegetation near normal nationally, cropland below the warning level in {v['veg_warn']}",
                             f"Mediados de octubre: vegetación cerca de lo normal en el país, cultivos bajo el umbral de alerta en "
