@@ -1,0 +1,103 @@
+# Angola — the 2026/27 rainy season. Built by ago_deep_dive.py (builder = "ago").
+# Plot-led: one plain headline per figure, a short note at most. {placeholders} are filled from the build, which stops
+# when a headline's claim no longer holds.
+iso3 = "AGO"
+name = "Angola"
+builder = "ago"
+issued_month = 10            # SEAS5 issuance the page is built on (the November one lands around the 6th)
+headline_group = "south"     # group used in the tiles
+record_group = "south"       # group shown in the season-by-season record
+
+notes = [
+  "<b>Seasons and phases.</b> The season is November–March, the core of the rains in every province and inside the October forecast. Seasons are labelled by the year they start and classed by the Sep–Nov ONI (NOAA CPC) of that year: El Niño ≥ +0.5 °C, strong ≥ +1.5 °C ({strong_years}), La Niña ≤ −0.5 °C.",
+  "<b>Forecast.</b> ECMWF SEAS5 ensemble mean by province (team admin-1 statistics), {issued} issuance, computed as in the team's seas5-skill viewer: three- or five-month means, log-transformed, scaled to ERA5 and detrended; rank among the {n_hind} hindcasts for the same months ({hind_years}); return period (n + 1) / rank; skill = correlation with ERA5; chance of the driest third from the viewer's regression on the forecast with the hindcast error spread. Groups are area-weighted means of their provinces. ENSO part: a straight-line fit of the hindcast z-scores on the Jul–Sep ONI, at this year's {oni_jas} °C.",
+  "<b>Rain.</b> CHIRPS v3 (satellite and gauges) at 0.5°, area-weighted by province; final to September 2026, preliminary pentads for October. ERA5 is used as a check. Normals are 1991–2020.",
+  "<b>Vegetation.</b> JRC ASAP zFPARc: cumulative anomaly of the light absorbed by crops through the growing cycle (MODIS), GAUL admin-1, last dekad of April.",
+  "<b>Food security.</b> FEWS NET classification via the team's mirror, population estimates from the FEWS NET Data Warehouse (national ranges). IPC: the team's mirror of the IPC API. CERF: allocations coded Drought in OneGMS.",
+]
+
+# Groups of provinces: each gets every statistic (area-weighted) and a row in the table. `target = true` also outlines
+# it on the maps. Target areas go here when they are known.
+[groups.south]
+label = "South (Namibe, Huíla, Cunene, Cuando Cubango)"
+pcodes = ["AO16", "AO09", "AO08", "AO05"]
+
+[catalogue]
+evidence = "moderate"
+
+[assessment]
+evidence = "moderate"
+one_line = "2026/27: SEAS5 forecasts the driest Nov–Mar on record in the south and a wet north and centre. In the south about a quarter of the dry forecast is what SEAS5 usually gives with El Niño; past El Niño seasons were drier than normal mainly in the south-east and wetter in the north and centre."
+
+[page]
+title = "Angola: the 2026/27 rainy season and El Niño"
+sub = "How dry the season is forecast to be, rain so far, how much of it is El Niño, and food security."
+dateline = "SEAS5 issued {issued} · rain to {so_end} October 2026 (CHIRPS, preliminary) · ONI {oni_seas} 2026 {oni_now} °C · FEWS NET {fews_round}"
+
+[[tiles]]
+big = "1 in {hl_rp}"
+text = "SEAS5 ({issued}) forecast of Nov–Mar rain in the south: return period among the {n_hind} past October forecasts"
+[[tiles]]
+big = "{hl_prob}%"
+text = "chance of a driest-third Nov–Mar in the south, allowing for the forecast's skill there (r = {hl_r}); 33% = no information"
+[[tiles]]
+big = "{hl_enso_share}%"
+text = "of the south's forecast anomaly ({hl_z} SD) is what SEAS5 has given in past years for this ONI ({hl_enso} SD)"
+[[tiles]]
+big = "{n_cerf_nino} of {n_cerf}"
+text = "CERF drought allocations to Angola came after El Niño seasons; {n_cerf_nina} after La Niña seasons"
+[[tiles]]
+big = "{fews_peak}"
+text = "people in Phase 3+ at the peak ({fews_peak_win}), FEWS NET {fews_round}"
+
+[[sections]]
+part = "1. The forecast"
+id = "forecast"
+fig = "forecast"
+head = "SEAS5, {issued}: dry in the south, wet in the north and centre; nationally the two cancel ({nat_pct}th percentile)"
+note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones. The November forecast comes out around 6 November."
+
+[[sections]]
+id = "prob"
+fig = "forecast_prob"
+head = "Allowing for skill: a {dry_prob_lo}–{dry_prob_hi}% chance of a driest-third Nov–Mar in the dry provinces, against 33% with no forecast"
+note = "A return period of {rp_cap} means drier than every past October forecast. This does not come from removing the trend: without that step the forecast is still the driest on record in {raw_driest} of the {n_dry} dry provinces."
+
+[[sections]]
+id = "table"
+fig = "table"
+head = "By province"
+note = "Target areas will be added as rows once known."
+
+[[sections]]
+part = "2. Rain so far"
+id = "now"
+fig = "now"
+head = "Too early to judge the south, where the rains normally start in November–December"
+note = "Since 1 September: below 75% of normal in {so_low}. Last season ({last_season}) the south had {last_south}% of normal Nov–Mar rain; it was the driest on record in {last_driest}."
+
+[[sections]]
+part = "3. How much of it is El Niño"
+id = "enso_maps"
+fig = "enso_maps"
+head = "In past El Niño seasons the north and centre were usually wetter than normal; the south-east was drier"
+note = "Nov–Mar rain correlates with the ONI at −0.25 or below only in {en_r_neg}, and at +0.25 or above in {en_r_pos_n} of 18 provinces. El Niño seasons in the driest third (of {n_nino}; chance 5): {nino_dry_by}. ERA5 agrees with CHIRPS on the sign in {era5_agree}% of cells with |r| ≥ 0.2."
+
+[[sections]]
+id = "strong"
+fig = "strong"
+head = "About a quarter of the south's dry forecast is what SEAS5 usually gives with El Niño; in {unlike} it is unlike any past strong El Niño forecast"
+note = "South: forecast {hl_z} SD, of which {hl_enso} SD goes with the ONI. Past October forecasts were also among the driest in {alike} ({alike_years}). Of the {n_strong} strong El Niño seasons, {strong_out_dry} brought a driest-third Nov–Mar to the south ({strong_out_dry_years}). ENSO accounts for about {hl_r2}% of the year-to-year variation in the south's Nov–Mar rain (r = {hl_en_r})."
+
+[[sections]]
+id = "record"
+fig = "record"
+head = "The south's five driest seasons since 1981: {driest5}"
+note = "CERF drought allocations after El Niño seasons: {cerf_nino_seasons}; after La Niña: {cerf_nina_seasons}. The largest FEWS NET needs (2.5–5 million, 2021) followed the 2020/21 La Niña season."
+
+[[sections]]
+part = "4. Food security"
+id = "fews"
+fig = "fews"
+head = "FEWS NET ({fews_round}): {fews_n3} of {fews_units} areas projected in Crisis (Phase 3) for October 2026–January 2027: {fews_p3_prov}"
+note = "FEWS NET estimates {fews_cs} people in Phase 3+ in {fews_cs_month} and {fews_peak} at the peak ({fews_peak_win}). Its seasonal calendar: rains October–May, lean season November–February, main cereal harvest March–June. IPC has analysed Angola twice, in the southern provinces only: 2019 ({ipc19} in Phase 3+) and 2021 ({ipc21})."

@@ -1873,6 +1873,11 @@ def main() -> None:
             import ven_deep_dive
             ven_deep_dive.build(spec, grid, gdf, indices, publish=bool(os.environ.get("VEN_PUBLISH")))
             continue
+        if spec.get("builder") == "ago":
+            # plot-led Angola season page (forecast RP, rain so far, ENSO share, food security); docs/ only with AGO_PUBLISH=1
+            import ago_deep_dive
+            ago_deep_dive.build(spec, publish=bool(os.environ.get("AGO_PUBLISH")))
+            continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack
             import extreme_nord_deep_dive
