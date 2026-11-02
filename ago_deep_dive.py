@@ -1127,7 +1127,10 @@ def province_table(tab: dict[str, pd.DataFrame], en: pd.DataFrame, sf: dict, par
         early = bool(sf["early"].get(u, False))
         so = "—" if early else f"{sf['share'][u]:.0f}%"
         rows.append(f"<tr{cls}><td>{html.escape(unit_name(u))}</td><td class='num'>{_fmt_rp(r)}</td>"
-                    f"<td class='num'>{r.r:.2f}</td><td class='num'>{r.prob * 100:.0f}%</td>"
+                    f"<td class='num'>{r.r:.2f}</td>"
+                    + (f"<td class='num' style='color:#9aa3ad'>{r.prob * 100:.0f}% (low skill)</td>" if r.r < SEAS5_T["r_mod"]
+                       else f"<td class='num'>{r.prob * 100:.0f}%</td>")
+                    + ""
                     f"<td class='num'>{p['z']:+.1f} / {p['enso']:+.1f} ({p['r_oni']:+.2f})</td>"
                     f"<td class='num'>{e.nino_dry:.0f} / {e.nino_wet:.0f} of {e.n_nino:.0f}</td><td class='num'>{e.r:+.2f}</td>"
                     f"<td class='num'>{sf['last_share'][u]:.0f}%</td>"
@@ -1324,7 +1327,7 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     if not skilled:
         raise ValueError("no dry province with skill ≥ 0.3: reword the skill headline")
     if not 10 <= abs(hp["enso"] / hp["z"]) * 100 <= 40:
-        raise ValueError("ENSO share outside 10–40%: reword 'about a quarter'")
+        raise ValueError("ENSO share outside 10–40%: reword the tile and the strong-section headline")
     if not 25 <= S.loc["AO", "pct"] <= 75:
         raise ValueError("the national forecast is no longer near the middle: reword 'the two cancel'")
     if set(ipcv.index) != {2019, 2021}:

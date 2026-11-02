@@ -98,7 +98,7 @@ note = "Nov–Mar rain correlates with the ONI at −0.25 or below only in {en_r
 [[sections]]
 id = "strong"
 fig = "strong"
-head = "About a quarter of the south's dry forecast goes with El Niño, on SEAS5's own past forecasts; in {unlike} the forecast is unlike any past strong El Niño forecast"
+head = "{hl_enso_share}% of the south's dry forecast goes with El Niño, on SEAS5's own past forecasts; in {unlike} the forecast is unlike any past strong El Niño forecast"
 note = "South: forecast {hl_z} SD, of which {hl_enso} SD goes with the ONI, from a weak relation (r = {hl_r_oni}) extended beyond any past ONI. October forecasts were also among the driest in {alike} in {alike_years}. Of the {n_strong} strong El Niño seasons, {strong_out_dry} brought a driest-third Nov–Mar to the south ({strong_out_dry_years}). ENSO goes with about {hl_r2}% of the year-to-year variation in the south's Nov–Mar rain (r = {hl_en_r})."
 
 [[sections]]
