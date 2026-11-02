@@ -40,7 +40,7 @@ text = "registros de inundaciones y deslizamientos en un año típico de El Niñ
 
 [[tiles]]
 big = "{now_lo}–{now_hi}%"
-text = "lluvia de {now_span} de 2026 por región, en % de lo normal: entre los {now_rank_txt} años más secos desde 1981 en todas las regiones"
+text = "lluvia de {now_span} de 2026 por región, en % de lo normal: entre los {now_rank_txt} más secos de los {now_n} años desde 1981 (todos, no solo los de El Niño) en todas las regiones"
 [[tiles]]
 big = "10% más seco"
 text = "el pronóstico SEAS5 de octubre de {fc_year} para octubre–febrero, en todos los estados y trimestres de temporada de lluvias ({fc_cells} en total), entre el 10% más seco de los pronósticos anteriores"
@@ -90,7 +90,7 @@ note = "En los tres paneles los puntos se dispersan sin un patrón: todas las co
 part = "2. Este año hasta ahora: lluvia, vegetación y el embalse de Guri"
 id = "now"
 fig = "now"
-head = "La lluvia de {now_span} de 2026 fue del {now_lo}–{now_hi}% de lo normal, entre las {now_rank_txt} más bajas desde 1981 en todas las regiones"
+head = "La lluvia de {now_span} de 2026 fue del {now_lo}–{now_hi}% de lo normal, entre las {now_rank_txt} más bajas de los {now_n} años desde 1981 (todos, no solo los de El Niño) en todas las regiones"
 note = "ERA5 sitúa {now_span} en el {era5_lo}–{era5_hi}% de lo normal. Aquí prevalece CHIRPS, que usa pluviómetros; ERA5 es un reanálisis que no usa la lluvia de los pluviómetros. Los datos de octubre salen en noviembre."
 
 [[sections]]
