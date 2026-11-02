@@ -288,6 +288,9 @@ def _chirps_recent(cube: xr.Dataset) -> xr.Dataset | None:
     while t < pd.Timestamp.now().normalize().replace(day=1):
         f = CACHE / "chirps_v3_tifs" / f"chirps-v3.0.{t.year}.{t.month:02d}.tif"
         if not f.exists():
+            if os.environ.get("CHIRPS_CACHED_ONLY") == "1":   # CHC unreachable: use the months already cached, fetch nothing
+                print(f"  CHIRPS_CACHED_ONLY=1: not fetching {t:%Y-%m} from CHC")
+                break
             r = requests.get(CHIRPS_TIF.format(y=t.year, m=t.month), timeout=300)
             if r.status_code != 200:
                 break
