@@ -25,7 +25,7 @@ uv run python teleconnection_survey.py
 ```
 
 On run the script will:
-1. Download the six climate indices from NOAA PSL (cached under `cache/`).
+1. Download the six climate indices from NOAA PSL (cached under `cache/`), and draw the time-series panel for each from NOAA's latest files (see below).
 2. **Country pass** — query ERA5 country-level monthly precipitation from the team DB (`public.era5`, `adm_level=0`).
 3. **Pixel pass** — download the ERA5 monthly precipitation COGs from the `raster` blob container, subset to the map viewport, and cache the stack to `cache/era5_pixel/` (~850 MB, one-time; later runs reuse it).
 4. Run the correlation analysis for both resolutions × both lag caps (3- and 6-month).
@@ -39,6 +39,16 @@ Postgres DB, the pixel pass needs only blob. Either can be skipped to regenerate
 ```bash
 uv run python teleconnection_survey.py --skip-adm0   # pixel maps + report only
 uv run python teleconnection_survey.py --skip-px     # country maps + report only
+```
+
+The time-series panels beside each map show where each index stands now, so they are drawn from NOAA's
+latest files, kept separately in `cache/live/` (re-downloaded when more than a week old), never from the
+pinned `cache/{index}.data` copies that the correlations and deep dives use. NOAA revises these series
+(Niño3.4 moved to ERSST v6 in 2026), so the two must not be mixed. To bring just the panels up to date —
+NOAA only, no DB or blob access:
+
+```bash
+uv run python teleconnection_survey.py --ts-only     # re-download the indices, redraw docs/survey/maps/ts_*.png
 ```
 
 Open `docs/survey/index.html` in a browser to view the report locally (`docs/index.html` is the site landing page).
@@ -218,7 +228,7 @@ docs/
     map_px_{l3,l6}_{total,partial}_{index}.png   per-index correlation maps (pixel)
     map_dominant_{l3,l6}.png                     dominant-mode maps (country)
     map_px_dominant_{l3,l6}.png                  dominant-mode maps (pixel)
-    ts_{index}.png                               index historical time-series panels
+    ts_{index}.png                               index time-series panels (latest NOAA values; --ts-only)
     enso_elnino.png / enso_lanina.png            ENSO composites (country)
     enso_px_elnino.png / enso_px_lanina.png      ENSO composites (pixel)
     index_corr_matrix.png                        collinearity heatmap

@@ -25,6 +25,7 @@ from __future__ import annotations
 import io
 import json
 import re
+import time
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
@@ -89,7 +90,6 @@ PIXEL_DOWNLOAD_WORKERS = 8
 PIXEL_CHUNK = 40_000          # cells per batched-linear-algebra block
 PIXEL_MIN_TRI_MM_DAY = 0.25   # hyper-arid cut for the pixel pass (see docstring)
 PIXEL_DOMINANT_MARGIN = 0.10  # |r| gap the top mode must beat the runner-up by
-PIXEL_MAP_W = 15.0            # inches; matches the country maps
 PIXEL_MAP_DPI = 150           # ~2x the native 0.25 deg grid across the viewport
 
 # All 12 rolling 3-month windows: name -> end month.
@@ -151,6 +151,8 @@ MAP_YLIM = (-36, 56)
 _MAP_DX = MAP_XLIM[1] - MAP_XLIM[0]   # 280°
 _MAP_DY = MAP_YLIM[1] - MAP_YLIM[0]   # 92°
 _DOT_R = 0.0035 * _MAP_DX             # ≈ 0.98° — same formula as ds-seas5-skill
+MAP_W = 15.0                          # inches; width of every global map
+TS_PANEL_W = 6.5                      # inches; the time-series panel beside each map
 
 
 # Discrete 2-bin correlation colors (matching ds-seas5-skill palette)
@@ -200,6 +202,21 @@ def _ts_color(val: float, thresh: float) -> str:
     return _TS_STRONG_COOL
 
 
+_TS_LABEL_GAP_PT = 13.0   # min vertical gap between the current-value label and a threshold label
+
+
+def _label_offset_pt(ax, y: float, avoid: tuple[float, ...]) -> float:
+    """Smallest vertical offset (points) that keeps a margin label drawn at data-y `y`
+    at least _TS_LABEL_GAP_PT away from the labels at each data-y in `avoid`;
+    0 when it is already clear. Call once the y-limits are final."""
+    ax.get_ylim()   # settle autoscaling before reading the data->display transform
+    per_pt = ax.figure.dpi / 72.0
+    to_pt = lambda v: ax.transData.transform((0, v))[1] / per_pt
+    y0, others = to_pt(y), [to_pt(v) for v in avoid]
+    clear = lambda d: all(abs(y0 + d - o) >= _TS_LABEL_GAP_PT for o in others)
+    return float(min((d for d in range(-200, 201) if clear(d)), key=abs, default=0))
+
+
 def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     """Draw the past-10-year time series of a climate index on ax."""
     thresh = INDEX_THRESHOLDS.get(index_name, 0.5)
@@ -238,15 +255,21 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     ax.text(1.01, -thresh, f"−{thresh}", transform=ax.get_yaxis_transform(),
             fontsize=10, va="center", color=_TS_STRONG_COOL)
 
-    # Current value marker + label
+    # Current value marker + label. The label runs into the right margin, where the
+    # threshold labels sit, so it is nudged up or down (with a leader line) when it
+    # would overlap one.
     cur_val  = recent.iloc[-1]
     cur_date = recent.index[-1]
     ax.scatter([cur_date], [cur_val], s=30, zorder=5,
                 color=_ts_color(cur_val, thresh), edgecolors="#333", linewidths=0.5)
+    dy = _label_offset_pt(ax, cur_val, (thresh, -thresh))
+    leader = (dict(arrowstyle="-", lw=0.6, color="#666", shrinkA=0, shrinkB=3)
+              if dy else None)
     ax.annotate(f" {cur_val:+.2f}",
-                xy=(cur_date, cur_val), xytext=(3, 0),
+                xy=(cur_date, cur_val), xytext=(3, dy),
                 textcoords="offset points", fontsize=11,
-                color=_ts_color(cur_val, thresh), fontweight="bold", va="center")
+                color=_ts_color(cur_val, thresh), fontweight="bold", va="center",
+                arrowprops=leader)
 
     # X-axis: one label per year, angled; extend right edge to today
     years = sorted({d.year for d in recent.index} | {today.year})
@@ -264,7 +287,8 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     if latest is not None:
         ax.text(0.98, 0.97, f"Latest: {latest.strftime('%b %Y')}",
                 transform=ax.transAxes, fontsize=10, color="#666",
-                ha="right", va="top")
+                ha="right", va="top", zorder=6,
+                bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=1.5))
 
 
 def _is_dot_country(geom) -> bool:
@@ -347,9 +371,50 @@ def load_indices(cfg: dict) -> pd.DataFrame:
             cache.write_text(text)
         out[name] = _parse_psl(text)
     df = pd.DataFrame(out)
-    # No end-year cap: full series needed for the time series panel.
-    # The correlation analysis is naturally bounded by the rainfall years (via index intersection).
+    # No end-year cap: the correlation analysis is bounded by the rainfall years
+    # (via index intersection).
     return df.loc[f"{cfg['start_year']}":]
+
+
+# The time-series panels show where each index stands now, so they are drawn from
+# NOAA's current files, kept apart in cache/live/ and re-downloaded once a week.
+# The pinned cache/{name}.data files above stay the correlation (and deep-dive)
+# inputs: NOAA revises these series (Niño3.4 moved to ERSST v6 in 2026, about
+# +0.2 °C; TNA/TSA moved to a 1991–2020 base), so the two copies must not be mixed.
+LIVE_INDEX_MAX_AGE_DAYS = 7
+
+
+def load_live_indices(cfg: dict,
+                      max_age_days: float = LIVE_INDEX_MAX_AGE_DAYS) -> pd.DataFrame:
+    """Latest NOAA release of every index, for the time-series panels only.
+
+    Each file is re-downloaded when its cached copy is older than `max_age_days`
+    (0 = always). A download is kept only if it parses and has values since 2010,
+    so an error page never replaces a good copy. If NOAA cannot be reached the
+    previous copy is used; with no previous copy this raises rather than fall back
+    to the pinned analysis files."""
+    live_dir = cfg["cache_dir"] / "live"
+    live_dir.mkdir(parents=True, exist_ok=True)
+    out = {}
+    for name, url in INDEX_SOURCES.items():
+        path = live_dir / f"{name}.data"
+        fresh = path.exists() and (time.time() - path.stat().st_mtime) < max_age_days * 86400
+        if not fresh:
+            try:
+                resp = requests.get(url, timeout=60)
+                resp.raise_for_status()
+                if _parse_psl(resp.text).loc["2010":].dropna().empty:
+                    raise ValueError("no values since 2010")
+                path.write_text(resp.text)
+            except Exception as e:  # noqa: BLE001 — any failure: keep the previous copy
+                if not path.exists():
+                    raise RuntimeError(
+                        f"{name}: could not download {url} ({e}) and there is no "
+                        f"previous copy in {live_dir}") from e
+                saved = pd.Timestamp(path.stat().st_mtime, unit="s").strftime("%Y-%m-%d")
+                print(f"  {name}: download failed ({e}); using the copy saved {saved}")
+        out[name] = _parse_psl(path.read_text())
+    return pd.DataFrame(out)
 
 
 # --------------------------------------------------------------------------- #
@@ -1192,7 +1257,7 @@ def plot_pixel_index_map(disp: dict[str, dict[str, np.ndarray]], px: PixelData,
     img = _pixel_base_rgb(px)
     _paint_r_bins(img, px, d["r"])
 
-    fig, ax = plt.subplots(figsize=(PIXEL_MAP_W, PIXEL_MAP_W * _MAP_DY / _MAP_DX))
+    fig, ax = plt.subplots(figsize=(MAP_W, MAP_W * _MAP_DY / _MAP_DX))
     ax.imshow(img, extent=_pixel_extent(px), origin="upper",
               interpolation="nearest", zorder=1)
     _overlay_bidirectional(ax, px, d["bidirectional"] & np.isfinite(d["r"]))
@@ -1237,7 +1302,7 @@ def plot_pixel_dominant_map(disp_total: dict[str, dict[str, np.ndarray]],
         sel = px.scatter(m.astype("uint8"), fill=0).astype(bool)
         img[sel] = _hex_to_rgb(INDEX_COLORS.get(name, "#CCCCCC"))
 
-    fig, ax = plt.subplots(figsize=(PIXEL_MAP_W, PIXEL_MAP_W * _MAP_DY / _MAP_DX))
+    fig, ax = plt.subplots(figsize=(MAP_W, MAP_W * _MAP_DY / _MAP_DX))
     ax.imshow(img, extent=_pixel_extent(px), origin="upper",
               interpolation="nearest", zorder=1)
     _finish_pixel_ax(ax, px, gdf)
@@ -1301,8 +1366,7 @@ def pixel_enso_composite_maps(px: PixelData, indices: pd.DataFrame,
             rgba = DROUGHT_FLOOD_CMAP(norm(anom[m]))[:, :3]
             sel = px.scatter(m.astype("uint8"), fill=0).astype(bool)
             img[sel] = rgba
-        fig, ax = plt.subplots(figsize=(PIXEL_MAP_W,
-                                        PIXEL_MAP_W * _MAP_DY / _MAP_DX))
+        fig, ax = plt.subplots(figsize=(MAP_W, MAP_W * _MAP_DY / _MAP_DX))
         ax.imshow(img, extent=_pixel_extent(px), origin="upper",
                   interpolation="nearest", zorder=1)
         _finish_pixel_ax(ax, px, gdf)
@@ -1335,6 +1399,24 @@ def _plot_base_layer(ax, g_poly, analyzed_isos: set[str]) -> None:
     g_poly[ in_analysis].plot(ax=ax, color="#E8E8E8", edgecolor="#CCCCCC", linewidth=0.3)
 
 
+def plot_ts_panels(live: pd.DataFrame, out_dir: Path) -> None:
+    """Write ts_{index}.png for every index: the static panel the HTML shows beside
+    each (zoomable) map, the same height as the map. `live` is load_live_indices()."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    fig_h = MAP_W * _MAP_DY / _MAP_DX
+    for name in INDEX_SOURCES:
+        fig, ax = plt.subplots(figsize=(TS_PANEL_W, fig_h))
+        fig.subplots_adjust(left=0.14, right=0.86, top=0.85, bottom=0.14)
+        ax.set_title(f"{INDEX_LABELS.get(name, name.upper())}\nHistorical values",
+                     fontsize=10, pad=6)
+        _draw_ts_panel(ax, live[name], name)
+        fig.savefig(out_dir / f"ts_{name}.png", dpi=200, bbox_inches="tight")
+        plt.close(fig)
+        s = live[name].dropna()
+        print(f"  ts_{name}.png: " + (f"latest {s.index[-1]:%b %Y} = {s.iloc[-1]:+.2f}"
+                                      if len(s) else "no data"))
+
+
 def plot_index_map(
     disp: pd.DataFrame,
     gdf: gpd.GeoDataFrame,
@@ -1342,16 +1424,14 @@ def plot_index_map(
     out_dir: Path,
     kind: str = "total",
     end_year: int = 2025,
-    indices: pd.DataFrame | None = None,
     analyzed_isos: set[str] | None = None,
     lag_tag: str = "l6",
 ) -> None:
     """kind: 'total' (pairwise r) or 'partial' (other modes held constant).
     lag_tag: which max-lag variant this is ('l3'/'l6'), used in the filename.
 
-    Saves ts_{index}.png (time series panel, lag/kind-independent, generated
-    once) and map_{lag_tag}_{kind}_{index}.png (choropleth only), so the HTML
-    can make only the map zoomable while the TS panel stays static beside it."""
+    Saves map_{lag_tag}_{kind}_{index}.png (choropleth only); the time-series
+    panel beside it comes from plot_ts_panels."""
     sub = disp[disp["index"] == index]
     g = gdf.merge(sub, on="iso3", how="left")
 
@@ -1359,21 +1439,9 @@ def plot_index_map(
     g_poly = g[~is_dot]
     g_dot  = g[is_dot]
 
-    ts_w  = 6.5
-    map_w = 15.0
+    map_w = MAP_W
     fig_h = map_w * _MAP_DY / _MAP_DX
     out_dir.mkdir(parents=True, exist_ok=True)
-
-    # --- Time series panel (lag/kind-independent; generate once) ---
-    ts_path = out_dir / f"ts_{index}.png"
-    if not ts_path.exists() and indices is not None and index in indices.columns:
-        index_label_ts = INDEX_LABELS.get(index, index.upper())
-        fig_ts, ax_ts = plt.subplots(figsize=(ts_w, fig_h))
-        fig_ts.subplots_adjust(left=0.14, right=0.86, top=0.85, bottom=0.14)
-        ax_ts.set_title(f"{index_label_ts}\nHistorical values", fontsize=10, pad=6)
-        _draw_ts_panel(ax_ts, indices[index], index)
-        fig_ts.savefig(ts_path, dpi=200, bbox_inches="tight")
-        plt.close(fig_ts)
 
     # --- Choropleth map ---
     fig, ax = plt.subplots(figsize=(map_w, fig_h))
@@ -1966,7 +2034,7 @@ def plot_literature_enso_map(gdf: gpd.GeoDataFrame, out_dir: Path,
     is_dot = gdf.geometry.apply(_is_dot_country)
     g_poly, g_dot = gdf[~is_dot], gdf[is_dot]
 
-    map_w = 15.0
+    map_w = MAP_W
     plt.rcParams["hatch.linewidth"] = 0.5
     fig, ax = plt.subplots(figsize=(map_w, map_w * _MAP_DY / _MAP_DX))
 
@@ -2591,6 +2659,10 @@ def generate_html_report(cfg: dict) -> None:
         <strong>IOD</strong> (Dipole Mode Index, HadISST), <strong>TNA</strong> (Tropical North Atlantic SST anomaly),
         <strong>TSA</strong> (Tropical South Atlantic SST anomaly), <strong>AMM</strong> (Atlantic Meridional Mode),
         and <strong>PDO</strong> (Pacific Decadal Oscillation, NOAA).
+        The panel beside each map shows the latest values NOAA has published for that index, as of the last
+        page update; the date in its corner is the most recent month available, and some indices are published
+        months late. The maps themselves were computed from copies downloaded earlier, and NOAA has since revised
+        some series slightly (its Niño3.4 now reads about 0.2 °C warmer).
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Spatial resolution (Country vs Pixel)</h3>
       <p style="margin:0 0 0.6rem;">
@@ -2864,10 +2936,6 @@ def run_country_pass(cfg: dict, indices: pd.DataFrame,
 
     analyzed_isos: set[str] = set(rain.columns.get_level_values("iso3").unique())
 
-    # Regenerate TS panels fresh each run (they are lag/kind-independent)
-    for _ts in cfg["out_dir"].glob("ts_*.png"):
-        _ts.unlink()
-
     # One full analysis+map pass per lag-cap variant (toggle in the app)
     for lag_tag, max_lag in LAG_CAPS.items():
         total = sweep(rain, indices, cfg, max_lag=max_lag)
@@ -2899,7 +2967,7 @@ def run_country_pass(cfg: dict, indices: pd.DataFrame,
         for kind, disp in (("total", disp_total), ("partial", disp_partial_all)):
             for name in INDEX_SOURCES:
                 plot_index_map(disp, gdf, name, cfg["out_dir"],
-                               kind=kind, end_year=cfg["end_year"], indices=indices,
+                               kind=kind, end_year=cfg["end_year"],
                                analyzed_isos=analyzed_isos, lag_tag=lag_tag)
 
         plot_dominant_index_map(disp_total, gdf, cfg["out_dir"], end_year=cfg["end_year"],
@@ -2964,10 +3032,11 @@ def main(cfg: dict = CONFIG, skip: tuple[str, ...] = ()) -> None:
     cfg["parquet_dir"].mkdir(parents=True, exist_ok=True)
     cfg["out_dir"].mkdir(parents=True, exist_ok=True)
 
+    # Time-series panels first (from NOAA's latest files, not the pinned inputs),
+    # so a NOAA outage stops the run before the long passes.
+    plot_ts_panels(load_live_indices(cfg), cfg["out_dir"])
+
     if "adm0" not in skip:
-        # Regenerate TS panels fresh each run (they are lag/kind-independent)
-        for _ts in cfg["out_dir"].glob("ts_*.png"):
-            _ts.unlink()
         run_country_pass(cfg, indices, gdf)
     else:
         print("skipping country (ADM0) pass")
@@ -2988,5 +3057,9 @@ def main(cfg: dict = CONFIG, skip: tuple[str, ...] = ()) -> None:
 
 if __name__ == "__main__":
     import sys
-    _skip = tuple(r for r in RES_VARIANTS if f"--skip-{r}" in sys.argv[1:])
-    main(skip=_skip)
+    if "--ts-only" in sys.argv[1:]:
+        # Just bring the time-series panels up to date: NOAA only, no DB or blob.
+        plot_ts_panels(load_live_indices(CONFIG, max_age_days=0), CONFIG["out_dir"])
+    else:
+        _skip = tuple(r for r in RES_VARIANTS if f"--skip-{r}" in sys.argv[1:])
+        main(skip=_skip)
