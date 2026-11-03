@@ -218,7 +218,8 @@ def _label_offset_pt(ax, y: float, avoid: tuple[float, ...]) -> float:
     return float(min((d for d in range(-200, 201) if clear(d)), key=abs, default=0))
 
 
-def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
+def _draw_ts_panel(ax, series: pd.Series, index_name: str,
+                   note: str | None = None) -> None:
     """Draw the past-10-year time series of a climate index on ax."""
     thresh = INDEX_THRESHOLDS.get(index_name, 0.5)
     s = series.dropna()
@@ -261,7 +262,7 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     # would overlap one.
     cur_val  = recent.iloc[-1]
     cur_date = recent.index[-1]
-    ax.scatter([cur_date], [cur_val], s=30, zorder=5,
+    ax.scatter([cur_date], [cur_val], s=30, zorder=5, clip_on=False,  # may sit on the right edge
                 color=_ts_color(cur_val, thresh), edgecolors="#333", linewidths=0.5)
     dy = _label_offset_pt(ax, cur_val, (thresh, -thresh))
     leader = (dict(arrowstyle="-", lw=0.6, color="#666", shrinkA=0, shrinkB=3)
@@ -288,7 +289,8 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     if latest is not None:
         # top-left: the current value is always at the right edge, so the stamp
         # can never cover it there
-        ax.text(0.02, 0.97, f"Latest: {latest.strftime('%b %Y')}",
+        stamp = f"Latest: {latest.strftime('%b %Y')}" + (f" ({note})" if note else "")
+        ax.text(0.02, 0.97, stamp,
                 transform=ax.transAxes, fontsize=10, color="#666",
                 ha="left", va="top", zorder=6,
                 bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=1.5))
@@ -386,21 +388,53 @@ def load_indices(cfg: dict) -> pd.DataFrame:
 # +0.2 °C; TNA/TSA moved to a 1991–2020 base), so the two copies must not be mixed.
 LIVE_INDEX_MAX_AGE_DAYS = 7
 
+# Live sources: the analysis sources, except where that series has stopped.
+# PDO: PSL's pdo.data (the original University of Washington / Mantua series) ends
+# Aug 2025; NOAA NCEI's ERSST v5 PDO continues it (r = 0.98 with it since 2010, same
+# spread, about 0.5 lower on average). AMM: its only source (Univ. of Wisconsin,
+# mirrored by PSL) ends Feb 2026 because the NCEP-NCAR reanalysis it is computed
+# from stopped updating; no other current AMM exists, so its panel just says so.
+NCEI_PDO_URL = "https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.pdo.dat"
+LIVE_INDEX_SOURCES = ({name: (url, "psl") for name, url in INDEX_SOURCES.items()}
+                      | {"pdo": (NCEI_PDO_URL, "ncei")})
 
-def _check_live_download(text: str, previous: Path) -> None:
-    """Raise unless `text` is a complete NOAA PSL file at least as recent as the
-    copy we already have. Catches error pages (no parse), truncated files (rows
-    stop before the end year the header gives) and stale mirrors (ends more than
-    a month before the previous copy; NOAA may retract a preliminary month)."""
-    s = _parse_psl(text)
-    end_year = int(text.splitlines()[0].split()[1])
-    if s.empty or s.index.max().year != end_year:
-        raise ValueError(f"rows stop before {end_year}, the end year in its header")
+
+def _parse_ncei(text: str) -> pd.Series:
+    """Parse a NOAA NCEI index table ('Year Jan ... Dec' rows, 99.99 = missing)
+    -> Series indexed by month-end."""
+    recs = {}
+    for ln in text.splitlines():
+        parts = ln.split()
+        if len(parts) != 13 or not parts[0].isdigit():
+            continue
+        for m, v in enumerate(parts[1:], start=1):
+            recs[pd.Timestamp(int(parts[0]), m, 1) + pd.offsets.MonthEnd(0)] = float(v)
+    if not recs:
+        raise ValueError("no 'year + 12 months' rows")
+    s = pd.Series(recs).sort_index()
+    return s.where(s.abs() < 99)
+
+
+_LIVE_PARSERS = {"psl": _parse_psl, "ncei": _parse_ncei}
+
+
+def _check_live_download(text: str, previous: Path, fmt: str = "psl") -> None:
+    """Raise unless `text` is a complete file at least as recent as the copy we
+    already have. Catches error pages (no parse), truncated PSL files (rows stop
+    before the end year the header gives; NCEI files have no such header) and
+    stale mirrors (ends more than a month before the previous copy; NOAA may
+    retract a preliminary month)."""
+    parse = _LIVE_PARSERS[fmt]
+    s = parse(text)
+    if fmt == "psl":
+        end_year = int(text.splitlines()[0].split()[1])
+        if s.empty or s.index.max().year != end_year:
+            raise ValueError(f"rows stop before {end_year}, the end year in its header")
     new = s.loc["2010":].dropna()
     if new.empty:
         raise ValueError("no values since 2010")
     if previous.exists():
-        old = _parse_psl(previous.read_text()).dropna()
+        old = parse(previous.read_text()).dropna()
         if len(old) and new.index[-1] < old.index[-1] - pd.DateOffset(months=1):
             raise ValueError(f"ends {new.index[-1]:%b %Y}, earlier than the copy we have "
                              f"({old.index[-1]:%b %Y})")
@@ -410,7 +444,8 @@ def load_live_indices(cfg: dict, max_age_days: float = LIVE_INDEX_MAX_AGE_DAYS,
                       allow_stale: bool = True) -> pd.DataFrame:
     """Latest NOAA release of every index, for the time-series panels only.
 
-    Each file is re-downloaded when its cached copy is older than `max_age_days`
+    Sources are LIVE_INDEX_SOURCES. Each file is re-downloaded when its cached
+    copy is older than `max_age_days`
     (0 = always). A download replaces the cached copy only if it passes
     _check_live_download, and is written atomically. If a download fails, the
     previous copy is used (or, with allow_stale=False, this raises); with no
@@ -419,15 +454,17 @@ def load_live_indices(cfg: dict, max_age_days: float = LIVE_INDEX_MAX_AGE_DAYS,
     live_dir = cfg["cache_dir"] / "live"
     live_dir.mkdir(parents=True, exist_ok=True)
     out = {}
-    for name, url in INDEX_SOURCES.items():
-        path = live_dir / f"{name}.data"
+    for name, (url, fmt) in LIVE_INDEX_SOURCES.items():
+        # one file per source, so a change of source never compares against or
+        # falls back to the other source's copy
+        path = live_dir / (f"{name}.data" if fmt == "psl" else f"{name}.{fmt}.data")
         age = time.time() - path.stat().st_mtime if path.exists() else None
         fresh = age is not None and 0 <= age < max_age_days * 86400
         if not fresh:
             try:
                 resp = requests.get(url, timeout=60)
                 resp.raise_for_status()
-                _check_live_download(resp.text, path)
+                _check_live_download(resp.text, path, fmt)
                 tmp = path.with_suffix(".tmp")
                 tmp.write_text(resp.text)
                 os.replace(tmp, path)
@@ -438,7 +475,7 @@ def load_live_indices(cfg: dict, max_age_days: float = LIVE_INDEX_MAX_AGE_DAYS,
                         + ("" if path.exists() else f"; no previous copy in {live_dir}")) from e
                 saved = pd.Timestamp(path.stat().st_mtime, unit="s").strftime("%Y-%m-%d")
                 print(f"  {name}: download failed ({e}); using the copy saved {saved}")
-        out[name] = _parse_psl(path.read_text())
+        out[name] = _LIVE_PARSERS[fmt](path.read_text())
     return pd.DataFrame(out)
 
 
@@ -1424,17 +1461,29 @@ def _plot_base_layer(ax, g_poly, analyzed_isos: set[str]) -> None:
     g_poly[ in_analysis].plot(ax=ax, color="#E8E8E8", edgecolor="#CCCCCC", linewidth=0.3)
 
 
+# Panel titles where the panel's series differs from the one the maps use.
+TS_PANEL_LABELS = {"pdo": "PDO (Pacific Decadal Oscillation, NOAA NCEI)"}
+# Series that have stopped at source: the panel's date stamp says so while the
+# latest value is more than TS_STALE_MONTHS old (so the note goes if it resumes).
+TS_STALE_NOTES = {"amm": "no longer published"}
+TS_STALE_MONTHS = 4
+
+
 def plot_ts_panels(live: pd.DataFrame, out_dir: Path) -> None:
     """Write ts_{index}.png for every index: the static panel the HTML shows beside
     each (zoomable) map, the same height as the map. `live` is load_live_indices()."""
     out_dir.mkdir(parents=True, exist_ok=True)
     fig_h = MAP_W * _MAP_DY / _MAP_DX
+    this_month = pd.Timestamp.today().to_period("M")
     for name in INDEX_SOURCES:
         fig, ax = plt.subplots(figsize=(TS_PANEL_W, fig_h))
         fig.subplots_adjust(left=0.14, right=0.86, top=0.85, bottom=0.14)
-        ax.set_title(f"{INDEX_LABELS.get(name, name.upper())}\nHistorical values",
-                     fontsize=10, pad=6)
-        _draw_ts_panel(ax, live[name], name)
+        label = TS_PANEL_LABELS.get(name, INDEX_LABELS.get(name, name.upper()))
+        ax.set_title(f"{label}\nHistorical values", fontsize=10, pad=6)
+        valid = live[name].dropna()
+        behind = (this_month - valid.index[-1].to_period("M")).n if len(valid) else 0
+        note = TS_STALE_NOTES.get(name) if behind > TS_STALE_MONTHS else None
+        _draw_ts_panel(ax, live[name], name, note=note)
         fig.savefig(out_dir / f"ts_{name}.png", dpi=200, bbox_inches="tight")
         plt.close(fig)
         s = live[name].dropna()
@@ -2687,7 +2736,10 @@ def generate_html_report(cfg: dict) -> None:
         The panel beside each map shows the latest values NOAA has published for that index, as of the last
         page update; the date in its corner is the most recent month available, and some indices are published
         months late. The maps themselves were computed from copies downloaded earlier, and NOAA has since revised
-        some series slightly (its Niño3.4 now reads about 0.2 °C warmer).
+        some series slightly (its Niño3.4 now reads about 0.2 °C warmer). The PDO series used for the maps stopped
+        in August 2025, so the PDO panel shows NOAA NCEI's PDO instead; the two move together closely, but NCEI's
+        reads about 0.5 lower on average. The AMM has not been published since February 2026, when the reanalysis
+        it is calculated from stopped updating, so its panel ends there.
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Spatial resolution (Country vs Pixel)</h3>
       <p style="margin:0 0 0.6rem;">
