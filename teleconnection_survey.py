@@ -24,6 +24,7 @@ Data: ERA5 monthly country-level precip from team DB via ocha-stratus.
 from __future__ import annotations
 import io
 import json
+import os
 import re
 import time
 import warnings
@@ -285,9 +286,11 @@ def _draw_ts_panel(ax, series: pd.Series, index_name: str) -> None:
     # Latest-data date label
     latest = recent.dropna().index[-1] if recent.dropna().size else None
     if latest is not None:
-        ax.text(0.98, 0.97, f"Latest: {latest.strftime('%b %Y')}",
+        # top-left: the current value is always at the right edge, so the stamp
+        # can never cover it there
+        ax.text(0.02, 0.97, f"Latest: {latest.strftime('%b %Y')}",
                 transform=ax.transAxes, fontsize=10, color="#666",
-                ha="right", va="top", zorder=6,
+                ha="left", va="top", zorder=6,
                 bbox=dict(facecolor="white", edgecolor="none", alpha=0.85, pad=1.5))
 
 
@@ -384,33 +387,55 @@ def load_indices(cfg: dict) -> pd.DataFrame:
 LIVE_INDEX_MAX_AGE_DAYS = 7
 
 
-def load_live_indices(cfg: dict,
-                      max_age_days: float = LIVE_INDEX_MAX_AGE_DAYS) -> pd.DataFrame:
+def _check_live_download(text: str, previous: Path) -> None:
+    """Raise unless `text` is a complete NOAA PSL file at least as recent as the
+    copy we already have. Catches error pages (no parse), truncated files (rows
+    stop before the end year the header gives) and stale mirrors (ends more than
+    a month before the previous copy; NOAA may retract a preliminary month)."""
+    s = _parse_psl(text)
+    end_year = int(text.splitlines()[0].split()[1])
+    if s.empty or s.index.max().year != end_year:
+        raise ValueError(f"rows stop before {end_year}, the end year in its header")
+    new = s.loc["2010":].dropna()
+    if new.empty:
+        raise ValueError("no values since 2010")
+    if previous.exists():
+        old = _parse_psl(previous.read_text()).dropna()
+        if len(old) and new.index[-1] < old.index[-1] - pd.DateOffset(months=1):
+            raise ValueError(f"ends {new.index[-1]:%b %Y}, earlier than the copy we have "
+                             f"({old.index[-1]:%b %Y})")
+
+
+def load_live_indices(cfg: dict, max_age_days: float = LIVE_INDEX_MAX_AGE_DAYS,
+                      allow_stale: bool = True) -> pd.DataFrame:
     """Latest NOAA release of every index, for the time-series panels only.
 
     Each file is re-downloaded when its cached copy is older than `max_age_days`
-    (0 = always). A download is kept only if it parses and has values since 2010,
-    so an error page never replaces a good copy. If NOAA cannot be reached the
-    previous copy is used; with no previous copy this raises rather than fall back
-    to the pinned analysis files."""
+    (0 = always). A download replaces the cached copy only if it passes
+    _check_live_download, and is written atomically. If a download fails, the
+    previous copy is used (or, with allow_stale=False, this raises); with no
+    previous copy it always raises, rather than fall back to the pinned analysis
+    files."""
     live_dir = cfg["cache_dir"] / "live"
     live_dir.mkdir(parents=True, exist_ok=True)
     out = {}
     for name, url in INDEX_SOURCES.items():
         path = live_dir / f"{name}.data"
-        fresh = path.exists() and (time.time() - path.stat().st_mtime) < max_age_days * 86400
+        age = time.time() - path.stat().st_mtime if path.exists() else None
+        fresh = age is not None and 0 <= age < max_age_days * 86400
         if not fresh:
             try:
                 resp = requests.get(url, timeout=60)
                 resp.raise_for_status()
-                if _parse_psl(resp.text).loc["2010":].dropna().empty:
-                    raise ValueError("no values since 2010")
-                path.write_text(resp.text)
+                _check_live_download(resp.text, path)
+                tmp = path.with_suffix(".tmp")
+                tmp.write_text(resp.text)
+                os.replace(tmp, path)
             except Exception as e:  # noqa: BLE001 — any failure: keep the previous copy
-                if not path.exists():
+                if not path.exists() or not allow_stale:
                     raise RuntimeError(
-                        f"{name}: could not download {url} ({e}) and there is no "
-                        f"previous copy in {live_dir}") from e
+                        f"{name}: could not refresh from {url} ({e})"
+                        + ("" if path.exists() else f"; no previous copy in {live_dir}")) from e
                 saved = pd.Timestamp(path.stat().st_mtime, unit="s").strftime("%Y-%m-%d")
                 print(f"  {name}: download failed ({e}); using the copy saved {saved}")
         out[name] = _parse_psl(path.read_text())
@@ -3059,7 +3084,8 @@ if __name__ == "__main__":
     import sys
     if "--ts-only" in sys.argv[1:]:
         # Just bring the time-series panels up to date: NOAA only, no DB or blob.
-        plot_ts_panels(load_live_indices(CONFIG, max_age_days=0), CONFIG["out_dir"])
+        plot_ts_panels(load_live_indices(CONFIG, max_age_days=0, allow_stale=False),
+                       CONFIG["out_dir"])
     else:
         _skip = tuple(r for r in RES_VARIANTS if f"--skip-{r}" in sys.argv[1:])
         main(skip=_skip)

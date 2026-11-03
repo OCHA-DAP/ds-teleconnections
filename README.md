@@ -44,8 +44,10 @@ uv run python teleconnection_survey.py --skip-px     # country maps + report onl
 The time-series panels beside each map show where each index stands now, so they are drawn from NOAA's
 latest files, kept separately in `cache/live/` (re-downloaded when more than a week old), never from the
 pinned `cache/{index}.data` copies that the correlations and deep dives use. NOAA revises these series
-(Niño3.4 moved to ERSST v6 in 2026), so the two must not be mixed. To bring just the panels up to date —
-NOAA only, no DB or blob access:
+(Niño3.4 moved to ERSST v6 in 2026), so the two must not be mixed. `cache/` is not committed: the pinned
+copies exist only on the machine that ran the analysis, and on a fresh clone the first run downloads NOAA's
+current files into that slot. To bring just the panels up to date — NOAA only, no DB or blob access (stops
+with an error if NOAA can't be reached):
 
 ```bash
 uv run python teleconnection_survey.py --ts-only     # re-download the indices, redraw docs/survey/maps/ts_*.png
