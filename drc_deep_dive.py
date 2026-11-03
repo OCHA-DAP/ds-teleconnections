@@ -13,7 +13,7 @@ Inputs (cached under cache/drc/; fetched when missing or stale): FloodScan popul
 (team prod DB app.floodscan_exposure: SFED flooded fraction >= 5% x WorldPop 2020, daily, ADM1/ADM2),
 EM-DAT (team blob snapshot via ocha-stratus), HNRP 2026 PiN and severity (team dev DB hpc.pin_admin; the
 flood-risk column from OCHA DRC's revised 2026 JIAF workbook on HDX), CHIRPS v3 and
-ERA5 at 0.5° (ds-precip-intercomparison cubes on the dev blob), Lake Tanganyika and Mweru levels (NASA
+ERA5 at 0.5° (ds-precip-intercomparison cubes on the dev blob), Lake Tanganyika level (NASA
 GSFC G-REALM 10-day altimetry), NOAA CPC ONI, NOAA PSL Niño3.4, DMI (NOAA OSMC weekly OISST from
 Sep 1981, NOAA PSL HadISST before).
 """
@@ -42,8 +42,10 @@ import pandas as pd
 import requests
 import xarray as xr
 from matplotlib import colors as mcolors
+from matplotlib import dates as mdates
 from matplotlib.lines import Line2D
 from matplotlib.patches import Patch
+from matplotlib.ticker import ScalarFormatter
 
 ROOT = Path(__file__).resolve().parent
 SLUG = "cod"  # URL and spec name (ISO3, like eri/mwi/zwe); cache, out and the private file keep "drc"
@@ -76,10 +78,24 @@ def _num(x: float, nd: int = 0) -> str:
     return s.replace(",", " ").replace(".", ",") if LANG == "fr" else s
 
 
+def _date(d) -> str:
+    """1 Nov 2026 / 01/11/2026: one date style per language across text and figures."""
+    d = pd.Timestamp(d)
+    return f"{d.day} {d:%b %Y}" if LANG == "en" else f"{d:%d/%m/%Y}"
+
+
+def _join(items: list[str]) -> str:
+    """'a, b and c' / 'a, b et c'."""
+    items = list(items)
+    if not items:
+        raise ValueError("an empty list of seasons reached a headline: reword it")
+    return items[0] if len(items) == 1 else ", ".join(items[:-1]) + _t(" and ", " et ") + items[-1]
+
+
 MONTHS = {"en": "JASONDJFMAMJ", "fr": "JASONDJFMAMJ"}
 
 # --------------------------------------------------------------------------- #
-# Style (validated categorical pair: orange = El Niño + positive IOD, blue = positive IOD alone)
+# Style (validated categorical pair: orange = El Niño + positive Dipole, blue = positive Dipole alone)
 # --------------------------------------------------------------------------- #
 BOTH_C = "#eb6834"
 IOD_C = "#2a78d6"
@@ -113,6 +129,13 @@ def season_label(y: int) -> str:
 
 def season_color(y: int) -> str:
     return BOTH_C if y in BOTH + BOTH_PRE else IOD_C if y in IOD_ONLY else NOW_C if y == NOW else OTHER_C
+
+
+# The two analogue classes, named the same way in every legend and source line ("Dipole" as in the headlines)
+CLASS_BOTH = ("strong El Niño + positive Dipole", "El Niño fort + dipôle positif")
+CLASS_IOD = ("very strong positive Dipole, weak El Niño", "dipôle positif très fort, El Niño faible")
+SHADING = ("orange: strong El Niño + positive Dipole; blue: very strong positive Dipole with a weak El Niño",
+           "orange : El Niño fort + dipôle positif ; bleu : dipôle positif très fort avec El Niño faible")
 
 
 # --------------------------------------------------------------------------- #
@@ -201,7 +224,10 @@ def boundaries(level: int) -> gpd.GeoDataFrame:
         zipfile.ZipFile(io.BytesIO(raw)).extractall(tmp)
         for lv in (0, 1, 2):
             gpd.read_file(tmp / f"cod_adm{lv}.shp").to_parquet(CACHE / f"cod_adm{lv}.parquet")
-    return gpd.read_parquet(p)
+    g = gpd.read_parquet(p)
+    if "ADM1_FR" in g:
+        g["ADM1_FR"] = g["ADM1_FR"].replace({"Equateur": "Équateur"})  # the CODAB drops the accent
+    return g
 
 
 def _fetch(url: str, p: Path, days: float) -> Path:
@@ -299,7 +325,7 @@ def rain_season(da: xr.DataArray, months: list[int]) -> xr.DataArray:
     return xr.concat(out, "year")
 
 
-GREALM = {"tanganyika": "000315", "mweru": "000416"}
+GREALM = {"tanganyika": "000315"}
 
 
 def lake(name: str) -> pd.Series:
@@ -368,7 +394,7 @@ REGIONS = {
     "corridor": dict(en="Congo and Ubangi rivers", fr="Fleuve Congo et Oubangui",
                      pcodes=["CD41", "CD42", "CD43", "CD44", "CD45", "CD51", "CD33", "CD52"], window=(10, 2)),
     "kinshasa": dict(en="Kinshasa", fr="Kinshasa", pcodes=["CD10"], window=(11, 2)),
-    "tanganyika": dict(en="Tanganyika", fr="Tanganyika", pcodes=["CD74"], window=(2, 6)),
+    "tanganyika": dict(en="Lualaba floodplains (Tanganyika)", fr="Plaines du Lualaba (Tanganyika)", pcodes=["CD74"], window=(2, 6)),
     "southeast": dict(en="South-east wetlands", fr="Zones humides du Sud-Est",
                       pcodes=["CD73", "CD71", "CD72"], window=(2, 5)),
 }
@@ -376,8 +402,8 @@ REGION_SUB = {
     "corridor": ("Équateur, Ubangi, Mongala, Tshuapa, Tshopo, Maï-Ndombe, Bas-Uele",
                  "Équateur, Ubangi, Mongala, Tshuapa, Tshopo, Maï-Ndombe, Bas-Uele"),
     "kinshasa": ("river floods only; city flash floods are not seen", "crues du fleuve seulement ; crues éclair urbaines non vues"),
-    "tanganyika": ("Lualaba and Luvua floodplains (Manono, Kabalo, Kongolo); the lake shore is not seen",
-                   "plaines du Lualaba et de la Luvua (Manono, Kabalo, Kongolo) ; la rive du lac n'est pas vue"),
+    "tanganyika": ("Tanganyika province: Manono, Kabalo, Kongolo on the Lualaba and Luvua; the lake shore is not seen",
+                   "province du Tanganyika : Manono, Kabalo, Kongolo sur le Lualaba et la Luvua ; la rive du lac n'est pas vue"),
     "southeast": ("Haut-Lomami, Haut-Katanga, Lualaba", "Haut-Lomami, Haut-Katanga, Lualaba"),
 }
 SMOOTH_DAYS = 15  # centred rolling median: removes the short rain-onset bursts over Katanga towns
@@ -486,7 +512,8 @@ EMDAT_REGION = {  # DisNo. -> region row, read from EM-DAT's Location field
 EMDAT_ROWS = {
     "several": ("Several regions", "Plusieurs régions"), "kinshasa": ("Kinshasa", "Kinshasa"),
     "corridor": ("Congo and Ubangi rivers", "Fleuve Congo et Oubangui"),
-    "east": ("East (Kivu, Ituri, Maniema)", "Est (Kivu, Ituri, Maniema)"), "tanganyika": ("Tanganyika", "Tanganyika"),
+    "east": ("East (Kivu, Ituri, Maniema)", "Est (Kivu, Ituri, Maniema)"),
+    "tanganyika": ("Tanganyika province", "Province du Tanganyika"),
     "southeast": ("South-east", "Sud-Est"), "west": ("Kasaï and west", "Kasaï et ouest"),
 }
 
@@ -515,11 +542,10 @@ def territory_smoothed(fs2: pd.DataFrame) -> pd.DataFrame:
 
 
 def territory_cross(sm: pd.DataFrame) -> gpd.GeoDataFrame:
-    """Per territory: smoothed seasonal peak in the El Niño + IOD seasons vs a typical season; 2026 PiN."""
+    """Per territory: smoothed seasonal peak in 2023/24 (the largest El Niño + Dipole season, the one the HNRP list
+    section compares with); 2026 PiN."""
     season = sm.index.year - (sm.index.month < 7)
-    pk = sm.groupby(season).max()
-    full = [y for y in pk.index if 1998 <= y <= 2025]
-    t = pd.DataFrame({"analog": pk.loc[[y for y in BOTH if y >= 1998]].mean(), "typical": pk.loc[full].median()})
+    t = pd.DataFrame({"flooded": sm.groupby(season).max().loc[2023]})
     by2 = pin().set_index("admin3_code")["final_pin"].groupby(hz_territory()).sum()
     missing = sorted(set(by2.index) - set(t.index))
     if missing:
@@ -593,7 +619,19 @@ def flood_lists(sm: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 # Figures
 # --------------------------------------------------------------------------- #
+class _CommaFormatter(ScalarFormatter):
+    """French tick labels: decimal comma."""
+
+    def __call__(self, x, pos=None):
+        return super().__call__(x, pos).replace(".", ",")
+
+
 def _save(fig, name: str) -> Path:
+    if LANG == "fr":
+        for ax in fig.axes:
+            for axis in (ax.xaxis, ax.yaxis):
+                if type(axis.get_major_formatter()) is ScalarFormatter:
+                    axis.set_major_formatter(_CommaFormatter())
     p = FIGDIR / f"{name}_{LANG}.png"
     fig.savefig(p, dpi=160, bbox_inches="tight")
     plt.close(fig)
@@ -611,23 +649,22 @@ def _wrap(text: str, width: int) -> str:
 
 
 def _source(fig, text: str, y: float = -0.02):
-    fig.text(0.01, y, text, fontsize=7, color=TEXT2, ha="left", va="top")
+    """Source line under the figure, wrapped to the figure's width: an unwrapped line stretches the saved PNG (bbox
+    'tight') and the page then shrinks every label in it."""
+    fig.text(0.01, y, _wrap(text, int(fig.get_figwidth() * 16.5)), fontsize=7.5, color=TEXT2, ha="left", va="top")
 
 
-def _place(ax, items: list[tuple[float, float, str]], dx: float = 0.16, dy: float = 0.065, fontsize: float = 7.5) -> None:
-    """Label points (x, y, text) just above-right of each, pushing a label down when it would sit on one
-    already placed (axes-fraction units). Call after the axis limits are final."""
+def _place_column(ax, items: list[tuple[float, float, str]], dy: float = 0.075, fontsize: float = 7.5) -> None:
+    """Label peaks (x, y, text) from a column in the empty upper left of a seasonal-cycle panel, joined by leader lines:
+    at the peaks themselves the labels sit on the other seasons' lines. Call after the axis limits are final."""
+    if not items:
+        return
     (x0, x1), (y0, y1) = ax.get_xlim(), ax.get_ylim()
-    placed: list[tuple[float, float]] = []
-    for x, y, text in sorted(items, key=lambda t: -t[1]):
-        fx, fy = (x - x0) / (x1 - x0), (y - y0) / (y1 - y0)
-        ly = fy + 0.015
-        while any(abs(fx - px) < dx and abs(ly - py) < dy for px, py in placed):
-            ly -= dy
-        placed.append((fx, ly))
-        moved = abs(ly - fy - 0.015) > 1e-6
-        ax.annotate(text, (x, y), xytext=(fx + 0.012, ly), textcoords="axes fraction", fontsize=fontsize, color="#0b0b0b",
-                    va="bottom", arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.5, shrinkA=0, shrinkB=2) if moved else None)
+    col = max(0.2, min((x - x0) / (x1 - x0) for x, _, _ in items) - 0.1)
+    for i, (x, y, text) in enumerate(sorted(items, key=lambda t_: -t_[1])):
+        ax.annotate(text, (x, y), xytext=(col, 0.95 - i * dy), textcoords="axes fraction", ha="right", va="center",
+                    fontsize=fontsize, color="#0b0b0b",
+                    arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.5, shrinkA=2, shrinkB=2))
 
 
 def fig_setup() -> Path:
@@ -650,21 +687,25 @@ def fig_setup() -> Path:
     o = oni()
     latest = o.iloc[-1]
     dm = dmi()
-    d26 = dm[dm.index >= "2026-09-01"].iloc[0]
+    m26 = dm["2026-09-01":"2026-11-30"]  # the months of Sep–Nov 2026 published so far
+    d26 = m26.mean()
+    mo = MONTH_ABBR[LANG]
+    mlab = mo[m26.index[0].month - 1] + ("" if len(m26) == 1 else "–" + mo[m26.index[-1].month - 1])
     ax.scatter(latest.anom, d26, s=90, marker="*", color=NOW_C, zorder=5)
-    ax.annotate(_t(f"2026 so far\n(ONI {latest.seas} {latest.anom:+.1f}, DMI Sep {d26:+.1f})",
-                   f"2026 à ce jour\n(ONI {latest.seas} {_num(latest.anom, 1)}, DMI sept. {_num(d26, 1)})"),
+    ax.annotate(_t(f"2026 so far\n(ONI {latest.seas} {latest.anom:+.1f}, DMI {mlab} {d26:+.1f})",
+                   f"2026 à ce jour\n(ONI {latest.seas} {latest.anom:+.1f}".replace(".", ",") + f", DMI {mlab} " + f"{d26:+.1f})".replace(".", ",")),
                 (latest.anom, d26), xytext=(-4, -62), textcoords="offset points", fontsize=8, ha="center", fontweight="bold",
                 arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.6, shrinkB=6))
     ax.set_xlabel(_t("El Niño strength: ONI, Sep–Nov (°C)", "Force d'El Niño : ONI, sept.–nov. (°C)"))
     ax.set_ylabel(_t("Indian Ocean Dipole: DMI, Sep–Nov (°C)", "Dipôle de l'océan Indien : DMI, sept.–nov. (°C)"))
     ax.legend(handles=[
-        Line2D([], [], marker="o", ls="", color=BOTH_C, label=_t("strong El Niño + positive IOD", "El Niño fort + IOD positif")),
-        Line2D([], [], marker="o", ls="", color=IOD_C, label=_t("very strong positive IOD, weak El Niño", "IOD positif très fort, El Niño faible")),
+        Line2D([], [], marker="o", ls="", color=BOTH_C, label=_t(*CLASS_BOTH)),
+        Line2D([], [], marker="o", ls="", color=IOD_C, label=_t(*CLASS_IOD)),
         Line2D([], [], marker="*", ls="", color=NOW_C, ms=10, label="2026"),
     ], loc="upper left", fontsize=8)
-    _source(fig, _t("Sources: NOAA CPC ONI; DMI from NOAA OSMC (OISST) since Oct 1981, NOAA PSL (HadISST) before.",
-                    "Sources : NOAA CPC (ONI) ; DMI : NOAA OSMC (OISST) depuis oct. 1981, NOAA PSL (HadISST) avant."))
+    wk = dmi_weekly().index.max()
+    _source(fig, _t(f"Sources: NOAA CPC ONI; DMI from NOAA OSMC (OISST) since Oct 1981 (latest week {_date(wk)}), NOAA PSL (HadISST) before.",
+                    f"Sources : NOAA CPC (ONI) ; DMI : NOAA OSMC (OISST) depuis oct. 1981 (dernière semaine {_date(wk)}), NOAA PSL (HadISST) avant."))
     return _save(fig, "setup")
 
 
@@ -695,7 +736,7 @@ def fig_drivers(maps: dict, maps_era5: dict) -> Path:
     rows = [("iod", maps, _t("Positive Dipole\n(CHIRPS)", "Dipôle positif\n(CHIRPS)")),
             ("iod", maps_era5, _t("Positive Dipole\n(ERA5)", "Dipôle positif\n(ERA5)")),
             ("enso", maps, _t("El Niño\n(CHIRPS)", "El Niño\n(CHIRPS)"))]
-    fig, axes = plt.subplots(len(rows), len(seasons), figsize=(10.4, 8.4))
+    fig, axes = plt.subplots(len(rows), len(seasons), figsize=(9.0, 7.6))
     for i, (key, m, lab) in enumerate(rows):
         for j, s in enumerate(seasons):
             ax = axes[i, j]
@@ -713,13 +754,13 @@ def fig_drivers(maps: dict, maps_era5: dict) -> Path:
                         Patch(color="#ebeae6", label=_t("no clear signal", "pas de signal net")),
                         Patch(color=DIV[1], label=_t("drier (−0.3 to −0.5)", "plus sec (−0,3 à −0,5)")),
                         Patch(color=DIV[0], label=_t("much drier (r ≤ −0.5)", "beaucoup plus sec (r ≤ −0,5)"))],
-               loc="lower center", ncol=5, fontsize=8, bbox_to_anchor=(0.5, -0.01))
+               loc="lower center", ncol=3, fontsize=8.5, bbox_to_anchor=(0.5, -0.04))
     fig.subplots_adjust(wspace=0.02, hspace=0.08, bottom=0.06)
     _source(fig, _t(f"Partial correlation of 3-month rainfall with the Dipole index (El Niño held fixed) or with Niño3.4 (Dipole held fixed); "
                     f"0.5° grid, 1981–2025 (n = {maps['n']}); |r| ≥ 0.3 ≈ p < 0.05. El Niño in ERA5: no clear signal in at least 96% of cells in every season shown.",
                     f"Corrélation partielle de la pluie sur 3 mois avec l'indice du dipôle (El Niño fixé) ou avec Niño3.4 (dipôle fixé) ; grille 0,5°, "
                     f"1981–2025 (n = {maps['n']}) ; |r| ≥ 0,3 ≈ p < 0,05. El Niño dans ERA5 : pas de signal net dans au moins 96 % des cellules à chaque saison."),
-            y=-0.02)
+            y=-0.08)
     return _save(fig, "drivers")
 
 
@@ -729,7 +770,7 @@ def fig_rain_years(anoms: dict) -> Path:
     bounds = [-2, 0, 60, 80, 90, 110, 125, 150, 1000]
     cmap = mcolors.ListedColormap(["#d6d5cf"] + DIV)
     norm = mcolors.BoundaryNorm(bounds, cmap.N)
-    fig, axes = plt.subplots(2, len(years), figsize=(2.3 * len(years), 5.4))
+    fig, axes = plt.subplots(2, len(years), figsize=(1.85 * len(years), 4.6))
     for i, s in enumerate(("OND", "JFM")):
         for j, y in enumerate(years):
             ax = axes[i, j]
@@ -745,12 +786,11 @@ def fig_rain_years(anoms: dict) -> Path:
     labels = ["< 60%", "60–80%", "80–90%", "90–110%", "110–125%", "125–150%", "> 150%"]
     handles = [Patch(color=c, label=lab) for c, lab in zip(DIV, labels)]
     handles.append(Patch(color="#d6d5cf", label=_t(f"dry season (normal < {DRY_SEASON_MM} mm)", f"saison sèche (normale < {DRY_SEASON_MM} mm)")))
-    fig.legend(handles=handles, loc="lower center", ncol=8, fontsize=8,
-               bbox_to_anchor=(0.5, -0.02), title=_t("rainfall, % of the 1991–2020 average", "pluie, % de la moyenne 1991–2020"),
+    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=8,
+               bbox_to_anchor=(0.5, -0.1), title=_t("rainfall, % of the 1991–2020 average", "pluie, % de la moyenne 1991–2020"),
                title_fontsize=8)
     fig.subplots_adjust(wspace=0.02, hspace=0.06, bottom=0.12)
-    _source(fig, _t("CHIRPS v3, 0.5°. Orange titles: strong El Niño + positive IOD; blue: very strong positive IOD with a weak El Niño.",
-                    "CHIRPS v3, 0,5°. Titres orange : El Niño fort + IOD positif ; bleu : IOD positif très fort, El Niño faible."), y=-0.05)
+    _source(fig, _t(f"CHIRPS v3, 0.5°. Titles {SHADING[0]}.", f"CHIRPS v3, 0,5°. Titres {SHADING[1]}."), y=-0.13)
     return _save(fig, "rain_years")
 
 
@@ -765,8 +805,7 @@ def _season_lines(ax, s: pd.Series) -> list[tuple[float, float, str]]:
                 ls=(0, (4, 1.5)) if season == 2015 else (0, (1, 1.2)) if season == 1997 else "-")
         if hl and season != NOW and g["v"].max() >= 1000:
             k = g["v"].idxmax()
-            lab = season_label(season) + (_t(" (from Jan)", " (dès janv.)") if season == 1997 else "")
-            labels.append((g.loc[k, "day"], g.loc[k, "v"] / 1000, lab))
+            labels.append((g.loc[k, "day"], g.loc[k, "v"] / 1000, season_label(season)))
     ticks = [0, 31, 62, 92, 123, 153, 184, 215, 243, 274, 304, 335]
     ax.set_xticks(ticks)
     ax.set_xticklabels(list(MONTHS[LANG]))
@@ -781,33 +820,52 @@ def _titled(ax, title: str, sub: str) -> None:
 
 
 def fig_flood_cycle(series: dict) -> Path:
-    fig, axes = plt.subplots(2, 2, figsize=(10, 6.8))
+    fig, axes = plt.subplots(2, 2, figsize=(9.2, 6.8))
     for ax, (k, r) in zip(axes.flat, REGIONS.items()):
         labels = _season_lines(ax, series[k])
         _titled(ax, _t(r["en"], r["fr"]), _t(*REGION_SUB[k]))
         top = max(v for _, v, _ in labels) if labels else ax.get_ylim()[1]
         ax.set_ylim(0, max(ax.get_ylim()[1], top * 1.12))
-        _place(ax, labels)
+        _place_column(ax, labels)
     for ax in axes[:, 0]:
         ax.set_ylabel(_t("people in flooded areas (thousands)", "personnes en zone inondée (milliers)"))
+    last = max(s.dropna().index.max() for s in series.values())
     fig.legend(handles=[
-        Line2D([], [], color=BOTH_C, lw=1.8, label=_t("strong El Niño + positive IOD", "El Niño fort + IOD positif")),
-        Line2D([], [], color=IOD_C, lw=1.8, label=_t("very strong positive IOD, weak El Niño (2019/20)", "IOD positif très fort, El Niño faible (2019/20)")),
-        Line2D([], [], color=NOW_C, lw=1.8, label=_t("2026/27 so far", "2026/27 à ce jour")),
+        Line2D([], [], color=BOTH_C, lw=1.8, label="2023/24"),
+        Line2D([], [], color=BOTH_C, lw=1.8, ls=(0, (4, 1.5)), label="2015/16"),
+        Line2D([], [], color=BOTH_C, lw=1.8, ls=(0, (1, 1.2)), label=_t("1997/98 (from 12 Jan 1998)", "1997/98 (dès le 12/01/1998)")),
+        Line2D([], [], color=IOD_C, lw=1.8, label="2019/20"),
+        Line2D([], [], color=NOW_C, lw=1.8, label=_t(f"2026/27, to {_date(last)}", f"2026/27, au {_date(last)}")),
         Line2D([], [], color=OTHER_C, lw=1, label=_t("other seasons since 1998", "autres saisons depuis 1998"))],
-        loc="lower center", ncol=4, fontsize=8, bbox_to_anchor=(0.5, -0.02))
-    fig.tight_layout(rect=(0, 0.04, 1, 1), h_pad=2.2)
+        loc="lower center", ncol=3, fontsize=8, bbox_to_anchor=(0.5, -0.04),
+        title=_t(f"Orange: {CLASS_BOTH[0]} · blue: {CLASS_IOD[0]}", f"Orange : {CLASS_BOTH[1]} · bleu : {CLASS_IOD[1]}"), title_fontsize=8)
+    fig.tight_layout(rect=(0, 0.06, 1, 1), h_pad=2.2)
     _source(fig, _t(f"FloodScan flooded fraction (≥ 5%) × WorldPop 2020 population, summed by region; {SMOOTH_DAYS}-day running median. Season = July–June. FloodScan starts 12 Jan 1998.",
                     f"Fraction inondée FloodScan (≥ 5 %) × population WorldPop 2020, somme par région ; médiane glissante sur {SMOOTH_DAYS} jours. Saison = juillet–juin. FloodScan commence le 12 janv. 1998."),
-            y=-0.035)
+            y=-0.06)
     return _save(fig, "flood_cycle")
 
 
 PEAK_REGIONS = ["corridor", "tanganyika", "southeast"]  # Kinshasa: one river flood in the record (2023/24), no range to show
+PEAK_LABEL_TOP = 5  # other seasons are named when they rank this high in a region
+
+
+def _stack_labels(ax, items: list[tuple[float, str, str]], width: float = 0.075) -> None:
+    """Name dots on a one-row strip (x, text, colour): each label takes the first of four levels (above, below, higher,
+    lower) where it does not overlap a label already placed (width in axes fraction)."""
+    x0, x1 = ax.get_xlim()
+    levels = [8, -15, 20, -27]
+    placed: dict[int, list[float]] = {lv: [] for lv in levels}
+    for x, text, color in sorted(items):
+        fx = (x - x0) / (x1 - x0)
+        lv = next((lv for lv in levels if all(abs(fx - p) >= width for p in placed[lv])), levels[-1])
+        placed[lv].append(fx)
+        ax.annotate(text, (x, 0), xytext=(0, lv), textcoords="offset points", ha="center", fontsize=7.5, color=color,
+                    arrowprops=dict(arrowstyle="-", color=OTHER_C, lw=0.5, shrinkA=0, shrinkB=4) if abs(lv) > 15 else None)
 
 
 def fig_flood_peaks(pk: pd.DataFrame) -> Path:
-    fig, axes = plt.subplots(len(PEAK_REGIONS), 1, figsize=(8.6, 5.2))
+    fig, axes = plt.subplots(len(PEAK_REGIONS), 1, figsize=(8.6, 6.2))
     for ax, k in zip(axes, PEAK_REGIONS):
         r = REGIONS[k]
         d = pk[pk.region == k]
@@ -816,36 +874,34 @@ def fig_flood_peaks(pk: pd.DataFrame) -> Path:
         ax.text(med / 1000, 0.97, _t(f" median {_num(med / 1000)}k", f" médiane {_num(med / 1000)} k"), fontsize=7.5,
                 color=TEXT2, transform=ax.get_xaxis_transform(), ha="left", va="top")
         rng = np.random.default_rng(1)
-        hl_rows = []
+        top = set(d.nlargest(PEAK_LABEL_TOP, "peak").season)
+        named = []
         for _, row in d.iterrows():
             c = season_color(row.season)
             hl = c != OTHER_C
-            yj = 0 if hl else rng.uniform(-0.25, 0.25)
+            # named grey seasons sit on the centre line too, so their labels point at the right dot
+            yj = 0 if hl or row.season in top else rng.uniform(-0.25, 0.25)
             ax.scatter(row.peak / 1000, yj, s=60 if hl else 22, color=c, edgecolor=SURFACE, lw=1, zorder=3 if hl else 2)
-            if hl:
-                hl_rows.append(row)
-        span = d.peak.max() / 1000
-        last_x, up = -1e9, True
-        for row in sorted(hl_rows, key=lambda r_: r_.peak):
-            x = row.peak / 1000
-            up = (not up) if x - last_x < 0.09 * span else True
-            last_x = x
-            ax.annotate(season_label(row.season) + ("*" if row.season == 1997 else ""), (x, 0),
-                        xytext=(0, 8 if up else -15), textcoords="offset points", ha="center", fontsize=7.5)
-        ax.set_yticks([])
-        ax.set_ylim(-0.7, 0.8)
-        ax.spines["left"].set_visible(False)
+            if hl or row.season in top:
+                named.append(row)
         ax.set_xlim(left=0)
+        _stack_labels(ax, [(row.peak / 1000, season_label(row.season) + ("*" if row.season == 1997 else ""),
+                            "#0b0b0b" if season_color(row.season) != OTHER_C else TEXT2) for row in named])
+        ax.set_yticks([])
+        ax.set_ylim(-0.9, 1.0)
+        ax.spines["left"].set_visible(False)
         _grid(ax, "x")
         ax.set_title(_t(r["en"], r["fr"]), loc="left", fontsize=9.5)
     axes[-1].set_xlabel(_t("highest number of people in flooded areas in the season (thousands)",
                            "nombre maximal de personnes en zone inondée sur la saison (milliers)"))
     fig.tight_layout(h_pad=1.2)
-    _source(fig, _t("One dot per season, 1997/98–2025/26, peak of the 15-day running median inside each region's flood months "
-                    "(rivers Oct–Feb, Tanganyika Feb–Jun, south-east Feb–May). *1997/98 from 12 January only. Kinshasa is left out: "
+    _source(fig, _t(f"One dot per season, 1997/98–2025/26: peak of the 15-day running median inside each region's flood months "
+                    f"(rivers Oct–Feb, Lualaba floodplains Feb–Jun, south-east Feb–May); grey seasons named when in a region's top {PEAK_LABEL_TOP}. "
+                    "*1997/98 from 12 January 1998 only: on the rivers its peak is the record's first day, so a floor. Kinshasa is left out: "
                     "one river flood in the record (2023/24). A past range, not a forecast.",
-                    "Un point par saison, 1997/98–2025/26 : pic de la médiane glissante sur 15 jours pendant les mois de crue de chaque "
-                    "région (fleuves oct.–févr., Tanganyika févr.–juin, Sud-Est févr.–mai). *1997/98 à partir du 12 janvier seulement. "
+                    f"Un point par saison, 1997/98–2025/26 : pic de la médiane glissante sur 15 jours pendant les mois de crue de chaque "
+                    f"région (fleuves oct.–févr., plaines du Lualaba févr.–juin, Sud-Est févr.–mai) ; saisons grises nommées si dans les {PEAK_LABEL_TOP} premières de la région. "
+                    "*1997/98 à partir du 12 janvier 1998 seulement : sur les fleuves, son pic est le premier jour de l'archive, donc un minimum. "
                     "Kinshasa n'y figure pas : une seule crue du fleuve dans l'archive (2023/24). Une fourchette passée, pas une prévision."),
             y=-0.01)
     return _save(fig, "flood_peaks")
@@ -864,33 +920,32 @@ def lake_rises(s: pd.Series) -> pd.DataFrame:
 
 
 def fig_lake() -> tuple[Path, dict]:
-    t, m = lake("tanganyika"), lake("mweru")
+    t = lake("tanganyika")
     rz = lake_rises(t)
-    oct26 = t["2026-10-01":].mean()
+    oct26 = t["2026-10-01":"2026-10-31"].mean()
     rec = rz.peak.max()
     rec_season = int(rz.peak.idxmax())
     scen = [(season_label(y), oct26 + rz.loc[y, "rise"], season_color(y)) for y in [1997, 2023, 2019, 2015] if y in rz.index]
-    scen.append((_t("typical season (median)", "saison typique (médiane)"), oct26 + rz.rise.median(), TEXT2))
-    fig = plt.figure(figsize=(10.4, 7.4))
-    gs = fig.add_gridspec(2, 2, width_ratios=[2.0, 1], height_ratios=[1.15, 1], hspace=0.42, wspace=0.42)
-    ax, ax2 = fig.add_subplot(gs[0, 0]), fig.add_subplot(gs[0, 1])
+    typical_c = "#9a9993"  # grey like the other "typical" marks; near-black is 2026's colour elsewhere
+    scen.append((_t("typical season (median)", "saison typique (médiane)"), oct26 + rz.rise.median(), typical_c))
+    fig = plt.figure(figsize=(9.0, 6.8))
+    gs = fig.add_gridspec(2, 2, width_ratios=[1.25, 1], height_ratios=[1.1, 1], hspace=0.45, wspace=0.55)
+    ax = fig.add_subplot(gs[0, :])
     ax3, ax4 = fig.add_subplot(gs[1, 0]), fig.add_subplot(gs[1, 1])
-    for a, s, name in ((ax, t, "Tanganyika"), (ax2, m, "Mweru")):
-        a.plot(s.index, s.values, color="#3f3e3a", lw=0.8)
-        for y in BOTH + IOD_ONLY:
-            a.axvspan(pd.Timestamp(f"{y}-10-01"), pd.Timestamp(f"{y + 1}-06-30"), color=season_color(y), alpha=0.15, lw=0)
-        _grid(a)
-        a.set_title(_t(f"Lake {name}", f"Lac {name}"), loc="left")
-        a.set_xlim(pd.Timestamp("1992-06-01"), pd.Timestamp("2027-03-01"))
+    ax.plot(t.index, t.values, color="#3f3e3a", lw=0.8)
+    for y in BOTH + IOD_ONLY:
+        ax.axvspan(pd.Timestamp(f"{y}-10-01"), pd.Timestamp(f"{y + 1}-06-30"), color=season_color(y), alpha=0.15, lw=0)
+    _grid(ax)
+    ax.set_title(_t("Lake Tanganyika", "Lac Tanganyika"), loc="left")
+    ax.set_xlim(pd.Timestamp("1992-06-01"), pd.Timestamp("2027-03-01"))
     ax.axhline(rec, color=TEXT2, lw=0.7)
     ax.text(pd.Timestamp("1993-01-01"), rec + 0.05, _t(f"{season_label(rec_season)} flood peak, {rec:.2f} m",
                                                        f"pic de crue {season_label(rec_season)}, {_num(rec, 2)} m"),
             fontsize=7.5, color=TEXT2)
-    ax.annotate(_t(f"Oct 2026: {oct26:.2f} m", f"oct. 2026 : {_num(oct26, 2)} m"), (t.index.max(), t.iloc[-1]),
-                xytext=(-6, -22), textcoords="offset points", ha="right", fontsize=7.5, fontweight="bold",
+    ax.annotate(_t(f"Oct 2026: {oct26:.2f} m", f"oct. 2026 : {_num(oct26, 2)} m"), (pd.Timestamp("2026-10-15"), oct26),
+                xytext=(-4, -44), textcoords="offset points", ha="right", fontsize=7.5, fontweight="bold",
                 arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.5))
     ax.set_ylabel(_t("water level (m above sea level)", "niveau (m au-dessus de la mer)"))
-    ax2.set_ylabel("")
     # every season's October-to-peak rise
     _grid(ax3, "x")
     rng = np.random.default_rng(2)
@@ -919,26 +974,27 @@ def fig_lake() -> tuple[Path, dict]:
         ax4.plot([oct26, v], [i, i], color=c, lw=1.6)
         ax4.scatter([v], [i], color=c, s=40, zorder=3, edgecolor=SURFACE, lw=1)
     ax4.axvline(rec, color=TEXT2, lw=0.8)
-    ax4.text(rec, 0.99, _t(f" {season_label(rec_season)}\n peak", f" pic\n {season_label(rec_season)}"),
-             transform=ax4.get_xaxis_transform(), ha="left", va="top", fontsize=7.5, color=TEXT2)
+    # at the foot of the line: the long top rows cross it, the bottom ones stop short
+    ax4.text(rec, 0.02, _t(f" {season_label(rec_season)}\n peak", f" pic\n {season_label(rec_season)}"),
+             transform=ax4.get_xaxis_transform(), ha="left", va="bottom", fontsize=7.5, color=TEXT2)
     ax4.set_yticks(range(len(scen)))
-    ax4.set_yticklabels([_t(f"rise as in {l}", f"hausse comme en {l}") if "/" in l else l for l, _, _ in scen], fontsize=7.5)
+    ax4.set_yticklabels([_t(f"rise as in {l}", f"comme en {l}") if "/" in l else l for l, _, _ in scen], fontsize=7.5)
     ax4.set_ylim(len(scen) - 0.5, -0.5)
     ax4.set_xlim(oct26 - 0.15, max(v for _, v, _ in scen) + 0.15)
     ax4.set_xlabel(_t("peak level in 2027 (m)", "niveau du pic en 2027 (m)"))
     ax4.set_title(_t("From the October 2026 level", "À partir du niveau d'octobre 2026"), loc="left")
-    _source(fig, _t(f"NASA GSFC G-REALM satellite altimetry, 10-day, EGM2008 datum (not the national gauge datum); latest {t.index.max():%d %b %Y}. "
-                    "Shading: orange El Niño + positive IOD, blue very strong positive IOD with a weak El Niño. Past rises have not depended on the October level "
+    _source(fig, _t(f"NASA GSFC G-REALM satellite altimetry, 10-day, EGM2008 datum (not the national gauge datum); latest {_date(t.index.max())}. "
+                    f"Shading: {SHADING[0]}. Past rises have not depended on the October level "
                     f"(r = {rz.rise.corr(rz.oct):.2f}). Bottom right: a past range, not a forecast.",
                     f"Altimétrie satellite NASA GSFC G-REALM, pas de 10 jours, référence EGM2008 (pas celle des échelles nationales) ; "
-                    f"dernière mesure {t.index.max():%d/%m/%Y}. Fond : orange El Niño + IOD positif, bleu IOD positif très fort avec El Niño faible. "
-                    f"Les hausses passées ne dépendent pas du niveau d'octobre (r = {_num(rz.rise.corr(rz.oct), 2)}). En bas à droite : une fourchette passée, pas une prévision."), y=0.02)
+                    f"dernière mesure {_date(t.index.max())}. Fond : {SHADING[1]}. "
+                    f"Les hausses passées ne dépendent pas du niveau d'octobre (r = {_num(rz.rise.corr(rz.oct), 2)}). En bas à droite : une fourchette passée, pas une prévision."), y=0.03)
     return _save(fig, "lake"), dict(oct26=oct26, rises=rz, scen=scen, record=rec, record_season=rec_season)
 
 
 def fig_reported(ev: pd.DataFrame) -> Path:
     ev = ev[ev.date >= "1997-07-01"]
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(10, 6.8), gridspec_kw=dict(height_ratios=[1, 1.5]), sharex=True)
+    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9.0, 6.8), gridspec_kw=dict(height_ratios=[1, 1.5]), sharex=True)
     tot = ev.groupby("season")["affected"].sum().reindex(range(1997, ev.season.max() + 1), fill_value=0)
     x = [pd.Timestamp(f"{y + 1}-01-01") for y in tot.index]
     ax1.bar(x, tot.values / 1e6, width=300, color=[season_color(y) for y in tot.index], edgecolor=SURFACE, lw=1)
@@ -953,10 +1009,13 @@ def fig_reported(ev: pd.DataFrame) -> Path:
         e = ev[ev.region == k]
         ax2.scatter(e.date, [i] * len(e), s=np.clip(e.affected / 4000, 6, 700), color=[season_color(s) for s in e.season],
                     alpha=0.85, edgecolor="#3f3e3a", lw=0.4)
-        big = e[(e.deaths >= 150)]
-        for _, r in big.iterrows():
-            ax2.annotate(_t(f"{int(r.deaths):,} dead", f"{_num(r.deaths)} morts"), (r.date, i), xytext=(0, -11),
-                         textcoords="offset points", ha="center", fontsize=6.5, color=TEXT2)
+        last = pd.Timestamp("1900-01-01")
+        below = True
+        for _, r in e[e.deaths >= 150].sort_values("date").iterrows():
+            below = not below if (r.date - last).days < 900 else True  # labels closer than ~2.5 years take turns
+            last = r.date
+            ax2.annotate(_t(f"{int(r.deaths):,} dead", f"{_num(r.deaths)} morts"), (r.date, i), xytext=(0, -12 if below else 11),
+                         textcoords="offset points", ha="center", va="center", fontsize=7.5, color=TEXT2)
     ax2.set_yticks(range(len(rows)))
     ax2.set_yticklabels([_t(*EMDAT_ROWS[k]) for k in rows])
     ax2.set_ylim(len(rows) - 0.4, -0.6)
@@ -969,11 +1028,11 @@ def fig_reported(ev: pd.DataFrame) -> Path:
                     label=_t(f"{s_:,} affected", f"{_num(s_)} affectés"))
     ax2.legend(loc="lower left", fontsize=7.5, ncol=3, bbox_to_anchor=(0, -0.28), labelspacing=1.2, borderpad=0.8)
     fig.tight_layout()
-    _source(fig, _t(f"EM-DAT (CRED/UCLouvain), flood records for DRC, team snapshot to {ev['Last Update'].max()}. Reported counts are a floor: "
-                    "small events and earlier years are under-recorded. Seasons July–June; shading: orange El Niño + positive IOD, blue very strong positive IOD with a weak El Niño.",
-                    f"EM-DAT (CRED/UCLouvain), inondations en RDC, copie de l'équipe à jour au {ev['Last Update'].max()}. Les chiffres signalés sont "
-                    "un minimum : petits événements et années anciennes sous-enregistrés. Saisons juillet–juin ; fond : orange El Niño + IOD positif, bleu IOD positif très fort avec El Niño faible."),
-            y=-0.06)
+    _source(fig, _t(f"EM-DAT (CRED/UCLouvain), flood records for DRC, team snapshot to {_date(ev['Last Update'].max())}. Reported counts are a floor: "
+                    f"small events and earlier years are under-recorded. Deaths labelled from 150. Seasons July–June; shading: {SHADING[0]}.",
+                    f"EM-DAT (CRED/UCLouvain), inondations en RDC, copie de l'équipe à jour au {_date(ev['Last Update'].max())}. Les chiffres signalés sont "
+                    f"un minimum : petits événements et années anciennes sous-enregistrés. Décès indiqués à partir de 150. Saisons juillet–juin ; fond : {SHADING[1]}."),
+            y=-0.07)
     return _save(fig, "reported")
 
 
@@ -990,62 +1049,44 @@ EAST_FLASH_EVENTS = {
 EAST_FLASH = list(EAST_FLASH_EVENTS)
 
 
-def fig_needs(g: gpd.GeoDataFrame, ev: pd.DataFrame, top_n: int = 12) -> Path:
+def fig_needs(g: gpd.GeoDataFrame, ev: pd.DataFrame) -> Path:
+    """Two maps: where the satellite saw people in flooded areas in 2023/24, and where the 2026 HNRP counts people in
+    need. The Kivu flash-flood territories are marked on both."""
     adm1 = boundaries(1)
-    fig = plt.figure(figsize=(12, 6.2))
-    ax = fig.add_axes((0.0, 0.08, 0.40, 0.80))
-    axe = fig.add_axes((0.585, 0.12, 0.25, 0.76))
-    axp = fig.add_axes((0.85, 0.12, 0.14, 0.76))
-    bins = [0, 1000, 5000, 20000, 50000, 1e9]
-    blues = ["#f0efec", "#b7d3f6", "#6da7ec", "#2a78d6", "#104281"]
-    g = g.copy()
-    g["cls"] = pd.cut(g["analog"].fillna(0), bins, labels=False, include_lowest=True)
-    g.plot(ax=ax, color=[blues[int(c)] for c in g["cls"]], edgecolor="#ffffff", lw=0.3)
-    adm1.boundary.plot(ax=ax, color="#52514e", lw=0.5)
+    fig, (ax, axp) = plt.subplots(1, 2, figsize=(9.0, 5.0))
     flash = g.loc[g.index.isin(EAST_FLASH)].representative_point()
-    ax.scatter(flash.x, flash.y, marker="^", s=30, color="#3f3e3a", zorder=4)
-    ax.set_axis_off()
-    ax.set_title(_t("People in flooded areas, El Niño + IOD seasons", "Personnes en zone inondée, saisons El Niño + IOD"),
-                 loc="left", fontsize=9.5)
-    h = [Patch(color=c, label=lab) for c, lab in zip(blues, ["< 1k", "1–5k", "5–20k", "20–50k", "> 50k"])]
-    h.append(Line2D([], [], marker="^", ls="", color="#3f3e3a", label=_t("deadly flash floods (EM-DAT)", "crues éclair meurtrières (EM-DAT)")))
-    ax.legend(handles=h, loc="lower left", fontsize=7.5, title=_t("people, territory peak", "personnes, pic du territoire"), title_fontsize=7.5)
-    # ranked territories + the flash-flood group
-    d = g.dropna(subset=["analog"]).sort_values("analog", ascending=False).head(top_n)
-    deaths = {pc: int(ev[ev["DisNo."].isin(ids)]["deaths"].sum()) for pc, ids in EAST_FLASH_EVENTS.items()}
-    f = g.loc[EAST_FLASH].assign(deaths=pd.Series(deaths)).sort_values("deaths", ascending=False)
-    names = [f"{r.ADM2_FR} ({r.ADM1_FR})" for _, r in d.iterrows()] + [f"{r.ADM2_FR} ({r.ADM1_FR})" for _, r in f.iterrows()]
-    y = list(range(len(d))) + [len(d) + 1 + i for i in range(len(f))]
-    yd, yf = y[: len(d)], y[len(d):]
-    _grid(axe, "x")
-    axe.hlines(yd, d["typical"] / 1000, d["analog"] / 1000, color=OTHER_C, lw=1.2)
-    axe.scatter(d["typical"] / 1000, yd, color=OTHER_C, s=28, zorder=3, edgecolor=SURFACE, lw=1)
-    axe.scatter(d["analog"] / 1000, yd, color=BOTH_C, s=40, zorder=3, edgecolor=SURFACE, lw=1)
-    for yy, (_, r) in zip(yf, f.iterrows()):
-        axe.text(1, yy, _t(f"not seen by satellite · {r.deaths:,} dead since 1994", f"invisible au satellite · {_num(r.deaths)} morts depuis 1994"),
-                 fontsize=7, color=TEXT2, va="center")
-    axe.set_yticks(y)
-    axe.set_yticklabels(names, fontsize=7.5)
-    axe.set_ylim(max(y) + 0.6, -0.6)
-    axe.set_xlim(left=0)
-    axe.set_xlabel(_t("people in flooded areas (thousands)", "personnes en zone inondée (milliers)"))
-    axe.legend(handles=[Line2D([], [], marker="o", ls="", color=BOTH_C, label=_t("El Niño + IOD seasons", "saisons El Niño + IOD")),
-                        Line2D([], [], marker="o", ls="", color=OTHER_C, label=_t("typical season", "saison typique"))],
-               loc="center right", fontsize=7.5, bbox_to_anchor=(1.0, 0.42))
-    axe.set_title(_t("Most exposed territories", "Territoires les plus exposés"), loc="left", fontsize=9.5)
-    _grid(axp, "x")
-    pins = list(d["pin"]) + list(f["pin"])
-    axp.barh(y, np.array(pins) / 1e6, color="#8a8984", height=0.6)
-    axp.set_yticks(y)
-    axp.set_yticklabels([])
-    axp.set_ylim(max(y) + 0.6, -0.6)
-    axp.set_xlabel(_t("people in need, 2026 (millions)", "personnes dans le besoin, 2026 (millions)"))
-    axp.set_title(_t("Needs 2026", "Besoins 2026"), loc="left", fontsize=9.5)
-    _source(fig, _t("FloodScan flooded fraction × WorldPop 2020: per territory, the seasonal peak of the 15-day running median; El Niño + IOD = mean of 2015/16 "
-                    "and 2023/24, typical = median of 1998/99–2025/26. PiN: HNRP 2026 (OCHA), health zones summed to territories. Deaths: EM-DAT floods since 1990.",
-                    "Fraction inondée FloodScan × WorldPop 2020 : par territoire, pic saisonnier de la médiane glissante sur 15 jours ; El Niño + IOD = moyenne "
-                    "de 2015/16 et 2023/24, typique = médiane de 1998/99–2025/26. PiN : HNRP 2026 (OCHA), zones de santé agrégées par territoire. "
-                    "Décès : EM-DAT, inondations depuis 1990."), y=0.02)
+    panels = (
+        (ax, "flooded", [0, 1000, 5000, 20000, 50000, 1e9], ["#f0efec", "#b7d3f6", "#6da7ec", "#2a78d6", "#104281"],
+         ["< 1k", "1–5k", "5–20k", "20–50k", "> 50k"],
+         _t("People in flooded areas, 2023/24 peak", "Personnes en zone inondée, pic 2023/24"),
+         _t("people, territory peak", "personnes, pic du territoire")),
+        (axp, "pin", [0, 20000, 50000, 100000, 200000, 1e9], ["#f0efec", "#b0afa8", "#86857e", "#55544f", "#1f1e1c"],
+         ["< 20k", "20–50k", "50–100k", "100–200k", "> 200k"],
+         _t("People in need, 2026 HNRP", "Personnes dans le besoin, HNRP 2026"),
+         _t("people in need, territory", "personnes dans le besoin, territoire")),
+    )
+    for a, col, bins, ramp, labs, title, ltitle in panels:
+        cls = pd.cut(g[col].fillna(0), bins, labels=False, include_lowest=True)
+        g.plot(ax=a, color=[ramp[int(c)] for c in cls], edgecolor="#ffffff", lw=0.3)
+        adm1.boundary.plot(ax=a, color="#52514e", lw=0.5)
+        # white with a black edge: shows on the pale blues and on the near-black PiN classes alike (orange is the season class)
+        a.scatter(flash.x, flash.y, marker="^", s=38, color="#ffffff", edgecolor="#0b0b0b", lw=0.9, zorder=4)
+        a.set_axis_off()
+        a.set_title(title, loc="left", fontsize=9.5)
+        h = [Patch(color=c, label=lab) for c, lab in zip(ramp, labs)]
+        a.legend(handles=h, loc="lower left", fontsize=7.5, title=ltitle, title_fontsize=7.5)
+    deaths = int(ev[ev["DisNo."].isin(sum(EAST_FLASH_EVENTS.values(), []))]["deaths"].sum())
+    fig.legend(handles=[Line2D([], [], marker="^", ls="", color="#ffffff", markeredgecolor="#0b0b0b",
+                               label=_t(f"Kivu territories with deadly flash floods, not seen by satellite ({deaths:,} dead since 1994, EM-DAT)",
+                                        f"territoires du Kivu aux crues éclair meurtrières, invisibles au satellite ({_num(deaths)} morts depuis 1994, EM-DAT)"))],
+               loc="lower center", fontsize=8, bbox_to_anchor=(0.5, 0.05))
+    fig.subplots_adjust(wspace=0.02, bottom=0.12)
+    _source(fig, _t("FloodScan flooded fraction × WorldPop 2020: per territory, the 2023/24 peak of the 15-day running median. "
+                    "People in need: HNRP 2026 as revised in July 2026 (OCHA), health zones summed to territories. Flash-flood territories: "
+                    "events with 30 or more deaths in EM-DAT, placed from its Location field.",
+                    "Fraction inondée FloodScan × WorldPop 2020 : par territoire, pic 2023/24 de la médiane glissante sur 15 jours. "
+                    "Personnes dans le besoin : HNRP 2026 révisé en juillet 2026 (OCHA), zones de santé agrégées par territoire. Territoires "
+                    "aux crues éclair : événements de 30 morts ou plus dans EM-DAT, placés d'après leur localisation."), y=0.04)
     return _save(fig, "needs")
 
 
@@ -1091,6 +1132,8 @@ def fig_need_split(sp: pd.DataFrame, pk: pd.DataFrame) -> Path:
         y += 1.4
     ax.set_yticks(ticks)
     ax.set_yticklabels(labels, fontsize=8)
+    for tl, s in zip(ax.get_yticklabels(), SPLIT_SEASONS * 4):
+        tl.set_color(season_color(s) if season_color(s) != OTHER_C else TEXT2)
     ax.set_ylim(y - 1.2, -1.3)
     ax.set_xlim(0, xmax * 1.3)
     _grid(ax, "x")
@@ -1099,12 +1142,12 @@ def fig_need_split(sp: pd.DataFrame, pk: pd.DataFrame) -> Path:
                fontsize=8, bbox_to_anchor=(0.5, -0.005), title=_t("2026 HNRP status of the health zones flooded", "Statut HNRP 2026 des zones de santé inondées"),
                title_fontsize=8)
     fig.tight_layout(rect=(0, 0.07, 1, 1))
-    _source(fig, _wrap(_t("FloodScan × WorldPop 2020: each region's peak inside its flood months, as in the table above; *1997/98 from 12 January 1998. "
+    _source(fig, _t("FloodScan × WorldPop 2020: each region's peak inside its flood months, as in the season-peaks chart; *1997/98 from 12 January 1998. "
                     "On the peak date, each territory's people in flooded areas are shared out like its population across its health zones, "
                     "then split by each zone's 2026 PiN share and severity (HNRP 2026 as revised in July 2026).",
-                    "FloodScan × WorldPop 2020 : pic de chaque région pendant ses mois de crue, comme dans le tableau ci-dessus ; *1997/98 à partir "
+                    "FloodScan × WorldPop 2020 : pic de chaque région pendant ses mois de crue, comme dans le graphique des pics ; *1997/98 à partir "
                     "du 12 janvier 1998. À la date du pic, les personnes en zone inondée de chaque territoire sont réparties comme sa population "
-                    "entre ses zones de santé, puis selon la part de PiN et la sévérité 2026 de chaque zone (HNRP 2026 révisé en juillet 2026)."), 175),
+                    "entre ses zones de santé, puis selon la part de PiN et la sévérité 2026 de chaque zone (HNRP 2026 révisé en juillet 2026)."),
             y=0.0)
     return _save(fig, "need_split")
 
@@ -1155,13 +1198,72 @@ def fig_flood_lists(t: pd.DataFrame) -> Path:
                     (len(a) + 0.5, _t(f"{LIST_TOP} most flooded others, 2023/24", f"{LIST_TOP} autres plus inondés, 2023/24"))):
         axl.text(-0.02, yy, txt, transform=axl.get_yaxis_transform(), ha="right", fontsize=8.5, fontweight="bold", va="center")
     fr, n_hz = hnrp_flood_risk(), len(pin())
-    _source(fig, _wrap(_t("Left: column 'Pers à risque inondation' of the 2026 JIAF workbook as revised in July 2026 (OCHA DRC, on HDX), filled for "
+    _source(fig, _t("Left: column 'Pers à risque inondation' of the 2026 JIAF workbook as revised in July 2026 (OCHA DRC, on HDX), filled for "
                     f"{fr.notna().sum()} of {n_hz} health zones ({(fr > 0).sum()} above zero), summed by territory. Right: FloodScan × WorldPop 2020, seasonal peak of the 15-day running median per territory; "
                     "typical = median of 1998/99–2025/26.",
                     "Gauche : colonne « Pers à risque inondation » du classeur JIAF 2026 révisé en juillet 2026 (OCHA RDC, sur HDX), renseignée pour "
                     f"{fr.notna().sum()} des {n_hz} zones de santé ({(fr > 0).sum()} non nulles), somme par territoire. Droite : FloodScan × WorldPop 2020, pic saisonnier de la médiane glissante sur "
-                    "15 jours par territoire ; typique = médiane de 1998/99–2025/26."), 200), y=0.045)
+                    "15 jours par territoire ; typique = médiane de 1998/99–2025/26."), y=0.045)
     return _save(fig, "flood_lists")
+
+
+HOW_MANY_SEASONS = [1997, 2015, 2023, 2019]
+
+
+def outside_regions(fs: pd.DataFrame) -> pd.Series:
+    """Per season, the provinces outside REGIONS: their season peaks (same smoothing) added up."""
+    inside = sum((r["pcodes"] for r in REGIONS.values()), [])
+    out = {}
+    for pc, g in fs[~fs.pcode.isin(inside)].groupby("pcode"):
+        df = by_season(smooth(g.set_index("valid_date")["sum"]).dropna())
+        out[pc] = df.groupby("season")["v"].max()
+    return pd.DataFrame(out).sum(axis=1)
+
+
+def fig_how_many(sp: pd.DataFrame, ev: pd.DataFrame, outside: pd.Series) -> Path:
+    """Per analogue season: people in flooded areas (adding up the four regions' peaks), the part already in the 2026
+    PiN, and the people EM-DAT reports affected. One axis, people."""
+    tot = sp.groupby("season")[NEED_KEYS].sum()
+    aff = ev.groupby("season")["affected"].sum()
+    fig, ax = plt.subplots(figsize=(8.6, 4.6))
+    y, ticks, labels = 0.0, [], []
+    xmax = max(aff.reindex(HOW_MANY_SEASONS).max(), tot.sum(axis=1).max()) / 1e6
+    for s in HOW_MANY_SEASONS:
+        row = tot.loc[s]
+        inpin = (row["pin45"] + row["pin3"]) / 1e6
+        fs = row.sum() / 1e6
+        ax.text(0, y - 0.62, season_label(s) + ("*" if s == 1997 else ""), fontsize=9.5, fontweight="bold",
+                color=season_color(s), va="bottom")
+        ax.barh(y, inpin, height=0.62, color=NEED_CATS[0][3], edgecolor=SURFACE, lw=1)
+        ax.barh(y, fs - inpin, left=inpin, height=0.62, color=NEED_CATS[3][3], edgecolor=SURFACE, lw=1)
+        ax.text(fs + xmax * 0.01, y, _t(f"{_num(fs * 1000)}k · {_num(inpin * 1000)}k in PiN", f"{_num(fs * 1000)} k · {_num(inpin * 1000)} k dans le PiN"),
+                va="center", fontsize=8)
+        a = aff.get(s, 0) / 1e6
+        ax.barh(y + 0.75, a, height=0.62, color=SURFACE, edgecolor="#3f3e3a", lw=1, hatch="////")
+        ax.text(a + xmax * 0.01, y + 0.75, _t(f"{_num(a, 2)} M", f"{_num(a, 2)} M"), va="center", fontsize=8)
+        ticks += [y, y + 0.75]
+        labels += [_t("in flooded areas (FloodScan)", "en zone inondée (FloodScan)"), _t("reported affected (EM-DAT)", "signalées affectées (EM-DAT)")]
+        y += 2.4
+    ax.set_yticks(ticks)
+    ax.set_yticklabels(labels, fontsize=8)
+    ax.set_ylim(y - 1.4, -1.0)
+    ax.set_xlim(0, xmax * 1.18)
+    _grid(ax, "x")
+    ax.set_xlabel(_t("people (millions)", "personnes (millions)"))
+    fig.legend(handles=[Patch(color=NEED_CATS[0][3], label=_t("in flooded areas, already in the 2026 PiN", "en zone inondée, déjà dans le PiN 2026")),
+                        Patch(color=NEED_CATS[3][3], label=_t("in flooded areas, not in the PiN", "en zone inondée, hors PiN")),
+                        Patch(facecolor=SURFACE, edgecolor="#3f3e3a", hatch="////", label=_t("reported affected", "signalées affectées"))],
+               loc="lower center", ncol=3, fontsize=8, bbox_to_anchor=(0.5, 0.0))
+    fig.tight_layout(rect=(0, 0.07, 1, 1))
+    rest = _num(np.ceil(outside.reindex(HOW_MANY_SEASONS).max() / 5000) * 5)
+    _source(fig, _t("FloodScan × WorldPop 2020: the four regions' season peaks added up (they come months apart; other provinces add "
+                    f"under {rest}k in any of these seasons); PiN share as in the HNRP section below. *1997/98 from 12 January 1998, a floor. "
+                    "EM-DAT (CRED/UCLouvain): everyone reported affected, flash and city floods included; a floor too.",
+                    "FloodScan × WorldPop 2020 : pics de saison des quatre régions additionnés (ils surviennent à des mois d'écart ; les autres "
+                    f"provinces ajoutent moins de {rest} k lors de ces saisons) ; part dans le PiN comme dans la section HNRP plus bas. *1997/98 à partir "
+                    "du 12 janvier 1998, un minimum. EM-DAT (CRED/UCLouvain) : toutes les personnes signalées affectées, crues éclair et urbaines "
+                    "comprises ; un minimum aussi."), y=-0.01)
+    return _save(fig, "how_many")
 
 
 def southeast_rain(pcodes: tuple[str, ...] = ("CD71",)) -> pd.Series:
@@ -1185,13 +1287,20 @@ def strong_nino() -> list[int]:
     return [int(y) for y in o[o >= 1.5].index]
 
 
+def _break_gaps(s: pd.Series, days: int = 183) -> pd.Series:
+    """Insert a NaN after any stretch longer than `days` with no price, so the line is not drawn across it."""
+    gaps = s.index.to_series().diff() > pd.Timedelta(days=days)
+    holes = pd.Series(np.nan, index=s.index[gaps] - pd.Timedelta(days=1))
+    return pd.concat([s, holes]).sort_index()
+
+
 def fig_southeast() -> tuple[Path, dict]:
     sn = strong_nino()
     jfm = southeast_rain()
     fao = fao_maize()
     zmb = fao[fao.Area == "Zambia"].set_index("year")["t"].loc[1990:] / 1e6
     px = lubumbashi_maize()
-    fig, (a1, a2, a3) = plt.subplots(1, 3, figsize=(12, 3.9), gridspec_kw=dict(width_ratios=[1.25, 1, 1.25], wspace=0.28))
+    fig, (a1, a2, a3) = plt.subplots(1, 3, figsize=(10, 3.9), gridspec_kw=dict(width_ratios=[1.25, 1, 1.25], wspace=0.3))
     # (a) Jan–Mar rain in Haut-Katanga
     dry3 = jfm.quantile(1 / 3)
     _grid(a1)
@@ -1199,11 +1308,11 @@ def fig_southeast() -> tuple[Path, dict]:
            color=[BOTH_C if y in sn else OTHER_C for y in jfm.index])
     a1.axhline(100, color=TEXT2, lw=0.6)
     a1.axhline(dry3, color=TEXT2, lw=0.6, ls=(0, (3, 2)))
-    a1.text(1983, dry3 - 1, _t("driest third", "tiers le plus sec"), fontsize=7, color=TEXT2, va="top")
+    a1.text(1983, dry3 - 1, _t("driest third", "tiers le plus sec"), fontsize=7.5, color=TEXT2, va="top")
     for y in sn:
         if y in jfm.index:
-            a1.annotate(str(y + 1), (y + 1, jfm[y]), xytext=(0, 3 if jfm[y] >= 100 else -9), textcoords="offset points",
-                        ha="center", fontsize=7)
+            a1.annotate(str(y + 1), (y + 1, jfm[y]), xytext=(0, 3 if jfm[y] >= 100 else -10), textcoords="offset points",
+                        ha="center", fontsize=7.5)
     a1.set_ylabel(_t("% of the 1991–2020 average", "% de la moyenne 1991–2020"))
     a1.set_title(_t("Jan–Mar rain, Haut-Katanga", "Pluie janv.–mars, Haut-Katanga"), loc="left")
     # (b) Zambia maize
@@ -1211,7 +1320,7 @@ def fig_southeast() -> tuple[Path, dict]:
     a2.bar(zmb.index, zmb.values, width=0.8, color=[BOTH_C if y - 1 in sn else OTHER_C for y in zmb.index])
     for y in zmb.index:
         if y - 1 in sn:
-            a2.annotate(str(y), (y, zmb[y]), xytext=(0, 2), textcoords="offset points", ha="center", fontsize=7)
+            a2.annotate(str(y), (y, zmb[y]), xytext=(0, 2), textcoords="offset points", ha="center", fontsize=7.5)
     a2.set_ylabel(_t("million tonnes", "millions de tonnes"))
     a2.set_title(_t("Zambia's maize harvest", "Récolte de maïs en Zambie"), loc="left")
     # (c) Lubumbashi prices
@@ -1220,11 +1329,13 @@ def fig_southeast() -> tuple[Path, dict]:
         if y >= 2010:  # the harvest year after the event and the lean season that follows it
             a3.axvspan(pd.Timestamp(f"{y + 1}-01-01"), pd.Timestamp(f"{y + 2}-06-30"), color=BOTH_C, alpha=0.12, lw=0)
     for c, col, lab in (("Maize flour", "#3f3e3a", _t("maize flour", "farine de maïs")), ("Maize", "#8a8984", _t("maize grain", "maïs grain"))):
-        s_ = px[c][px[c].index >= "2012-01-01"]
+        s_ = _break_gaps(px[c][px[c].index >= "2012-01-01"])
         a3.plot(s_.index, s_.values, color=col, lw=1.2, marker=".", ms=3, label=lab)
+    a3.xaxis.set_major_locator(mdates.YearLocator(4))
+    a3.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
     a3.set_ylabel(_t("US$ per kg (retail)", "US$ par kg (détail)"))
     a3.set_title(_t("Maize prices, Lubumbashi", "Prix du maïs, Lubumbashi"), loc="left")
-    a3.legend(loc="upper left", fontsize=7.5)
+    a3.legend(loc="lower right", fontsize=7.5)
     a3.set_ylim(bottom=0)
     fig.legend(handles=[Patch(color=BOTH_C, label=_t("after a strong El Niño (Sep–Nov ONI ≥ 1.5 °C)", "après un El Niño fort (ONI sept.–nov. ≥ 1,5 °C)")),
                         Patch(color=OTHER_C, label=_t("other years", "autres années"))], loc="lower center", ncol=2, fontsize=8,
@@ -1235,9 +1346,14 @@ def fig_southeast() -> tuple[Path, dict]:
                     "mois ou plus sont exclus (non mis à jour). Barres et fond colorés pour la récolte ou la soudure qui suit l'événement."), y=-0.1)
     n = [y for y in sn if y in jfm.index]
     dry = [y for y in n if jfm[y] <= dry3]
-    stats = dict(se_n=len(n), se_dry=len(dry), se_dry_years=", ".join(season_label(y) for y in dry),
-                 se_wet_years=", ".join(season_label(y) for y in n if y not in dry),
-                 zmb_drop=_num((1 - zmb[2024] / zmb[2023]) * 100), zmb_drop98=_num((1 - zmb[1998] / zmb[1997]) * 100))
+    fl = px["Maize flour"]
+    fl = fl[fl.index >= "2012-01-01"]
+    gap = fl.index.to_series().diff().idxmax()  # the end of the longest stretch without a usable flour price
+    gap_from, gap_to = fl.index[fl.index.get_loc(gap) - 1], gap
+    stats = dict(se_n=len(n), se_dry=len(dry), se_dry_years=_join([season_label(y) for y in dry]),
+                 se_wet_years=_join([season_label(y) for y in n if y not in dry]),
+                 zmb_drop=_num((1 - zmb[2024] / zmb[2023]) * 100), zmb_drop98=_num((1 - zmb[1998] / zmb[1997]) * 100),
+                 px_gap_from=str(gap_from.year), px_gap_to=str(gap_to.year))
     return _save(fig, "southeast"), stats
 
 
@@ -1264,65 +1380,157 @@ def _img(path: Path) -> str:
     return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
 
 
+def _rank_en(n: int, word: str = "highest") -> str:
+    return {1: word, 2: f"second-{word}", 3: f"third-{word}", 4: f"fourth-{word}", 5: f"fifth-{word}"}.get(n, f"{n}th-{word}")
+
+
+def _rank_fr(n: int, word: str = "plus haut", art: str = "le") -> str:
+    return f"{art} {word}" if n == 1 else f"{art} {n}e {word}"
+
+
+def _cells(da: xr.DataArray, gdf: gpd.GeoDataFrame) -> np.ndarray:
+    v = _clip(da, gdf).ravel()
+    return v[~np.isnan(v)]
+
+
+WET, DRY = 110, 90  # % of normal; a season is "wet" (or "dry") when the wet share beats the dry one by RAIN_MARGIN points
+RAIN_MARGIN = 20
+
+
+def rain_shares(anoms: dict) -> pd.DataFrame:
+    """Share of the country (rainy-season cells only) above WET% and below DRY% of normal, per season and year."""
+    adm0 = boundaries(0)
+    rows = []
+    for (s, y), da in anoms.items():
+        v = _cells(da, adm0)
+        v = v[v >= 0]
+        rows.append(dict(season=s, year=y, wet=(v > WET).mean() * 100, dry=(v < DRY).mean() * 100))
+    df = pd.DataFrame(rows)
+    df["cls"] = np.where(df.wet - df.dry >= RAIN_MARGIN, "wet", np.where(df.dry - df.wet >= RAIN_MARGIN, "dry", "mixed"))
+    return df
+
+
+def now_corridor(series: dict, fs: pd.DataFrame, pk: pd.DataFrame) -> dict:
+    """2026/27 so far on the Congo and Ubangi, against every season on the same day."""
+    df = by_season(series["corridor"].dropna())
+    # the last day whose running median has its full window: later days are half-window medians, not comparable
+    last = df.index.max() - pd.Timedelta(days=SMOOTH_DAYS // 2)
+    day = int(df.loc[last, "day"])
+    on = df[df.day == day].set_index("season")["v"]
+    now = on[NOW]
+    july = df[(df.season == NOW) & (df.index.month == 7)]["v"].min()
+    if not now > 2 * july:
+        raise ValueError("the Congo/Ubangi line is no longer rising since July: reword the timing note")
+    p = fs[fs.pcode.isin(REGIONS["corridor"]["pcodes"]) & fs.valid_date.between(last - pd.Timedelta(days=13), last)]
+    by_prov = p.groupby("pcode")["sum"].mean()
+    if by_prov.max() < 0.5 * by_prov.sum():
+        raise ValueError("no single province holds most of the 2026/27 water: reword the timing note")
+    corr = pk[pk.region == "corridor"].set_index("season")["peak"].rank(ascending=False)
+    if on.get(2015, np.inf) >= now:
+        raise ValueError("2015/16 was not lower than 2026/27 on this date: reword the timing note")
+    return dict(now_k=_num(now / 1000), now_date=_date(last), now_n=len(on),
+                now_rank_en=_rank_en(int(on.rank(ascending=False)[NOW])), now_rank_fr=_rank_fr(int(on.rank(ascending=False)[NOW])),
+                now_prov=boundaries(1).set_index("ADM1_PCODE")["ADM1_FR"][by_prov.idxmax()],
+                early_1516=_num(on[2015] / 1000, 1), rank_1516_en=_rank_en(int(corr[2015]), "largest"),
+                rank_1516_fr=_rank_fr(int(corr[2015]), "plus grande", "la"))
+
+
 def values(a: dict) -> dict:
-    """Numbers the TOML headlines quote; printed by report()."""
+    """Numbers the TOML headlines quote; printed by report(). The guards stop the build when the data stop saying what a
+    sentence says."""
     lk, pk, ev = a["lake"], a["peaks"], a["events"]
     rz = lk["rises"]
     strong = [y for y in (1997, 2019, 2023) if y in rz.index]
     t = lake("tanganyika")
     octs = t[t.index.month == 10].groupby(t[t.index.month == 10].index.year).mean()
     rank = int(octs.rank(ascending=False)[NOW])
-    ordinal_en = {1: "highest", 2: "second-highest", 3: "third-highest", 4: "fourth-highest"}.get(rank, f"{rank}th-highest")
-    ordinal_fr = {1: "le plus haut", 2: "le 2e plus haut", 3: "le 3e plus haut"}.get(rank, f"le {rank}e plus haut")
     aff = ev.groupby("season")["affected"].sum()
     aff_both = [aff.get(y, 0) for y in BOTH if y >= 2015]
     corr = pk[pk.region == "corridor"].set_index("season")["peak"].rank(ascending=False)
     top = sorted(int(corr[y]) for y in BOTH if y in corr.index)
-    nat = smooth(floodscan_adm1().groupby("valid_date")["sum"].sum())
-    fs_end = nat.dropna().index.max()
+    if top != [1, 2, 3]:
+        raise ValueError(f"the El Niño + Dipole seasons are no longer the top 3 on the Congo and Ubangi ({top}): reword tile 1")
+    if set(aff.nlargest(2).index) != {2019, 2023}:
+        raise ValueError("2023/24 and 2019/20 are no longer the two largest EM-DAT flood seasons: reword the reported headline")
+    fs_end = a["fs"]["valid_date"].max()
+    # how many: the four regions' peaks added up, and the part already in the 2026 PiN
     b = a["split"][a["split"].season.isin(BOTH)].groupby("season")[NEED_KEYS].sum()
-    inpin = (b["pin45"] + b["pin3"]) / b.sum(axis=1) * 100
+    fs_tot = b.sum(axis=1)
+    inpin = (b["pin45"] + b["pin3"]) / fs_tot * 100
+    lo, hi = int(fs_tot.idxmin()), int(fs_tot.idxmax())
     i = a["split"][a["split"].season.isin(IOD_ONLY)][NEED_KEYS].sum()
+    riv = a["split"][a["split"].region.isin(["corridor", "kinshasa"]) & a["split"].season.isin(BOTH)][NEED_KEYS].sum()
+    if riv["sev12"] / riv.sum() < 0.85:
+        raise ValueError("people in flooded areas on the rivers are no longer almost all in severity-2 zones: reword the hnrp-split note")
+    # other seasons ranking with the analogues on the Lualaba floodplains and in the south-east
+    tops = [set(pk[pk.region == k].nlargest(3, "peak").season) - set(BOTH + IOD_ONLY) for k in ("tanganyika", "southeast")]
+    others = sorted(tops[0] & tops[1])
+    if not others:
+        raise ValueError("no other season is in the top 3 of both the Lualaba floodplains and the south-east: reword the range note")
+    # deadliest reported floods
+    dead = ev.set_index("DisNo.")["deaths"]
+    deadliest = ["2023-0281-COD", "2024-0268-COD", "2022-0805-COD", "2025-0245-COD"]  # Kalehe; 2023/24 rivers; Kinshasa x2
+    if set(dead.nlargest(4).index) != set(deadliest) or dead.idxmax() != deadliest[0]:
+        raise ValueError(f"the four deadliest EM-DAT floods changed ({list(dead.nlargest(4).index)}): reword the reported note")
+    # rain in the analogue seasons
+    rs = rain_shares(a["anoms"]).sort_values("year")
+    ond, jfm = rs[rs.season == "OND"], rs[rs.season == "JFM"]
+    ond_dry = list(ond[ond.cls == "dry"].year)
+    jfm_dry = jfm[jfm.cls == "dry"]
+    if ond_dry != [2015] or ond[ond.cls == "wet"].empty or jfm_dry.empty or jfm_dry.dry.min() < 60:
+        raise ValueError("the rain maps no longer say what the rain headline says: reword it")
+    # El Niño's own drying around Kinshasa (CHIRPS, Sep–Nov)
+    adm1 = boundaries(1)
+    kin = _cells(a["maps"][("enso", "SON")], adm1[adm1.ADM1_PCODE.isin(["CD10", "CD20"])])
+    later = [(_cells(a["maps"][("enso", s)], adm1[adm1.ADM1_PCODE.isin(["CD10", "CD20"])]) <= -0.3).mean() for s in ("NDJ", "JFM")]
+    if (kin <= -0.3).mean() < 0.5 or max(later) > 0.2:
+        raise ValueError("El Niño's drying around Kinshasa is no longer confined to Sep–Nov: reword the drivers note")
     fl, fr = a["lists"], hnrp_flood_risk()
     unseen = fl[fl[2023] < SEEN_BELOW]
-    if unseen.loc[LULUA_BLIND, "record"].max() > 0:
-        raise ValueError("Luebo has been seen flooded: reword the hnrp_list note")
+    if fl.loc[LULUA_BLIND, "record"].max() > 0:
+        raise ValueError("Luebo has been seen flooded: reword the hnrp-list headline")
     blind = {k: unseen[unseen.index.str.startswith(tuple(v))]["risk"].sum() / fr.sum() * 100 for k, v in UNSEEN_GROUPS.items()}
     if sum(blind.values()) <= unseen["risk"].sum() / fr.sum() * 50:
-        raise ValueError("the called-out places no longer hold most of the unseen list: reword the hnrp_list note")
+        raise ValueError("the called-out places no longer hold most of the unseen list: reword the hnrp-list note")
+    # the lake: rises like the strongest-Dipole seasons pass the record, a 2015/16-like rise stops short (tile 3, lake, partner row)
+    if lk["oct26"] + min(rz.loc[strong, "rise"]) <= lk["record"] or lk["oct26"] + rz.loc[2015, "rise"] >= lk["record"]:
+        raise ValueError("the lake scenarios no longer straddle the 2024 peak as the text says: reword tile 3 and the lake section")
     z = pin().set_index("admin3_code")
     by_sev = z.groupby([hz_territory(), z["final_severity"]])["population"].sum().unstack(fill_value=0)
+    seasons = lambda ys: _join([season_label(y) for y in ys])  # noqa: E731
     return dict(
         pin_total=_num(z["final_pin"].sum() / 1e6, 1), hz_n=len(z),
         maj_share=_num(by_sev.max(axis=1).sum() / by_sev.values.sum() * 100),
         inpin_lo=_num(inpin.min()), inpin_hi=_num(inpin.max()), inpin_iod=_num((i["pin45"] + i["pin3"]) / i.sum() * 100),
+        out_lo=_num(100 - inpin.max()), out_hi=_num(100 - inpin.min()), both_years=seasons(BOTH),
+        sev2_pin=_num(z.loc[z["final_severity"] <= 2, "final_pin"].sum() / z["final_pin"].sum() * 100, 1),
+        fs_2324=_num(round(fs_tot[2023], -4) / 1000),
+        fs_lo=_num(round(fs_tot[lo], -4) / 1000), fs_lo_season=season_label(lo),
+        fs_hi=_num(round(fs_tot[hi], -4) / 1000), fs_hi_season=season_label(hi),
         **{f"unseen_{k}": _num(v) for k, v in blind.items()},
+        luebo_k=_num(round(fl.loc[LULUA_BLIND, "risk"].sum(), -3) / 1000),
         risk_total=_num(fr.sum() / 1e6, 1), risk_hz=int((fr > 0).sum()),
         risk_blind=_num(fl.loc[fl[2023] < SEEN_BELOW, "risk"].sum() / fr.sum() * 100), seen_below=_num(SEEN_BELOW),
         sat_unlisted=_num(fl.loc[~(fl["risk"] > 0), 2023].sum() / fl[2023].sum() * 100),
-        data_end=f"{fs_end:%d %b %Y}" if LANG == "en" else f"{fs_end:%d/%m/%Y}",
+        data_end=_date(fs_end),
         corridor_top="Top 3" if top == [1, 2, 3] else "#" + ", ".join(map(str, top)),
-        lake_oct=_num(lk["oct26"], 1), lake_oct_rank_en=ordinal_en, lake_oct_rank_fr=ordinal_fr, lake_n=len(octs),
+        corridor_top_years=seasons(sorted((y for y in BOTH if y in corr.index), key=lambda y: corr[y])),
+        others_top=seasons(others),
+        strong_years=seasons(strong),
+        lake_oct=_num(lk["oct26"], 1), lake_oct_rank_en=_rank_en(rank), lake_oct_rank_fr=_rank_fr(rank), lake_n=len(octs),
         lake_gap=_num(lk["record"] - lk["oct26"], 1),
         rise_lo=_num(min(rz.loc[strong, "rise"]), 1), rise_hi=_num(max(rz.loc[strong, "rise"]), 1),
-        aff_lo=_num(min(aff_both) / 1e6, 1), aff_hi=_num(max(aff_both) / 1e6, 1),
-        exposed_2324=_num(nat["2023-07-01":"2024-06-30"].max() / 1e6, 2), affected_2324=_num(aff.get(2023, 0) / 1e6, 2),
-        emdat_end=str(ev["Last Update"].max()),
+        aff_lo=_num(min(aff_both) / 1e6, 1), aff_hi=_num(max(aff_both) / 1e6, 1), aff_iod=_num(aff.get(2019, 0) / 1e6, 1),
+        affected_2324=_num(aff.get(2023, 0) / 1e6, 2), affected_1516=_num(aff.get(2015, 0) / 1e6, 2),
+        dead_kalehe=_num(dead["2023-0281-COD"]), dead_rivers=_num(dead["2024-0268-COD"]),
+        dead_kin22=_num(dead["2022-0805-COD"]), dead_kin25=_num(dead["2025-0245-COD"]),
+        ond_wet_years=seasons(ond[ond.cls == "wet"].year), ond_dry_years=seasons(ond_dry),
+        jfm_dry_years=seasons(jfm_dry.year), jfm_dry_hi=_num(jfm_dry.dry.max()),
+        enso_kin=_num((kin <= -0.3).mean() * 100),
+        emdat_end=_date(ev["Last Update"].max()),
+        **now_corridor(a["series"], a["fs"], pk),
         **a.get("se", {}),
     )
-
-
-def range_table(pk: pd.DataFrame, series: dict) -> str:
-    cols = [(y, season_label(y) + ("*" if y == 1997 else "")) for y in (2015, 2023, 1997, 2019)]
-    head = "".join(f'<th class="num" style="color:{season_color(y)}">{lab}</th>' for y, lab in cols)
-    rows = []
-    for k in ["corridor", "kinshasa", "tanganyika", "southeast"]:
-        d = pk[pk.region == k].set_index("season")["peak"]
-        cells = "".join(f'<td class="num">{_num(d.get(y, np.nan) / 1000)}</td>' for y, _ in cols)
-        rows.append(f'<tr><td>{_t(REGIONS[k]["en"], REGIONS[k]["fr"])}</td><td class="num">{_num(d.loc[1998:].median() / 1000)}</td>{cells}</tr>')
-    return ('<div class="tablewrap"><table><tr><th>' + _t("People in flooded areas, season peak (thousands)", "Personnes en zone inondée, pic de la saison (milliers)")
-            + f'</th><th class="num">{_t("typical season", "saison typique")}</th>{head}</tr>' + "".join(rows) + "</table></div>"
-            + f'<p class="note">{_t("*1997/98 from 12 January 1998. Typical = median of 1998/99–2025/26.", "*1997/98 à partir du 12 janvier 1998. Typique = médiane de 1998/99–2025/26.")}</p>')
 
 
 def private_block(v: dict) -> str:
@@ -1348,15 +1556,13 @@ def render(spec: dict, a: dict, figs: dict) -> str:
     out.append(f'<a class="lang" href="{"fr/" if L == "en" else "../"}">{"Français" if L == "en" else "English"}</a>')
     out.append(f'<p class="eyebrow">{_t("Restricted · El Niño 2026/27", "Accès restreint · El Niño 2026/27")}</p>')
     out.append(f'<h1>{pg["title_" + L]}</h1><p class="meta">{pg["sub_" + L]}<br>{pg["dateline_" + L].format(**v)}</p>')
-    out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t["big"].format(**v)}</p><p>{t[L].format(**v)}</p></div>'
+    out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t.get("big_" + L, t["big"]).format(**v)}</p><p>{t[L].format(**v)}</p></div>'
                                                 for t in spec["tiles"]) + "</div>")
     for sec in spec["sections"]:
         out.append(f'<section id="{sec["id"]}"><h2>{sec[L].format(**v)}</h2>')
         if sec.get("note_" + L):
             out.append(f'<p class="note">{sec["note_" + L].format(**v)}</p>')
         out.append(f'<figure><img src="{_img(figs[sec["fig"]])}" alt="{html.escape(sec[L].format(**v))}"></figure>')
-        if sec.get("table") == "range":
-            out.append(range_table(a["peaks"], a["series"]))
         out.append("</section>")
     out.append(private_block(v))
     notes = "".join(f"<li>{n.format(**v)}</li>" for n in spec["notes"][L])
@@ -1372,6 +1578,9 @@ def encrypt() -> None:
     pw = os.environ.get("SITE_PASSWORD")
     if not pw:
         raise SystemExit("set SITE_PASSWORD to encrypt")
+    markers = ['class="tile"', "data:image/png", "EM-DAT", "FloodScan", "Tanganyika"]
+    if PRIVATE.exists():  # a stretch of every row of the private comparison, read at run time
+        markers += [r[k][:30] for r in tomllib.loads(PRIVATE.read_text(encoding="utf-8"))["rows"] for k in ("partner_en", "partner_fr")]
     for rel in ("index.html", "fr/index.html"):
         src, dst = OUT / rel, (DOCS / rel).parent
         dst.mkdir(parents=True, exist_ok=True)
@@ -1382,7 +1591,7 @@ def encrypt() -> None:
         enc = (DOCS / rel).read_text()
         if "staticrypt" not in enc:
             raise SystemExit(f"{DOCS / rel} is not a staticrypt page")
-        for marker in ('class="tile"', "data:image/png", "EM-DAT", "FloodScan", "Tanganyika", "WFP", "PAM", "METTELSAT", "IPC 3+"):
+        for marker in markers:
             if marker in enc:
                 raise SystemExit(f"{DOCS / rel} contains plaintext ({marker})")
     print(f"  encrypted -> {DOCS}/index.html, fr/index.html")
@@ -1404,13 +1613,15 @@ def analyse() -> dict:
     series = region_series(fs)
     peaks = region_peaks(series)
     sm = territory_smoothed(floodscan_adm2())
-    a = dict(series=series, peaks=peaks, maps=driver_maps(), maps_era5=driver_maps("era5"), anoms=rain_anomalies(),
-             events=emdat_events(), cross=territory_cross(sm), split=need_split(sm, peaks), lists=flood_lists(sm))
+    a = dict(fs=fs, series=series, peaks=peaks, maps=driver_maps(), maps_era5=driver_maps("era5"), anoms=rain_anomalies(),
+             events=emdat_events(), cross=territory_cross(sm), split=need_split(sm, peaks), lists=flood_lists(sm),
+             outside=outside_regions(fs))
     return a
 
 
 def figures(a: dict) -> dict:
     f = {}
+    f["how_many"] = fig_how_many(a["split"], a["events"], a["outside"])
     f["setup"] = fig_setup()
     f["drivers"] = fig_drivers(a["maps"], a["maps_era5"])
     f["rain_years"] = fig_rain_years(a["anoms"])
