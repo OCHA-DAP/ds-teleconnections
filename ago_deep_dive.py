@@ -638,6 +638,56 @@ def fig_forecast(tab: dict[str, pd.DataFrame], rainy: pd.DataFrame, issued: str)
     return _save(fig, "forecast")
 
 
+MONTH_LBL = {11: "Nov", 12: "Dec", 1: "Jan", 2: "Feb", 3: "Mar"}
+
+
+def seas5_months(issued_month: int) -> pd.DataFrame:
+    """Forecast percentile (rank among the hindcasts, same method) of each single month of the season, per unit."""
+    return pd.DataFrame({m: {u: _skill_stats(f, o)["pct"] for u, (f, o) in _seas5_pairs(issued_month, [m]).items()}
+                         for m in SEASON})
+
+
+def fig_months(tab: dict[str, pd.DataFrame], months: pd.DataFrame, issued: str) -> Path:
+    """Forecast rank by single month, by the three-month windows inside the season, and for the season, per unit."""
+    units = list(provinces().pcode) + list(GROUPS) + ["AO"]
+    tris = [w for w, ms in WINDOWS.items() if set(ms) <= set(SEASON)]
+    cols = [(MONTH_LBL[m], months[m]) for m in SEASON] + [(None, None)] + [(w, tab[w]["pct"]) for w in tris] \
+        + [(None, None), (SEASON_LBL, tab["season"]["pct"])]
+    fig, ax = plt.subplots(figsize=(7.2, 0.25 * len(units) + 1.3))
+    for j, (lab, ser) in enumerate(cols):
+        if ser is None:
+            continue
+        for i, u in enumerate(units):
+            pct = float(ser.loc[u])
+            cls = seas5_class(pct, 0.9, True)[0]          # forecast class from the rank alone
+            ax.add_patch(plt.Rectangle((j, i), 0.96, 0.92, color=SEAS5_FILL[cls], lw=0))
+            ax.text(j + 0.48, i + 0.47, f"{pct:.0f}", ha="center", va="center", fontsize=7,
+                    color="#ffffff" if cls.startswith("vsev") else TEXT)
+    ax.set_xlim(0, len(cols))
+    ax.set_ylim(len(units), -0.1)
+    ax.set_xticks([j + 0.48 for j, (lab, _) in enumerate(cols) if lab], [lab for lab, _ in cols if lab], fontsize=8)
+    ax.xaxis.tick_top()
+    ax.set_yticks([i + 0.47 for i in range(len(units))], [unit_name(u) for u in units], fontsize=8)
+    for lab, u in zip(ax.get_yticklabels(), units):
+        if u in GROUPS or u == "AO":
+            lab.set_fontweight("bold")
+    ax.tick_params(length=0)
+    for sp in ax.spines.values():
+        sp.set_visible(False)
+    ax.set_title(f"SEAS5 {issued}: percentile among the {int(tab['season']['n'].iloc[0])} past October forecasts",
+                 fontsize=9, loc="left", pad=22)
+    handles = [Patch(color=SEAS5_FILL[k], label=l) for k, l in
+               [("vsev_dry", "driest 10%"), ("sev_dry", "driest third"), ("none", "middle"), ("sev_wet", "wettest third"),
+                ("vsev_wet", "wettest 10%")]]
+    ax.legend(handles=handles, loc="upper left", bbox_to_anchor=(0, -0.005), ncol=5, frameon=False, fontsize=7.5,
+              handlelength=1.2, columnspacing=1.2)
+    _source(fig, "0 = drier than every past forecast for the same months, 100 = wetter than every one; same method as the "
+                 "maps (log-transformed, scaled to ERA5, detrended). Colour comes from the rank alone, whatever the skill; "
+                 "skill and the low-skill grey are on the maps above. Three-month columns: the numbers in the seas5-skill "
+                 "viewer. Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.", y=0.06, width=120)
+    return _save(fig, "months")
+
+
 # ---- 2. rain so far --------------------------------------------------------------------------------------------------
 PENTAD_DIR = CACHE / "chirps_pentads"
 
@@ -1149,6 +1199,8 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     tab = seas5_table(im)
     rainy = seas5_rainy()
     f["forecast"] = fig_forecast(tab, rainy, issued)
+    mo = seas5_months(im)
+    f["months"] = fig_months(tab, mo, issued)
     sf = so_far(mon, cube)
     a = asap_biomass(1)
     # end of last season = last dekad of April 2026, kept beside the latest dekad
@@ -1282,6 +1334,16 @@ def analyse(spec: dict) -> tuple[dict, dict]:
               hl_r_oni=f"{hp['r_oni']:.2f}", early_names=", ".join(unit_name(u) for u in provinces().pcode if bool(sf["early"][u])))
     if not skilled or not unskilled:
         raise ValueError("all or none of the dry provinces have skill ≥ 0.3: reword 'only' in the forecast note")
+    # single months: November and March drier than every past forecast in every dry province, the middle less so
+    edge = [u for u in dry if mo.loc[u, 11] == 0 and mo.loc[u, 3] == 0]
+    mid_w = [w for w, ms in WINDOWS.items() if ms == [12, 1, 2]]
+    if edge != dry or not mid_w or not all(tab[mid_w[0]].loc[u, "pct"] > 0 for u in dry):
+        raise ValueError("November and March are no longer the driest months of the forecast in every dry province: reword")
+    nov0 = [u for u in provinces().pcode if mo.loc[u, 11] == 0]
+    if mo.loc["AO", 11] != 0:
+        raise ValueError("November nationally is no longer drier than every past forecast: reword the months headline")
+    jan_dry = [unit_name(u) for u in dry if mo.loc[u, 1] <= 100 / 3]
+    v |= dict(jan_dry=", ".join(jan_dry) if jan_dry else "none of them", nov0_n=len(nov0))
     # the tile: rank 1 of n + 1, and how far below the previous driest forecast (raw ensemble mean, before any adjustment)
     if s.rp_dry != s.n + 1:
         raise ValueError(f"{sk}: the forecast is no longer drier than every past forecast: reword the first tile")

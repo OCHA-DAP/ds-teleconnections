@@ -67,6 +67,12 @@ head = "SEAS5, {issued}: dry in the south, wet in the north and centre; national
 note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones; of the dry provinces, skill is 0.3 or more only in {sk_names}. A return period of {rp_cap} means drier than every past October forecast; without removing the trend it is still the driest in {raw_driest} of the {n_dry} dry provinces. In the south the forecast is {hl_fc_pct}% of the average past October forecast ({hl_z} SD); the previous driest, for {hl_prev}, was {hl_prev_pct}% ({hl_prev_z} SD). The November forecast comes out around 6 November."
 
 [[sections]]
+id = "months"
+fig = "months"
+head = "November is forecast drier than in any past October forecast in {nov0_n} of 18 provinces and for Angola as a whole, and March in all {n_dry} dry provinces; in those, December–February is less dry"
+note = "In the dry provinces, January is in the driest third only in {jan_dry}. The three-month columns are the same numbers as the <a href='https://ocha-dap.github.io/ds-seas5-skill/app/'>seas5-skill viewer</a>, province by province."
+
+[[sections]]
 id = "table"
 fig = "table"
 head = "By province"
