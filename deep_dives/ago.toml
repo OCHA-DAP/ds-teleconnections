@@ -69,8 +69,8 @@ note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_na
 [[sections]]
 id = "months"
 fig = "months"
-head = "November is forecast drier than in any past October forecast in {nov0_n} of 18 provinces and for Angola as a whole, and March in all {n_dry} dry provinces; in those, December–February is less dry"
-note = "In the dry provinces, January is in the driest third only in {jan_dry}. The three-month columns are the same numbers as the <a href='https://ocha-dap.github.io/ds-seas5-skill/app/'>seas5-skill viewer</a>, province by province."
+head = "November is forecast drier than in any past October forecast in {nov0_n} of 18 provinces and for Angola as a whole, and March in all {n_dry} dry provinces"
+note = "Dec–Feb is less dry in {mid_ok}; in {mid_vs} it stays among the driest 10%. January is in the driest third only in {jan_dry}. The three-month columns are the same numbers as the <a href='https://ocha-dap.github.io/ds-seas5-skill/app/'>seas5-skill viewer</a> for every province it shows."
 
 [[sections]]
 id = "table"

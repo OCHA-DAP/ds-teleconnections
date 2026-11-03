@@ -651,7 +651,7 @@ def fig_months(tab: dict[str, pd.DataFrame], months: pd.DataFrame, issued: str) 
     """Forecast rank by single month, by the three-month windows inside the season, and for the season, per unit."""
     units = list(provinces().pcode) + list(GROUPS) + ["AO"]
     tris = [w for w, ms in WINDOWS.items() if set(ms) <= set(SEASON)]
-    cols = [(MONTH_LBL[m], months[m]) for m in SEASON] + [(None, None)] + [(w, tab[w]["pct"]) for w in tris] \
+    cols = [(MONTH_LBL[m], months[m]) for m in SEASON] + [(None, None)] + [(win_label(w), tab[w]["pct"]) for w in tris] \
         + [(None, None), (SEASON_LBL, tab["season"]["pct"])]
     fig, ax = plt.subplots(figsize=(7.2, 0.25 * len(units) + 1.3))
     for j, (lab, ser) in enumerate(cols):
@@ -683,8 +683,8 @@ def fig_months(tab: dict[str, pd.DataFrame], months: pd.DataFrame, issued: str) 
               handlelength=1.2, columnspacing=1.2)
     _source(fig, "0 = drier than every past forecast for the same months, 100 = wetter than every one; same method as the "
                  "maps (log-transformed, scaled to ERA5, detrended). Colour comes from the rank alone, whatever the skill; "
-                 "skill and the low-skill grey are on the maps above. Three-month columns: the numbers in the seas5-skill "
-                 "viewer. Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.", y=0.06, width=120)
+                 "skill, and the cross-hatch for low skill, are on the maps above. Three-month columns: the same numbers as the "
+                 "seas5-skill viewer for every province it shows. Source: ECMWF SEAS5 and ERA5, team admin-1 statistics.", y=0.06, width=120)
     return _save(fig, "months")
 
 
@@ -1337,13 +1337,20 @@ def analyse(spec: dict) -> tuple[dict, dict]:
     # single months: November and March drier than every past forecast in every dry province, the middle less so
     edge = [u for u in dry if mo.loc[u, 11] == 0 and mo.loc[u, 3] == 0]
     mid_w = [w for w, ms in WINDOWS.items() if ms == [12, 1, 2]]
-    if edge != dry or not mid_w or not all(tab[mid_w[0]].loc[u, "pct"] > 0 for u in dry):
+    if edge != dry or not mid_w:
         raise ValueError("November and March are no longer the driest months of the forecast in every dry province: reword")
+    mid_ok = [unit_name(u) for u in dry if tab[mid_w[0]].loc[u, "pct"] > 100 / SEAS5_T["vsev_rp"]]
+    mid_vs = [unit_name(u) for u in dry if tab[mid_w[0]].loc[u, "pct"] <= 100 / SEAS5_T["vsev_rp"]]
+    if not mid_ok or not mid_vs:
+        raise ValueError("Dec–Feb is now in (or out of) the driest 10% in every dry province: reword the months note")
+    andj = lambda xs: ", ".join(xs[:-1]) + " and " + xs[-1] if len(xs) > 1 else "".join(xs)
     nov0 = [u for u in provinces().pcode if mo.loc[u, 11] == 0]
     if mo.loc["AO", 11] != 0:
         raise ValueError("November nationally is no longer drier than every past forecast: reword the months headline")
     jan_dry = [unit_name(u) for u in dry if mo.loc[u, 1] <= 100 / 3]
-    v |= dict(jan_dry=", ".join(jan_dry) if jan_dry else "none of them", nov0_n=len(nov0))
+    if not jan_dry or len(jan_dry) == len(dry):
+        raise ValueError("January's driest-third list is empty or complete: reword 'only' in the months note")
+    v |= dict(jan_dry=andj(jan_dry), nov0_n=len(nov0), mid_ok=andj(mid_ok), mid_vs=andj(mid_vs))
     # the tile: rank 1 of n + 1, and how far below the previous driest forecast (raw ensemble mean, before any adjustment)
     if s.rp_dry != s.n + 1:
         raise ValueError(f"{sk}: the forecast is no longer drier than every past forecast: reword the first tile")
