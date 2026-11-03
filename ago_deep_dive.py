@@ -1282,6 +1282,15 @@ def analyse(spec: dict) -> tuple[dict, dict]:
               hl_r_oni=f"{hp['r_oni']:.2f}", early_names=", ".join(unit_name(u) for u in provinces().pcode if bool(sf["early"][u])))
     if not skilled or not unskilled:
         raise ValueError("all or none of the dry provinces have skill ≥ 0.3: reword 'only' in the forecast note")
+    # the tile: rank 1 of n + 1, and how far below the previous driest forecast (raw ensemble mean, before any adjustment)
+    if s.rp_dry != s.n + 1:
+        raise ValueError(f"{sk}: the forecast is no longer drier than every past forecast: reword the first tile")
+    fr = _seas5_pairs(im, SEASON)[sk][0]
+    fh = fr.loc[ss[sk]["hist"]]
+    sd = ss[sk]["f"].loc[ss[sk]["hist"]]
+    prev = int(sd.idxmin())
+    v |= dict(hl_fc_pct=f"{100 * fr[int(s.year)] / fh.mean():.0f}", hl_prev=season_label(prev),
+              hl_prev_pct=f"{100 * fr[prev] / fh.mean():.0f}", hl_prev_z=f"{(sd[prev] - sd.mean()) / sd.std(ddof=1):+.1f}")
     if not 10 <= abs(hp["enso"] / hp["z"]) * 100 <= 40:
         raise ValueError("ENSO share outside 10–40%: reword the tile and the strong-section headline")
     if not 25 <= S.loc["AO", "pct"] <= 75:

@@ -48,7 +48,7 @@ dateline = "SEAS5 issued {issued} · rain to {so_end} October 2026 (CHIRPS, prel
 
 [[tiles]]
 big = "1 in {hl_rp}"
-text = "SEAS5 ({issued}) forecast of Nov–Mar rain in the south: return period among the {n_hind} past October forecasts; skill r = {hl_r}"
+text = "SEAS5's {issued} forecast of Nov–Mar rain in the south is drier than all {n_hind} of its past October forecasts (seasons starting {hind_years}); {hl_rp} is the most a {n_hind}-year record can show. It ranks the forecast, not the rain to come (skill r = {hl_r})."
 [[tiles]]
 big = "{hl_enso_share}%"
 text = "of the south's forecast anomaly ({hl_z} SD) goes with El Niño, if SEAS5's weak past relation to the ONI (r = {hl_r_oni}) is extended to this year's record {oni_jas} °C"
@@ -64,7 +64,7 @@ part = "1. The forecast"
 id = "forecast"
 fig = "forecast"
 head = "SEAS5, {issued}: dry in the south, wet in the north and centre; nationally the two cancel ({nat_pct}th percentile)"
-note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones; of the dry provinces, skill is 0.3 or more only in {sk_names}. A return period of {rp_cap} means drier than every past October forecast; without removing the trend it is still the driest in {raw_driest} of the {n_dry} dry provinces. The November forecast comes out around 6 November."
+note = "Driest 10% of forecasts for Nov–Mar: {dry_names}. Wettest 10%: {wet_names}. Median skill r = {dry_r_med} in the dry provinces and {wet_r_med} in the wet ones; of the dry provinces, skill is 0.3 or more only in {sk_names}. A return period of {rp_cap} means drier than every past October forecast; without removing the trend it is still the driest in {raw_driest} of the {n_dry} dry provinces. In the south the forecast is {hl_fc_pct}% of the average past October forecast ({hl_z} SD); the previous driest, for {hl_prev}, was {hl_prev_pct}% ({hl_prev_z} SD). The November forecast comes out around 6 November."
 
 [[sections]]
 id = "table"
