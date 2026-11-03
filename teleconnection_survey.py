@@ -391,7 +391,7 @@ LIVE_INDEX_MAX_AGE_DAYS = 7
 # Live sources: the analysis sources, except where that series has stopped.
 # PDO: PSL's pdo.data (the original University of Washington / Mantua series) ends
 # Aug 2025; NOAA NCEI's ERSST v5 PDO continues it (r = 0.98 with it since 2010, same
-# spread, about 0.5 lower on average). AMM: its only source (Univ. of Wisconsin,
+# spread; lower on average by about 0.5 over 1981–2025 and 0.6–0.7 over 2010–2025). AMM: its only source (Univ. of Wisconsin,
 # mirrored by PSL) ends Feb 2026 because the NCEP-NCAR reanalysis it is computed
 # from stopped updating; no other current AMM exists, so its panel just says so.
 NCEI_PDO_URL = "https://www.ncei.noaa.gov/pub/data/cmb/ersst/v5/index/ersst.v5.pdo.dat"
@@ -430,6 +430,15 @@ def _check_live_download(text: str, previous: Path, fmt: str = "psl") -> None:
         end_year = int(text.splitlines()[0].split()[1])
         if s.empty or s.index.max().year != end_year:
             raise ValueError(f"rows stop before {end_year}, the end year in its header")
+    if fmt == "ncei":
+        # PSL files also have 'year + 12 values' rows; NCEI's carry a month header
+        # and mark gaps with 99.99, so a wrong file or a changed gap marker shows up
+        # as a missing header or impossible values (NCEI's PDO has stayed within
+        # −4.3..+3.9 since 1854; PSL pads gaps with −9.90 or −9999)
+        if not any(ln.split()[:2] == ["Year", "Jan"] for ln in text.splitlines()[:5]):
+            raise ValueError("no 'Year Jan ... Dec' header: not an NCEI index table")
+        if (s.abs() >= 6).any():
+            raise ValueError(f"impossible value {s[s.abs() >= 6].iloc[0]} (gap marker changed?)")
     new = s.loc["2010":].dropna()
     if new.empty:
         raise ValueError("no values since 2010")
@@ -1464,7 +1473,8 @@ def _plot_base_layer(ax, g_poly, analyzed_isos: set[str]) -> None:
 # Panel titles where the panel's series differs from the one the maps use.
 TS_PANEL_LABELS = {"pdo": "PDO (Pacific Decadal Oscillation, NOAA NCEI)"}
 # Series that have stopped at source: the panel's date stamp says so while the
-# latest value is more than TS_STALE_MONTHS old (so the note goes if it resumes).
+# latest value is more than TS_STALE_MONTHS old (so it disappears once the series
+# is back within that lag).
 TS_STALE_NOTES = {"amm": "no longer published"}
 TS_STALE_MONTHS = 4
 
@@ -2277,7 +2287,7 @@ def generate_html_report(cfg: dict) -> None:
         return f"""
       <div class="map-item" data-kind="{kind}" data-lag="{lag_tag}" data-res="{res}">
         <div class="map-with-ts">
-          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{label} historical values"></div>
+          <div class="ts-col"><img style="width:100%;height:auto;display:block;" src="maps/ts_{name}.png" alt="{TS_PANEL_LABELS.get(name, label)} historical values"></div>
           <div class="map-col">
             <p class="map-title">Correlation of {label} with total seasonal rainfall — {kind_title} ({_lag_label[lag_tag]}, {_res_label[res]})</p>
             <div class="map-zoom"><img src="{img}" alt="{label} {kind} correlation {lag_tag} {res}"></div>
@@ -2738,8 +2748,9 @@ def generate_html_report(cfg: dict) -> None:
         months late. The maps themselves were computed from copies downloaded earlier, and NOAA has since revised
         some series slightly (its Niño3.4 now reads about 0.2 °C warmer). The PDO series used for the maps stopped
         in August 2025, so the PDO panel shows NOAA NCEI's PDO instead; the two move together closely, but NCEI's
-        reads about 0.5 lower on average. The AMM has not been published since February 2026, when the reanalysis
-        it is calculated from stopped updating, so its panel ends there.
+        reads lower on average (by about 0.5 since 1981 and 0.6–0.7 over the years in the panel). The AMM
+        has not been published since February 2026, when the reanalysis it is calculated from stopped
+        updating, so its panel ends there.
       </p>
       <h3 style="font-size:0.95rem;margin:0.8rem 0 0.6rem;">Spatial resolution (Country vs Pixel)</h3>
       <p style="margin:0 0 0.6rem;">

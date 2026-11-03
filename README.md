@@ -46,7 +46,8 @@ latest files, kept separately in `cache/live/` (re-downloaded when more than a w
 pinned `cache/{index}.data` copies that the correlations and deep dives use. NOAA revises these series
 (Niño3.4 moved to ERSST v6 in 2026), so the two must not be mixed. Two panels use a different series
 from the maps (`LIVE_INDEX_SOURCES`): PDO comes from NOAA NCEI's ERSST v5 PDO, because PSL's PDO (the
-original University of Washington series) ended in Aug 2025; the AMM has no current source at all (its
+original University of Washington series) ended in Aug 2025 (NCEI's moves with it, r = 0.98 since 2010, but
+reads about 0.5 lower since 1981 and 0.6–0.7 lower since 2010); the AMM has no current source at all (its
 only publisher, Univ. of Wisconsin, ends Feb 2026 because the NCEP-NCAR reanalysis it is computed from
 stopped updating), so its panel stays at Feb 2026 and says so. `cache/` is not committed: the pinned
 copies exist only on the machine that ran the analysis, and on a fresh clone the first run downloads NOAA's
