@@ -820,19 +820,24 @@ def _tri_month_pairs(tri: str, season_year: int) -> list[tuple[int, int]]:
     ]
 
 
-def pixel_monthly_era5(cfg: dict) -> tuple[np.ndarray, list[tuple[int, int]],
-                                           np.ndarray, np.ndarray]:
+def pixel_monthly_era5(cfg: dict, xlim: tuple[float, float] = MAP_XLIM,
+                       ylim: tuple[float, float] = MAP_YLIM,
+                       cache_name: str = "era5_pixel",
+                       ) -> tuple[np.ndarray, list[tuple[int, int]],
+                                  np.ndarray, np.ndarray]:
     """Monthly ERA5 precip (mm/day) for the map viewport, as a disk-backed array.
 
     Downloads `era5/monthly/processed/*.tif` COGs from the team raster blob
-    container once, subsets each to MAP_XLIM/MAP_YLIM, and caches the stack to
-    cache/era5_pixel/monthly.npy so re-runs are free.
+    container once, subsets each to `xlim`/`ylim` (default: the survey's
+    MAP_XLIM/MAP_YLIM), and caches the stack to cache/<cache_name>/monthly.npy
+    so re-runs are free. The global ENSO season map (enso_season_map.py) uses
+    its own extent and cache_name, so the two caches never overwrite each other.
 
     Returns (stack, ym, x, y) where stack is a read-only memmap of shape
     (n_months, ny, nx), ym is the matching list of (year, month), and x/y are
     the cell-centre coordinates (y descending, as in the source COG).
     """
-    cache_dir: Path = cfg["cache_dir"] / "era5_pixel"
+    cache_dir: Path = cfg["cache_dir"] / cache_name
     cache_dir.mkdir(parents=True, exist_ok=True)
     arr_path, meta_path = cache_dir / "monthly.npy", cache_dir / "meta.json"
 
@@ -842,6 +847,13 @@ def pixel_monthly_era5(cfg: dict) -> tuple[np.ndarray, list[tuple[int, int]],
 
     if arr_path.exists() and meta_path.exists():
         meta = json.loads(meta_path.read_text())
+        # the cache does not record the requested extent: a cache_name reused
+        # with another xlim/ylim would silently return the wrong area
+        cx, cy = meta["x"], meta["y"]
+        if not (xlim[0] - 1e-6 <= cx[0] < xlim[0] + 1 and xlim[1] - 1 < cx[-1] <= xlim[1] + 1e-6
+                and ylim[1] - 1 < cy[0] <= ylim[1] + 1e-6 and ylim[0] - 1e-6 <= cy[-1] < ylim[0] + 1):
+            raise ValueError(f"cache/{cache_name} holds x {cx[0]}..{cx[-1]}, y {cy[0]}..{cy[-1]}, "
+                             f"not the requested {xlim} x {ylim}; use another cache_name")
         if meta["ym"] and [tuple(t) for t in meta["ym"]] == want[:len(meta["ym"])]:
             stack = np.load(arr_path, mmap_mode="r")
             print(f"ERA5 pixel cache: {stack.shape[0]} months, "
@@ -863,8 +875,8 @@ def pixel_monthly_era5(cfg: dict) -> tuple[np.ndarray, list[tuple[int, int]],
                                   container_name="raster",
                                   container_client=container)
     xs, ys = probe.x.values, probe.y.values
-    xsel = np.where((xs >= MAP_XLIM[0] - 1e-6) & (xs <= MAP_XLIM[1] + 1e-6))[0]
-    ysel = np.where((ys >= MAP_YLIM[0] - 1e-6) & (ys <= MAP_YLIM[1] + 1e-6))[0]
+    xsel = np.where((xs >= xlim[0] - 1e-6) & (xs <= xlim[1] + 1e-6))[0]
+    ysel = np.where((ys >= ylim[0] - 1e-6) & (ys <= ylim[1] + 1e-6))[0]
     x0, x1, y0, y1 = xsel[0], xsel[-1], ysel[0], ysel[-1]
     x, y = xs[x0:x1 + 1], ys[y0:y1 + 1]
 
@@ -879,12 +891,21 @@ def pixel_monthly_era5(cfg: dict) -> tuple[np.ndarray, list[tuple[int, int]],
 
     def _fetch(job):
         i, (yr, m) = job
-        da = stratus.open_blob_cog(available[f"{yr}-{m:02d}-01"],
-                                   container_name="raster",
-                                   container_client=container)
-        stack[i] = da.isel(band=0, y=slice(y0, y1 + 1),
-                           x=slice(x0, x1 + 1)).values.astype("float32")
-        return i
+        # a dropped connection part-way through ~540 downloads would otherwise
+        # throw the whole stack away: retry each file a few times first
+        for attempt in range(5):
+            try:
+                da = stratus.open_blob_cog(available[f"{yr}-{m:02d}-01"],
+                                           container_name="raster",
+                                           container_client=container)
+                stack[i] = da.isel(band=0, y=slice(y0, y1 + 1),
+                                   x=slice(x0, x1 + 1)).values.astype("float32")
+                return i
+            except Exception as exc:  # network errors surface as rasterio/xarray/OSError types
+                if attempt == 4:
+                    raise
+                print(f"  {yr}-{m:02d}: {type(exc).__name__}; retrying")
+                time.sleep(2 ** (attempt + 1))
 
     print(f"Downloading {len(ym)} ERA5 monthly COGs "
           f"({len(y)}x{len(x)} cells each)...")
@@ -957,7 +978,10 @@ def pixel_land_mask(gdf: gpd.GeoDataFrame, x: np.ndarray, y: np.ndarray) -> np.n
     ).astype(bool)
 
 
-def pixel_trimester_rainfall_era5(cfg: dict, gdf: gpd.GeoDataFrame) -> PixelData:
+def pixel_trimester_rainfall_era5(cfg: dict, gdf: gpd.GeoDataFrame,
+                                  xlim: tuple[float, float] = MAP_XLIM,
+                                  ylim: tuple[float, float] = MAP_YLIM,
+                                  cache_name: str = "era5_pixel") -> PixelData:
     """Build the pixel-level equivalent of `country_trimester_rainfall_era5`.
 
     Applies two per-cell season filters, both needed at this resolution:
@@ -967,14 +991,14 @@ def pixel_trimester_rainfall_era5(cfg: dict, gdf: gpd.GeoDataFrame) -> PixelData
         hyper-arid cells (Sahara, Rub' al Khali, Taklamakan) where correlations
         against near-zero rainfall are numerically strong but meaningless.
     """
-    stack, ym, x, y = pixel_monthly_era5(cfg)
+    stack, ym, x, y = pixel_monthly_era5(cfg, xlim, ylim, cache_name)
     land = pixel_land_mask(gdf, x, y)
     flat_idx = np.flatnonzero(land.reshape(-1))
     mpos = {p: i for i, p in enumerate(ym)}
     print(f"Pixel grid: {land.shape[0]}x{land.shape[1]} cells, "
           f"{len(flat_idx)} on land")
     # Cached so the report can quote the real count even on a --skip-px run.
-    (cfg["cache_dir"] / "era5_pixel" / "cells.json").write_text(
+    (cfg["cache_dir"] / cache_name / "cells.json").write_text(
         json.dumps({"n_cells": int(len(flat_idx)),
                     "shape": [int(v) for v in land.shape]})
     )
@@ -2306,9 +2330,15 @@ def generate_html_report(cfg: dict) -> None:
             for lag_tag in LAG_CAPS
             for kind in ("total", "partial")
         )
+        # the ENSO pixel maps show each cell's strongest season; the season map
+        # (docs/enso-map/, enso_season_map.py) shows every season, worldwide
+        season_link = (
+            '\n    <p class="enso-note">Every season separately, worldwide and zoomable, with the values '
+            'for any cell: <a href="../enso-map/">ENSO and seasonal rainfall, season by season</a>.</p>'
+            if name == "nino34" else "")
         index_sections.append(f"""
   <section>
-    <h2>{label}</h2>
+    <h2>{label}</h2>{season_link}
     <div class="map-pair">{items}
     </div>
   </section>""")

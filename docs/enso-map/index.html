@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENSO and seasonal rainfall, season by season — Teleconnections</title>
+<meta name="description" content="Interactive global map of how closely each three-month season's rainfall has followed ENSO (Niño3.4), 1981–2025, for every 0.25° land cell.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+<style>
+/* HDX v2 tokens, as in ../assets/site.css */
+:root{--b5:#269777;--b6:#1e795f;--b7:#18614c;--b05:#e9f5f1;--b1:#d4eae4;
+      --n9:#1f2324;--n8:#3f4748;--n7:#5e6a6b;--n3:#c5cccc;--n1:#e8ecec;--n05:#f5f7f7;
+      --wet2:#0D40B0;--wet1:#71B3E5;--dry1:#C8844A;--dry2:#7B3A1A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--n05);color:var(--n9);
+  font-family:'Roboto',system-ui,-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;line-height:1.5}
+.wrap{max-width:1480px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(31,35,36,.06)}
+header.top{padding:14px 24px 10px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 22px}
+.home-link{display:inline-block;margin-top:4px;padding:6px 12px;font:500 13px/1 'Roboto',system-ui,sans-serif;color:var(--b6);
+  background:var(--b05);border:1px solid var(--b1);border-radius:4px;text-decoration:none;white-space:nowrap}
+.home-link:hover{background:var(--b1)}
+header h1{font-family:'Merriweather',Georgia,serif;font-size:22px;line-height:1.25;margin:0 0 3px}
+header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:8px 24px 10px;border-top:1px solid var(--n1);
+  border-bottom:1px solid var(--n1);background:#fbfcfc}
+.ctl-label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--n7);margin-right:6px}
+.seasons{display:flex;flex-wrap:wrap;align-items:center;gap:3px}
+.seasons button,.seg button,.play{font:500 13px/1 'Roboto',system-ui,sans-serif;border:1px solid var(--n3);background:#fff;color:var(--n8);
+  padding:7px 8px;border-radius:4px;cursor:pointer;min-width:42px}
+.seasons button:hover,.seg button:hover,.play:hover{border-color:var(--b5);color:var(--b7)}
+.seasons button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--b6);border-color:var(--b6);color:#fff}
+.seasons button.loading{color:var(--n3)}
+.play{min-width:36px;margin-left:6px}
+.seg{display:flex}
+.seg button{border-radius:0;min-width:0;padding:7px 10px}
+.seg button:first-child{border-radius:4px 0 0 4px}
+.seg button:last-child{border-radius:0 4px 4px 0;margin-left:-1px}
+.spacer{flex:1}
+#search{font:14px 'Roboto',system-ui,sans-serif;padding:6px 10px;border:1px solid var(--n3);border-radius:4px;width:220px}
+#search:focus,.seasons button:focus-visible,.seg button:focus-visible,.play:focus-visible{outline:2px solid var(--b5);outline-offset:1px}
+.mapwrap{position:relative;height:max(460px,calc(100vh - 150px))}
+#map{position:absolute;inset:0;background:#dfe3e6}
+.leaflet-container{font-family:'Roboto',system-ui,sans-serif}
+.season-badge{position:absolute;top:10px;left:10px;z-index:800;background:rgba(255,255,255,.94);border-radius:6px;
+  padding:8px 12px 7px;box-shadow:0 1px 6px rgba(31,35,36,.18);pointer-events:none}
+.season-badge .big{font:700 18px/1.15 'Merriweather',Georgia,serif}
+.season-badge .small{font-size:12px;color:var(--n7)}
+.legend{position:absolute;left:10px;bottom:22px;z-index:800;background:rgba(255,255,255,.95);border-radius:6px;
+  padding:9px 12px 8px;box-shadow:0 1px 6px rgba(31,35,36,.18);font-size:12.5px;max-width:300px}
+.legend h3{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--n7);margin:0 0 6px}
+.legend .row{display:flex;align-items:center;gap:8px;margin:3px 0}
+.legend .sw{width:18px;height:12px;border-radius:2px;flex:none;border:1px solid rgba(0,0,0,.08)}
+.legend .sw.dry{background:repeating-linear-gradient(135deg,#f4f1ea 0 3px,#d9cfbb 3px 4px)}
+.legend .sw.dryc{background:repeating-linear-gradient(135deg,#C8844A 0 3px,#e8cdb5 3px 4px)}
+.legend .ramp{height:12px;border-radius:2px;margin:4px 0 2px;
+  background:linear-gradient(90deg,#7B3A1A 0%,#C8844A 35%,#F5F0EC 50%,#71B3E5 65%,#0D40B0 100%)}
+.legend .ticks{position:relative;height:14px;font-size:10.5px;color:var(--n7)}
+.legend .ticks span{position:absolute;transform:translateX(-50%)}
+.legend .ends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--n8)}
+.legend .note{font-size:11.5px;color:var(--n7);margin-top:5px}
+.status{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:900;background:var(--n9);color:#fff;
+  font-size:13px;padding:6px 12px;border-radius:4px;display:none}
+.tip{position:absolute;z-index:850;background:#fff;border-radius:6px;box-shadow:0 2px 14px rgba(31,35,36,.25);
+  padding:9px 12px 8px;font-size:12.5px;width:308px;pointer-events:none;display:none}
+.tip.pinned{pointer-events:auto}
+.tip .hd{display:flex;justify-content:space-between;gap:8px;color:var(--n7);font-size:11.5px}
+.tip .close{display:none;border:0;background:none;font-size:16px;line-height:1;color:var(--n7);cursor:pointer;padding:0 0 0 6px}
+.tip.pinned .close{display:inline}
+.tip .rv{font-size:15px;font-weight:700;margin:3px 0 1px}
+.tip .cls{display:inline-block;font-size:11.5px;font-weight:500;padding:1px 6px;border-radius:3px;margin-left:4px;vertical-align:1px}
+.tip .ln{color:var(--n8);margin:1px 0}
+.tip .muted{color:var(--n7)}
+.tip svg{display:block;margin-top:6px}
+.tip svg .bar{cursor:default}
+.tip.pinned svg .hit{cursor:pointer}
+.tip .hint{font-size:10.5px;color:var(--n7);margin-top:2px}
+.about{padding:22px 24px 36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:4px 40px;font-size:14.5px}
+.about h2{font-size:16px;margin:14px 0 6px;color:var(--n9)}
+.about p,.about li{color:var(--n8);margin:0 0 8px}
+.about ul{padding-left:18px;margin:0 0 8px}
+.about a{color:var(--b6)}
+.about .foot{grid-column:1/-1;font-size:12.5px;color:var(--n7);border-top:1px solid var(--n1);padding-top:12px;margin-top:8px}
+@media (max-width:760px){
+  header.top{padding:10px 14px 8px}
+  header h1{font-size:18px}
+  .controls{padding:8px 14px}
+  #search{width:100%}
+  .spacer{display:none}
+  .legend{font-size:11.5px;max-width:210px;padding:7px 9px}
+  .mapwrap{height:max(420px,calc(100vh - 230px))}
+  .about{padding:16px 14px 28px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="home-link" href="../">&larr; Teleconnections</a>
+  <div>
+    <h1>ENSO and seasonal rainfall, season by season</h1>
+    <p class="sub">How closely each three-month season’s rainfall has followed ENSO (the Niño3.4 index)
+      from 1981 to 2025, for every 0.25° land cell. <strong style="color:var(--wet2)">Blue</strong>: wetter in El Niño years,
+      drier in La Niña years. <strong style="color:var(--dry2)">Brown</strong>: drier in El Niño years, wetter in La Niña years.
+      Hover a cell for its values; click to keep the box open.</p>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seasons" role="group" aria-label="Season">
+    <span class="ctl-label">Season</span>
+    <span id="season-buttons" style="display:contents"></span>
+    <button type="button" class="play" id="play" aria-label="Play through the seasons" title="Play through the seasons">&#9654;</button>
+  </div>
+  <div class="spacer"></div>
+  <div style="display:flex;align-items:center">
+    <span class="ctl-label">Colours</span>
+    <div class="seg" role="group" aria-label="Colours">
+      <button type="button" data-mode="classes" aria-pressed="true" title="The survey's four classes">Classes</button>
+      <button type="button" data-mode="ramp" aria-pressed="false" title="Every value of r on a continuous scale">All values</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center">
+    <span class="ctl-label">Drier months</span>
+    <div class="seg" role="group" aria-label="Drier part of the year">
+      <button type="button" data-dry="0" aria-pressed="true" title="As in the survey: only seasons with at least 25% of the year's rain">Hide</button>
+      <button type="button" data-dry="1" aria-pressed="false" title="Also colour seasons with less than 25% of the year's rain (hatched)">Show</button>
+    </div>
+  </div>
+  <input id="search" type="search" list="countrylist" placeholder="Zoom to a country" aria-label="Zoom to a country" autocomplete="off">
+  <datalist id="countrylist"></datalist>
+</div>
+
+<div class="mapwrap">
+  <div id="map" role="region" aria-label="Map of ENSO correlation with seasonal rainfall"></div>
+  <div class="season-badge" aria-live="polite"><div class="big" id="badge-big">…</div><div class="small" id="badge-small">Loading data…</div></div>
+  <div class="legend" id="legend"></div>
+  <div class="status" id="status"></div>
+  <div class="tip" id="tip" role="dialog" aria-live="polite"></div>
+</div>
+
+<section class="about">
+  <div>
+    <h2>What the map shows</h2>
+    <p>For each land cell (0.25°, about 28 km) and each three-month season, the correlation <em>r</em>
+      between that season’s rainfall and the Niño3.4 index, 1981–2025 (44 or 45 years, depending on the
+      season). Positive <em>r</em>
+      (blue) means the season has tended to be wetter in El Niño years and drier in La Niña years; negative
+      <em>r</em> (brown) the reverse.</p>
+    <p>The darker shades (|<em>r</em>| ≥ 0.5) mark places where ENSO accounts for at least a quarter of the
+      year-to-year variation in that season’s rain; the lighter ones (0.3 to 0.5) for roughly a tenth to a
+      quarter. Grey: no clear relationship (|<em>r</em>| below 0.3, or not significant at <em>p</em> &lt; 0.05).
+      Hatched: these three months bring less than a quarter of the year’s rain in that cell, so the season
+      is not assessed.</p>
+    <p>The box for a cell also shows its 12 seasons side by side, so the seasons when ENSO matters there are
+      visible at a glance.</p>
+  </div>
+  <div>
+    <h2>How it is computed</h2>
+    <ul>
+      <li><strong>Rain:</strong> ERA5 monthly precipitation, averaged over the three months of the season, one
+        value per year and cell.</li>
+      <li><strong>ENSO:</strong> NOAA’s monthly Niño3.4 anomaly (ERSST v5, 1991–2020 base), averaged over three
+        months, either the same three months or a window ending one, two or three months earlier. The map uses
+        whichever of these four gives the largest |<em>r</em>|; the box says which.</li>
+      <li><strong>Which seasons count:</strong> a season is assessed in a cell only if it brings at least 25%
+        of the year’s rain there (at least its share if rain were spread evenly over the year) and averages
+        at least 0.25 mm a day. Where rain falls all year, as in much of Indonesia, this skips some seasons that
+        are still wet. <em>Drier months: Show</em> colours those seasons too, hatched, wherever they average at
+        least 0.25 mm a day; the box always gives their <em>r</em>.</li>
+      <li><strong>Colour:</strong> Pearson <em>r</em>, two-tailed <em>p</em> &lt; 0.05 and |<em>r</em>| ≥ 0.3.
+        “All values” shows every <em>r</em> in assessed seasons, significant or not.</li>
+    </ul>
+    <p>This is the method of the <a href="../survey/">global teleconnection survey</a>. The survey’s pixel ENSO
+      map shows each cell’s strongest season; this map shows every season. On the area the survey covers,
+      taking the strongest season here reproduces the survey’s map exactly.</p>
+  </div>
+  <div>
+    <h2>Reading it with care</h2>
+    <ul>
+      <li>Each cell is computed on its own, without smoothing. Even with no ENSO effect, about one cell in
+        twenty would pass <em>p</em> &lt; 0.05 by chance (somewhat more, because the best of four lead times is
+        kept), so trust patches of the same colour, not isolated cells.</li>
+      <li>Choosing the best of four lead times makes <em>r</em> slightly larger than a single fixed lead would.</li>
+      <li>The correlation describes 1981–2025. It is not a forecast, and it says nothing about how large a
+        particular El Niño’s effect will be.</li>
+      <li>ERA5 rainfall comes from a weather model constrained by observations. Where gauges are few it can
+        differ from satellite and station records; check CHIRPS or station data before relying on one area.</li>
+      <li>Coverage: all land between 60°S and 84°N. The survey’s maps stop at 100°W, 36°S and 56°N. Coastlines are
+        Natural Earth 1:10m with minor islands, so small islands have cells; coastal cells mix land and sea.</li>
+    </ul>
+  </div>
+  <p class="foot" id="foot">Data: ERA5 (Copernicus Climate Change Service), NOAA CPC Niño3.4, Natural Earth.
+    Basemap: Esri. Built by <code>enso_season_map.py</code> in
+    <a href="https://github.com/OCHA-DAP/ds-teleconnections">OCHA-DAP/ds-teleconnections</a>.</p>
+</section>
+
+</div>
+
+<script src="vendor/leaflet/leaflet.js"></script>
+<script>
+"use strict";
+(function () {
+  // ---------------------------------------------------------------- constants
+  // flags byte per land cell and season, written by enso_season_map.py
+  const F_LAG = 0b11, F_RAINY = 1 << 2, F_SIG = 1 << 3, F_VALID = 1 << 4, CLASS_SHIFT = 5;
+  const R_NAN = -128;
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const LONG_MONTHS = ["January","February","March","April","May","June","July","August",
+                       "September","October","November","December"];
+  // the survey's colours (teleconnection_survey.py _R_LEGEND / _PX_*)
+  const CLASS_INFO = [
+    {col: "#E3E3DF", label: "No clear ENSO signal"},
+    {col: "#71B3E5", label: "El Niño wetter, moderate"},
+    {col: "#0D40B0", label: "El Niño wetter, strong"},
+    {col: "#C8844A", label: "El Niño drier, moderate"},
+    {col: "#7B3A1A", label: "El Niño drier, strong"},
+  ];
+  const DRY_BG = "#F4F1EA", DRY_LINE = "#D9CFBB";
+  const RAMP_STOPS = [[0, "#7B3A1A"], [0.35, "#C8844A"], [0.5, "#F5F0EC"], [0.65, "#71B3E5"], [1, "#0D40B0"]];
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status"), tipEl = $("tip");
+
+  function hexRgb(h) { h = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  function rgba32(rgb, a = 255) { return ((a << 24) | (rgb[2] << 16) | (rgb[1] << 8) | rgb[0]) >>> 0; }
+  const CLASS32 = CLASS_INFO.map(c => rgba32(hexRgb(c.col)));
+  const DRY32 = rgba32(hexRgb(DRY_BG)), DRYLINE32 = rgba32(hexRgb(DRY_LINE));
+  // r*100 + 100 -> colour, the survey's drought/flood ramp
+  const RAMP32 = new Uint32Array(201), RAMP_HEX = new Array(201);
+  for (let k = 0; k <= 200; k++) {
+    const t = k / 200;
+    let i = 0; while (i < RAMP_STOPS.length - 2 && t > RAMP_STOPS[i + 1][0]) i++;
+    const [t0, c0] = RAMP_STOPS[i], [t1, c1] = RAMP_STOPS[i + 1];
+    const f = Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
+    const a = hexRgb(c0), b = hexRgb(c1);
+    const rgb = a.map((v, j) => Math.round(v + (b[j] - v) * f));
+    RAMP32[k] = rgba32(rgb);
+    RAMP_HEX[k] = "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  function light32(c32) {   // mix a packed colour 55% towards white, for hatch lines
+    const ch = k => (c32 >>> (8 * k)) & 255, m = v => Math.round(v + (255 - v) * 0.55);
+    return rgba32([m(ch(0)), m(ch(1)), m(ch(2))]);
+  }
+  const CLASS32_L = CLASS32.map(light32), RAMP32_L = RAMP32.map(light32);
+
+  function showStatus(msg) { statusEl.textContent = msg; statusEl.style.display = msg ? "block" : "none"; }
+
+  // ---------------------------------------------------------------- data
+  let META = null, G = null, LANDPOS = null, ANNUAL = null, N = 0;
+  const SEASON = {};          // code -> {clim, r, flags}
+  const PENDING = {};         // code -> promise
+
+  async function fetchBuf(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) {   // gzip, unless the server already undid it
+      const ds = new DecompressionStream("gzip");
+      return await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+    }
+    return bytes.buffer;
+  }
+  const v = () => `?v=${META.version}`;
+
+  function loadSeason(code) {
+    if (SEASON[code]) return Promise.resolve(SEASON[code]);
+    if (PENDING[code]) return PENDING[code];
+    PENDING[code] = fetchBuf(`data/${code}.bin.gz${v()}`).then(buf => {
+      if (buf.byteLength !== 4 * N) throw new Error(`${code}: ${buf.byteLength} bytes, expected ${4 * N}`);
+      SEASON[code] = {clim: new Uint16Array(buf, 0, N), r: new Int8Array(buf, 2 * N, N),
+                      flags: new Uint8Array(buf, 3 * N, N)};
+      delete PENDING[code];
+      const b = seasonButtons[code]; if (b) b.classList.remove("loading");
+      if (pinned) renderTip();               // the 12-season strip fills in as seasons arrive
+      return SEASON[code];
+    }).catch(err => { delete PENDING[code]; throw err; });
+    return PENDING[code];
+  }
+
+  // ---------------------------------------------------------------- state
+  const state = {season: "JAS", mode: "classes", dry: false};
+  let CODES = [];
+  const seasonButtons = {};
+  let COLORS = null, HATCH = null;      // per land cell, for the current season + settings
+  const minClim = () => Math.round(100 * META.thresholds.min_mm_day);   // clim is stored in 0.01 mm/day
+
+  // shown in colour: the survey's rainy seasons, plus (on request) the drier part of the year
+  // wherever it still averages at least the survey's 0.25 mm a day
+  function shown(s, p) {
+    const f = s.flags[p];
+    return (f & F_RAINY) ? 1 : (state.dry && (f & F_VALID) && s.clim[p] >= minClim()) ? 2 : 0;
+  }
+
+  function recolor() {
+    const s = SEASON[state.season];
+    if (!s) return;
+    if (!COLORS) { COLORS = new Uint32Array(N); HATCH = new Uint32Array(N); }
+    const ramp = state.mode === "ramp";
+    for (let p = 0; p < N; p++) {
+      const f = s.flags[p], how = shown(s, p);
+      if (!how) { COLORS[p] = DRY32; HATCH[p] = DRYLINE32; continue; }
+      let base, lite;
+      if (ramp && (f & F_VALID)) { base = RAMP32[s.r[p] + 100]; lite = RAMP32_L[s.r[p] + 100]; }
+      else { const c = ramp ? 0 : f >> CLASS_SHIFT; base = CLASS32[c]; lite = CLASS32_L[c]; }
+      COLORS[p] = base; HATCH[p] = how === 2 ? lite : 0;
+    }
+  }
+
+  // ---------------------------------------------------------------- map
+  const map = L.map("map", {zoomControl: false, worldCopyJump: true, minZoom: 2, maxZoom: 9,
+                            maxBounds: [[-75, -1080], [88, 1080]], maxBoundsViscosity: 1.0});
+  L.control.zoom({position: "topright"}).addTo(map);
+  L.control.scale({position: "bottomright", imperial: false}).addTo(map);
+  map.createPane("data").style.zIndex = 350;
+  map.createPane("labels").style.zIndex = 450;
+  map.getPane("labels").style.pointerEvents = "none";
+  const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
+  const esriAttr = "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors";
+  L.tileLayer(ESRI + "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {maxZoom: 16, attribution: esriAttr}).addTo(map);
+  L.tileLayer(ESRI + "World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {maxZoom: 16, pane: "labels"}).addTo(map);
+
+  const tiles = new Set();
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+
+  function paintTile(canvas) {
+    const c = canvas._wc, W = canvas.width, H = canvas.height;
+    const ctx = canvas.getContext("2d");
+    if (!COLORS) { ctx.clearRect(0, 0, W, H); return; }
+    const world = 256 * Math.pow(2, c.z) * DPR;
+    const x0 = c.x * W, y0 = c.y * H;
+    const lonEdge = G.lon0 - G.d / 2, latEdge = G.lat0 + G.d / 2;
+    const cols = new Int32Array(W), rows = new Int32Array(H);
+    for (let i = 0; i < W; i++) {
+      const lon = ((x0 + i + 0.5) / world) * 360 - 180;
+      let col = Math.floor((lon - lonEdge) / G.d);
+      cols[i] = ((col % G.nx) + G.nx) % G.nx;
+    }
+    for (let j = 0; j < H; j++) {
+      const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y0 + j + 0.5) / world))) * 180 / Math.PI;
+      const row = Math.floor((latEdge - lat) / G.d);
+      rows[j] = (row >= 0 && row < G.ny) ? row : -1;
+    }
+    const img = ctx.createImageData(W, H);
+    const out = new Uint32Array(img.data.buffer);
+    for (let j = 0; j < H; j++) {
+      const row = rows[j]; if (row < 0) continue;
+      const base = row * G.nx, o = j * W;
+      const yy = Math.floor((y0 + j) / DPR);
+      for (let i = 0; i < W; i++) {
+        const p = LANDPOS[base + cols[i]];
+        if (p < 0) continue;
+        const hc = HATCH[p];
+        out[o + i] = (hc && (Math.floor((x0 + i) / DPR) + yy) % 6 === 0) ? hc : COLORS[p];
+      }
+    }
+    ctx.putImageData(img, 0, 0);
+  }
+
+  const DataLayer = L.GridLayer.extend({
+    createTile(coords) {
+      const t = L.DomUtil.create("canvas", "leaflet-tile");
+      const s = this.getTileSize();
+      t.width = s.x * DPR; t.height = s.y * DPR;
+      t._wc = coords;               // GridLayer hands createTile the wrapped coords
+      tiles.add(t);
+      paintTile(t);
+      return t;
+    },
+  });
+  const dataLayer = new DataLayer({pane: "data", opacity: 0.92, keepBuffer: 2, updateWhenZooming: false});
+  dataLayer.on("tileunload", e => tiles.delete(e.tile));
+  dataLayer.addTo(map);
+
+  function repaint() { recolor(); tiles.forEach(paintTile); }
+
+  // ---------------------------------------------------------------- hover / pin
+  let hoverCell = -1, pinned = false, tipLatLng = null;
+  const cellBox = L.rectangle([[0, 0], [0, 0]], {color: "#1f2324", weight: 1.5, fill: false, interactive: false});
+
+  function cellAt(latlng) {
+    if (!G) return -1;
+    const lon = ((latlng.lng + 180) % 360 + 360) % 360 - 180;
+    let col = Math.floor((lon - (G.lon0 - G.d / 2)) / G.d);
+    col = ((col % G.nx) + G.nx) % G.nx;
+    const row = Math.floor((G.lat0 + G.d / 2 - latlng.lat) / G.d);
+    if (row < 0 || row >= G.ny) return -1;
+    return row * G.nx + col;
+  }
+  function cellCentre(cell, nearLng) {
+    const row = Math.floor(cell / G.nx), col = cell % G.nx;
+    const lat = G.lat0 - row * G.d;
+    let lon = G.lon0 + col * G.d;
+    lon += 360 * Math.round((nearLng - lon) / 360);
+    return [lat, lon];
+  }
+
+  function fmtLat(v) { return `${Math.abs(v).toFixed(2)}°${v >= 0 ? "N" : "S"}`; }
+  function fmtLon(v) { v = ((v + 180) % 360 + 360) % 360 - 180; return `${Math.abs(v).toFixed(2)}°${v >= 0 ? "E" : "W"}`; }
+  function rStr(r) { return (r < 0 ? "−" : "+") + Math.abs(r).toFixed(2); }
+
+  // Niño3.4 window that ends `lag` months before the season ends
+  function ninoWindow(code, lag) {
+    const end = META.seasons.find(s => s.code === code).end_month;
+    const e = ((end - 1 - lag) % 12 + 12) % 12;
+    const ms = [e - 2, e - 1, e].map(m => MONTHS[((m % 12) + 12) % 12]);
+    return `${ms[0]}–${ms[2]}`;
+  }
+
+  function seasonInfo(code) { return META.seasons.find(s => s.code === code); }
+
+  function renderTip() {
+    if (hoverCell < 0) { tipEl.style.display = "none"; return; }
+    const p = LANDPOS[hoverCell];
+    const [lat, lon] = cellCentre(hoverCell, tipLatLng ? tipLatLng.lng : 0);
+    const where = `${fmtLat(lat)}, ${fmtLon(lon)}`;
+    const close = `<button class="close" type="button" aria-label="Close">&times;</button>`;
+    if (p < 0) {
+      if (!pinned) { tipEl.style.display = "none"; return; }
+      tipEl.innerHTML = `<div class="hd"><span>${where}</span>${close}</div><div class="ln muted">Sea, or outside the land mask.</div>`;
+      return placeTip();
+    }
+    const s = SEASON[state.season], si = seasonInfo(state.season);
+    let body = "";
+    if (!s) body = `<div class="ln muted">Loading ${state.season}…</div>`;
+    else {
+      const f = s.flags[p], valid = f & F_VALID, r = s.r[p] / 100, lag = f & F_LAG;
+      const clim = s.clim[p] / 100, ann = ANNUAL[p] / 100;
+      const share = ann > 0 ? Math.round(100 * clim / ann) : 0;
+      const mmMonth = Math.round(clim * 30.4);
+      const rainLine = `<div class="ln">Rain in ${si.months}: about ${mmMonth} mm a month, ${share}% of the year’s rain</div>`;
+      const how = shown(s, p);
+      if (!how) {
+        const why = clim < META.thresholds.min_mm_day
+          ? `it averages under ${META.thresholds.min_mm_day} mm a day`
+          : `the map needs at least ${Math.round(100 * META.thresholds.rainy_share)}% of the year’s rain`;
+        body = `<div class="rv" style="color:var(--n7)">Not assessed: drier part of the year</div>${rainLine}
+          <div class="ln muted">Skipped because ${why}.${valid ? ` For reference, r = ${rStr(r)}.` : ""}</div>`;
+      } else if (!valid) {
+        body = `<div class="rv" style="color:var(--n7)">No correlation</div>${rainLine}`;
+      } else {
+        const cls = f >> CLASS_SHIFT, ci = CLASS_INFO[cls];
+        const chip = cls ? `<span class="cls" style="background:${ci.col};color:${cls === 1 ? "#0b2a5c" : "#fff"}">${ci.label}</span>`
+                         : `<span class="cls" style="background:#eceeee;color:var(--n8)">${ci.label}</span>`;
+        const n = (si.n_by_lag[lag] || []).join("/") || "?";
+        const sig = (f & F_SIG) ? "p &lt; 0.05" : "not significant (p ≥ 0.05)";
+        const lead = lag === 0 ? "same three months" : `${lag} month${lag > 1 ? "s" : ""} earlier`;
+        body = `<div class="rv">r = ${rStr(r)} ${chip}</div>
+          <div class="ln">Niño3.4 in ${ninoWindow(state.season, lag)} (${lead})</div>
+          <div class="ln muted">${n} years, ${sig}</div>${rainLine}`;
+        if (how === 2) body += `<div class="ln muted">Drier part of the year here (under
+          ${Math.round(100 * META.thresholds.rainy_share)}% of the year’s rain): not on the survey’s maps.</div>`;
+      }
+    }
+    tipEl.innerHTML = `<div class="hd"><span>${where} · <strong style="color:var(--n9)">${state.season}</strong> (${si.months})</span>${close}</div>
+      ${body}${strip(p)}<div class="hint">Faded: drier part of the year here.${pinned ? " Click a season to show it on the map." : ""}</div>`;
+    placeTip();
+  }
+
+  // the cell's 12 seasons as small bars (above the line: El Niño wetter)
+  function strip(p) {
+    const W = 284, H = 62, mid = 26, h = 22, bw = W / 12;
+    let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="r in each of the 12 seasons">`;
+    const k0 = CODES.indexOf(state.season);
+    s += `<rect x="${k0 * bw + 0.5}" y="0.5" width="${bw - 1}" height="${H - 1}" fill="#e9f5f1" stroke="#269777" rx="2"/>`;
+    // dashed guides at |r| = 0.3 and 0.5, under the bars
+    [0.3, 0.5].forEach(t => [mid - t * h, mid + t * h].forEach(y =>
+      s += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#e1e5e5" stroke-dasharray="2 2"/>`));
+    s += `<line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="#c5cccc" stroke-width="1"/>`;
+    CODES.forEach((code, k) => {
+      const x = k * bw, d = SEASON[code];
+      const cur = code === state.season;
+      if (d) {
+        const f = d.flags[p], rainy = f & F_RAINY;
+        if ((f & F_VALID) && (rainy || d.clim[p] >= minClim())) {
+          const r = d.r[p] / 100, cls = f >> CLASS_SHIFT;
+          const col = state.mode === "ramp" ? RAMP_HEX[d.r[p] + 100] : (cls ? CLASS_INFO[cls].col : "#b9bebe");
+          const bh = Math.max(1.5, Math.abs(r) * h);
+          s += `<rect class="bar" x="${x + 4}" y="${r >= 0 ? mid - bh : mid}" width="${bw - 8}" height="${bh}" fill="${col}"${rainy ? "" : ' fill-opacity="0.4"'}/>`;
+        } else if (!rainy) {
+          s += `<rect x="${x + 4}" y="${mid - 1.5}" width="${bw - 8}" height="3" fill="${DRY_LINE}"/>`;
+        }
+      } else {
+        s += `<text x="${x + bw / 2}" y="${mid + 3}" font-size="9" text-anchor="middle" fill="#c5cccc">…</text>`;
+      }
+      s += `<text x="${x + bw / 2}" y="${H - 5}" font-size="8.5" text-anchor="middle" fill="${cur ? "#18614c" : "#5e6a6b"}" font-weight="${cur ? 700 : 400}">${code}</text>`;
+      s += `<rect class="hit" data-code="${code}" x="${x}" y="0" width="${bw}" height="${H}" fill="transparent"/>`;
+    });
+    return s + `</svg>`;
+  }
+
+  function placeTip() {
+    tipEl.style.display = "block";
+    if (!tipLatLng) return;
+    const pt = map.latLngToContainerPoint(tipLatLng);
+    const size = map.getSize(), w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
+    let x = pt.x + 16, y = pt.y + 16;
+    if (x + w > size.x - 8) x = pt.x - w - 16;
+    if (y + hgt > size.y - 8) y = pt.y - hgt - 16;
+    tipEl.style.left = Math.max(8, x) + "px";
+    tipEl.style.top = Math.max(8, y) + "px";
+  }
+
+  function setCell(latlng) {
+    const cell = cellAt(latlng);
+    tipLatLng = latlng;
+    if (cell !== hoverCell) {
+      hoverCell = cell;
+      if (cell >= 0 && LANDPOS[cell] >= 0) {
+        const [lat, lon] = cellCentre(cell, latlng.lng), h = G.d / 2;
+        cellBox.setBounds([[lat - h, lon - h], [lat + h, lon + h]]);
+        if (!map.hasLayer(cellBox)) cellBox.addTo(map);
+      } else if (map.hasLayer(cellBox)) map.removeLayer(cellBox);
+      renderTip();
+    } else placeTip();
+  }
+  function clearCell() {
+    hoverCell = -1; pinned = false; tipEl.classList.remove("pinned"); tipEl.style.display = "none";
+    if (map.hasLayer(cellBox)) map.removeLayer(cellBox);
+  }
+
+  map.on("mousemove", e => { if (!pinned && LANDPOS) setCell(e.latlng); });
+  map.on("mouseout", () => { if (!pinned) clearCell(); });
+  map.on("click", e => {
+    if (!LANDPOS) return;
+    pinned = false; hoverCell = -1;
+    setCell(e.latlng);
+    if (hoverCell >= 0 && LANDPOS[hoverCell] >= 0) { pinned = true; tipEl.classList.add("pinned"); renderTip(); }
+    else clearCell();
+  });
+  map.on("move zoom", () => { if (tipEl.style.display === "block") placeTip(); });
+  tipEl.addEventListener("click", e => {
+    if (e.target.closest(".close")) { clearCell(); return; }
+    const hit = e.target.closest(".hit");
+    if (hit) { stopPlay(); selectSeason(hit.dataset.code); }
+  });
+  L.DomEvent.disableClickPropagation(tipEl);
+  L.DomEvent.disableScrollPropagation(tipEl);
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { clearCell(); stopPlay(); return; }
+    if (e.target.closest && e.target.closest("input")) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (!CODES.length) return;
+      const k = CODES.indexOf(state.season), dk = e.key === "ArrowRight" ? 1 : -1;
+      stopPlay(); selectSeason(CODES[(k + dk + 12) % 12]); e.preventDefault();
+    }
+  });
+
+  // ---------------------------------------------------------------- controls
+  function updateBadge() {
+    const si = seasonInfo(state.season);
+    const m = META.seasons.find(s => s.code === state.season);
+    const end = m.end_month - 1, start = (end + 10) % 12;
+    $("badge-big").textContent = `${LONG_MONTHS[start]} – ${LONG_MONTHS[end]}`;
+    $("badge-small").textContent = `${si.code} · ERA5 rain vs Niño3.4, ${META.period[0]}–${META.period[1]}`;
+  }
+
+  function legendHtml() {
+    const dry = state.dry
+      ? `<div class="row"><span class="sw dryc"></span>Drier part of the year here (hatched)</div>
+         <div class="row"><span class="sw dry"></span>Too dry to assess (under ${META.thresholds.min_mm_day} mm a day)</div>`
+      : `<div class="row"><span class="sw dry"></span>Not assessed: drier part of the year here</div>`;
+    if (state.mode === "ramp") {
+      const ticks = [-1, -0.5, -0.3, 0, 0.3, 0.5, 1].map(t =>
+        `<span style="left:${(t + 1) * 50}%">${t === 0 ? "0" : (t < 0 ? "−" : "") + Math.abs(t)}</span>`).join("");
+      return `<h3>Correlation r</h3><div class="ends"><span>El Niño drier</span><span>El Niño wetter</span></div>
+        <div class="ramp"></div><div class="ticks">${ticks}</div>${dry}
+        <div class="note">Every r, significant or not. |r| below about 0.3 is not significant.</div>`;
+    }
+    const rows = [[2, "r ≥ 0.5"], [1, "r 0.3 to 0.5"], [3, "r −0.3 to −0.5"], [4, "r ≤ −0.5"]].map(([c, t]) =>
+      `<div class="row"><span class="sw" style="background:${CLASS_INFO[c].col}"></span>${CLASS_INFO[c].label} <span style="color:var(--n7)">(${t})</span></div>`).join("");
+    return `<h3>Correlation with Niño3.4</h3>${rows}
+      <div class="row"><span class="sw" style="background:${CLASS_INFO[0].col}"></span>No clear signal (|r| &lt; 0.3 or p ≥ 0.05)</div>${dry}`;
+  }
+
+  async function selectSeason(code) {
+    state.season = code;
+    Object.entries(seasonButtons).forEach(([c, b]) => b.setAttribute("aria-pressed", String(c === code)));
+    updateBadge(); writeHash();
+    if (!SEASON[code]) showStatus(`Loading ${code}…`);
+    try { await loadSeason(code); } catch (err) { showStatus(`Could not load ${code}: ${err.message}`); return; }
+    if (state.season !== code) return;          // a later click won
+    showStatus("");
+    repaint(); renderTip();
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    $("legend").innerHTML = legendHtml();
+    writeHash(); repaint(); renderTip();
+  }
+  document.querySelectorAll(".seg button[data-mode]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+  function setDry(on) {
+    state.dry = on;
+    document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === on)));
+    $("legend").innerHTML = legendHtml();
+    writeHash(); repaint(); renderTip();
+  }
+  document.querySelectorAll(".seg button[data-dry]").forEach(b => b.addEventListener("click", () => setDry(b.dataset.dry === "1")));
+
+  let playTimer = null;
+  function stopPlay() {
+    if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+    $("play").innerHTML = "&#9654;"; $("play").setAttribute("aria-label", "Play through the seasons");
+  }
+  function playStep() {
+    const next = CODES[(CODES.indexOf(state.season) + 1) % 12];
+    selectSeason(next).then(() => { if (playTimer) playTimer = setTimeout(playStep, 1300); });
+  }
+  $("play").addEventListener("click", () => {
+    if (playTimer) { stopPlay(); return; }
+    $("play").innerHTML = "&#10074;&#10074;"; $("play").setAttribute("aria-label", "Pause");
+    playTimer = setTimeout(playStep, 0);
+  });
+
+  // ---------------------------------------------------------------- country search
+  let COUNTRIES = [];
+  function zoomTo(text) {
+    const q = text.trim().toLowerCase();
+    if (!q) return;
+    const label = c => `${c.name} (${c.iso3})`;
+    const hit = COUNTRIES.find(c => label(c).toLowerCase() === q)
+      || COUNTRIES.find(c => c.iso3.toLowerCase() === q || c.name.toLowerCase() === q || (c.alt || "").toLowerCase() === q)
+      || COUNTRIES.find(c => c.name.toLowerCase().startsWith(q) || (c.alt || "").toLowerCase().startsWith(q));
+    if (!hit) { showStatus(`No country matches “${text}”`); setTimeout(() => showStatus(""), 1800); return; }
+    const [s, w, n, e] = hit.bbox;
+    map.fitBounds([[s, w], [n, e]], {padding: [24, 24], maxZoom: 7});
+  }
+  $("search").addEventListener("change", e => zoomTo(e.target.value));
+  $("search").addEventListener("keydown", e => { if (e.key === "Enter") zoomTo(e.target.value); });
+
+  // ---------------------------------------------------------------- URL hash
+  function writeHash() {
+    if (!META) return;
+    const c = map.getCenter();
+    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}&m=${map.getZoom()}/${c.lat.toFixed(2)}/${c.lng.toFixed(2)}`;
+    history.replaceState(null, "", "#" + h);
+  }
+  function readHash() {
+    const q = new URLSearchParams(location.hash.slice(1));
+    const out = {};
+    if (q.get("s")) out.season = q.get("s").toUpperCase();
+    if (q.get("c") === "ramp" || q.get("c") === "classes") out.mode = q.get("c");
+    out.dry = q.get("d") === "1";
+    const m = (q.get("m") || "").split("/").map(Number);
+    if (m.length === 3 && m.every(Number.isFinite)) out.view = {z: m[0], lat: m[1], lng: m[2]};
+    return out;
+  }
+  map.on("moveend", writeHash);
+  // a pasted link that differs only after "#" does not reload the page
+  window.addEventListener("hashchange", () => {
+    if (!META) return;
+    const h = readHash();
+    if (h.view) map.setView([h.view.lat, h.view.lng], Math.min(9, Math.max(2, h.view.z)));
+    if (h.mode && h.mode !== state.mode) setMode(h.mode);
+    if (h.dry !== state.dry) setDry(h.dry);
+    if (h.season && CODES.includes(h.season) && h.season !== state.season) { stopPlay(); selectSeason(h.season); }
+  });
+
+  // ---------------------------------------------------------------- boot
+  async function boot() {
+    const res = await fetch("data/meta.json", {cache: "no-cache"});
+    if (!res.ok) throw new Error(`meta.json: HTTP ${res.status}`);
+    META = await res.json();
+    G = META.grid; N = META.n_land;
+    CODES = META.seasons.map(s => s.code);
+    META.seasons.forEach(s => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = s.code; b.title = s.months; b.className = "loading";
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => { stopPlay(); selectSeason(s.code); });
+      $("season-buttons").appendChild(b);
+      seasonButtons[s.code] = b;
+    });
+
+    const h = readHash();
+    if (h.season && CODES.includes(h.season)) state.season = h.season;
+    if (h.mode) state.mode = h.mode;
+    state.dry = h.dry;
+    if (h.view) map.setView([h.view.lat, h.view.lng], Math.min(9, Math.max(2, h.view.z)));
+    else map.fitBounds([[-52, -125], [68, 165]]);
+    document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
+    document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === state.dry)));
+    $("legend").innerHTML = legendHtml();
+    updateBadge();
+    showStatus("Loading data…");
+
+    const [landBuf, annBuf, countries] = await Promise.all([
+      fetchBuf(`data/land.bin.gz${v()}`), fetchBuf(`data/annual.bin.gz${v()}`),
+      fetch(`data/countries.json${v()}`).then(r => r.json()),
+      loadSeason(state.season),
+    ]);
+    const bits = new Uint8Array(landBuf), cells = G.nx * G.ny;
+    LANDPOS = new Int32Array(cells).fill(-1);
+    let k = 0;
+    for (let i = 0; i < cells; i++) if ((bits[i >> 3] >> (7 - (i & 7))) & 1) LANDPOS[i] = k++;
+    if (k !== N) throw new Error(`land mask has ${k} cells, expected ${N}`);
+    ANNUAL = new Uint16Array(annBuf);
+    COUNTRIES = countries;
+    $("countrylist").innerHTML = countries.map(c => `<option value="${c.name} (${c.iso3})"></option>`).join("");
+    $("foot").insertAdjacentHTML("beforeend",
+      ` Data version ${META.version}, built ${META.built}; Niño3.4 series to ${META.nino34_last_month}.`);
+
+    await selectSeason(state.season);
+    // fetch the other seasons in the background, nearest first, so play and the 12-season strip work
+    const i0 = CODES.indexOf(state.season);
+    const order = [];
+    for (let d = 1; d < 12; d++) order.push(CODES[(i0 + d) % 12]);
+    for (const code of order) { try { await loadSeason(code); } catch (e) { /* retried on click */ } }
+  }
+  boot().catch(err => { console.error(err); showStatus(`Could not load the map data: ${err.message}`); });
+})();
+</script>
+</body>
+</html>

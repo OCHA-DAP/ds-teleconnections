@@ -7,6 +7,7 @@ A global survey of how major climate modes drive seasonal rainfall, country by c
 | Path | What |
 |---|---|
 | [`/survey/`](https://ocha-dap.github.io/ds-teleconnections/survey/) | the global teleconnection survey (this script's report) |
+| [`/enso-map/`](https://ocha-dap.github.io/ds-teleconnections/enso-map/) | ENSO and seasonal rainfall, season by season — interactive world map of the pixel ENSO correlation for each of the 12 seasons (see [ENSO season map](#enso-season-map)) |
 | [`/enso/`](https://ocha-dap.github.io/ds-teleconnections/enso/) | ENSO country deep dives — per-country evidence reviews (see [Country deep dives](#country-deep-dives)) |
 
 At two spatial resolutions — per country and per 0.25° grid cell — the project measures the correlation between seasonal rainfall (ERA5) and six climate-mode indices — **ENSO (Niño3.4), IOD, TNA, TSA, AMM, PDO** — across every rolling 3-month season and a range of lead times, then renders the results as an interactive set of choropleth maps. It is a manager-facing product for communicating where, when, and how strongly ENSO and other modes shape humanitarian rainfall risk.
@@ -124,6 +125,42 @@ For each country × trimester × index, Pearson *r* is computed across lags up t
 - **Dominant climate mode:** each country (or cell) coloured by the index with the strongest significant total correlation (|*r*| ≥ 0.30). At country resolution a split diagonal adds a second, different mode when it acts on a non-overlapping trimester; at pixel resolution only the top mode is shown, and only where it clears the runner-up by ≥ 0.10. Respects the lag toggle.
 - **ENSO composites (El Niño / La Niña):** mean rainfall anomaly (in SDs) in each country's (or cell's) headline trimester, classified by the **concurrent** trimester's Niño3.4 (≥ ±0.5). Rendered at both resolutions. The two maps are independent — ENSO impacts are asymmetric.
 - **Index collinearity:** 6×6 Pearson matrix among the indices (e.g. AMM–TNA ≈ 0.81), which explains where Total and Unique diverge.
+
+---
+
+## ENSO season map
+
+`enso_season_map.py` writes the data behind [`/enso-map/`](https://ocha-dap.github.io/ds-teleconnections/enso-map/),
+an interactive Leaflet map (`docs/enso-map/index.html`) of the Niño3.4 correlation with ERA5 rainfall for
+each of the 12 rolling seasons, per 0.25° land cell. The survey's pixel ENSO map shows each cell's
+strongest season; this map shows every season.
+
+The method is the survey's pixel pass, called unchanged (`pixel_trimester_rainfall_era5`, `pixel_sweep`):
+total Pearson *r* at the best lag of 0–3 months, 1981–2025, the same rainy-season rule and p < 0.05. Only
+two inputs differ: the area is all land from 60°S to 84°N (180°W–180°E) instead of the survey viewport,
+and the land mask is Natural Earth 1:10m land plus minor islands, so small islands get cells. Each run
+checks itself against the survey: on the cells both grids share, the strongest significant rainy season
+must equal `out/corr_px_display_l3.npz` (last run: 96,723 cells, largest difference 0.0).
+
+```bash
+uv run python enso_season_map.py      # -> docs/enso-map/data/ (~6.4 MB)
+```
+
+The first run downloads the global ERA5 monthly COGs from the prod raster blob into
+`cache/era5_pixel_global/` (~2.4 GB download, ~1.8 GB on disk); later runs are offline and take under a
+minute. Niño3.4 is the survey's pinned `cache/nino34.data`. Rerun it whenever the survey's pixel pass is
+rerun, so the two stay in step. `--cache-dir` / `--survey-npz` point at another checkout's cache and
+`out/` (useful from a worktree).
+
+Data files (all gzip; the page decompresses them with `DecompressionStream`): `meta.json` (grid, seasons,
+thresholds, cross-check result, a content hash used to bust caches), `land.bin.gz` (land mask, one bit per
+grid cell, row-major from 84°N/180°W), `annual.bin.gz` (uint16 annual sum of the four canonical seasons'
+mean rainfall, 0.01 mm/day), `countries.json` (Natural Earth 1:50m names and bounding boxes for the
+zoom box) and one `{season}.bin.gz` per season holding, per land cell, the season's mean rainfall
+(uint16, 0.01 mm/day), *r* × 100 (int8, −128 = none) and a flags byte (bits 0–1 best lag, 2 rainy season,
+3 p < 0.05, 4 *r* computed, 5–7 the survey's colour class wherever p < 0.05). The "Drier months: Show"
+switch colours seasons that fail the 25% rule but average at least 0.25 mm/day, hatched; by default the
+map shows exactly what the survey's rule allows.
 
 ---
 
@@ -245,6 +282,8 @@ out/                              intermediate correlation tables (git-ignored)
   corr_px_display_{l3,l6}.npz                    per-cell display arrays + grid metadata
 cache/era5_pixel/                 cached ERA5 monthly grid stack (~850 MB, git-ignored)
   monthly.npy / meta.json
+cache/era5_pixel_global/          the same for the ENSO season map, 60°S–84°N (~1.8 GB, git-ignored)
+docs/enso-map/                    ENSO season map (index.html + vendored Leaflet 1.9.4; data/ from enso_season_map.py)
 ```
 
 ---
@@ -277,6 +316,7 @@ git push
 
 ```
 teleconnection_survey.py     all analysis + report generation (single file)
+enso_season_map.py           data for the ENSO season map (docs/enso-map/), reusing the survey's pixel pass
 pyproject.toml / uv.lock     dependencies (numpy, pandas, geopandas, scipy, matplotlib, ocha-stratus)
 docs/                        generated GitHub Pages site (committed)
 .github/workflows/pages.yml  Pages deployment

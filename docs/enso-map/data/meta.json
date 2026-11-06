@@ -1,0 +1,398 @@
+{
+ "version": "e237c24d4d70",
+ "built": "2026-11-06",
+ "period": [
+  1981,
+  2025
+ ],
+ "grid": {
+  "lon0": -180.0,
+  "lat0": 84.0,
+  "d": 0.25,
+  "nx": 1440,
+  "ny": 577
+ },
+ "n_land": 264121,
+ "max_lag": 3,
+ "thresholds": {
+  "r_min": 0.3,
+  "r_strong": 0.5,
+  "alpha": 0.05,
+  "rainy_share": 0.25,
+  "min_mm_day": 0.25,
+  "min_years": 25
+ },
+ "nino34_last_month": "2026-06",
+ "seasons": [
+  {
+   "code": "NDJ",
+   "months": "Nov–Jan",
+   "end_month": 1,
+   "years": [
+    1981,
+    2024
+   ],
+   "n_by_lag": [
+    [
+     44
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ]
+   ]
+  },
+  {
+   "code": "DJF",
+   "months": "Dec–Feb",
+   "end_month": 2,
+   "years": [
+    1981,
+    2024
+   ],
+   "n_by_lag": [
+    [
+     44
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ]
+   ]
+  },
+  {
+   "code": "JFM",
+   "months": "Jan–Mar",
+   "end_month": 3,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ]
+   ]
+  },
+  {
+   "code": "FMA",
+   "months": "Feb–Apr",
+   "end_month": 4,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     44
+    ],
+    [
+     44
+    ]
+   ]
+  },
+  {
+   "code": "MAM",
+   "months": "Mar–May",
+   "end_month": 5,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     44
+    ]
+   ]
+  },
+  {
+   "code": "AMJ",
+   "months": "Apr–Jun",
+   "end_month": 6,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  },
+  {
+   "code": "MJJ",
+   "months": "May–Jul",
+   "end_month": 7,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  },
+  {
+   "code": "JJA",
+   "months": "Jun–Aug",
+   "end_month": 8,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  },
+  {
+   "code": "JAS",
+   "months": "Jul–Sep",
+   "end_month": 9,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  },
+  {
+   "code": "ASO",
+   "months": "Aug–Oct",
+   "end_month": 10,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  },
+  {
+   "code": "SON",
+   "months": "Sep–Nov",
+   "end_month": 11,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  },
+  {
+   "code": "OND",
+   "months": "Oct–Dec",
+   "end_month": 12,
+   "years": [
+    1981,
+    2025
+   ],
+   "n_by_lag": [
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ],
+    [
+     45
+    ]
+   ]
+  }
+ ],
+ "counts": {
+  "NDJ": {
+   "rainy": 85203,
+   "strong_pos": 2647,
+   "mod_pos": 12538,
+   "mod_neg": 10482,
+   "strong_neg": 4575
+  },
+  "DJF": {
+   "rainy": 79747,
+   "strong_pos": 1502,
+   "mod_pos": 11357,
+   "mod_neg": 10524,
+   "strong_neg": 5214
+  },
+  "JFM": {
+   "rainy": 76033,
+   "strong_pos": 1558,
+   "mod_pos": 7770,
+   "mod_neg": 10327,
+   "strong_neg": 3798
+  },
+  "FMA": {
+   "rainy": 80612,
+   "strong_pos": 1689,
+   "mod_pos": 9662,
+   "mod_neg": 10653,
+   "strong_neg": 1541
+  },
+  "MAM": {
+   "rainy": 72807,
+   "strong_pos": 1350,
+   "mod_pos": 11716,
+   "mod_neg": 6069,
+   "strong_neg": 1033
+  },
+  "AMJ": {
+   "rainy": 139283,
+   "strong_pos": 618,
+   "mod_pos": 10143,
+   "mod_neg": 10274,
+   "strong_neg": 2118
+  },
+  "MJJ": {
+   "rainy": 161488,
+   "strong_pos": 220,
+   "mod_pos": 8586,
+   "mod_neg": 13426,
+   "strong_neg": 1668
+  },
+  "JJA": {
+   "rainy": 162701,
+   "strong_pos": 162,
+   "mod_pos": 7501,
+   "mod_neg": 18648,
+   "strong_neg": 2377
+  },
+  "JAS": {
+   "rainy": 163515,
+   "strong_pos": 301,
+   "mod_pos": 5673,
+   "mod_neg": 20980,
+   "strong_neg": 3784
+  },
+  "ASO": {
+   "rainy": 166378,
+   "strong_pos": 774,
+   "mod_pos": 5141,
+   "mod_neg": 13719,
+   "strong_neg": 2158
+  },
+  "SON": {
+   "rainy": 147933,
+   "strong_pos": 2240,
+   "mod_pos": 4857,
+   "mod_neg": 8787,
+   "strong_neg": 2197
+  },
+  "OND": {
+   "rainy": 100780,
+   "strong_pos": 3907,
+   "mod_pos": 10416,
+   "mod_neg": 13319,
+   "strong_neg": 3520
+  }
+ },
+ "survey_check": {
+  "survey_cells": 163453,
+  "shared_cells": 162754,
+  "both_have_r": 96723,
+  "only_survey": 0,
+  "only_here": 0,
+  "max_abs_diff": 0.0
+ }
+}
