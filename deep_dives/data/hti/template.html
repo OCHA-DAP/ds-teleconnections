@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Haiti spring 2027 rainfall outlook</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column for text, wider panels for charts and maps; summary first, evidence after. */
+:root {
+  color-scheme: light;
+  --bg: #f3f5f5;
+  --surface: #ffffff;
+  --ink: #142022;
+  --ink-2: #46555a;
+  --muted: #6b7a7e;
+  --rule: #d8dfe0;
+  --accent: #1d5b78;
+  --series: #2a78d6;
+  --series-soft: rgba(42, 120, 214, 0.28);
+  --typical: #c9d0d2;
+  --context: #8e9b9e;
+  --band: rgba(29, 91, 120, 0.10);
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #101617;
+    --surface: #172022;
+    --ink: #e7eded;
+    --ink-2: #b2bfc2;
+    --muted: #8b9a9d;
+    --rule: #2a3639;
+    --accent: #82bdd9;
+    --series: #3987e5;
+    --series-soft: rgba(57, 135, 229, 0.35);
+    --typical: #3a4649;
+    --context: #6f7e81;
+    --band: rgba(130, 189, 217, 0.12);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101617;
+  --surface: #172022;
+  --ink: #e7eded;
+  --ink-2: #b2bfc2;
+  --muted: #8b9a9d;
+  --rule: #2a3639;
+  --accent: #82bdd9;
+  --series: #3987e5;
+  --series-soft: rgba(57, 135, 229, 0.35);
+  --typical: #3a4649;
+  --context: #6f7e81;
+  --band: rgba(130, 189, 217, 0.12);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.55; }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 40px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: 2.1rem; }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+section { display: grid; gap: 14px; }
+header { display: grid; gap: 10px; border-bottom: 1px solid var(--rule); padding-bottom: 20px; }
+.home-link { color: var(--accent); font-size: 0.92rem; text-decoration: none; }
+.home-link:hover { text-decoration: underline; }
+.eyebrow { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+.meta { color: var(--muted); font-size: 0.95rem; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bottomline { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--accent); border-radius: 6px; padding: 22px 24px; }
+.bottomline ul, ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+.bigrow { display: flex; flex-wrap: wrap; gap: 14px; }
+.big { flex: 1 1 220px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.big .num { font-family: var(--font-display); font-size: 1.8rem; font-variant-numeric: tabular-nums; }
+.big .lbl { color: var(--ink-2); font-size: 0.93rem; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; display: grid; gap: 10px; min-width: 0; }
+section, .bigrow, .big { min-width: 0; }
+#ranges, #deptranges, #scatter { overflow-x: auto; min-width: 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 600; font-size: 0.85rem; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+tr.em td { font-weight: 600; }
+.note { color: var(--ink-2); font-size: 0.92rem; }
+.caption { color: var(--ink-2); font-size: 0.9rem; }
+svg text { font-family: var(--font-body); }
+.tip { position: fixed; pointer-events: none; z-index: 5; background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; font-size: 0.86rem; line-height: 1.4; box-shadow: 0 2px 10px rgba(0,0,0,0.14); max-width: 300px; display: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 0.88rem; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.notecard { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; color: var(--ink-2); font-size: 0.93rem; }
+.notecard h3 { color: var(--ink); }
+.mapcard { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 14px 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.mapcard p { color: var(--ink-2); font-size: 0.88rem; line-height: 1.4; }
+.mapcard svg.map { width: 100%; height: auto; display: block; }
+.mapcard path.dep { stroke: var(--surface); stroke-width: 2.5; cursor: default; }
+.mapcard path.dep:hover, .mapcard path.dep:focus { stroke: var(--ink); stroke-width: 3.5; outline: none; }
+.mapleg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--ink-2); align-items: center; }
+.mapleg i { display: inline-block; width: 14px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--rule); }
+.grad { display: grid; gap: 2px; width: 100%; max-width: 280px; }
+.grad .bar { height: 10px; border-radius: 2px; }
+.grad .ticks { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.grad .ends { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); }
+details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+ol.timeline { margin: 0; padding: 0; list-style: none; display: grid; }
+ol.timeline li { display: grid; grid-template-columns: 9.5em 1fr; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+ol.timeline .when { font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { ol.timeline li { grid-template-columns: 1fr; gap: 2px; } h1 { font-size: 1.7rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <a class="home-link" href="../">&larr; ENSO deep dives</a>
+  <p class="eyebrow">El Niño 2026/27</p>
+  <h1>Haiti spring 2027 rainfall outlook</h1>
+  <p class="prose">An early indication of the March–June 2027 rains (the <i>printemps</i> season) for drought anticipatory action readiness, nationally and by department. It compares what a typical spring brings with the range we expect for 2027, drawing on the El Niño record, our own statistical models and other providers' seasonal forecasts.</p>
+  <p class="meta">OCHA Centre for Humanitarian Data · 6 November 2026 · built on the seasonal forecasts started in November 2026. The forecasts listed under <a href="#watch">what to watch</a> will update every figure here.</p>
+</header>
+
+<section aria-labelledby="bl">
+  <h2 id="bl">Bottom line</h2>
+  <div class="bigrow">
+    <div class="big"><span class="num">453 mm</span><span class="lbl">in a typical March–June nationally (1991–2020 average). Eight springs in ten fall between 317 and 583 mm.</span></div>
+    <div class="big"><span class="num">About 500 mm</span><span class="lbl">expected for March–June 2027, 111% of typical. Likely range 360–660 mm.</span></div>
+    <div class="big"><span class="num">Low–moderate</span><span class="lbl">confidence in this outlook. The El Niño link is moderately well supported, but the forecasts have weak skill and this event is beyond the record.</span></div>
+  </div>
+  <div class="bottomline">
+    <ul>
+      <li><b>The seasonal total leans normal to wet.</b> Every line of evidence centres between 105% and 125% of a typical spring. The likely range for 2027 sits about a tenth higher than in a typical year and is just as wide, so a dry season is not ruled out.</li>
+      <li><b>The evidence is consistent but not independent.</b> All of it depends on how Haiti's spring responds after a strong El Niño. Forecasts made in November have weak skill for Haiti: correlations of 0.15–0.3 with observed rainfall. This El Niño is already stronger than any in our record at the same time of year and is forecast to grow, so every method is extrapolating.</li>
+      <li><b>There is no reliable early signal on the timing of the rains.</b> After strong El Niño winters, onset dates were close to normal on average, with large scatter. Long dry spells were much less common in the three most recent cases (2010, 2016, 2024) and close to average in 1983, 1992 and 1998. False starts (rains that begin and then break for ten days or more) were more common, but this result is tentative.</li>
+      <li><b>The southern peninsula is the least certain.</b> In Sud, Grande'Anse and Nippes, spring rain tracks winter Niño3.4 only weakly in CHIRPS and hardly at all in ERA5, and springs 1983 and 1998 were below typical there in CHIRPS. SEAS5 meanwhile puts the south at its wettest.</li>
+      <li><b>For readiness:</b> nothing available today points to a drier-than-typical spring, so a forecast-based readiness activation for drought is not supported. The documented risk is badly distributed rain on top of the 2026 drought. The 1992 and 2016 droughts both came in years whose spring totals were above average. Plan around observed onset and dry spells from April to June, and recheck this outlook at each date listed below.</li>
+    </ul>
+  </div>
+</section>
+
+<section aria-labelledby="ev">
+  <h2 id="ev">National evidence, line by line</h2>
+  <p class="prose">Each row is one way of estimating March–June 2027 rainfall for Haiti as a whole, as a share of a typical spring. Bars show the likely range, where eight outcomes in ten would fall. For past El Niño springs, each dot is one year.</p>
+  <div class="panel">
+    <div class="legend" aria-hidden="true">
+      <span><svg width="26" height="12"><rect x="0" y="2" width="26" height="8" rx="2" fill="var(--typical)"></rect></svg>Typical spring (8 in 10 fall here)</span>
+      <span><svg width="26" height="12"><rect x="0" y="2" width="26" height="8" rx="2" fill="var(--series-soft)"></rect><circle cx="13" cy="6" r="4.5" fill="var(--series)"></circle></svg>2027 likely range and central estimate</span>
+      <span><svg width="14" height="12"><circle cx="7" cy="6" r="4.5" fill="var(--series)"></circle></svg>One past spring</span>
+    </div>
+    <div id="ranges" role="group" aria-label="March to June rainfall as a share of typical. A typical spring ranges from 70 to 129 percent. Every 2027 evidence line centres between 105 and 125 percent; the combined outlook is 111 percent, likely 80 to 145 percent. The table below gives the values."></div>
+  </div>
+  <div class="panel scroll">
+    <table>
+      <thead><tr><th>Evidence line</th><th class="n">Central</th><th class="n">Likely range</th><th>Notes</th></tr></thead>
+      <tbody>
+        <tr><td>Typical spring, CHIRPS</td><td class="n">453 mm</td><td class="n">317–583 mm</td><td>1991–2020 average; range covers 8 of 10 springs, 1981–2026</td></tr>
+        <tr><td>Springs after strong El Niño winters, CHIRPS</td><td class="n">112%</td><td class="n">105–128%</td><td>Median and lowest–highest of 1983, 1992, 1998, 2010, 2016, 2024</td></tr>
+        <tr><td>Same, ERA5</td><td class="n">119%</td><td class="n">91–133%</td><td>1998 is the only year below 100%</td></tr>
+        <tr><td>Same, IMERG</td><td class="n">119%</td><td class="n">97–124%</td><td>2010, 2016 and 2024 only</td></tr>
+        <tr><td>Regression on winter Niño3.4, CHIRPS</td><td class="n">110%</td><td class="n">81–151%</td><td>Fitted on 1982–2026</td></tr>
+        <tr><td>Regression on winter Niño3.4, ERA5</td><td class="n">106%</td><td class="n">80–143%</td><td>Fitted on 1982–2026</td></tr>
+        <tr><td>NMME, 5 models, November 2026 start</td><td class="n">125%</td><td class="n">91–172%</td><td>Wettest of 37 November runs since 1990; the most extrapolated line</td></tr>
+        <tr><td>SEAS5, November 2026 start (March–May only)</td><td class="n">105%</td><td class="n">79–141%</td><td>89th percentile of its own history; its weak skill pulls the estimate toward typical</td></tr>
+        <tr class="em"><td>Combined outlook</td><td class="n">111% (503 mm)</td><td class="n">80–145% (362–657 mm)</td><td></td></tr>
+      </tbody>
+    </table>
+    <p class="note">How the combined outlook is built: the central value is the average of the central estimates from the two sets of past springs, the two regressions and SEAS5. The likely range averages the 10th and 90th percentiles of the two regressions and SEAS5. Departments use the same recipe. Adding NMME would move the national figure to 113% (83–152%). The regressions take the 2026/27 winter Niño3.4 as 2.7 ± 0.45 on our index (see the next section); a winter of 2.3 or 3.0 moves their centre by about 2 points. In cross-validation, the regressions and past-spring comparisons barely beat simply assuming a typical year, which is why the 2027 ranges are as wide as the typical range.</p>
+  </div>
+  <div class="prose note">
+    <p>Other providers point the same way. CPC's NMME maps show a weak wet anomaly over Hispaniola for March–May and April–June. FEWS NET's October forecast review says models suggest "a shift to above average rainfall in early 2027", while noting that in past El Niño years the most frequent outcome was a dry start in April–June. The October CariCOF newsletter expects a "potentially earlier (but intense)" onset in April and leaves Haiti blank on its maps. The CFSv2 run from October tilts above normal for February–April. In our records the dry starts came when El Niño was developing or weak (2015, 2019, 2020). Springs after strong winters were not dry; that is our reading of the FEWS NET statement.</p>
+  </div>
+</section>
+
+<section aria-labelledby="enso">
+  <h2 id="enso">Why El Niño matters, and why this year is at the edge of the record</h2>
+  <div class="prose">
+    <p>An El Niño tends to dry Haiti while it develops and to wet the early rainy season in the spring after it peaks. The second effect works through the tropical North Atlantic, which warms 2–4 months after the El Niño peak and adds moisture over the Greater Antilles. The effect is strongest in May–June (Chen and Taylor 2002; Giannini, Kushnir and Cane 2000). The tropical North Atlantic is already warm: +0.64 °C in September (NOAA PSL index).</p>
+    <p style="margin-top:10px">The teleconnections survey grades Haiti's El Niño signal as robust: drier in May–July while El Niño develops (Jury, Malmgren and Winter 2007; FEWS NET). 2015 and 2026 fit that pattern. This page looks at the spring after the peak, where the evidence is more limited.</p>
+  </div>
+  <div class="panel">
+    <div class="legend" aria-hidden="true">
+      <span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="var(--series)"></circle></svg>Spring after a strong El Niño winter (Niño3.4 ≥ +1.0)</span>
+      <span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="none" stroke="var(--context)" stroke-width="1.6"></circle></svg>Other springs, 1982–2026</span>
+      <span><svg width="22" height="14"><rect x="0" y="1" width="22" height="12" fill="var(--band)"></rect></svg>Likely 2026/27 winter (2.7 ± 0.45)</span>
+    </div>
+    <div id="scatter" role="group" aria-label="Scatter of winter Niño3.4 against national March to June rainfall in CHIRPS, 1982 to 2026. All six springs after strong El Niño winters were 105 to 128 percent of typical. Three of the driest springs, 2015, 2020 and 2019, followed weak warm winters. The likely 2026/27 winter lies beyond all past values."></div>
+    <p class="caption">National March–June rainfall in CHIRPS (% of the 1991–2020 average) against the December–February Niño3.4 anomaly (ERSSTv6, 1981–2010 base). The dashed line marks the driest third of springs. Hover over a point for ERA5's value.</p>
+  </div>
+  <div class="prose">
+    <p>The relationship is not a straight line. Springs with weak warm winters (Niño3.4 +0.5 to +1.0) were among the driest: 2015 (51% of typical), 2020 (61%) and 2019 (67%). All six springs after strong winters stayed out of the driest third in CHIRPS, and five of six did in ERA5. That is why a straight-line regression gains little, and why the past-spring comparison is the more direct evidence.</p>
+    <p style="margin-top:10px">This winter will be stronger than any of the six. Niño3.4 was +2.09 in September on our index, above September 1997 (+1.63) and September 2015 (+1.67), the two strongest events in the record. CPC (8 October) expects a strong to very strong event through January–March. The NMME runs from November average +3.3 for December–February (80% range 2.7–3.9 on a 1991–2020 base) and still +1.9 in March–May, a slower decay than any past case (+0.5 to +1.1). In the past cases, the speed of decay did not line up with spring rain: 1992 and 2016 decayed slowest and were wet. We therefore make no adjustment for it, but a lingering event is untested ground.</p>
+    <p style="margin-top:10px">For the regressions and the shaded band in the chart, the 2026/27 winter is taken as 2.7 ± 0.45 on our index. That sits between two references: September's +2.09 plus the 0.1–0.4 °C that 1997 and 2015 added by the winter (about +2.2 to +2.5), and the NMME average (+3.3 on its own base, somewhat higher on ours).</p>
+  </div>
+</section>
+
+<section aria-labelledby="dept">
+  <h2 id="dept">By department: seasonal totals</h2>
+  <p class="prose">Hover over a department, or tab to it, for all its numbers.</p>
+  <div class="maps">
+    <div class="mapcard"><h3>Typical March–June rainfall</h3><p>1991–2020 average, CHIRPS, in mm.</p><div id="m-typ"></div><div id="l-typ"></div></div>
+    <div class="mapcard"><h3>Expected 2027, compared with typical</h3><p>Central estimate, as a change from the typical total. Likely ranges are in the chart below.</p><div id="m-exp"></div><div id="l-exp"></div></div>
+    <div class="mapcard"><h3>How far the evidence agrees</h3><p>Both records: winter Niño3.4 and spring rain correlate at 0.15 or more in CHIRPS and in ERA5. CHIRPS only: 0.20 or more in CHIRPS, under 0.10 in ERA5. Least certain: under 0.10 in ERA5 and under 0.20 in CHIRPS, with 1983 and 1998 below typical in CHIRPS.</p><div id="m-agr"></div><div id="l-agr"></div></div>
+    <div class="notecard"><h3>Reading these maps</h3>
+      <p>The departments differ far more in how much rain they normally get (about 230 mm in Nord-Ouest, 630 mm in Grande'Anse) than in the expected change for 2027 (+5% to +14% everywhere).</p>
+      <p>In the north and centre, spring rain tracks winter Niño3.4 in both rainfall records (r 0.15–0.22). In Ouest and Sud-Est it does in CHIRPS (r 0.21–0.24) but hardly in ERA5 (under 0.10), although most past strong El Niño springs were above typical in both.</p>
+      <p>In the southern peninsula the records and the models disagree. In ERA5, spring rain hardly tracks winter Niño3.4 there (r 0.02–0.07). In CHIRPS, springs 1983 and 1998 were below typical (Sud 95% and 82%, Grande'Anse 84% and 78%, Nippes 98% and 89%). Yet SEAS5 places Sud and Nippes at the 98th percentile of its history.</p>
+    </div>
+  </div>
+  <div class="panel">
+    <h3>Typical range and likely 2027 range, by department</h3>
+    <div class="legend" aria-hidden="true">
+      <span><svg width="26" height="12"><rect x="0" y="2" width="26" height="8" rx="2" fill="var(--typical)"></rect></svg>Typical spring (8 in 10 fall here)</span>
+      <span><svg width="26" height="12"><rect x="0" y="2" width="26" height="8" rx="2" fill="var(--series-soft)"></rect><circle cx="13" cy="6" r="4.5" fill="var(--series)"></circle></svg>2027 likely range and central estimate</span>
+    </div>
+    <div id="deptranges" role="group" aria-label="For each department, the typical March to June rainfall range and the likely 2027 range in millimetres. The 2027 ranges sit about a tenth higher than the typical ranges everywhere."></div>
+    <p class="note">Grey bars: the range covering 8 of 10 springs since 1981, with a tick at the 1991–2020 average. Blue bars: the likely 2027 range, with a dot at the central estimate. Departments are sorted from wettest to driest.</p>
+  </div>
+</section>
+
+<section aria-labelledby="onset">
+  <h2 id="onset">By department: onset and dry spells</h2>
+  <div class="prose">
+    <p>Onset is the first day from 1 March with at least 1 mm that starts three days totalling 20 mm or more, as long as no dry spell of ten days or more (days under 1 mm) follows within 30 days. If one does, the start counts as a false start. Dry spells are counted from onset to 30 June. Metrics are computed on each 5 km CHIRPS cell for 1981–2026 and then averaged by area; IMERG (1998–2025) is used as a check. Each map compares the six springs after strong El Niño winters with all springs.</p>
+  </div>
+  <div class="maps">
+    <div class="mapcard"><h3>Onset date</h3><p>Days later (+) or earlier (−) than in an average spring. *Unreliable in Nord-Ouest, which often has no onset by 30 June under this rule.</p><div id="m-on"></div><div id="l-on"></div></div>
+    <div class="mapcard"><h3>Long dry spells</h3><p>Change in the share of the department with an unusually long dry spell, in percentage points.</p><div id="m-dry"></div><div id="l-dry"></div></div>
+    <div class="mapcard"><h3>False starts</h3><p>Change in the number of false starts per season.</p><div id="m-fs"></div><div id="l-fs"></div></div>
+    <div class="notecard"><h3>Reading these maps</h3>
+      <p>None of the onset shifts is outside what chance alone would give with six cases.</p>
+      <p>The drop in long dry spells mostly reflects the wetter totals, and it comes from 2010, 2016 and 2024. In 1983, 1992 and 1998 dry spells were close to average.</p>
+      <p>False starts rose in five of the six past cases even after allowing for the wetter totals. This is the one timing signal, and it is tentative.</p>
+    </div>
+  </div>
+  <div class="prose">
+    <ul class="plain">
+      <li><b>Onset timing:</b> no robust signal either way. Every shift is under two standard errors from zero; Grande'Anse's +13 days comes mostly from 1983 (+50 days). In Nord and Centre, most of the area started late in 3 of the 6 past cases, against about 1 spring in 5 normally, which is within chance for six cases. The two datasets also disagree on individual years. CHIRPS has Nord and Artibonite starting late in 1992 (4 and 3 June), before the IMERG record begins. IMERG has Artibonite late in 1998, and Nord-Est, Artibonite and Nord-Ouest late in 2024; CHIRPS shows neither. The same onset rule gives a national date of 9 May in CHIRPS and about 20 April in IMERG, so the maps show shifts only.</li>
+      <li><b>Long dry spells:</b> less common after strong winters on average. The drop comes from 2010, 2016 and 2024 (national shares of 5–15% against 32% normally). 1983, 1992 and 1998 were close to average (26–30%). Most of the difference follows from the wetter totals, so it offers no reassurance for a year like 1998.</li>
+      <li><b>False starts:</b> more common after strong winters (3.4 against 2.3 per season nationally). After allowing for the wetter totals, the increase holds in five of the six years (2016 was flat), which would fit early rains that start and stop. Treat this as tentative: day-to-day timing is the weakest part of CHIRPS, and we have not yet checked it in IMERG. For farmers who plant on the first rains, it is the risk most worth watching.</li>
+      <li>Nord-Ouest often has no onset by 30 June under this rule, so its onset figures are unreliable.</li>
+    </ul>
+  </div>
+  <details class="panel">
+    <summary>Show all department numbers as a table</summary>
+    <div class="scroll"><table id="depttable"></table></div>
+  </details>
+</section>
+
+<section aria-labelledby="impact">
+  <h2 id="impact">What the impact record adds</h2>
+  <div class="prose">
+    <p>EM-DAT lists six Haitian droughts since 1980. The three with a million or more people affected are April 1992 (1.0 million), January 2014 to July 2015 (1.0 million), and January 2016 to February 2017 (3.6 million, spread across all ten departments). Two of these three came with strong El Niño winters (1991/92 and 2015/16), and in both years spring rainfall totals were above average (CHIRPS 111% in 1992 and 113% in 2016). Our monthly checks point to distribution and carry-over instead: a dry March 2016 in the interior, dry Junes in both years, and in 2016 the aftermath of the failed 2015 spring (51% of typical). A trigger on the seasonal total alone would have missed both. A smaller record, a 1980–83 drought in the southwest (about 103,000 affected), runs into 1983, a post-El Niño spring in which CHIRPS has Grande'Anse at 84% and Sud at 95% of typical. It touches the same departments we rate least certain.</p>
+    <p style="margin-top:10px">2026 gives the same warning. The spring total was near typical (CHIRPS 105%, ERA5 95%), but late onsets and long dry spells covered more of the country than usual (39% and 40% of the area, against 28% and 32%), and May–August then ran at about 30–70% of typical. The 2027 spring starts on that stress. CariCOF also flags record heat, which raises water demand even in a near-typical rainy season.</p>
+  </div>
+</section>
+
+<section aria-labelledby="watch">
+  <h2 id="watch">What to watch, and when</h2>
+  <div class="panel">
+    <ol class="timeline">
+      <li><span class="when">12 Nov 2026</span><span>CPC ENSO update: strength and expected decay of the El Niño.</span></li>
+      <li><span class="when">About 13–19 Nov</span><span>IRI seasonal forecast with its first March–May map, and the IRI ENSO plume.</span></li>
+      <li><span class="when">Late Nov – early Dec</span><span>CariCOF newsletter and drought outlook, including the long-term outlook to May 2027; FEWS NET Haiti outlook for October 2026 to May 2027 (pending).</span></li>
+      <li><span class="when">Early Dec</span><span>SEAS5 December run: our first SEAS5 forecast that covers all of March–June.</span></li>
+      <li><span class="when">10 Dec</span><span>C3S multi-model forecast: first March–May.</span></li>
+      <li><span class="when">10 Jan 2027</span><span>C3S April–June and June.</span></li>
+      <li><span class="when">Jan – early Apr</span><span>Winter North Atlantic Oscillation (January–March). A positive NAO is the main documented route to a dry early season (Martinez et al. 2020). Here it correlates at r = −0.37 with May–June rain, the strongest single predictor we found.</span></li>
+      <li><span class="when">Early Mar</span><span>SEAS5 March run: the first with useful skill for March–May (r ≈ 0.48 nationally, 0.28–0.52 by department).</span></li>
+      <li><span class="when">Apr – Jun</span><span>Observed onset, false starts and dry spells by department (CHIRPS and IMERG). This is where the risk sits.</span></li>
+    </ol>
+  </div>
+  <div class="prose">
+    <p><b>What would change this outlook:</b> a forecast that moves April–June toward the dry end of the typical range in C3S or SEAS5, a strongly positive winter NAO, or an El Niño that lingers well beyond spring.</p>
+  </div>
+</section>
+
+<section aria-labelledby="ready">
+  <h2 id="ready">Implications for a readiness trigger</h2>
+  <div class="prose">
+    <ul class="plain">
+      <li>A forecast-based readiness activation for a dry spring is not supported by any current line of evidence. None points to a drier-than-typical season.</li>
+      <li>The historical case for action rests on distribution. An observational trigger on late onset, false starts or dry spells in April–May, by department, fits the impact record (1992, 2016) better than one on seasonal totals. Its return period would need to be computed and validated against two records: the rainfall metrics built for this note and the impact record (EM-DAT, FEWS NET and IPC).</li>
+      <li>A readiness step tied to the March forecasts and to early onset monitoring would cost little if the season turns out wet.</li>
+    </ul>
+  </div>
+</section>
+
+<section aria-labelledby="meth">
+  <h2 id="meth">Data, methods and caveats</h2>
+  <div class="prose note" style="display:grid; gap:10px">
+    <p><b>Rainfall:</b> CHIRPS v2.0, monthly and daily for February–July, 1981–2026 (IRI Data Library). ERA5 and SEAS5 by department from the team's admin-1 statistics; IMERG from the team's daily statistics, 1998–2025. NMME from the IRI Data Library: CanESM5, GEM5.2-NEMO, CESM1, CCSM4 and CFSv2, all started in November 2026 and all reaching June 2027. GEOS-S2S and SPEAR had no November 2026 run yet. Indices: Niño3.4 (ERSSTv6, 1981–2010 base, NOAA PSL), NAO (CPC), tropical North Atlantic (PSL). Department averages are weighted by area with fractional cell coverage.</p>
+    <p><b>Definitions:</b> typical means the 1991–2020 average; each dataset is compared with its own average. Likely ranges run from the 10th to the 90th percentile. Strong El Niño winters have a December–February Niño3.4 of at least +1.0: 1983, 1992, 1998, 2010, 2016 and 2024. The regressions relate log rainfall to winter Niño3.4. NMME and SEAS5 ranges come from a model of observed rainfall given the forecast, scaled by each system's correlation with observations.</p>
+    <p><b>Datasets disagree:</b> CHIRPS and ERA5 correlate at only 0.65 for the national spring total and disagree on key years: 1998 (105% vs 91%) and 2019 (67% vs 101%). ERA5 is about 25% drier than CHIRPS overall. The interior and the southern peninsula are where they differ most. Millimetre figures on this page are on the CHIRPS scale.</p>
+    <p><b>IMERG 2026</b> is left out: its values run at about 2.4 times CHIRPS, against 1.2–1.6 in earlier years, which looks like a break in the record rather than real rain.</p>
+    <p><b>EM-DAT</b> is used under its non-commercial terms. Only dates and totals are summarised here.</p>
+    <p><b>Code:</b> the analysis scripts and their outputs are in <a href="https://github.com/OCHA-DAP/ds-teleconnections/tree/feature/era5-ghpages/deep_dives/data/hti">deep_dives/data/hti</a>; the page is built by <code>hti_deep_dive.py</code>.</p>
+  </div>
+</section>
+
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+const DATA = __DATA__;
+const PTS = __PTS__;
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const tip = document.getElementById("tip");
+  const M = DATA.m, G = DATA.geo;
+  const DEPTS = ["HT03","HT04","HT09","HT05","HT06","HT01","HT02","HT10","HT07","HT08"];
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function showTip(html, evt) {
+    tip.innerHTML = html; tip.style.display = "block";
+    let x, y;
+    if (evt.type === "focus") { const r = evt.target.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+    else { x = evt.clientX; y = evt.clientY; }
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = x + 14, top = y - h - 10;
+    if (left + w > window.innerWidth - 8) left = x - w - 14;
+    if (left < 8) left = 8;
+    if (top < 8) top = y + 16;
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+  function bindTip(node, html) {
+    node.addEventListener("mousemove", e => showTip(html, e));
+    node.addEventListener("focus", e => showTip(html, e));
+    node.addEventListener("mouseleave", hideTip);
+    node.addEventListener("blur", hideTip);
+  }
+  const signed = (v, d = 0) => (v > 0 ? "+" : v < 0 ? "−" : "±") + Math.abs(v).toFixed(d);
+  const AGR = { both: "Leans wet in both rainfall records", chirps: "Leans wet in CHIRPS only", unc: "Least certain: records and models disagree" };
+  function deptHtml(pc) {
+    const d = M[pc];
+    return `<b>${d.name}</b><br>Typical: ${d.typ_mm} mm (8 in 10 springs ${d.typ_p10}–${d.typ_p90} mm)` +
+      `<br>Expected 2027: about ${d.central_mm} mm (${d.central}%), likely ${d.lo_mm}–${d.hi_mm} mm` +
+      `<br>Past strong El Niño springs, CHIRPS: ${d.ch_an.join(", ")}%` +
+      `<br>Same, ERA5: ${d.er_an.join(", ")}%` +
+      (d.cls ? `<br>${AGR[d.cls]}` : "") +
+      `<br>Onset shift: ${signed(d.shift)} days (± ${d.shift_se})` +
+      `<br>Long dry spell area: ${d.longdry_an}% after strong winters vs ${d.longdry_base}%` +
+      `<br>False starts: ${d.fs_an} vs ${d.fs_base} per season`;
+  }
+
+  /* ---------- colour scales ---------- */
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function hex2rgb(h) { return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  function rgb2hex(c) { return "#" + c.map(v => Math.round(v).toString(16).padStart(2, "0")).join(""); }
+  function ramp(stops) {
+    return t => {
+      t = Math.max(0, Math.min(1, t));
+      const n = stops.length - 1, i = Math.min(Math.floor(t * n), n - 1), f = t * n - i;
+      const a = hex2rgb(stops[i]), b = hex2rgb(stops[i + 1]);
+      return rgb2hex([0, 1, 2].map(k => lerp(a[k], b[k], f)));
+    };
+  }
+  const SEQ = ["#cde2fb", "#9ec5f4", "#6da7ec", "#3987e5", "#256abf", "#184f95"];
+  const DIV = ["#8f6127", "#c49a5a", "#e8d3ad", "#efeeea", "#b7d3f6", "#5598e7", "#1c5cab"]; // dry/late (brown) to wet/early (blue)
+  const seq = ramp(SEQ), div = ramp(DIV);
+  function lum(hex) { const c = hex2rgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); }); return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]; }
+
+  /* ---------- maps ---------- */
+  function drawMap(id, fillOf, labelOf, opts = {}) {
+    const host = document.getElementById(id);
+    host.innerHTML = "";
+    const svg = el("svg", { class: "map", viewBox: `0 0 ${DATA.W} ${DATA.H}`, role: "group", "aria-label": opts.aria || "" }, host);
+    if (opts.hatch) {
+      const defs = el("defs", {}, svg);
+      const p = el("pattern", { id: id + "-hatch", width: 14, height: 14, patternUnits: "userSpaceOnUse", patternTransform: "rotate(45)" }, defs);
+      el("rect", { width: 14, height: 14, fill: "#e6e2d8" }, p);
+      el("line", { x1: 0, y1: 0, x2: 0, y2: 14, stroke: "#b9b2a2", "stroke-width": 5 }, p);
+    }
+    DEPTS.forEach(pc => {
+      const f = fillOf(pc);
+      const path = el("path", { d: G[pc].d, class: "dep", fill: f === "HATCH" ? `url(#${id}-hatch)` : f, tabindex: 0, "aria-label": M[pc].name }, svg);
+      bindTip(path, deptHtml(pc));
+    });
+    DEPTS.forEach(pc => {
+      const f = fillOf(pc);
+      const dark = f !== "HATCH" && lum(f) < 0.22;
+      const ink = dark ? "#ffffff" : "#142022", halo = dark ? "rgba(0,0,0,0.35)" : "rgba(255,255,255,0.75)";
+      const lines = labelOf(pc);
+      const g = el("g", { "pointer-events": "none" }, svg);
+      const lh = 36, y0 = G[pc].ly - (lines.length - 1) * lh / 2 + 12;
+      lines.forEach((ln, i) => {
+        const t = el("text", { x: G[pc].lx, y: y0 + i * lh, "text-anchor": "middle", "font-size": ln.small ? 27 : 34, "font-weight": ln.small ? 400 : 700, fill: ink, stroke: halo, "stroke-width": 5, "paint-order": "stroke" }, g);
+        t.textContent = ln.t;
+      });
+    });
+  }
+  function gradLegend(id, scale, lo, hi, ticks, fmt, ends) {
+    const host = document.getElementById(id);
+    const stops = Array.from({ length: 11 }, (_, i) => scale(i / 10) + " " + (i * 10) + "%").join(",");
+    host.innerHTML = `<div class="grad"><div class="bar" style="background:linear-gradient(90deg,${stops})"></div>` +
+      `<div class="ticks">${ticks.map(v => `<span>${fmt(v)}</span>`).join("")}</div>` +
+      (ends ? `<div class="ends"><span>${ends[0]}</span><span>${ends[1]}</span></div>` : "") + `</div>`;
+  }
+  // 1. typical mm
+  const tLo = 200, tHi = 650;
+  drawMap("m-typ", pc => seq((M[pc].typ_mm - tLo) / (tHi - tLo)),
+    pc => [{ t: M[pc].name, small: true }, { t: M[pc].typ_mm + " mm" }],
+    { aria: "Map of typical March to June rainfall by department, from about 230 mm in Nord-Ouest to 630 mm in Grande'Anse." });
+  gradLegend("l-typ", seq, tLo, tHi, [200, 350, 500, 650], v => v + " mm");
+  // 2. expected change
+  const eR = 30; // ±30%
+  drawMap("m-exp", pc => div((M[pc].central - 100 + eR) / (2 * eR)),
+    pc => [{ t: signed(M[pc].central - 100) + "%" }],
+    { aria: "Map of the expected 2027 change from typical: between +5 and +14 percent in every department." });
+  gradLegend("l-exp", div, -eR, eR, [-30, -15, 0, 15, 30], v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + "%", ["drier", "wetter"]);
+  // 3. agreement
+  const AGC = { both: "#256abf", chirps: "#9ec5f4", unc: "HATCH" };
+  drawMap("m-agr", pc => AGC[M[pc].cls], pc => [{ t: M[pc].name, small: true }],
+    { hatch: true, aria: "Map of how far the evidence agrees: leans wet in both records in the north and centre, CHIRPS only in Ouest and Sud-Est, least certain in Sud, Grande'Anse and Nippes." });
+  document.getElementById("l-agr").innerHTML = `<div class="mapleg"><span><i style="background:#256abf"></i>Leans wet in both records</span><span><i style="background:#9ec5f4"></i>Leans wet in CHIRPS only</span><span><i style="background:repeating-linear-gradient(45deg,#e6e2d8 0 4px,#b9b2a2 4px 7px)"></i>Least certain</span></div>`;
+  // 4. onset shift (later = brown)
+  const oR = 15;
+  drawMap("m-on", pc => div((-M[pc].shift + oR) / (2 * oR)), pc => [{ t: signed(M[pc].shift) + " d" + (pc === "HT09" ? "*" : "") }],
+    { aria: "Map of onset shifts after strong El Niño winters, from 3 days earlier to 13 days later; none is outside chance." });
+  gradLegend("l-on", div, -oR, oR, [15, 0, -15], v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + " d", ["later", "earlier"]);
+  // 5. long dry spells (more = brown)
+  const dR = 25;
+  drawMap("m-dry", pc => div((-(M[pc].longdry_an - M[pc].longdry_base) + dR) / (2 * dR)), pc => [{ t: signed(M[pc].longdry_an - M[pc].longdry_base) }],
+    { aria: "Map of the change in long dry spell area after strong El Niño winters: lower everywhere, by 5 to 20 percentage points." });
+  gradLegend("l-dry", div, -dR, dR, [25, 0, -25], v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v), ["more dry spells", "fewer"]);
+  // 6. false starts (more = brown)
+  const fR = 2;
+  drawMap("m-fs", pc => div((-(M[pc].fs_an - M[pc].fs_base) + fR) / (2 * fR)), pc => [{ t: signed(M[pc].fs_an - M[pc].fs_base, 1) }],
+    { aria: "Map of the change in false starts per season after strong El Niño winters: higher everywhere, by 0.3 to 1.9." });
+  gradLegend("l-fs", div, -fR, fR, [2, 0, -2], v => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v), ["more false starts", "fewer"]);
+
+  /* ---------- table ---------- */
+  (function () {
+    const rows = ["HT"].concat(DEPTS).map(pc => {
+      const d = M[pc];
+      return `<tr${pc === "HT" ? ' class="em"' : ""}><td>${d.name}</td><td class="n">${d.typ_mm}</td><td class="n">${d.typ_p10}–${d.typ_p90}</td><td class="n">${d.central_mm} (${d.central}%)</td><td class="n">${d.lo_mm}–${d.hi_mm}</td><td class="n">${Math.min(...d.ch_an)}–${Math.max(...d.ch_an)}%</td><td>${d.cls ? AGR[d.cls] : ""}</td><td class="n">${signed(d.shift)} ± ${d.shift_se}</td><td class="n">${d.longdry_an}% / ${d.longdry_base}%</td><td class="n">${d.fs_an} / ${d.fs_base}</td><td class="n">${d.late26}% / ${d.longdry26}%</td></tr>`;
+    }).join("");
+    document.getElementById("depttable").innerHTML = `<thead><tr><th>Department</th><th class="n">Typical (mm)</th><th class="n">Typical range (mm)</th><th class="n">Expected 2027 (mm)</th><th class="n">Likely 2027 range (mm)</th><th class="n">Past strong El Niño springs, CHIRPS</th><th>Agreement</th><th class="n">Onset shift (days)</th><th class="n">Long dry spell area<br>strong / all</th><th class="n">False starts<br>strong / all</th><th class="n">Spring 2026 area<br>late / long dry</th></tr></thead><tbody>${rows}</tbody>`;
+  })();
+
+  /* ---------- national range chart ---------- */
+  const NAT = M.HT;
+  const natRows = [
+    { k: "typ", label: "Typical spring", sub: "CHIRPS, 1981–2026", short: "Typical spring", lo: NAT.typ_p10_pct, hi: NAT.typ_p90_pct, c: 100, dots: PTS.map(p => p.ch), years: PTS.map(p => p.y), context: true },
+    { label: "Past strong El Niño springs", sub: "CHIRPS", short: "Past El Niño: CHIRPS", dots: NAT.ch_an, years: [1983, 1992, 1998, 2010, 2016, 2024] },
+    { label: "", sub: "ERA5", short: "Past El Niño: ERA5", dots: NAT.er_an, years: [1983, 1992, 1998, 2010, 2016, 2024] },
+    { label: "", sub: "IMERG", short: "Past El Niño: IMERG", dots: NAT.im_an, years: [2010, 2016, 2024] },
+    { label: "Regression on Niño3.4", sub: "CHIRPS", short: "Regression: CHIRPS", c: NAT.ch_reg[0], lo: NAT.ch_reg[1], hi: NAT.ch_reg[2] },
+    { label: "", sub: "ERA5", short: "Regression: ERA5", c: NAT.er_reg[0], lo: NAT.er_reg[1], hi: NAT.er_reg[2] },
+    { label: "Seasonal models", sub: "NMME, 5 models", short: "NMME", c: NAT.nmme[0], lo: NAT.nmme[1], hi: NAT.nmme[2] },
+    { label: "", sub: "SEAS5 (Mar–May)", short: "SEAS5 (Mar–May)", c: NAT.s5[0], lo: NAT.s5[1], hi: NAT.s5[2] },
+    { label: "Combined outlook", sub: "", short: "Combined outlook", c: NAT.central, lo: NAT.lo, hi: NAT.hi, strong: true }
+  ];
+  function drawRanges() {
+    const host = document.getElementById("ranges");
+    host.innerHTML = "";
+    const W = host.clientWidth || 340, narrow = W < 600;
+    const labelW = narrow ? 132 : 250, padR = narrow ? 14 : 110, top = 34, rowH = 34, bottom = 40;
+    const H = top + natRows.length * rowH + bottom;
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, host);
+    const xmin = 40, xmax = 180, x0 = labelW, x1 = W - padR;
+    const sx = v => x0 + (v - xmin) / (xmax - xmin) * (x1 - x0);
+    // typical band across the whole chart
+    el("rect", { x: sx(NAT.typ_p10_pct), y: top - 6, width: sx(NAT.typ_p90_pct) - sx(NAT.typ_p10_pct), height: natRows.length * rowH + 6, fill: "var(--band)" }, svg);
+    for (let v = 50; v <= 175; v += 25) {
+      el("line", { x1: sx(v), x2: sx(v), y1: top - 6, y2: H - bottom + 2, stroke: v === 100 ? "var(--ink-2)" : "var(--rule)", "stroke-width": v === 100 ? 1.5 : 1, "stroke-dasharray": v === 100 ? "5 4" : "" }, svg);
+      const t1 = el("text", { x: sx(v), y: H - bottom + 18, "text-anchor": "middle", "font-size": 12, fill: "var(--muted)" }, svg);
+      t1.textContent = v + "%";
+      const t2 = el("text", { x: sx(v), y: top - 14, "text-anchor": "middle", "font-size": 11, fill: "var(--muted)" }, svg);
+      t2.textContent = Math.round(v * NAT.typ_mm / 100) + " mm";
+    }
+    const ax = el("text", { x: (x0 + x1) / 2, y: H - 6, "text-anchor": "middle", "font-size": 12, fill: "var(--ink-2)" }, svg);
+    ax.textContent = "March–June rainfall, % of typical (top: CHIRPS mm)";
+    natRows.forEach((d, i) => {
+      const y = top + i * rowH + rowH / 2;
+      if (d.label && i > 0) el("line", { x1: 0, x2: W, y1: y - rowH / 2, y2: y - rowH / 2, stroke: "var(--rule)", "stroke-width": 1 }, svg);
+      const lab = el("text", { x: 0, y: y + 4, "font-size": narrow ? 12 : 13, fill: "var(--ink)" }, svg);
+      if (!narrow && d.label) { const s = el("tspan", { "font-weight": 600 }, lab); s.textContent = d.label + "  "; }
+      const s2 = el("tspan", { fill: !narrow && d.label ? "var(--ink-2)" : "var(--ink)", "font-weight": d.strong ? 600 : 400 }, lab);
+      s2.textContent = narrow ? d.short : d.sub;
+      let html;
+      if (d.dots && !d.context) {
+        d.dots.forEach((v, j) => {
+          el("circle", { cx: sx(v), cy: y, r: 6, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+        });
+        html = `<b>${d.label || "Past strong El Niño springs"}, ${d.sub}</b><br>` + d.years.map((yy, j) => `${yy}: ${d.dots[j]}%`).join("<br>");
+        if (!narrow) { const t = el("text", { x: x1 + 10, y: y + 4, "font-size": 12, fill: "var(--ink-2)" }, svg); t.textContent = Math.min(...d.dots) + "–" + Math.max(...d.dots) + "%"; }
+      } else if (d.context) {
+        el("rect", { x: sx(d.lo), y: y - 5, width: sx(d.hi) - sx(d.lo), height: 10, rx: 3, fill: "var(--typical)" }, svg);
+        d.dots.forEach(v => el("circle", { cx: sx(Math.max(xmin, v)), cy: y, r: 2.6, fill: "var(--context)" }, svg));
+        html = `<b>Typical spring</b><br>Average ${NAT.typ_mm} mm<br>8 in 10 springs: ${NAT.typ_p10}–${NAT.typ_p90} mm (${d.lo}–${d.hi}%)<br>Small dots: each spring since 1982`;
+        if (!narrow) { const t = el("text", { x: x1 + 10, y: y + 4, "font-size": 12, fill: "var(--ink-2)" }, svg); t.textContent = d.lo + "–" + d.hi + "%"; }
+      } else {
+        el("rect", { x: sx(d.lo), y: y - (d.strong ? 6 : 5), width: sx(d.hi) - sx(d.lo), height: d.strong ? 12 : 10, rx: 3, fill: "var(--series-soft)" }, svg);
+        el("circle", { cx: sx(d.c), cy: y, r: d.strong ? 7 : 6, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+        html = `<b>${d.label ? d.label + ", " : ""}${d.sub}</b><br>Central ${d.c}% (${Math.round(d.c * NAT.typ_mm / 100)} mm)<br>Likely ${d.lo}–${d.hi}% (${Math.round(d.lo * NAT.typ_mm / 100)}–${Math.round(d.hi * NAT.typ_mm / 100)} mm)`;
+        if (!narrow) { const t = el("text", { x: x1 + 10, y: y + 4, "font-size": 12, fill: "var(--ink-2)", "font-weight": d.strong ? 600 : 400 }, svg); t.textContent = d.c + "% (" + d.lo + "–" + d.hi + ")"; }
+      }
+      const hit = el("rect", { x: 0, y: y - rowH / 2, width: W, height: rowH, fill: "transparent", tabindex: 0 }, svg);
+      bindTip(hit, html);
+    });
+  }
+
+  /* ---------- department range chart (mm) ---------- */
+  function drawDeptRanges() {
+    const host = document.getElementById("deptranges");
+    host.innerHTML = "";
+    const order = DEPTS.slice().sort((a, b) => M[b].typ_mm - M[a].typ_mm);
+    const W = host.clientWidth || 340, narrow = W < 600;
+    const labelW = narrow ? 92 : 120, padR = 14, top = 10, rowH = 30, bottom = 40;
+    const H = top + order.length * rowH + bottom;
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, host);
+    const xmin = 100, xmax = 950, x0 = labelW, x1 = W - padR;
+    const sx = v => x0 + (v - xmin) / (xmax - xmin) * (x1 - x0);
+    for (let v = 100; v <= 900; v += 100) {
+      el("line", { x1: sx(v), x2: sx(v), y1: top, y2: H - bottom + 2, stroke: "var(--rule)", "stroke-width": 1 }, svg);
+      if (!narrow || v % 200 === 0) { const t = el("text", { x: sx(v), y: H - bottom + 18, "text-anchor": "middle", "font-size": 12, fill: "var(--muted)" }, svg); t.textContent = v; }
+    }
+    const ax = el("text", { x: (x0 + x1) / 2, y: H - 6, "text-anchor": "middle", "font-size": 12, fill: "var(--ink-2)" }, svg);
+    ax.textContent = "March–June rainfall, mm (CHIRPS scale)";
+    order.forEach((pc, i) => {
+      const d = M[pc], y = top + i * rowH + rowH / 2;
+      const lab = el("text", { x: 0, y: y + 4, "font-size": narrow ? 12 : 13, fill: "var(--ink)" }, svg);
+      lab.textContent = d.name;
+      el("rect", { x: sx(d.typ_p10), y: y - 9, width: sx(d.typ_p90) - sx(d.typ_p10), height: 8, rx: 3, fill: "var(--typical)" }, svg);
+      el("line", { x1: sx(d.typ_mm), x2: sx(d.typ_mm), y1: y - 11, y2: y - 1, stroke: "var(--ink-2)", "stroke-width": 2 }, svg);
+      el("rect", { x: sx(d.lo_mm), y: y + 1, width: sx(d.hi_mm) - sx(d.lo_mm), height: 8, rx: 3, fill: "var(--series-soft)" }, svg);
+      el("circle", { cx: sx(d.central_mm), cy: y + 5, r: 5, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      const hit = el("rect", { x: 0, y: y - rowH / 2, width: W, height: rowH, fill: "transparent", tabindex: 0 }, svg);
+      bindTip(hit, deptHtml(pc));
+    });
+  }
+
+  /* ---------- scatter ---------- */
+  const labels = { 1983: [-8, 16, "end"], 1998: [8, 16, "start"], 1992: [-9, 4, "end"], 2010: [0, -11, "middle"], 2024: [8, -6, "start"], 2016: [9, 4, "start"], 2015: [-9, 4, "end"], 2020: [-9, 4, "end"], 2019: [9, 4, "start"] };
+  function drawScatter() {
+    const host = document.getElementById("scatter");
+    host.innerHTML = "";
+    const W = host.clientWidth || 340, H = W < 560 ? 300 : 360;
+    const L = 46, R = 16, T = 14, B = 42;
+    const svg = el("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}` }, host);
+    const xmin = -2, xmax = 3.6, ymin = 40, ymax = 160;
+    const sx = v => L + (v - xmin) / (xmax - xmin) * (W - L - R);
+    const sy = v => T + (ymax - v) / (ymax - ymin) * (H - T - B);
+    el("rect", { x: sx(2.25), y: T, width: sx(3.15) - sx(2.25), height: H - T - B, fill: "var(--band)" }, svg);
+    [["2026/27", 14], ["winter", 28]].forEach(([s, dy]) => { const t = el("text", { x: (sx(2.25) + sx(3.15)) / 2, y: T + dy, "text-anchor": "middle", "font-size": 12, fill: "var(--ink-2)" }, svg); t.textContent = s; });
+    for (let v = 40; v <= 160; v += 20) {
+      el("line", { x1: L, x2: W - R, y1: sy(v), y2: sy(v), stroke: "var(--rule)", "stroke-width": 1 }, svg);
+      const t = el("text", { x: L - 8, y: sy(v) + 4, "text-anchor": "end", "font-size": 12, fill: "var(--muted)" }, svg); t.textContent = v + "%";
+    }
+    for (let v = -2; v <= 3; v += 1) {
+      const t = el("text", { x: sx(v), y: H - B + 18, "text-anchor": "middle", "font-size": 12, fill: "var(--muted)" }, svg);
+      t.textContent = (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v);
+    }
+    el("line", { x1: sx(1), x2: sx(1), y1: T, y2: H - B, stroke: "var(--rule)", "stroke-width": 1, "stroke-dasharray": "2 3" }, svg);
+    const xt = el("text", { x: (L + W - R) / 2, y: H - 6, "text-anchor": "middle", "font-size": 12, fill: "var(--ink-2)" }, svg);
+    xt.textContent = "Winter (Dec–Feb) Niño3.4 anomaly, °C";
+    el("line", { x1: L, x2: W - R, y1: sy(89.6), y2: sy(89.6), stroke: "var(--ink-2)", "stroke-width": 1.5, "stroke-dasharray": "5 4" }, svg);
+    const lt = el("text", { x: L + 6, y: sy(89.6) - 6, "font-size": 12, fill: "var(--ink-2)" }, svg); lt.textContent = "driest third";
+    PTS.slice().sort((a, b) => (a.djf >= 1) - (b.djf >= 1)).forEach(d => {
+      const strong = d.djf >= 1.0;
+      if (strong) el("circle", { cx: sx(d.djf), cy: sy(d.ch), r: 6, fill: "var(--series)", stroke: "var(--surface)", "stroke-width": 2 }, svg);
+      else el("circle", { cx: sx(d.djf), cy: sy(d.ch), r: 4.5, fill: "var(--surface)", stroke: "var(--context)", "stroke-width": 1.6 }, svg);
+      const hit = el("circle", { cx: sx(d.djf), cy: sy(d.ch), r: 11, fill: "transparent", tabindex: 0 }, svg);
+      bindTip(hit, `<b>Spring ${d.y}</b><br>Winter Niño3.4 ${d.djf > 0 ? "+" : ""}${d.djf.toFixed(2)} °C<br>CHIRPS ${d.ch}% of typical<br>ERA5 ${d.er}% of typical`);
+      if (labels[d.y]) {
+        const [dx, dy, anchor] = labels[d.y];
+        const t = el("text", { x: sx(d.djf) + dx, y: sy(d.ch) + dy, "text-anchor": anchor, "font-size": 12, fill: "var(--ink)" }, svg); t.textContent = d.y;
+      }
+    });
+  }
+  function drawAll() { drawRanges(); drawDeptRanges(); drawScatter(); }
+  drawAll();
+  let rt; window.addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(drawAll, 120); });
+})();
+</script>
+</body>
+</html>

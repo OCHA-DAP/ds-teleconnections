@@ -1878,6 +1878,11 @@ def main() -> None:
             import ago_deep_dive
             ago_deep_dive.build(spec, publish=bool(os.environ.get("AGO_PUBLISH")))
             continue
+        if spec.get("builder") == "hti":
+            # Haiti spring 2027 outlook: page filled from the committed analysis outputs; docs/ only with HTI_PUBLISH=1
+            import hti_deep_dive
+            hti_deep_dive.build(spec, publish=bool(os.environ.get("HTI_PUBLISH")))
+            continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack
             import extreme_nord_deep_dive
