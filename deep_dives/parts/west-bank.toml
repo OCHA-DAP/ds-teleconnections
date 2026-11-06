@@ -1,0 +1,435 @@
+# One part of deep_dives/gaza-west-bank.toml (the combined page supplies the summary, forecast text and table,
+# regional-maps text, caveats, catalogue row and index card). This file: the area config and its section narratives.
+# West Bank — ENSO deep dive. Built by levant_deep_dive.py (builder = "levant"); its area table
+# points the Gaza builder at the West Bank. Figures and tables are recomputed on every run; the
+# narrative must be reconciled against them after every rebuild. Impacts are curated from public sources.
+iso3 = "PSE"
+name = "West Bank"
+builder = "levant"
+skill_issued_month = 10
+skill_intro = false
+timeline_winters = [2023, 2024, 2025]
+
+skill_html = '''
+<p>Over the West Bank, ECMWF's October 2026 forecast (SEAS5, published on 5 October) still shows a wet start to the season, though a less extreme one than a month ago. October–December is at a 9-year wet return period with high skill (r = 0.62); the September issuance had it at 23 years. The later windows also lean wet (about 3.5 to 7 years), with moderate skill at best. SEAS5's wettest October–December hindcasts for the area are El Niño winters, so this is the El Niño signal the model carries.<!--more-->November–January is at about 7 years with moderate skill, December–February at about 3.5 years with moderate skill (0.33), January–March at about 4 years with low skill, and February–April at about 6 years with skill just at the moderate threshold (0.31). The raw ensemble-mean files show the same shape more modestly: October–December is the 8th-wettest of 46 October forecasts since 1981 and 12% above the hindcast mean, and the later windows are 1–8% above it. The return periods rank higher than the raw values because the app's method takes a long-term trend out of the hindcasts first. SEAS5's wettest October–December hindcasts for the area are 1986, 2018 and 2002, all El Niño winters. (The skill table counts 17 cells, every 0.25° cell touching the West Bank; the ERA5 series uses the 16 that cover more than 0.5% of it.)</p>
+'''
+
+monthly_html = '''
+<p>By month, the forecast is above its hindcast mean in October (29%, the 11th-wettest of 46 October forecasts), November (13%) and December (7%), close to it in January and February, and well above it in March (23%, the 2nd-wettest) and April (15%). Skill for single months is high for October (r = 0.57), moderate for November and December, and low after that, so read the monthly split as a guide to where the three-month signal sits.</p>
+'''
+
+enso_intro_html = '''
+<p>The West Bank's rain falls between October and April, mostly from December to February. The hills rise to 700–1,000 m and drop steeply east to the Jordan Valley, about 300 m below sea level, and rainfall more than halves from the western slopes to the valley. This section uses four records:</p>
+<ul>
+<li>the GPCC gauge analysis;</li>
+<li>the Jerusalem rain gauge (St Anne to spring 1948, Jerusalem Central from autumn 1948 to 2015), which is one of GPCC's inputs;</li>
+<li>ERA5 over the 16 cells covering the West Bank, a reanalysis that assimilates no rain gauges;</li>
+<li>IMERG.</li>
+</ul>
+'''
+
+stationarity_html = '''
+<p>Since the late 1970s, yes; before that, no. Since 1979 the correlation between the October–April total and December–February Niño3.4 is +0.57 in GPCC (to 2024/25), +0.59 at the Jerusalem gauge (to 2013/14) and +0.59 in ERA5 (to 2025/26). Each is significant at p &lt; 0.001 and unchanged by detrending. Before 1979 the same records give −0.03 (GPCC, from 1891), −0.16 (Jerusalem, from 1909) and −0.21 (ERA5, from 1950). Over each full record the correlation is weak (+0.16 to +0.30). As in Gaza, the switch shows in the gauge records as well as the reanalysis.</p>
+<p>The literature found the same break. Price et al. (1998) saw significant correlations only in the last 25 years of their Israeli record, and Alpert et al. (2005) found no connection before the 1970s. A 2026 Israel Meteorological Service technical report (not peer-reviewed) finds r ≈ 0.50–0.55 over the last 50 years, strongest in the hills around Jerusalem, the Shephelah and the northern Negev. IMERG (1998–) agrees on the sign but is weaker (r = +0.30, not significant over 28 winters).</p>
+'''
+
+history_html = '''
+<p>Since 1979, 9 of the 14 El Niño winters in GPCC fell in the West Bank's wettest third and none in the driest; in ERA5, 9 and one. La Niña winters ran the other way: 2 of 19 in the wettest third and 11 in the driest. Before 1979 El Niño winters were spread evenly (9 wettest, 7 driest of 25).</p>
+'''
+
+strong_html = '''
+<p>None of the six strong El Niños since 1979 was in the driest third in GPCC or at the Jerusalem gauge, a stronger result than in Gaza. But other records put single winters there, and the two wettest strong events followed volcanic eruptions.<!--more-->Two of the other records disagree for single winters: ERA5 puts 2009/10 just inside its driest third (32nd percentile), and IMERG puts 2015/16, the strongest event in the record, there too (21st percentile). The Israel Meteorological Service says a dry 2026/27 “like 2015/16” cannot be ruled out. The two wettest strong events both followed major volcanic eruptions: 1982/83, and 1991/92, Jerusalem's wettest winter on record, with heavy snow in February 1992. That makes them doubtful analogues for a winter forecast to be warm. 1997/98 was wet in GPCC and ERA5 but normal at Jerusalem; 2009/10, 2015/16 and 2023/24 were near normal in GPCC. The two strong events before 1979 were dry or normal.</p>
+'''
+
+trimester_html = '''
+<p>The concurrent signal runs through the whole season and is strongest in October–December (r = 0.47–0.54). The August–October Niño3.4, known before the season starts, predicts the season total nearly as well (r = 0.49 in GPCC, 0.54 in ERA5). Unlike in Gaza, it still says something about January–March (0.33–0.37).</p>
+'''
+
+daily_html = '''
+<p>A wetter El Niño winter here is a winter with more rain days and more moderate-to-heavy days. Rain days rise with Niño3.4 in all three records (r = 0.51–0.56): ERA5 has 65 in an average El Niño winter against 50 in a La Niña winter, IMERG 58 against 46, and the Jerusalem gauge 48 against 38. The single wettest day shows no consistent link, and nor do cold nights (ERA5).<!--more-->Days of 10 mm or more rise in ERA5 and at Jerusalem (20 against 14). At Jerusalem so do days of 20 mm or more (10 against 7, r = +0.41). Windy days are a little more frequent (r = +0.31). More wet days should mean wetter ground, so that a given storm runs off faster into the wadis; that is a reasonable expectation, not something tested here.</p>
+'''
+
+impacts_intro_html = '''
+<p>Winter weather does much less harm in the West Bank than in Gaza, and what it does is poorly counted. The record has two large events from before October 2023:</p>
+<ul>
+<li>the floods of 7–10 January 2013: about 1,000 homes damaged, more than 260 mm in 48 hours in parts of the north, 4 deaths;</li>
+<li>Storm Alexa's snow in December 2013: 7,128 Palestinian Civil Defense operations, communities cut off for days, at least 300 people displaced in Bedouin and herding communities.</li>
+</ul>
+<p>Since October 2023, UN reporting on the West Bank has centred on casualties, settler attacks, demolitions and displacement, and the UN has quantified one weather event in three winters. Most other figures come from the Palestinian Civil Defense via the media. That gap shows in the timeline below. Storm Byron gave the West Bank its wettest day in IMERG's 28-year record, about 97 mm averaged over the whole territory on 11 December 2025, yet no West Bank impact from it was found in public reporting. Whether that reflects little damage or little counting cannot be told from what is published.</p>
+<p>The impacts fall on three groups, set out by theme in section 5:</p>
+<ul>
+<li>refugee camps and towns, where drainage is blocked by the Barrier or destroyed (water, sewage and stormwater networks in the northern camps were bulldozed during Israeli forces' operations), and the hill towns when it snows;</li>
+<li>Bedouin and herding communities in Area C living in tents and makeshift structures, who have lost shelters, animal pens and fodder in the storms that have been reported;</li>
+<li>farmers, whose greenhouses in the north and the Jordan Valley take the wind, frost and flood damage, and whose rainfed crops and pasture depend on the season's rain (section 6).</li>
+</ul>
+<p>Deaths come from flash floods in wadis and from heating fires. No hypothermia death was found for the West Bank in any winter.</p>
+'''
+
+prewar_html = '''
+<p>Before October 2023: the two large events, and the recurring ones (snow on the hills, heating fires, flash floods). Several figures are counts of rescues or assistance rather than of people affected.</p>
+'''
+
+range_intro_html = '''
+<p>There is not enough counted impact data for the West Bank to say how many households a winter will affect. What the record can show is how often the weather that has caused harm comes, whether El Niño changes that, how big a week of rain is against the year, and who is exposed now.</p>
+'''
+
+winter_counts_caption = "Every count in the tables above, one bar per winter, coloured by the winter's ENSO phase. The counts are of different kinds, named on each bar: people displaced (OCHA), families assisted by the Palestine Red Crescent Society (IFRC), tents and shelters damaged (OCHA; the line reaches the Shelter Cluster's count), and one media count. Households at 4.8 people (PCBS census 2017)."
+winter_counts_html = "The counts are also of different kinds, so no average per phase is given."
+week_html = "The Jerusalem gauge, a single hill-top point whose last complete season is 2013/14, runs a few points higher on every rung than the IMERG area average: compare the IMERG column with an area forecast and the gauge column with a point. Byron's week, half an average year and the wettest week in IMERG's record, had no impact attributed to it in public reporting; the second-wettest, 7–13 January 2013 (166 mm, about 40% of a year), brought the largest flood event in this page's record, with more than 260 mm in 48 hours locally in the north."
+first_storm_html = '''
+<p>In 7 of the 8 El Niño winters of the IMERG record, the first storm of 20 mm or more over the West Bank came before 1 December, against 14 of 28 winters overall. Against the other winters that is unlikely to be chance alone (p ≈ 0.03), though eight winters is a small sample. Last winter's most damaging West Bank event, on 28–30 December 2025, came in a December that gave Jerusalem more than 237 mm, its wettest December since 2013 according to the Palestinian Meteorological Department (via Al Jazeera).</p>
+'''
+
+range_after_html = '''
+<h3>Snow</h3>
+<table><thead><tr><th>Winter</th><th>Snow with reported impacts</th><th>ENSO phase (DJF)</th></tr></thead><tbody>
+<tr><td>1991/92</td><td>February 1992: heavy snow across the hills (Jerusalem's wettest winter on record)</td><td>El Niño, after Pinatubo</td></tr>
+<tr><td>2012/13</td><td>9–10 January 2013, at the end of the floods</td><td>neutral</td></tr>
+<tr><td>2013/14</td><td>Storm Alexa, 12–14 December 2013: 60–100 cm, 15% of the West Bank snow-covered</td><td>neutral</td></tr>
+<tr><td>2014/15</td><td>January (Storm Huda) and 19–21 February 2015: 215 rescues, Hebron's roads closed</td><td>weak El Niño</td></tr>
+<tr><td>2020/21</td><td>17–18 February 2021: 165 Civil Defense cases, 1 road death</td><td>La Niña</td></tr>
+<tr><td>2021/22</td><td>26–27 January 2022: 20 cm, 400 incidents, 2 deaths in a house fire</td><td>La Niña</td></tr>
+<tr><td>2024/25, 2025/26</td><td>light snow only (February 2025, January 2026)</td><td>La Niña</td></tr>
+</tbody></table>
+<p>Snow with impacts has come in every ENSO phase; over the last 15 years, more often in neutral and La Niña winters than in El Niño ones. The Israel Meteorological Service finds a slight, non-significant tilt towards more Jerusalem snow days in strong El Niño winters, from seven cases. With every forecast pointing to a warm winter, a snowstorm like Alexa is less likely than usual this year but not ruled out. The ERA5 cells are too smooth to see the hill-town snow, so this page does not estimate snow odds.</p>
+<h3>Who is exposed, by theme</h3>
+<p>Three groups carry most of the West Bank's winter risk, and each meets the weather in a different way: camps and towns through drainage, power and roads; herding communities through shelters, animals and fodder; farmers through their crops. Since 2023, displacement and losses in all three have been driven mainly by Israeli forces' operations, settler violence and access restrictions (OCHA); the figures below keep those causes apart from the weather.</p>
+
+<h4 style="font-size:14px;margin:20px 0 4px">Refugee camps and towns</h4>
+<p>Going into this winter:</p>
+<ul>
+<li>About 34,000 Palestine refugees remain forcibly displaced from the Jenin, Tulkarm and Nur Shams camps since the Israeli forces' operation in the northern West Bank that began in January 2025 (UNRWA, 10 September 2026). None have returned; Israeli military closure orders ran to 20 August 2026 for Jenin camp and 30 September 2026 for Tulkarm and Nur Shams, and their status since was not found. Over 80% of those displaced now rent (UNRWA, September 2026), and only 8% could pay rent regularly in mid-2025 (Shelter Cluster); a May 2025 assessment had found just over half renting, 30% staying with relatives and 20% in public shelters or other temporary places (OCHA). Most of the about 4,000 displaced from El Far'a refugee camp returned in February 2025.</li>
+<li>Satellite imagery from January–February 2026 shows 637 structures destroyed and 1,521 damaged or destroyed in total across the three camps: about half of all structures in Jenin and Nur Shams camps and 37% in Tulkarm camp (UNOSAT, preliminary). Water, sewage and stormwater infrastructure in the camps was bulldozed during the operations (OCHA).</li>
+<li>Elsewhere, towns partly enclosed by the Barrier drain badly in heavy rain. In the WASH Cluster's 2022 community inventory, 167 of 845 communities reported flooding at least once in the previous three years (10,173 households, most of them in Jerusalem governorate).</li>
+</ul>
+<table><thead><tr><th>Event</th><th>What winter weather did</th><th>Source</th></tr></thead><tbody>
+<tr><td>7–10 January 2013, floods</td><td>Qalqiliya and Tulkarm cities and Kafr Aqab flooded because the Barrier obstructed their drainage, and Hebron's Old City because of roadblocks placed by Israeli forces. Villages such as Kafr Qaddum were cut off when the only road they are permitted to use under Israeli access restrictions flooded. Across the Occupied Palestinian Territory, prolonged power cuts, flooded roads and closed schools. 618 homes damaged in 91 communities of the northern West Bank.</td><td><a href="https://www.un.org/unispal/document/auto-insert-194567/">OCHA</a>, 16 Jan 2013</td></tr>
+<tr><td>11–14 December 2013, Storm Alexa</td><td>Several floods and house fires reported in the 19 refugee camps, many of them left without adequate power; 80% of Ramallah city without power on the first day; most schools closed. A girl in Bethlehem died after an ambulance could not reach her through the snow for two days.</td><td>OCHA, <a href="https://www.un.org/unispal/document/auto-insert-197890/">14</a> and <a href="https://www.un.org/unispal/document/auto-insert-202086/">16 Dec 2013</a></td></tr>
+<tr><td>January 2024, rain</td><td><em>Rain on the bulldozed streets of the northern camps showed the scale of the destruction: streets turned to mud and potholes, hard for vehicles (no numbers).</em></td><td><a href="https://wafa.ps/Pages/Details/88932">WAFA</a>, 27 Jan 2024</td></tr>
+<tr><td>29 December 2025, storm</td><td><em>Civil Defense evacuated flooded homes south of Hebron and pumped water from homes, a kindergarten and two nurseries; road collapses and blocked rainwater drains. 115 Civil Defense incidents in 11 hours across several governorates</em> (relayed by OCHA).</td><td><a href="https://www.ochaopt.org/content/humanitarian-situation-update-352-west-bank">OCHA HSU #352</a>; <a href="https://www.aljazeera.net/news/2025/12/29/أمطار-غزيرة-وسيول-تضرب-الضفة-وتخلف">Al Jazeera Arabic</a> (Civil Defense), 29 Dec 2025</td></tr>
+</tbody></table>
+<p class="small">No numbers on camp flooding, power cuts or service interruptions from weather were found for any winter since 2023. Those displaced from the northern West Bank camps now mostly rent, which suggests their winter risks lie more in heating costs and the condition of rented housing than in flooding <em>(in January 2026 about 100 Tulkarm families were living in buildings without doors or windows, Al Jazeera)</em>.</p>
+
+<h4 style="font-size:14px;margin:20px 0 4px">Herding communities in the Jordan Valley and Area C</h4>
+<p>Going into this winter:</p>
+<ul>
+<li>The Shelter Cluster's Area C dataset covers 315 communities (215,703 people) with 30,173 residential shelters, of which 2,242 need rehabilitation (January 2026). Bedouin and herding communities are a subset; 42 of the listed communities are marked as forcibly displaced and no longer existing. No count of people in tents was found.</li>
+<li>Displacement by Israeli settler attacks and related access restrictions, separate from the weather: 130 communities fully or partly displaced and more than 6,400 people since January 2023, over 2,500 of them in 2026, mostly in Bedouin and herding communities in Area C (OCHA, 4 September 2026). Ras Ein al 'Auja near Jericho, about 600 people, was fully displaced in January 2026.</li>
+<li>After the 2024/25 drought (33% of the mean rainfall at Jericho by early March 2025), 16% of livestock-keeping households in Area C reported animal deaths from malnutrition, drought or lack of feed, and 81–90% of livestock keepers cited the cost of feed as a problem (FAO, survey of July–August 2025). The survey does not separate drought from pasture lost to settler violence: 65% of Area C livestock keepers reported difficulty reaching pasture.</li>
+</ul>
+<table><thead><tr><th>Event</th><th>What winter weather did</th><th>Source</th></tr></thead><tbody>
+<tr><td>7–10 January 2013, floods</td><td>Hundreds of residential tents and shelters in Area C herding communities damaged; a sharp rise in livestock deaths and disease, made worse by the destruction of cereal crops grown for feed, which forced herders to buy fodder. Emergency funds later paid to rehabilitate 272 animal sheds in 66 communities.</td><td><a href="https://www.un.org/unispal/document/auto-insert-204416/">OCHA Humanitarian Monitor</a>, Feb 2013</td></tr>
+<tr><td>11–14 December 2013, Storm Alexa</td><td>At least 300 people displaced in Bedouin and herding communities in Hebron governorate; <em>55,760 m² of animal sheds damaged, mainly in the southern West Bank (MoA); 281,000 animals died in the West Bank, most of them poultry (MoA and FAO)</em>. In the Jordan Valley, demolitions by the Israeli authorities the day before the storm had displaced 41 people (not weather-related).</td><td>OCHA, <a href="https://www.un.org/unispal/document/auto-insert-202086/">16 Dec 2013</a>; <a href="https://unispal.un.org/pdfs/HB1213.pdf">Humanitarian Bulletin</a>, Dec 2013; <a href="https://www.un.org/unispal/document/auto-insert-197374/">OCHA PoC</a>, 23 Dec 2013</td></tr>
+<tr><td>28–30 December 2025, storm</td><td>At least 66 households (about 300 people) in 18 mainly Bedouin and herding communities had tents, livestock barracks, fodder stores or animal shelters damaged or destroyed; in several cases structures recently rebuilt after settler attacks were damaged again. The Shelter Cluster counted more than 120 households in 18 communities affected by the winter storms of December–January; its count cannot be split by storm and probably overlaps OCHA's.</td><td><a href="https://www.ochaopt.org/content/humanitarian-situation-update-352-west-bank">OCHA HSU #352</a>; <a href="https://www.sheltercluster.org/palestine/documents/shelter-cluster-sitrep-january-2026">Shelter Cluster</a></td></tr>
+</tbody></table>
+<p class="small">No count of livestock killed by cold, floods or snow was found for any winter since 2015. Lambing falls in mid-winter; OCHA flagged the risk to lambs during Alexa, but no lamb losses were measured. No herding community is known to have been displaced by weather alone beyond a few days; long-term displacement has been driven by settler attacks, demolitions and access restrictions.</p>
+
+<h4 style="font-size:14px;margin:20px 0 4px">Farming: field crops, greenhouses, trees and rangeland</h4>
+<ul>
+<li><strong>Field crops</strong> as a whole (about 198,000 dunums) are 95% rainfed and <strong>tree crops</strong> (about 641,000 dunums) 91% rainfed; Jericho and Al Aghwar is the exception, where about 96% of the tree area is irrigated (the valley grows dates, citrus and bananas). Section 6 shows how these follow the winter's rain and El Niño.</li>
+<li><strong>Greenhouses</strong>: 28,743 dunums of plastic houses, 77% of them in Jenin, Tulkarm and Tubas and another 8% in Jericho; vegetables as a whole are only 13% rainfed. Their winter hazards are wind, snow load, frost and flooding, not the season's rainfall.</li>
+<li><strong>Rangeland</strong>: about 2 million dunums, of which Palestinians had access to about 621,000 in 2014 (PA figures); settler violence and displacement have restricted it further since (no updated figure).</li>
+</ul>
+<table><thead><tr><th>Event</th><th>What winter weather did</th><th>Source</th></tr></thead><tbody>
+<tr><td>7–10 January 2013, floods</td><td><em>More than 4,200 greenhouses damaged across the West Bank and Gaza (MoA)</em>, with damage to greenhouses and open fields particularly high in the northern West Bank; more than 100,000 chickens dead in the northern West Bank; <em>US$16.5 million of agricultural damage (MoA, West Bank and Gaza)</em>.</td><td>OCHA, <a href="https://www.un.org/unispal/document/auto-insert-194567/">16 Jan</a> and <a href="https://www.un.org/unispal/document/auto-insert-204416/">Mar 2013</a></td></tr>
+<tr><td>11–14 December 2013, Storm Alexa</td><td><em>West Bank production losses of about US$7 million in greenhouses, US$4.6 million in open fields and US$3 million in sheep milk (MoA and FAO, via OCHA); grape production in Hebron, Dura, Yatta and Bethlehem expected to be lost for two years (PA damage assessment).</em></td><td><a href="https://unispal.un.org/pdfs/HB1213.pdf">OCHA Humanitarian Bulletin</a>; <a href="https://openknowledge.worldbank.org/bitstreams/2a3faba9-9309-52d0-badd-ae5b23a7ffd3/download">PA damage assessment</a>, Feb 2014</td></tr>
+<tr><td>17–18 January 2022, frost</td><td><em>About 6,000 of 80,000 dunums of open-field crops and about 600 of 32,000 dunums of protected crops damaged, 60% of the damage in the Jordan Valley (MoA).</em></td><td><a href="https://wafa.ps/Pages/Details/39953">WAFA</a>, 19 Jan 2022</td></tr>
+</tbody></table>
+<p class="small">PCBS and MoA Agricultural Census 2021 (areas, irrigation, greenhouses); PA data in the Alexa damage assessment (rangeland). No storm damage to greenhouses or orchards was found reported for 2025/26.</p>
+<p class="small">In the three event tables, italics mark impact figures from Palestinian Authority bodies (ministries, the Palestinian Civil Defense) or the media, including when the UN relays them.</p>
+
+<h3>Deaths</h3>
+<table><thead><tr><th>Cause</th><th>Events</th></tr></thead><tbody>
+<tr><td>Flash floods and drowning</td><td>8 January 2013, Anabta (2); 25–27 April 2018, Al Fawwar camp and east of Bethlehem (3, a spring storm); 24–25 January 2020, Jerusalem (1); 29 December 2025 (1, place of residence disputed)</td></tr>
+<tr><td>House fires and heating</td><td>25 February 2015, Hebron (3 children); January–February 2022 (4, IFRC), including 2 in a house fire in Adh Dhahiriya</td></tr>
+<tr><td>Collapse and snow</td><td>19 March 2024, wall collapse in Beit Imrin (1); December 2013, a roof fall and a dialysis patient cut off by snow (2); February 2021, a road crash in snow (1)</td></tr>
+</tbody></table>
+<p>Attribution is mixed (UN, IFRC, Civil Defense via the media), so the rows should not be summed.</p>
+<h3>Plans</h3>
+<p>No 2026/27 winterization plan written for the West Bank was found by 2 October 2026. The West Bank's winter lines sit inside the calendar-2026 appeals:</p>
+<ul>
+<li>the Flash Appeal's West Bank shelter response: 62,900 people, US$28.4 million, including weatherproofing, insulation, heaters and blankets;</li>
+<li>UNRWA's West Bank shelter and household items: 11,500 households, US$21.9 million.</li>
+</ul>
+<p>UNICEF's Winterization Plan 2026–2027 (17 September 2026) seeks US$97.5 million for 540,000 children in Gaza and the West Bank; its costed lines are almost all for Gaza. A US$1.0 million oPt Humanitarian Fund allocation for West Bank shelter gaps, in Area C and for displaced people, was approved in January 2026. Funding is reported only for the Occupied Palestinian Territory as a whole.</p>
+'''
+
+strong_notes = { "1991" = "Pinatubo erupted in June 1991; Jerusalem's wettest winter on record, heavy snow in February 1992.", "2023" = "<em>Palestinian Meteorological Department, season to 21 March: wet north (Tulkarm 144%), drier south (Jerusalem 86%, Hebron 75%).</em>" }
+
+[area]
+name = "West Bank"
+ref = "the West Bank"
+pcode = "PS01"
+cache = "cache/westbank"
+gpcc_cells = [[31.5, 35.5], [32.5, 35.5], [31.5, 34.5], [32.5, 34.5]]
+gpcc_desc = "GPCC is the mean of the 1° cells over the West Bank, weighted by the share of the West Bank in each; they also take in the Jordan Valley and the hills on either side. "
+gpcc_title = "West Bank"
+gpcc_label = "GPCC gauge analysis (1° cells)"
+era5_label = "ERA5 (16 cells over the West Bank)"
+imerg_label = "IMERG late v7 (West Bank, 0.1°)"
+gauges = [["ISE00100480", "", "1948-09-29"], ["IS000006771", "1948-09-30", ""]]
+gauge_name = "Jerusalem gauge"
+gauge_label = "Jerusalem rain gauge (St Anne to spring 1948, Central from autumn 1948)"
+gauge_short = "Jerusalem"
+meta_gauge = "Jerusalem gauge 1908–2015"
+imerg_box = [34.85, 31.30, 35.65, 32.60]
+imerg_split = []
+seas5_box = [34.8, 31.2, 35.6, 32.6]
+seas5_pcode = "PS01"
+era5_cold = true
+cold_thresh = 3.0
+cold_snap_thresh = 3.0
+byron = false
+stationarity_records = "Two gauge-based records (the GPCC analysis and the long Jerusalem gauge, which is one of GPCC's inputs) and a reanalysis that assimilates no rain gauges (ERA5)."
+daily_cold_note = "the Jerusalem gauge (to 1999, when its temperature record ends) and ERA5 (whose cells sit lower than the hill towns, so they run warmer)."
+daily_note = "ERA5 spreads rain over 25 km cells and understates heavy days; IMERG is satellite-only; Jerusalem is one hill-town gauge."
+impact_caption = "Hazard: R rain and flooding, F flash flood, S snow, C cold, W wind, X structural collapse. Weather columns cover the window from the day before the reported start to the reported end: IMERG wettest day averaged over the whole West Bank (a downpour on one hillside is diluted over 5,600 km²); window totals from IMERG and from ERA5; ERA5 lowest daily minimum temperature and highest hourly 10 m wind averaged over the 16 cells (the hill towns are colder and windier). Figures in <em>italics</em> come from Palestinian Authority bodies (the Palestinian Civil Defense, ministries) or the media; the rest are UN, cluster or Red Crescent/IFRC figures."
+
+[area.era5_cells]
+"c31.25_35.00" = [31.25, 35.00]
+"c31.50_35.00" = [31.50, 35.00]
+"c31.50_35.25" = [31.50, 35.25]
+"c31.50_35.50" = [31.50, 35.50]
+"c31.75_35.00" = [31.75, 35.00]
+"c31.75_35.25" = [31.75, 35.25]
+"c31.75_35.50" = [31.75, 35.50]
+"c32.00_35.00" = [32.00, 35.00]
+"c32.00_35.25" = [32.00, 35.25]
+"c32.00_35.50" = [32.00, 35.50]
+"c32.25_35.00" = [32.25, 35.00]
+"c32.25_35.25" = [32.25, 35.25]
+"c32.25_35.50" = [32.25, 35.50]
+"c32.50_35.00" = [32.50, 35.00]
+"c32.50_35.25" = [32.50, 35.25]
+"c32.50_35.50" = [32.50, 35.50]
+
+# ---- Impacts in the winters since October 2023 (West Bank). Public sources only; italic = Palestinian Authority or media figures.
+[[impacts]]
+start = "2023-11-20"
+end = "2023-11-21"
+hazard = "R"
+what_html = "<em>Jenin camp: 6 homes and 10 families flooded (about 80 cm of water) where the drainage had been bulldozed.</em>"
+source_html = '<a href="https://www.wafa.ps/Pages/Details/84874">WAFA</a>, Nov 2023'
+[[impacts]]
+start = "2024-01-25"
+end = "2024-02-03"
+hazard = "R W"
+what_html = "<em>Northern camps: emergency declared, streets impassable, three roads closed; a girl rescued from a submerged vehicle on 2 February.</em>"
+source_html = "WAFA (Civil Defense), Jan–Feb 2024"
+[[impacts]]
+start = "2024-03-19"
+hazard = "X"
+what_html = "<em>One person killed by a wall collapse in Beit Imrin (Nablus) during a storm.</em>"
+source_html = '<a href="https://www.wafa.ps/Pages/Details/92133">WAFA</a> (Civil Defense), Mar 2024'
+[[impacts]]
+start = "2025-02-20"
+no_impact = true          # light snow, no damage reported: not a mark on the counts-by-winter chart
+end = "2025-02-25"
+hazard = "C S"
+what_html = "<em>Light snow on the evening of 23 February; schools opened late on 23–25 February; no damage reported.</em>"
+source_html = '<a href="https://www.timesofisrael.com/liveblog_entry/light-snow-falls-in-parts-of-jerusalem/">Times of Israel</a>; WAFA'
+[[impacts]]
+start = "2025-11-24"
+end = "2025-11-25"
+hazard = "R F"
+what_html = "<em>Overnight flash flooding in the Hebron hills brought down a section of the Barrier.</em>"
+source_html = '<a href="https://www.jpost.com/israel-news/article-875104">Jerusalem Post</a>, Nov 2025'
+[[impacts]]
+start = "2025-12-28"
+end = "2025-12-30"
+hazard = "R F W"
+what_html = "At least 66 households (about 300 people) in 18 Bedouin and herding communities had tents, animal shelters or fodder stores damaged or destroyed; the Shelter Cluster counted more than 120 households in 18 communities over December–January. <em>Civil Defense: 115 incidents in 11 hours; one flash-flood drowning (reports differ on whether he was a West Bank resident).</em>"
+source_html = '<a href="https://www.ochaopt.org/content/humanitarian-situation-update-352-west-bank">OCHA HSU #352</a>; <a href="https://www.sheltercluster.org/palestine/documents/shelter-cluster-sitrep-january-2026">Shelter Cluster</a>, Jan 2026'
+[[impacts]]
+start = "2026-01-12"
+end = "2026-01-13"
+hazard = "R F W S"
+what_html = "<em>Civil Defense: 65 incidents overnight (55 rescues, 10 fires); about 64 mm in Jerusalem overnight; one person critically injured in a flooded home in East Jerusalem.</em>"
+source_html = '<a href="https://www.israelhayom.com/2026/01/13/winter-storm-israel-snow-floods-rescue/">Israel Hayom</a>; Fana (Civil Defense), Jan 2026'
+
+# ---- Winters before October 2023 (West Bank)
+[[prewar]]
+start = "2013-01-07"
+end = "2013-01-10"
+hazard = "R F S"
+what_html = "<strong>Floods.</strong> About 1,043 homes damaged in 184 communities, most in the north; 410 people, 26 families and 104 more temporarily displaced; 3 drowned (2 in a flash flood near Anabta on 8 January) and 1 died of burns; more than 260 mm in 48 hours in parts of the north."
+source_html = '<a href="https://www.un.org/unispal/document/auto-insert-194567/">OCHA</a>, 16 Jan 2013; <a href="https://www.nbcnews.com/news/world/snow-desert-floods-west-bank-deadly-winter-storm-slams-mideast-flna1b7904394">NBC</a>'
+[[prewar]]
+start = "2013-12-10"
+end = "2013-12-19"
+hazard = "S C R"
+what_html = "<strong>Storm Alexa.</strong> 60–100 cm of snow over 15% of the West Bank; more than 300 herders displaced near Hebron; 281,000 animals died (OCHA/FAO); a dialysis patient died after being cut off for two days. <em>7,128 Civil Defense operations, including 533 rescues of trapped people; 282 houses damaged; one death in a roof fall, “partly unrelated” to the storm (PA damage assessment, Civil Defense).</em>"
+source_html = '<a href="https://www.ochaopt.org/content/ocha-opt-humanitarian-update-winter-storm-developments-13-december-2013">OCHA</a>; <a href="https://documents1.worldbank.org/curated/en/416481468329971167/pdf/889710WP0P1499270Box385254B00PUBLIC00ACS.pdf">PA damage assessment</a>, Feb 2014'
+[[prewar]]
+start = "2015-01-06"
+end = "2015-01-10"
+hazard = "S C R"
+what_html = "Storm Huda: the Red Crescent assisted 505 families (2,839 people) in the West Bank; no West Bank deaths found."
+source_html = '<a href="https://reliefweb.int/attachments/b9143c0d-df22-3222-9fc0-3fe033dc3494/MDRPS010dfr.pdf">IFRC DREF MDRPS010</a>'
+[[prewar]]
+start = "2015-02-19"
+end = "2015-02-21"
+hazard = "S"
+what_html = "<em>Snow: 215 rescues, 16 road crashes; 80% of Hebron's internal roads closed.</em> Days later, on 25 February, 3 children died in a heater fire in Hebron."
+source_html = 'Ma’an via IMEMC; <a href="https://gulfnews.com/world/mena/three-brothers-burnt-to-death-in-hebron-blaze-1.1462740">Gulf News</a>'
+[[prewar]]
+start = "2018-04-25"
+end = "2018-04-27"
+hazard = "F"
+what_html = "<em>A spring Red Sea Trough flood: 2 children drowned in a flooded reservoir in Al Fawwar camp, and a girl herding sheep east of Bethlehem was swept away (police, via media).</em>"
+source_html = '<a href="https://www.haaretz.com/israel-news/two-palestinian-children-drown-as-rains-flood-west-bank-and-israel-1.6032989">Haaretz</a>; <a href="https://www.cnn.com/2018/04/26/middleeast/israel-flash-floods-intl/index.html">CNN</a>'
+[[prewar]]
+start = "2020-01-18"
+end = "2020-01-25"
+hazard = "R C"
+what_html = "One death in Jerusalem (probably a child in a rain-filled ditch in Beit Hanina on 25 January); the Red Crescent reached 1,076 West Bank families."
+source_html = '<a href="https://reliefweb.int/attachments/a95a8014-65c6-3322-af2f-a3cf4d9921c6/MDRPS011dfr.pdf">IFRC DREF MDRPS011</a>'
+[[prewar]]
+start = "2021-02-17"
+end = "2021-02-18"
+hazard = "S C"
+what_html = "<em>Snow: 165 Civil Defense cases, 1 road death; schools, government offices and banks closed.</em>"
+source_html = '<a href="https://english.wafa.ps/Pages/Details/123333">WAFA</a>'
+[[prewar]]
+start = "2022-01-26"
+end = "2022-01-27"
+hazard = "S C"
+what_html = "<em>Snow (about 20 cm): 400 Civil Defense incidents, including 15 fires; 2 deaths in a house fire in Adh Dhahiriya.</em> IFRC counted 4 West Bank deaths from heating over the cold spell."
+source_html = '<a href="https://reliefweb.int/attachments/1e1b95d9-269b-44e2-8b65-5df193959c86/MDRPS013dfr.pdf">IFRC DREF MDRPS013</a>; WAFA'
+
+[assessment]
+direction = "wetter, Oct–Apr"
+season = "strongest Oct–Dec"
+evidence = "moderate"
+evidence_note = "Gauge records and ERA5 agree since 1979 (r = +0.57 to +0.59); no positive link before 1979; strong El Niños since 1979 were normal to wet in GPCC."
+
+[titles]
+forecast = "1. What the forecasts say for this winter"
+skill = "SEAS5 for the West Bank: skill and the October 2026 forecast"
+enso = "2. How much El Niño matters for a West Bank winter"
+daily = "3. What changes in an El Niño winter, and what does not"
+impacts = "4. What winter weather does in the West Bank"
+range = "5. What this winter could bring"
+agri = "6. Farming: crop years after El Niño winters"
+
+[[references]]
+html = 'Price, C., Stone, L., Huppert, A., Rajagopalan, B. &amp; Alpert, P. (1998). A possible link between El Niño and precipitation in Israel. <em>Geophysical Research Letters</em> 25, 3963–3966. <a href="https://doi.org/10.1029/1998GL900098">doi:10.1029/1998GL900098</a>'
+[[references]]
+html = 'Alpert, P. et al. (2005). Tropical tele-connections to the Mediterranean climate and weather. <em>Advances in Geosciences</em> 2, 157–160. <a href="https://doi.org/10.5194/adgeo-2-157-2005">doi:10.5194/adgeo-2-157-2005</a>'
+[[references]]
+html = 'Mariotti, A., Zeng, N. &amp; Lau, K.-M. (2002). Euro-Mediterranean rainfall and ENSO — a seasonally varying relationship. <em>Geophysical Research Letters</em> 29, 1621. <a href="https://doi.org/10.1029/2001GL014248">doi:10.1029/2001GL014248</a>; Mariotti, A., Ballabrera-Poy, J. &amp; Zeng, N. (2005). Tropical influence on Euro-Asian autumn rainfall variability. <em>Climate Dynamics</em> 24, 511–521. <a href="https://doi.org/10.1007/s00382-004-0498-6">doi:10.1007/s00382-004-0498-6</a>'
+[[references]]
+html = 'Halfon, N., Ilotoviz, E., Carmona, Y., Yosef, Y. &amp; Givati, A. (2026). The link between extreme El Niño values and precipitation in Israel (Hebrew; author names transliterated). Israel Meteorological Service technical report, July 2026. <a href="https://ims.gov.il/he/node/2921">ims.gov.il</a> (not peer-reviewed)'
+[[references]]
+html = 'Hochman, A. &amp; Gildor, H. (2025). Synergistic effects of El Niño–Southern Oscillation and the Indian Ocean Dipole on Middle Eastern subseasonal precipitation variability and predictability. <em>QJRMS</em> 151, e4903. <a href="https://doi.org/10.1002/qj.4903">doi:10.1002/qj.4903</a>'
+[[references]]
+html = 'Kang, I.-S. et al. (2015). Multidecadal changes in the relationship between ENSO and wet-season precipitation in the Arabian Peninsula. <em>Journal of Climate</em> 28, 4743–4752. <a href="https://doi.org/10.1175/JCLI-D-14-00388.1">doi:10.1175/JCLI-D-14-00388.1</a>; Kamil, S. et al. (2017). Multidecadal changes in the relationship of storm frequency over Euro-Mediterranean region and ENSO during boreal winter. <em>Earth Systems and Environment</em> 1. <a href="https://doi.org/10.1007/s41748-017-0011-0">doi:10.1007/s41748-017-0011-0</a>'
+[[references]]
+html = 'Dayan, U., Nissen, K. M. &amp; Ulbrich, U. (2015). Atmospheric conditions inducing extreme precipitation over the eastern and western Mediterranean. <em>NHESS</em> 15, 2525–2544. <a href="https://doi.org/10.5194/nhess-15-2525-2015">doi:10.5194/nhess-15-2525-2015</a>'
+[[references]]
+html = 'Hoell, A. et al. (2025). An unexpected outcome followed an apparent seasonal forecast of opportunity and prolonged drought in Southwest Asia. <em>International Journal of Climatology</em> 45. <a href="https://doi.org/10.1002/joc.8851">doi:10.1002/joc.8851</a>'
+[[references]]
+html = 'NOAA CPC ENSO diagnostic discussion, 10 September 2026 <a href="https://www.cpc.ncep.noaa.gov/products/analysis_monitoring/enso_disc_sep2026/ensodisc.shtml">link</a>; IRI ENSO forecast, 21 September 2026 <a href="https://iri.columbia.edu/our-expertise/climate/forecasts/enso/current/">link</a>.'
+
+[[references]]
+html = 'Dudeen, B. (2001). <a href="https://om.ciheam.org/om/pdf/b34/01002095.pdf">The soils of Palestine (the West Bank and Gaza Strip): current status and future perspectives</a>. In Zdruli et al. (eds), <em>Soil resources of Southern and Eastern Mediterranean countries</em>, Options Méditerranéennes B 34, CIHEAM, 203–225.'
+[[references]]
+html = 'FAO (2026). <a href="https://www.fao.org/faostat/en/#data/QCL">FAOSTAT: Crops and livestock products</a> (listed by FAO as “Palestine”), 1994–2022.'
+[[references]]
+html = 'PCBS. Olive Presses Survey, main results, 2003–2019 (e.g. <a href="https://www.pcbs.gov.ps/Downloads/book2511.pdf">2019</a>); <a href="https://www.pcbs.gov.ps/Downloads/book2646.pdf">Agricultural Census 2021, final results</a>. Rows and sources in <code>deep_dives/data/pcbs_*.csv</code>.'
+[[references]]
+html = 'NOAA STAR. <a href="https://www.star.nesdis.noaa.gov/smcd/emb/vci/VH/vh_adminMean.php?type=Province_Weekly_MeanPlot">Blended Vegetation Health Products, province-averaged</a> (West Bank), 1982–2026.'
+[[references]]
+html = 'Didan, K. (2021). MODIS/Terra Vegetation Indices 16-Day L3 Global 250m (MOD13Q1 v061), NASA LP DAAC; read from the <a href="https://planetarycomputer.microsoft.com/dataset/modis-13Q1-061">Microsoft Planetary Computer</a>.'
+[[references]]
+html = 'OCHA (2025). <a href="https://www.ochaopt.org/content/humanitarian-situation-update-335-west-bank">Humanitarian Situation Update #335, West Bank</a>, 30 October 2025.'
+[[references]]
+html = 'Al Jazeera (2025). <a href="https://www.aljazeera.com/news/longform/2025/12/3/oil-presses-stand-silent-as-west-bank-has-its-worst-olive-harvest-in-years">Oil presses stand silent as West Bank has its worst olive harvest in years</a>, 3 December 2025 (estimates from MAS).'
+
+# ---- Section 6: farming (levant_agri.py). Zones after ARIJ's agro-ecological zones, by the governorates PCBS reports.
+[agri]
+intro_html = '''
+<p>Most West Bank farming depends on the winter rain. The West Bank is commonly divided into four agro-ecological zones (Dudeen 2001): the <strong>Central Highlands</strong> from Jenin to Hebron, almost all rainfed and mostly under olives, grapes and other fruit trees, with winter cereals and pulses on the rest; the <strong>semi-coastal plain</strong> in the northwest, the wettest zone, with rainfed field crops and irrigated vegetables; the <strong>Eastern Slopes</strong>, a dry transition zone of marginal rainfed barley, wheat and olives and spring grazing; and the <strong>Jordan Valley</strong>, which gets 100–200 mm and is farmed on springs and groundwater. Crop statistics are published by governorate, and the Eastern Slopes cut across the highland governorates, so the yield figures below use three zones and the Eastern Slopes appear through satellite vegetation data.</p>
+<p>One convention throughout this section: a crop year is named after its harvest and follows the winter before it. This winter, 2026/27, will shape the cereal and pulse harvest of May–June 2027, spring grazing in 2027 and the olive harvest of October–November 2027. The olive harvest that starts this month was set by last winter and by the size of the previous crop.</p>
+'''
+
+cover_html = "<p>Split by land cover instead of by zone, the same satellite record separates the crops that ride out a dry year from those that do not. Tree cover (denser orchards, groves and woodland) has the weakest link to the winter's rain and, in the hills and on the plain, the smallest swings; its El Niño springs were above normal in 8 of 8 years, but only slightly. Cropland and the shrubland and grassland that cover most of the West Bank (rangeland and sparse olive groves) swing more and follow El Niño about equally.<!--more--> On the semi-coastal plain no group has a significant link to El Niño, and its cropland, much of it irrigated, has none at all. In the Jordan Valley, every group swings widely, and the valley's cropland and rangeland had the largest El Niño and La Niña departures.</p>"
+ndvi_html = "The semi-coastal plain, the wettest zone and partly irrigated, has the weakest link to El Niño: rain there is less often what limits growth."
+field_html = '''
+<p>Wheat and barley are sown in November–December and harvested in May–June. In the West Bank, 98% of their area is rainfed (2021 census); about a third of it is in Hebron governorate, on the southern hills and the edge of the eastern slopes, and more than a quarter in Jenin. Yields follow the winter's rain, loosely, and a wet winter is no guarantee.<!--more-->The two worst harvests followed the two driest winters with official figures (1998/99 and 2007/08), but two other dry winters (2013/14 and 2016/17) have no official yield, and two poor harvests (2001, 2011) followed winters that were only somewhat dry or near normal. The total is not everything: when the rain comes, frost, and heat during grain filling also matter, so a wet winter is no guarantee (2019, after a very wet El Niño winter, was slightly below trend) and a dry one can still yield well (2000).</p>
+'''
+olive_html = '''
+<p>Olives are the West Bank's main tree crop and almost all rainfed. The crop swings by a factor of two to five from one year to the next because trees alternate heavy and light crops (alternate bearing), and that cycle, not the winter, sets most of the change. With it taken out, national production shows no clear link to El Niño (official years only). By zone (olives pressed, PCBS, 2003–2019), bigger crops lean weakly towards wetter winters, more in the semi-coastal plain than in the highlands, but the lean rests largely on 2019, a very wet winter followed by the largest crop of the period, and it does not carry through to El Niño: in these years El Niño winters were not reliably wet (2009/10 was below average).</p>
+<p>Since October 2023, access has shaped the harvest as much as the weather. Between 1 and 27 October 2025 OCHA documented 126 olive-harvest-related attacks by Israeli settlers, against 110 in the same period of 2024 and 30–46 in the same window of 2020–2023, with more than 4,000 trees and saplings vandalized. The 2025 harvest, after a winter (2024/25) tied with 1998/99 as the driest in ERA5's record, was among the smallest in years: early estimates of 7,000–8,000 tonnes of oil, against 27,300 tonnes in 2024 and an average of about 22,500 (MAS, as reported by Al Jazeera). 2024 was a large crop, so alternate bearing alone would have made 2025 smaller; bearing, drought and access cannot be separated in these figures.</p>
+'''
+veg_html = '''
+<p>The NOAA record starts in 1982 and so covers all six strong El Niño winters since then. The springs after 1982/83 and 1997/98 were among the greenest on record, the one after 2015/16 close to the middle, the one after 2023/24 somewhat above it, and the spring after 2009/10, a below-average winter, well below it. The wettest winter in ERA5's record, 1991/92, left cropland below the middle: its December–February was also one of the two coldest in that record. All land, which includes the rangeland of the eastern slopes, responds more to El Niño than cropland does, as the zone figures above show for the drier zones.</p>
+'''
+strong_html = "<p>The six winters with December–February Niño3.4 of +1.5 °C or more since 1982, the closest analogues for 2026/27.</p>"
+after_html = '''
+<h3>What the record suggests for 2026/27</h3>
+<p>If the forecasts' wet October–December holds, the record leans towards a reasonable spring for rainfed cereals, pulses and pasture in 2027, in every zone and most visibly in the drier highlands, eastern slopes and Jordan Valley margins. What it shows is mainly a lower chance of a bad year, not a bumper one, and it rests on 9–14 El Niño years per record: the intervals around every count above are wide, and this is not a crop forecast. Olives will be set more by alternate bearing and by access than by the winter: a large 2026 crop would make a smaller 2027 crop likely whatever the rain.</p>
+<p>Three limits apply. Every agricultural record here starts after 1979, inside the period in which the El Niño link to West Bank rain exists, and the coming El Niño is likely to be stronger than any in them. The timing of the rain, frost and spring heat also matter, and the season total does not capture them. And much of what will decide the 2027 harvest is not weather: access to land near Israeli settlements and behind the Barrier, settler violence, and the cost and availability of water and inputs.</p>
+'''
+
+[agri.strong_notes]
+"1983" = "Wet winter, green spring. No official yield figures before 1994."
+"1992" = "The wettest winter in ERA5's West Bank record and one of the two coldest (after the Pinatubo eruption)."
+"1998" = "Wet winter; the second-greenest cropland spring on record (after 1990); cereals slightly above trend."
+"2010" = "Borderline strong (+1.50). A below-average winter despite El Niño; spring below the middle on NOAA's index, near normal on MODIS; cereals near trend."
+"2016" = "Near-average winter and spring; cereals above trend."
+"2024" = "Near-average winter, green spring by MODIS. FAOSTAT has no figures after 2022."
+
+[[agri.zones]]
+name = "Semi-coastal plain (northwest)"
+prose = "semi-coastal plain"
+governorates = ["Jenin", "Tulkarm", "Qalqilya"]             # COD-AB spelling, used to match polygons
+governorates_label = ["Jenin", "Tulkarm", "Qalqiliya"]
+pcbs_olive = ["Jenin and Tubas", "Tulkarm", "Qalqiliya"]     # PCBS merges Jenin and Tubas
+pcbs_area = ["Jenin", "Tulkarm", "Qalqiliya"]
+grows_html = "About 600 mm a year. Rainfed cereals and pulses; more than half the cultivated land irrigated in part (vegetables, potatoes, citrus). The governorates also take in hill country with olives."
+
+[[agri.zones]]
+name = "Central Highlands"
+prose = "Central Highlands"
+governorates = ["Nablus", "Salfit", "Ramallah", "Jerusalem", "Bethlehem", "Hebron"]
+pcbs_olive = ["Nablus", "Salfit", "Ramallah and Al-Bireh", "Bethlehem", "Hebron"]   # Jerusalem reported only from 2008
+pcbs_area = ["Nablus", "Salfit", "Ramallah and Al-Bireh", "Jerusalem", "Bethlehem", "Hebron"]
+governorates_label = ["Nablus", "Salfit", "Ramallah & Al-Bireh", "Jerusalem", "Bethlehem", "Hebron"]
+grows_html = "About 400 mm a year on average. 95% rainfed: 60% olives, grapes, almonds and other fruit trees, 35% winter cereals and pulses. The governorates also take in the Eastern Slopes (250–300 mm; spring grazing, some rainfed barley and wheat)."
+
+[[agri.zones]]
+name = "Jordan Valley"
+prose = "Jordan Valley"
+governorates = ["Jericho", "Tubas"]
+pcbs_area = ["Jericho and Al-Aghwar", "Tubas and Northern Valleys"]
+governorates_label = ["Jericho & Al Aghwar", "Tubas"]
+grows_html = "100–200 mm a year. The main irrigated area: off-season vegetables, dates, bananas and citrus, on springs and groundwater. Herding on the margins."
+
+# Counts by winter for the bar chart in section 4: every entry of the tables above that carries a number of people or
+# households (households at 4.8 people, the West Bank average household, PCBS census 2017)
+[[winter_counts]]
+winter = 2012
+people = 640          # 410 people, 26 families (x 4.8) and 104 more displaced, January 2013 floods (OCHA): 639, rounded
+kind = "displaced"
+[[winter_counts]]
+winter = 2013
+people = 300          # more than 300 herders displaced near Hebron, Storm Alexa (OCHA)
+kind = "herders displaced"
+[[winter_counts]]
+winter = 2014
+people = 2839         # 505 families assisted, Storm Huda (IFRC DREF MDRPS010)
+kind = "assisted (Red Crescent)"
+[[winter_counts]]
+winter = 2019
+households = 1076     # families reached, January 2020 (IFRC DREF MDRPS011)
+kind = "assisted (Red Crescent)"
+[[winter_counts]]
+winter = 2023
+households = 10       # families flooded in Jenin camp, November 2023 (WAFA)
+kind = "flooded (one camp, media)"
+[[winter_counts]]
+winter = 2025
+people = 300          # at least 66 households, about 300 people, 28-30 December 2025 (OCHA)
+households_hi = 120   # more than 120 households over December-January (Shelter Cluster)
+kind = "tents and shelters damaged"
