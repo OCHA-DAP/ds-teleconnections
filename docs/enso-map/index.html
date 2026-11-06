@@ -147,14 +147,14 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     <h2>What the map shows</h2>
     <p>For each land cell (0.25°, about 28 km) and each three-month season, the correlation <em>r</em>
       between that season’s rainfall and the Niño3.4 index, 1981–2025 (44 or 45 years, depending on the
-      season). Positive <em>r</em>
+      season and the lead time). Positive <em>r</em>
       (blue) means the season has tended to be wetter in El Niño years and drier in La Niña years; negative
       <em>r</em> (brown) the reverse.</p>
     <p>The darker shades (|<em>r</em>| ≥ 0.5) mark places where ENSO accounts for at least a quarter of the
       year-to-year variation in that season’s rain; the lighter ones (0.3 to 0.5) for roughly a tenth to a
       quarter. Grey: no clear relationship (|<em>r</em>| below 0.3, or not significant at <em>p</em> &lt; 0.05).
-      Hatched: these three months bring less than a quarter of the year’s rain in that cell, so the season
-      is not assessed.</p>
+      Hatched: these three months bring less than a quarter of the year’s rain in that cell (or under
+      0.25 mm a day), so the season is not assessed.</p>
     <p>The box for a cell also shows its 12 seasons side by side, so the seasons when ENSO matters there are
       visible at a glance.</p>
   </div>
@@ -175,7 +175,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
         “All values” shows every <em>r</em> in assessed seasons, significant or not.</li>
     </ul>
     <p>This is the method of the <a href="../survey/">global teleconnection survey</a>. The survey’s pixel ENSO
-      map shows each cell’s strongest season; this map shows every season. On the area the survey covers,
+      map shows each cell’s strongest season; this map shows every season. On the cells both maps cover,
       taking the strongest season here reproduces the survey’s map exactly.</p>
   </div>
   <div>
@@ -260,6 +260,8 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
     const bytes = new Uint8Array(await res.arrayBuffer());
     if (bytes[0] === 0x1f && bytes[1] === 0x8b) {   // gzip, unless the server already undid it
+      if (typeof DecompressionStream === "undefined")
+        throw new Error("this browser is too old for this page (it needs Chrome 80, Firefox 113, Safari 16.4 or later)");
       const ds = new DecompressionStream("gzip");
       return await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
     }
@@ -298,7 +300,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 
   function recolor() {
     const s = SEASON[state.season];
-    if (!s) return;
+    if (!s) return;              // still loading: selectSeason repaints when it arrives
     if (!COLORS) { COLORS = new Uint32Array(N); HATCH = new Uint32Array(N); }
     const ramp = state.mode === "ramp";
     for (let p = 0; p < N; p++) {
@@ -430,12 +432,16 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     else {
       const f = s.flags[p], valid = f & F_VALID, r = s.r[p] / 100, lag = f & F_LAG;
       const clim = s.clim[p] / 100, ann = ANNUAL[p] / 100;
-      const share = ann > 0 ? Math.round(100 * clim / ann) : 0;
-      const mmMonth = Math.round(clim * 30.4);
-      const rainLine = `<div class="ln">Rain in ${si.months}: about ${mmMonth} mm a month, ${share}% of the year’s rain</div>`;
       const how = shown(s, p);
+      const share = ann > 0 ? 100 * clim / ann : 0;
+      // stored season rain is rounded down and the year's rain up, so `share` never exceeds the true
+      // share: rainy seasons (>= 25% by definition) print at least 25%; others one decimal, rounded down
+      const shareTxt = (s.flags[p] & F_RAINY) ? `${Math.max(25, Math.round(share))}%`
+                                               : `${(Math.floor(share * 10) / 10).toFixed(1)}%`;
+      const mmMonth = Math.round(clim * 30.4);
+      const rainLine = `<div class="ln">Rain in ${si.months}: about ${mmMonth} mm a month, ${shareTxt} of the year’s rain</div>`;
       if (!how) {
-        const why = clim < META.thresholds.min_mm_day
+        const why = s.clim[p] < minClim()
           ? `it averages under ${META.thresholds.min_mm_day} mm a day`
           : `the map needs at least ${Math.round(100 * META.thresholds.rainy_share)}% of the year’s rain`;
         body = `<div class="rv" style="color:var(--n7)">Not assessed: drier part of the year</div>${rainLine}
@@ -582,7 +588,12 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     Object.entries(seasonButtons).forEach(([c, b]) => b.setAttribute("aria-pressed", String(c === code)));
     updateBadge(); writeHash();
     if (!SEASON[code]) showStatus(`Loading ${code}…`);
-    try { await loadSeason(code); } catch (err) { showStatus(`Could not load ${code}: ${err.message}`); return; }
+    try { await loadSeason(code); } catch (err) {
+      if (state.season !== code) return;
+      COLORS = null; tiles.forEach(paintTile);   // blank rather than the previous season under this label
+      showStatus(`Could not load ${code}: ${err.message}. Click the season to try again.`);
+      return;
+    }
     if (state.season !== code) return;          // a later click won
     showStatus("");
     repaint(); renderTip();
@@ -604,19 +615,24 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   }
   document.querySelectorAll(".seg button[data-dry]").forEach(b => b.addEventListener("click", () => setDry(b.dataset.dry === "1")));
 
-  let playTimer = null;
+  // playGen tags each play run, so a step still waiting on a download from an earlier
+  // run (pause, then play again) cannot start a second chain
+  let playTimer = null, playGen = 0, playing = false;
   function stopPlay() {
+    playing = false; playGen++;
     if (playTimer) { clearTimeout(playTimer); playTimer = null; }
     $("play").innerHTML = "&#9654;"; $("play").setAttribute("aria-label", "Play through the seasons");
   }
-  function playStep() {
+  function playStep(gen) {
+    if (gen !== playGen) return;
     const next = CODES[(CODES.indexOf(state.season) + 1) % 12];
-    selectSeason(next).then(() => { if (playTimer) playTimer = setTimeout(playStep, 1300); });
+    selectSeason(next).then(() => { if (gen === playGen) playTimer = setTimeout(() => playStep(gen), 1300); });
   }
   $("play").addEventListener("click", () => {
-    if (playTimer) { stopPlay(); return; }
+    if (playing) { stopPlay(); return; }
+    playing = true; const gen = ++playGen;
     $("play").innerHTML = "&#10074;&#10074;"; $("play").setAttribute("aria-label", "Pause");
-    playTimer = setTimeout(playStep, 0);
+    playTimer = setTimeout(() => playStep(gen), 0);
   });
 
   // ---------------------------------------------------------------- country search

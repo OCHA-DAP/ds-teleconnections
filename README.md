@@ -139,11 +139,13 @@ The method is the survey's pixel pass, called unchanged (`pixel_trimester_rainfa
 total Pearson *r* at the best lag of 0–3 months, 1981–2025, the same rainy-season rule and p < 0.05. Only
 two inputs differ: the area is all land from 60°S to 84°N (180°W–180°E) instead of the survey viewport,
 and the land mask is Natural Earth 1:10m land plus minor islands, so small islands get cells. Each run
-checks itself against the survey: on the cells both grids share, the strongest significant rainy season
-must equal `out/corr_px_display_l3.npz` (last run: 96,723 cells, largest difference 0.0).
+checks itself against the survey and stops without writing if they disagree: on the cells both grids
+share, the strongest significant rainy season must equal `out/corr_px_display_l3.npz` (last run: 162,754
+shared cells, 96,723 with a value on both, largest difference 0.0; 699 survey cells lie off this grid's
+finer coastline).
 
 ```bash
-uv run python enso_season_map.py      # -> docs/enso-map/data/ (~6.4 MB)
+uv run python enso_season_map.py      # -> docs/enso-map/data/ (~6 MB)
 ```
 
 The first run downloads the global ERA5 monthly COGs from the prod raster blob into
@@ -155,9 +157,10 @@ rerun, so the two stay in step. `--cache-dir` / `--survey-npz` point at another 
 Data files (all gzip; the page decompresses them with `DecompressionStream`): `meta.json` (grid, seasons,
 thresholds, cross-check result, a content hash used to bust caches), `land.bin.gz` (land mask, one bit per
 grid cell, row-major from 84°N/180°W), `annual.bin.gz` (uint16 annual sum of the four canonical seasons'
-mean rainfall, 0.01 mm/day), `countries.json` (Natural Earth 1:50m names and bounding boxes for the
+mean rainfall, 0.01 mm/day, rounded up), `countries.json` (Natural Earth 1:50m names and bounding boxes for the
 zoom box) and one `{season}.bin.gz` per season holding, per land cell, the season's mean rainfall
-(uint16, 0.01 mm/day), *r* × 100 (int8, −128 = none) and a flags byte (bits 0–1 best lag, 2 rainy season,
+(uint16, 0.01 mm/day, rounded down so the 0.25 mm/day test reads the same as in Python), *r* × 100
+(int8, truncated towards zero so the printed value never crosses a class edge; −128 = none) and a flags byte (bits 0–1 best lag, 2 rainy season,
 3 p < 0.05, 4 *r* computed, 5–7 the survey's colour class wherever p < 0.05). The "Drier months: Show"
 switch colours seasons that fail the 25% rule but average at least 0.25 mm/day, hatched; by default the
 map shows exactly what the survey's rule allows.

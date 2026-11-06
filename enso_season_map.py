@@ -204,6 +204,10 @@ def main() -> None:
     if npz.exists():
         check = check_against_survey(npz, px, disp[INDEX]["r"])
         print("check vs survey pixel map:", json.dumps(check))
+        if (check["both_have_r"] == 0 or check["only_survey"] or check["only_here"]
+                or check["max_abs_diff"] > 1e-6):
+            raise SystemExit("the strongest season here does not reproduce the survey's "
+                             "pixel ENSO map on the shared cells; not writing the viewer data")
     else:
         print(f"no survey file at {npz}; cross-check skipped")
 
@@ -212,8 +216,10 @@ def main() -> None:
     for tri in ts._ANNUAL_TRIMESTERS:
         annual += px.tri_clim[tri]
 
+    # floor, not rint: the viewer tests the stored value against 0.25 mm/day, and
+    # stored >= 25 must mean the float passed the survey's >= 0.25 test
     def mm100(v: np.ndarray) -> np.ndarray:
-        return np.clip(np.rint(np.nan_to_num(v, nan=0.0) * 100), 0, 65535).astype("<u2")
+        return np.clip(np.floor(np.nan_to_num(v, nan=0.0) * 100), 0, 65535).astype("<u2")
 
     seasons, digests, counts = [], [], {}
     for tri in ts.TRIMESTERS:
@@ -232,7 +238,9 @@ def main() -> None:
         flags |= np.where(sig, F_SIG, 0).astype("uint8")
         flags |= np.where(valid, F_VALID, 0).astype("uint8")
         flags |= (cls << F_CLASS_SHIFT).astype("uint8")
-        r8 = np.where(valid, np.clip(np.rint(r * 100), -100, 100), R_NAN).astype("int8")
+        # truncated towards zero, not rounded, so the r the viewer prints never
+        # crosses the 0.30 / 0.50 class edges the colour was decided on (0.296 -> 0.29)
+        r8 = np.where(valid, np.clip(np.trunc(r * 100), -100, 100), R_NAN).astype("int8")
 
         blob = mm100(px.tri_clim[tri]).tobytes() + r8.tobytes() + flags.tobytes()
         _gz(out_dir / f"{tri}.bin.gz", blob)
@@ -260,9 +268,11 @@ def main() -> None:
     land[px.flat_idx] = True
     land_bytes = np.packbits(land).tobytes()
     _gz(out_dir / "land.bin.gz", land_bytes)
-    _gz(out_dir / "annual.bin.gz", mm100(annual).tobytes())
-    digests += [hashlib.sha1(land_bytes).hexdigest(),
-                hashlib.sha1(mm100(annual).tobytes()).hexdigest()]
+    # annual rounded UP (season rounded down): the share the viewer prints, clim / annual,
+    # then never exceeds the true share, so a season skipped at 24.97% cannot read "25.0%"
+    ann_bytes = np.clip(np.ceil(annual * 100), 0, 65535).astype("<u2").tobytes()
+    _gz(out_dir / "annual.bin.gz", ann_bytes)
+    digests += [hashlib.sha1(land_bytes).hexdigest(), hashlib.sha1(ann_bytes).hexdigest()]
 
     (out_dir / "countries.json").write_text(
         json.dumps(countries(cache_dir), ensure_ascii=False, separators=(",", ":")))

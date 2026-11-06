@@ -891,11 +891,12 @@ def pixel_monthly_era5(cfg: dict, xlim: tuple[float, float] = MAP_XLIM,
 
     def _fetch(job):
         i, (yr, m) = job
+        name = available[f"{yr}-{m:02d}-01"]
         # a dropped connection part-way through ~540 downloads would otherwise
         # throw the whole stack away: retry each file a few times first
         for attempt in range(5):
             try:
-                da = stratus.open_blob_cog(available[f"{yr}-{m:02d}-01"],
+                da = stratus.open_blob_cog(name,
                                            container_name="raster",
                                            container_client=container)
                 stack[i] = da.isel(band=0, y=slice(y0, y1 + 1),
