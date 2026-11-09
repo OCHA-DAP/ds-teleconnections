@@ -684,6 +684,9 @@ def analyse(spec: dict, grid: edd.Grid, ne: gpd.GeoDataFrame, indices: pd.DataFr
     if spec.get("agri"):                          # West Bank: crop years against rain and El Niño
         import levant_agri
         out["agri"] = levant_agri.analyse(spec, out)
+    if spec.get("storm_now"):                     # Gaza: the latest storm — rain, forecasts, flood satellites
+        import levant_storm
+        out["storm_now"] = levant_storm.analyse(spec, out)
     return out
 
 
@@ -2572,7 +2575,13 @@ def render_blocks(spec: dict, a: dict, headings: bool = True) -> dict[str, list[
     if a.get("bars"):
         B["impacts"].append(render_winter_counts(spec, a["bars"]))
     if a.get("st"):
-        B["range"].append(render_range(spec, a, headings))
+        rr = render_range(spec, a, headings)
+        if a.get("storm_now"):                    # this winter so far leads the section
+            import levant_storm
+            blk = levant_storm.render(spec, a)
+            k = rr.find("<h3>")                   # after the section's intro, before its first subsection
+            rr = rr[:k] + blk + rr[k:] if k >= 0 else rr + blk
+        B["range"].append(rr)
     if a.get("agri"):
         import levant_agri
         B["agri"].append(levant_agri.render(spec, a, headings))
@@ -2658,6 +2667,8 @@ NAV_CSS = ("h2,h3,h4,h5,#key-messages,#contents{scroll-margin-top:48px}"
            ".anchor::after{content:'#'}"
            "h2:hover .anchor,h3:hover .anchor,h4:hover .anchor,h5:hover .anchor{opacity:1}"
            ".keymsg .see,.summary .see{font-size:13px;color:var(--n7);white-space:nowrap}"
+           ".latest{border-left:3px solid #C0782F;background:var(--n05);padding:8px 14px;margin:16px 0 10px;max-width:none}"
+           "tr.now td{font-weight:700}"
            "details.note{margin:2px 0 14px}details.note>summary{cursor:pointer;font-size:12.5px;color:var(--b6);width:fit-content}"
            "details.note>summary:hover{text-decoration:underline}details.note[open]>summary{margin-bottom:4px}details.note p{margin:0 0 6px}"
            "figcaption details.note{display:inline}figcaption details.note[open]{display:block;margin-top:4px}"
@@ -2902,6 +2913,9 @@ def render_combined(cspec: dict, parts: list[dict]) -> str:
              + (item("key-messages", "Key messages") if cspec.get("key_messages") else '') + item("contents", "Contents")
              + "".join(item(i, html.escape(short.get(i, t)) if i not in sec_no else f'{sec_no[i]}&nbsp;{html.escape(short.get(i, t.split(". ", 1)[-1]))}', sub)
                        for i, t, sub in toc) + '</nav>')
+    # the latest event, if any, above the key messages (one line with a link into the section)
+    if cspec.get("latest_html"):
+        o.append(f'<p class="latest">{cspec["latest_html"]}</p>')
     # key messages for the coming winter, ahead of everything else
     if cspec.get("key_messages"):
         o.append(f'<div class="keymsg" id="key-messages"><h2 id="key-messages-heading">{html.escape(cspec.get("key_messages_title", "Key messages"))}</h2>'

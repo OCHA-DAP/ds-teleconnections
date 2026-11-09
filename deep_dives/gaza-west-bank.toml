@@ -40,6 +40,7 @@ maps_html = '''
 '''
 
 # Six key messages for the coming winter, shown in a box above the verdict cards. Findings, not recommendations.
+latest_html = '<strong>8 November 2026:</strong> the first storm of the winter, on 6–7 November, flooded displacement sites across Gaza. Section 5 now opens with the rain, how far ahead ECMWF forecast it, and what the flood satellites saw. <a href="#gaza-storm-now">Read it</a>.'
 key_messages_title = "Key messages for winter 2026/27"
 key_messages_dateline = "As of the September 2026 multi-model forecasts (compiled 30 September), ECMWF's October forecast (published 5 October) and exposure data to 25 September 2026. To be updated after the other October forecasts (NOAA on 8 October, C3S around 10–13 October) and the MedCOF winter consensus in late November."
 key_messages_footer = "El Niño's link to winter rain here has held only since 1979, and this event is likely to be stronger than any it was measured on. Impact counts understate. None of this is a forecast."
