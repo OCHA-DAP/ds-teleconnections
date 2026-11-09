@@ -394,8 +394,8 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   for (let lon = -150; lon <= 150; lon += 30) grat.push(merid(lon, -80, 80));
   for (let lat = -60; lat <= 60; lat += 30) grat.push([[lat, -180], [lat, 180]]);  // parallels are straight in Equal Earth
   L.polyline(grat, {renderer: baseR, color: "#ffffff", weight: 0.8, opacity: 0.7, interactive: false}).addTo(map);
-  L.polyline(merid(180).concat(merid(-180).reverse(), [[-90, 180]]), {renderer: baseR, color: "#b9c2c6",
-    weight: 1, interactive: false}).addTo(map);
+  L.polyline(merid(180).concat(merid(-180).reverse(), [[-90, 180]]), {renderer: borderR, color: "#b9c2c6",
+    weight: 1, interactive: false}).addTo(map);    // on the borders canvas, so land at the edge can't hide it
 
   const tiles = new Set();
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
@@ -462,8 +462,11 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
       style: {stroke: false, fillColor: LAND, fillOpacity: 1}}).addTo(map);
     L.geoJSON(bm.countries, {renderer: borderR, interactive: false,
       style: {color: BORDER, weight: 0.7, fill: false}}).addTo(map);
-    LABELS = bm.labels.countries.map(([name, lat, lon, z]) => ({name, lat, lon, z, cls: "lbl-c"}))
-      .concat(bm.labels.cities.map(([name, lat, lon, z, cap]) => ({name, lat, lon, z, cls: cap ? "lbl-p cap" : "lbl-p"})));
+    // one priority order: the zoom each name appears at, countries first on ties (a minor
+    // territory that appears at z6 no longer outranks London)
+    LABELS = bm.labels.countries.map(([name, lat, lon, z]) => ({name, lat, lon, z, cls: "lbl-c", k: 0}))
+      .concat(bm.labels.cities.map(([name, lat, lon, z, cap]) => ({name, lat, lon, z, cls: cap ? "lbl-p cap" : "lbl-p", k: 1})))
+      .sort((a, b) => a.z - b.z || a.k - b.k);
     labelLayer.addTo(map);
   }
   // greedy placement in priority order (countries, then places by zoom); a label is skipped
@@ -766,6 +769,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
       || COUNTRIES.find(c => c.name.toLowerCase().startsWith(q) || (c.alt || "").toLowerCase().startsWith(q));
     if (!hit) { showStatus(`No country matches “${text}”`); setTimeout(() => showStatus(""), 1800); return; }
     let [s, w, n, e] = hit.bbox;
+    if (w >= 180) { w -= 360; e -= 360; }  // a western box written in 0-360 longitudes
     if (e > 180) {                         // crosses 180 degrees: the map has one world, take the larger side
       if (180 - w >= e - 180) e = 180; else { w = -180; e -= 360; }
     }
@@ -794,7 +798,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   function writeHash() {
     if (!META) return;
     const c = map.getCenter();
-    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}&m=${map.getZoom()}/${c.lat.toFixed(2)}/${c.lng.toFixed(2)}`;
+    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}&p=ee&m=${map.getZoom()}/${c.lat.toFixed(2)}/${c.lng.toFixed(2)}`;
     history.replaceState(null, "", "#" + h);
   }
   function readHash() {
@@ -803,17 +807,21 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (q.get("s")) out.season = q.get("s").toUpperCase();
     if (q.get("c") === "ramp" || q.get("c") === "classes") out.mode = q.get("c");
     out.dry = q.get("d") === "1";
+    out.ee = q.get("p") === "ee";      // written by the Equal Earth version: longitude as is
     const m = (q.get("m") || "").split("/").map(Number);
     if (m.length === 3 && m.every(Number.isFinite)) out.view = {z: m[0], lat: m[1], lng: m[2]};
     return out;
   }
   map.on("moveend", writeHash);
+  // links from the Mercator version (no p=ee) may carry a world-copy longitude: fold it into
+  // the one world. This version's own centres can lie beyond +-180 near the edges, so keep them.
   const foldLng = lng => ((lng + 180) % 360 + 360) % 360 - 180;
+  const hashCentre = h => [h.view.lat, h.ee ? h.view.lng : foldLng(h.view.lng)];
   // a pasted link that differs only after "#" does not reload the page
   window.addEventListener("hashchange", () => {
     if (!META) return;
     const h = readHash();
-    if (h.view) map.setView([h.view.lat, foldLng(h.view.lng)], Math.min(MAXZ, Math.max(MINZ, h.view.z)));
+    if (h.view) map.setView(hashCentre(h), Math.min(MAXZ, Math.max(MINZ, h.view.z)));
     if (h.mode && h.mode !== state.mode) setMode(h.mode);
     if (h.dry !== state.dry) setDry(h.dry);
     if (h.season && CODES.includes(h.season) && h.season !== state.season) { stopPlay(); selectSeason(h.season); }
@@ -839,7 +847,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (h.season && CODES.includes(h.season)) state.season = h.season;
     if (h.mode) state.mode = h.mode;
     state.dry = h.dry;
-    if (h.view) map.setView([h.view.lat, foldLng(h.view.lng)], Math.min(MAXZ, Math.max(MINZ, h.view.z)));
+    if (h.view) map.setView(hashCentre(h), Math.min(MAXZ, Math.max(MINZ, h.view.z)));
     else fitBox(-58, -180, 80, 180, MAXZ);
     document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
     document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === state.dry)));

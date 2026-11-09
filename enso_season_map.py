@@ -109,7 +109,9 @@ def _bbox(geom) -> list[float] | None:
     cx = (b[:, 0] + b[:, 2]) / 2
     shifted = np.where(cx[:, None] < 0, b[:, [0, 2]] + 360, b[:, [0, 2]])
     w1, e1 = float(shifted[:, 0].min()), float(shifted[:, 1].max())
-    w, e = (w1, e1) if (e1 - w1) < (e0 - w0) else (w0, e0)
+    # shifted only when clearly tighter: a bare `<` let floating-point noise (~1e-14) move
+    # 38 wholly western countries (UK, Brazil, Caribbean...) into 0-360 longitudes
+    w, e = (w1, e1) if (e1 - w1) < (e0 - w0) - 1e-6 else (w0, e0)
     return [round(s, 2), round(w, 2), round(n, 2), round(e, 2)]
 
 
@@ -140,15 +142,19 @@ def basemap(cache_dir: Path) -> dict:
     simplified per feature; country label points and zoom levels from the same
     layer; 1:50m populated places with their own zoom levels).
     """
+    import shapely
     from shapely.geometry import mapping
 
     g = _ne_layer(cache_dir, NE_COUNTRIES)
+    g = g[g.geometry.notna()]               # Antarctica stays in the land fill (no label, no search)
+    # simplified as one coverage, so neighbours keep one shared border (per-feature
+    # simplify drew shared borders twice at the top zooms), then densified to 0.5 degree:
+    # in Equal Earth meridians curve, so a long straight lon/lat edge (the 180 degree cut,
+    # meridian borders) must carry intermediate vertices to follow them
+    simplified = shapely.coverage_simplify(g.geometry.values, BASEMAP_SIMPLIFY_DEG)
     feats = []
-    for _, row in g.iterrows():
-        if row.geometry is None:        # Antarctica stays in the land fill (no label, no search)
-            continue
-        geom = row.geometry.simplify(BASEMAP_SIMPLIFY_DEG, preserve_topology=True)
-        if geom.is_empty:
+    for geom in shapely.segmentize(simplified, 0.5):
+        if geom is None or geom.is_empty:
             continue
         m = mapping(geom)
         feats.append({"type": "Feature", "properties": {},
@@ -167,6 +173,7 @@ def basemap(cache_dir: Path) -> dict:
         key=lambda v: (v[3], -v[4]))
     return {"countries": {"type": "FeatureCollection", "features": feats},
             "labels": {"countries": country_labels, "cities": city_labels}}
+    # (the page merges the two lists into one priority order: by zoom, countries first on ties)
 
 
 def _class(r: np.ndarray, show: np.ndarray) -> np.ndarray:
