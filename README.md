@@ -154,11 +154,21 @@ minute. Niño3.4 is the survey's pinned `cache/nino34.data`. Rerun it whenever t
 rerun, so the two stay in step. `--cache-dir` / `--survey-npz` point at another checkout's cache and
 `out/` (useful from a worktree).
 
-Data files (all gzip; the page decompresses them with `DecompressionStream`): `meta.json` (grid, seasons,
+**Projection.** The map is drawn in Equal Earth (spherical form, Greenwich-centred), the equal-area
+projection the UN General Assembly encouraged in September 2026. Leaflet has no such CRS, so the page
+defines one (forward formula + Newton inverse, checked against PROJ `+proj=eqearth` to 1e-15) and paints
+each tile pixel by inverting it to a 0.25° cell. There are no Web Mercator basemap tiles: ocean, land,
+borders, a 30° graticule and names are drawn from `basemap.json` (Natural Earth 1:50m countries simplified
+at 0.02°, their label points and `MIN_LABEL` zooms, and 1:50m populated places with their `min_zoom`;
+labels placed greedily without overlaps). One world, no copies: countries across 180° (Fiji, Kiribati)
+appear at both edges.
+
+Data files (the binaries are gzip, decompressed in the page with `DecompressionStream`; Pages compresses
+the JSON in transit): `meta.json` (grid, seasons,
 thresholds, cross-check result, a content hash used to bust caches), `land.bin.gz` (land mask, one bit per
 grid cell, row-major from 84°N/180°W), `annual.bin.gz` (uint16 annual sum of the four canonical seasons'
 mean rainfall, 0.01 mm/day, rounded up), `countries.json` (Natural Earth 1:50m names and bounding boxes for the
-zoom box) and one `{season}.bin.gz` per season holding, per land cell, the season's mean rainfall
+zoom box), `basemap.json` (see above) and one `{season}.bin.gz` per season holding, per land cell, the season's mean rainfall
 (uint16, 0.01 mm/day, rounded down so the 0.25 mm/day test reads the same as in Python), *r* × 100
 (int8, truncated towards zero so the printed value never crosses a class edge; −128 = none) and a flags byte (bits 0–1 best lag, 2 rainy season,
 3 p < 0.05, 4 *r* computed, 5–7 the survey's colour class wherever p < 0.05). The "Drier months: Show"

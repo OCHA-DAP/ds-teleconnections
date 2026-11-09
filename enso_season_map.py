@@ -54,6 +54,8 @@ OUT_DIR = Path("docs/enso-map/data")
 NE_BASE = "https://raw.githubusercontent.com/nvkelso/natural-earth-vector/master/geojson/"
 NE_LAND = ("ne_10m_land", "ne_10m_minor_islands")
 NE_COUNTRIES = "ne_50m_admin_0_countries"
+NE_PLACES = "ne_50m_populated_places_simple"
+BASEMAP_SIMPLIFY_DEG = 0.02     # ~2 km: well under one 0.25° cell at the map's top zoom
 
 MONTH_ABBR = ["Jan", "Feb", "Mar", "Apr", "May", "Jun",
               "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
@@ -122,6 +124,49 @@ def countries(cache_dir: Path) -> list[dict]:
         alt = row["NAME"] if row["NAME"] != name else None
         out.append({"name": name, "alt": alt, "iso3": row["ADM0_A3"], "bbox": bb})
     return sorted(out, key=lambda d: d["name"])
+
+
+def _round_coords(c, nd: int = 3):
+    if isinstance(c, (list, tuple)) and c and isinstance(c[0], (int, float)):
+        return [round(float(v), nd) for v in c]
+    return [_round_coords(v, nd) for v in c]
+
+
+def basemap(cache_dir: Path) -> dict:
+    """Country polygons and labels for the viewer's own basemap.
+
+    The page draws in Equal Earth, so it cannot use Web Mercator basemap tiles:
+    land, borders and names come from Natural Earth instead (1:50m countries,
+    simplified per feature; country label points and zoom levels from the same
+    layer; 1:50m populated places with their own zoom levels).
+    """
+    from shapely.geometry import mapping
+
+    g = _ne_layer(cache_dir, NE_COUNTRIES)
+    feats = []
+    for _, row in g.iterrows():
+        if row.geometry is None:        # Antarctica stays in the land fill (no label, no search)
+            continue
+        geom = row.geometry.simplify(BASEMAP_SIMPLIFY_DEG, preserve_topology=True)
+        if geom.is_empty:
+            continue
+        m = mapping(geom)
+        feats.append({"type": "Feature", "properties": {},
+                      "geometry": {"type": m["type"],
+                                   "coordinates": _round_coords(m["coordinates"])}})
+    country_labels = sorted(
+        ([row["NAME"], round(float(row["LABEL_Y"]), 2), round(float(row["LABEL_X"]), 2),
+          float(row["MIN_LABEL"]), int(row["LABELRANK"])]
+         for _, row in g.iterrows() if row["ADM0_A3"] != "ATA"),
+        key=lambda v: (v[3], v[4]))
+    pl = _ne_layer(cache_dir, NE_PLACES)
+    city_labels = sorted(
+        ([row["name"], round(float(row["latitude"]), 3), round(float(row["longitude"]), 3),
+          float(row["min_zoom"]), int(row["adm0cap"])]
+         for _, row in pl.iterrows()),
+        key=lambda v: (v[3], -v[4]))
+    return {"countries": {"type": "FeatureCollection", "features": feats},
+            "labels": {"countries": country_labels, "cities": city_labels}}
 
 
 def _class(r: np.ndarray, show: np.ndarray) -> np.ndarray:
@@ -274,8 +319,11 @@ def main() -> None:
     _gz(out_dir / "annual.bin.gz", ann_bytes)
     digests += [hashlib.sha1(land_bytes).hexdigest(), hashlib.sha1(ann_bytes).hexdigest()]
 
-    (out_dir / "countries.json").write_text(
-        json.dumps(countries(cache_dir), ensure_ascii=False, separators=(",", ":")))
+    # the JSON files are fetched with ?v=<version> too, so they count towards it
+    for name, obj in (("countries.json", countries(cache_dir)), ("basemap.json", basemap(cache_dir))):
+        text = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
+        (out_dir / name).write_text(text)
+        digests.append(hashlib.sha1(text.encode()).hexdigest())
 
     nino_last = indices[INDEX].dropna().index.max()
     meta = {
