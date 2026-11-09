@@ -215,8 +215,9 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
         true relative size (the projection the UN General Assembly encouraged in September 2026). Dragging turns
         the globe, so any place, including those across 180° such as Fiji, can be brought to the middle. Zooming
         in changes the projection gradually to a Lambert azimuthal equal-area projection centred on the middle of
-        the view, which keeps the area you look at true to shape, with north up. Both are equal-area; the
-        gradual change between them is close to, but not exactly, equal-area.</li>
+        the view, which keeps the area you look at true to shape, with north up. Both are equal-area. In
+        between, the map is a blend of the two: areas are close to true in the middle of the view but can be
+        off by up to about a third towards the corners, most at high latitudes.</li>
     </ul>
   </div>
   <p class="foot" id="foot">Data: ERA5 (Copernicus Climate Change Service), NOAA CPC Niño3.4, Natural Earth.
@@ -276,7 +277,14 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   }
   const CLASS32_L = CLASS32.map(light32), RAMP32_L = RAMP32.map(light32);
 
-  function showStatus(msg) { statusEl.textContent = msg; statusEl.style.display = msg ? "block" : "none"; }
+  // a fatal message (no WebGL, graphics lost, basemap missing) stays until it is resolved: routine
+  // messages ("Loading JAS…") never wipe it
+  let fatalMsg = "";
+  function showStatus(msg) {
+    const m = msg || fatalMsg;
+    statusEl.textContent = m; statusEl.style.display = m ? "block" : "none";
+  }
+  function setFatal(msg) { fatalMsg = msg; showStatus(""); }
 
   // ---------------------------------------------------------------- data
   let META = null, G = null, LANDPOS = null, ANNUAL = null, N = 0;
@@ -374,7 +382,10 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 
   const view = {lon: 0, lat: 0, z: 2, W: 0, H: 0};          // centre (degrees), zoom, frame (CSS px)
   function blendAt(S) {                                       // 0: Equal Earth ... 1: azimuthal
-    const u = clampN((view.W / S / (2 * XMAX) - BLEND_FROM) / (BLEND_TO - BLEND_FROM), 0, 1);
+    // share of the world in view: by width, or by height while the poles are still in the frame
+    // (on tall frames), so the azimuthal part never starts with a pole in view
+    const share = Math.max(view.W / S / (2 * XMAX), BLEND_FROM * view.H / S / (2 * YMAX));
+    const u = clampN((share - BLEND_FROM) / (BLEND_TO - BLEND_FROM), 0, 1);
     return u * u * (3 - 2 * u);
   }
   function derive() {                                         // the terms every projection call reuses
@@ -414,28 +425,40 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   const scrX = x => view.W / 2 + x * view.S, scrY = y => view.H / 2 - y * view.S;
 
   // view-centred units -> [lat, lon] in degrees, or null (off the world). Exact at either end;
-  // in between, Newton's method on the blend, seeded from whichever projection dominates.
+  // in between, Newton's method on the blend, seeded from whichever projection dominates and, if
+  // that fails (e.g. a seed beyond Equal Earth's pole line at the frame's edge), from the other.
+  function seedEE(x, y) {
+    const Y = y + view.yE0, th = eeTheta(Y);
+    return [clampN(x / eeK(th), -PI, PI), Math.asin(clampN(Math.sin(th) / EM, -1, 1)), Math.abs(Y) <= YMAX];
+  }
+  function seedLAEA(x, y) {
+    const rho = Math.hypot(x, y);
+    if (rho < 1e-12) return [0, view.lat * D2R, true];
+    const c = 2 * Math.asin(Math.min(1, rho / 2)), sc = Math.sin(c), cc = Math.cos(c);
+    return [Math.atan2(x * sc, rho * view.cP0 * cc - y * view.sP0 * sc),
+            Math.asin(clampN(cc * view.sP0 + y * sc * view.cP0 / rho, -1, 1)), rho < 2];
+  }
   function unproject(x, y) {
     const t = view.t;
-    let dl, phi;
-    if (t < 0.5) {
+    if (t === 0) {
       const Y = y + view.yE0;
-      if (t === 0 && Math.abs(Y) > YMAX) return null;
-      const th = eeTheta(Y);
-      phi = Math.asin(clampN(Math.sin(th) / EM, -1, 1)); dl = x / eeK(th);
-      if (t === 0) return Math.abs(dl) <= PI ? [phi * R2D, wrap180(view.lon + dl * R2D)] : null;
-      dl = clampN(dl, -PI, PI);
-    } else {
-      const rho = Math.hypot(x, y);
-      if (t === 1 && rho >= 2) return null;
-      if (rho < 1e-12) { phi = view.lat * D2R; dl = 0; }
-      else {
-        const c = 2 * Math.asin(Math.min(1, rho / 2)), sc = Math.sin(c), cc = Math.cos(c);
-        phi = Math.asin(clampN(cc * view.sP0 + y * sc * view.cP0 / rho, -1, 1));
-        dl = Math.atan2(x * sc, rho * view.cP0 * cc - y * view.sP0 * sc);
-      }
-      if (t === 1) return [phi * R2D, wrap180(view.lon + dl * R2D)];
+      if (Math.abs(Y) > YMAX) return null;
+      const th = eeTheta(Y), dl = x / eeK(th);
+      return Math.abs(dl) <= PI ? [Math.asin(clampN(Math.sin(th) / EM, -1, 1)) * R2D, wrap180(view.lon + dl * R2D)] : null;
     }
+    if (t === 1) {
+      const [dl, phi, ok] = seedLAEA(x, y);
+      return ok ? [phi * R2D, wrap180(view.lon + dl * R2D)] : null;
+    }
+    const seeds = t < 0.5 ? [seedEE, seedLAEA] : [seedLAEA, seedEE];
+    for (const seed of seeds) {
+      const [dl, phi] = seed(x, y);
+      const r = newtonInverse(x, y, dl, phi);
+      if (r) return r;
+    }
+    return null;
+  }
+  function newtonInverse(x, y, dl, phi) {
     const f = [0, 0], g = [0, 0], h = 1e-7;
     for (let i = 0; i < 30; i++) {
       if (!projDL(dl, phi, f)) return null;
@@ -470,29 +493,59 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     // Earth's, so nothing beyond a pole is ever in view; without this, the Equal Earth seam at the
     // back of the globe opens into a blank gap over the pole at mid zooms. High latitudes can be
     // centred once zoomed in (70 degrees from about zoom 6).
-    const S = Math.pow(2, view.z) * PX0, lim = YMAX - view.H / 2 / S;
-    const bound = lim <= 0 ? 0 : Math.min(85, Math.asin(clampN(Math.sin(eeTheta(lim)) / EM, -1, 1)) * R2D);
+    const bound = latBound();
     view.lat = clampN(view.lat, -bound, bound);
     derive();
   }
-  // move the centre so that (lat, lon) sits at screen point (X, Y): a few Newton-like steps with the
-  // local scale at the centre (the sign is right everywhere, so it converges)
+  function latBound() {
+    const lim = YMAX - view.H / 2 / (Math.pow(2, view.z) * PX0);
+    return lim <= 0 ? 0 : Math.min(85, Math.asin(clampN(Math.sin(eeTheta(lim)) / EM, -1, 1)) * R2D);
+  }
+  // move the centre so that (lat, lon) sits at screen point (X, Y): steps with the local scale at
+  // the centre, each kept only if it brings the place closer to the point (halved up to 5 times,
+  // else undone). Where the place cannot follow (it has reached the world's edge, or the latitude
+  // is held by clampView) it stops there instead of oscillating.
   function anchor(lat, lon, X, Y) {
-    for (let i = 0; i < 8; i++) {
+    const err = () => {
       derive();
       const p = projectLL(lat, lon);
-      if (!p) break;
-      const ex = (X - view.W / 2) / view.S - p[0], ey = (view.H / 2 - Y) / view.S - p[1];
-      if (Math.abs(ex) + Math.abs(ey) < 1e-10) break;
+      return p ? [(X - view.W / 2) / view.S - p[0], (view.H / 2 - Y) / view.S - p[1]] : null;
+    };
+    // with the latitude held at its limit only the east-west error can be removed: judge steps on
+    // that alone, or the turning chases the vertical error and the map slides past the pointer
+    const size = e => Math.abs(view.lat) >= latBound() - 1e-9 ? Math.abs(e[0]) : Math.hypot(e[0], e[1]);
+    let e = err();
+    if (!e) return;
+    for (let i = 0; i < 8; i++) {
+      const n0 = size(e);
+      if (n0 < 1e-10) break;
       const t = view.t;
-      const sx = (1 - t) * eeK(view.th0) + t * view.cP0;
-      const sy = (1 - t) * eeDY(view.th0) * EM * view.cP0 / Math.cos(view.th0) + t;
-      view.lon = view.lon - ex / Math.max(sx, 0.05) * R2D;
-      view.lat = view.lat - ey / Math.max(sy, 0.05) * R2D;
-      clampView();
+      const sx = Math.max((1 - t) * eeK(view.th0) + t * view.cP0, 0.05);
+      const sy = Math.max((1 - t) * eeDY(view.th0) * EM * view.cP0 / Math.cos(view.th0) + t, 0.05);
+      const lat0 = view.lat, lon0 = view.lon;
+      let ok = false;
+      for (let k = 0, f = 1; k < 5; k++, f *= 0.5) {
+        view.lon = lon0 - f * e[0] / sx * R2D;
+        view.lat = lat0 - f * e[1] / sy * R2D;
+        clampView();
+        const e2 = err();
+        if (e2 && size(e2) < n0) { e = e2; ok = true; break; }
+      }
+      if (!ok) { view.lat = lat0; view.lon = lon0; clampView(); break; }
     }
     derive();
   }
+
+  // drag/pinch step: keep the grabbed place under the pointer; where the map cannot follow (a
+  // latitude limit, the world's edge), take whatever is now under the pointer as the grabbed place,
+  // so no error builds up to be released later as a jump
+  function follow(ll, X, Y) {
+    anchor(ll[0], ll[1], X, Y);
+    const p = projectLL(ll[0], ll[1]);
+    if (p && Math.hypot(scrX(p[0]) - X, scrY(p[1]) - Y) < 0.5) return ll;
+    return screenToLL(X, Y) || ll;
+  }
+  if (window.ENSO_MAP) window.ENSO_MAP.follow = follow;
 
   // ---------------------------------------------------------------- WebGL: ocean, graticule, land, cells
   const glCanvas = $("gl"), ov = $("ov"), octx = ov.getContext("2d");
@@ -503,12 +556,20 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 
   const GLSL_HEAD = `#version 300 es
 precision highp float;
-uniform float uLam0, uSP0, uCP0, uYE0, uT, uS, uCosCull;
+uniform float uLon0, uSP0, uCP0, uYE0, uT, uS, uCosCull;
 uniform vec2 uHalf;
 const float PI = 3.141592653589793;
 const float EM = 0.8660254037844386;
 const float A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796;
-float wrapPi(float a) { return a - 2.0 * PI * floor((a + PI) / (2.0 * PI)); }
+float wrap180(float d) { return d - 360.0 * floor((d + 180.0) / 360.0); }
+// a vertex's longitude relative to the view centre, in degrees. ref: the primitive's own reference
+// point. The vertex is computed from exact degree values (cell edges are multiples of 0.125), so
+// neighbouring cells get bit-identical shared edges; a vertex that wrapped to the other side of the
+// seam is cut at the edge on its reference's side.
+float relLon(float lonDeg, float refDeg) {
+  float r = wrap180(refDeg - uLon0), d = wrap180(lonDeg - uLon0);
+  return abs(d - r) > 90.0 ? sign(r) * 180.0 : d;
+}
 float eeY(float t) { float t2 = t * t, t6 = t2 * t2 * t2; return t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)); }
 float eeDY(float t) { float t2 = t * t, t6 = t2 * t2 * t2; return A1 + 3.0 * A2 * t2 + t6 * (7.0 * A3 + 9.0 * A4 * t2); }
 // port of projCore() in the page script
@@ -535,10 +596,9 @@ layout(location = 3) in vec4 aHatch;
 out vec4 vColor; out vec4 vHatch;
 void main() {
   vColor = aColor; vHatch = aHatch;
-  float phi = radians(aCenter.y), dlc = wrapPi(radians(aCenter.x) - uLam0);
-  if (culled(dlc, phi)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
-  float dl = clamp(dlc + radians(aCorner.x * uHalfDeg), -PI, PI);
-  float ph = clamp(phi + radians(aCorner.y * uHalfDeg), -0.5 * PI, 0.5 * PI);
+  if (culled(radians(wrap180(aCenter.x - uLon0)), radians(aCenter.y))) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  float dl = radians(relLon(aCenter.x + aCorner.x * uHalfDeg, aCenter.x));
+  float ph = radians(clamp(aCenter.y + aCorner.y * uHalfDeg, -90.0, 90.0));
   gl_Position = clipPos(proj(dl, ph));
 }`;
   const QUAD_FS = `#version 300 es
@@ -555,9 +615,8 @@ void main() {
 layout(location = 0) in vec2 aLL;
 layout(location = 1) in vec2 aRef;
 void main() {
-  float phr = radians(aRef.y), dlr = wrapPi(radians(aRef.x) - uLam0);
-  if (culled(dlr, phr)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
-  gl_Position = clipPos(proj(clamp(dlr + radians(aLL.x - aRef.x), -PI, PI), radians(aLL.y)));
+  if (culled(radians(wrap180(aRef.x - uLon0)), radians(aRef.y))) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  gl_Position = clipPos(proj(radians(relLon(aLL.x, aRef.x)), radians(aLL.y)));
 }`;
   const LINE_FS = `#version 300 es
 precision highp float;
@@ -582,6 +641,12 @@ void main() { o = uColor; }`;
     return {p, u};
   }
   let QP = null, LP = null, CORNERS = null, OCEAN_L = null, GRAT_L = null, POLAR_L = null, DATA_L = null;
+  let CENTRES = null, POLAR_CENTRES = null;
+  function buildDataLayers() {
+    if (!gl || !QP || !CENTRES) return;
+    DATA_L = quadLayer(CENTRES, true);
+    POLAR_L = quadLayer(POLAR_CENTRES, false);
+  }
   function quadLayer(centers, perInstanceColours) {
     const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
     gl.bindBuffer(gl.ARRAY_BUFFER, CORNERS);
@@ -619,7 +684,7 @@ void main() { o = uColor; }`;
     GRAT_L = {vao, n: gv.length / 4};
   }
   function uploadColors() {
-    if (!gl || !DATA_L || !COLORS) return;
+    if (!gl || !QP || !DATA_L || !COLORS) return;
     gl.bindBuffer(gl.ARRAY_BUFFER, DATA_L.col); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Uint8Array(COLORS.buffer));
     gl.bindBuffer(gl.ARRAY_BUFFER, DATA_L.hat); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Uint8Array(HATCH.buffer));
   }
@@ -630,7 +695,7 @@ void main() { o = uColor; }`;
     const bg = rgbaF(BG); gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT);
     const use = pr => {
       gl.useProgram(pr.p); const u = pr.u;
-      gl.uniform1f(u.uLam0, view.lam0); gl.uniform1f(u.uSP0, view.sP0); gl.uniform1f(u.uCP0, view.cP0);
+      gl.uniform1f(u.uLon0, view.lon); gl.uniform1f(u.uSP0, view.sP0); gl.uniform1f(u.uCP0, view.cP0);
       gl.uniform1f(u.uYE0, view.yE0); gl.uniform1f(u.uT, view.t); gl.uniform1f(u.uS, view.S);
       gl.uniform1f(u.uCosCull, COS_CULL); gl.uniform2f(u.uHalf, view.W / 2, view.H / 2);
     };
@@ -640,7 +705,11 @@ void main() { o = uColor; }`;
       gl.bindVertexArray(L.vao); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, L.n);
     };
     use(QP); gl.uniform1f(QP.u.uDpr, DPR);
+    // the ocean: the sphere's outline does not depend on the turn, so draw it unturned, where no
+    // 2-degree quad straddles the seam (turned, a sliver at the edge flickered while dragging)
+    gl.uniform1f(QP.u.uLon0, 0.0);
     draw(OCEAN_L, 1.0, rgbaF(OCEAN));
+    gl.uniform1f(QP.u.uLon0, view.lon);
     use(LP);
     gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     gl.uniform4f(LP.u.uColor, 1, 1, 1, 0.75);
@@ -676,7 +745,16 @@ void main() { o = uColor; }`;
         for (let i = 0; i < n; i++) {
           const o = i * 7; minDot = Math.min(minDot, v[o + 2] * (v[o + 6] * cx + v[o + 5] * cy) + v[o + 1] * cz);
         }
-        RINGS.push({v, n, c: [cx, cy, cz], rad: Math.acos(clampN(minDot, -1, 1))});
+        // edges that are not borders: Natural Earth cuts polygons along 180 degrees (Chukotka,
+        // Wrangel, Fiji, Antarctica) and closes Antarctica along the pole; once the globe turns,
+        // those would show as lines, so the pen lifts there
+        const cut = new Uint8Array(n);
+        for (let i = 1; i < n; i++) {
+          const a = ring[i - 1], b = ring[i];
+          if ((Math.abs(Math.abs(a[0]) - 180) < 1e-9 && Math.abs(Math.abs(b[0]) - 180) < 1e-9) ||
+              (a[1] <= -89.9 && b[1] <= -89.9)) cut[i] = 1;
+        }
+        RINGS.push({v, n, cut, c: [cx, cy, cz], rad: Math.acos(clampN(minDot, -1, 1))});
       }
     }
     // one priority order: the zoom each name appears at, countries first on ties
@@ -706,6 +784,7 @@ void main() { o = uColor; }`;
       const v = ring.v;
       let pen = false, pdl = 0;
       for (let i = 0; i < ring.n; i++) {
+        if (ring.cut[i]) pen = false;
         const o = i * 7;
         let dl = v[o] - view.lam0; dl -= 2 * PI * Math.floor((dl + PI) / (2 * PI));
         const cdl = v[o + 6] * view.cL0 + v[o + 5] * view.sL0, sdl = v[o + 5] * view.cL0 - v[o + 6] * view.sL0;
@@ -801,12 +880,12 @@ void main() { o = uColor; }`;
     renderQueued = false;
     if (!view.W) return;
     derive();
-    if (gl && QP) renderGL();
+    if (gl && QP && LP) renderGL();
     renderOverlay();
     updateScale();
     $("zout").disabled = view.z <= minZoom() + 1e-3;
     $("zin").disabled = view.z >= MAXZ - 1e-3;
-    if (tipEl.style.display === "block") placeTip();
+    if (tipEl.style.display === "block" || (tipCulled && hoverCell >= 0)) placeTip();
   }
   function resize() {
     const W = ov.clientWidth, H = ov.clientHeight;
@@ -850,7 +929,7 @@ void main() { o = uColor; }`;
   function renderTip() {
     if (hoverCell < 0) { tipEl.style.display = "none"; return; }
     const p = LANDPOS[hoverCell];
-    const [lat, lon] = cellCentre(hoverCell, tipLatLng ? tipLatLng.lng : 0);
+    const [lat, lon] = cellCentre(hoverCell);
     const where = `${fmtLat(lat)}, ${fmtLon(lon)}`;
     const close = `<button class="close" type="button" aria-label="Close">&times;</button>`;
     if (p < 0) {
@@ -931,10 +1010,11 @@ void main() { o = uColor; }`;
     return s + `</svg>`;
   }
 
+  let tipCulled = false;                 // the box's cell is on the far side of the globe just now
   function placeTip() {
-    tipEl.style.display = "block";
-    if (!tipLatLng) return;
-    const p = projectLL(tipLatLng.lat, tipLatLng.lng);
+    const p = tipLatLng ? projectLL(tipLatLng.lat, tipLatLng.lng) : null;
+    tipCulled = !!tipLatLng && !p;
+    tipEl.style.display = tipCulled ? "none" : "block";
     if (!p) return;
     const px = scrX(p[0]), py = scrY(p[1]);
     const w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
@@ -952,7 +1032,7 @@ void main() { o = uColor; }`;
     else placeTip();
   }
   function clearCell() {
-    hoverCell = -1; pinned = false; tipEl.classList.remove("pinned"); tipEl.style.display = "none";
+    hoverCell = -1; pinned = false; tipCulled = false; tipEl.classList.remove("pinned"); tipEl.style.display = "none";
     requestRender();
   }
   const llAt = (x, y) => { const ll = screenToLL(x, y); return ll ? {lat: ll[0], lng: ll[1]} : null; };
@@ -992,19 +1072,21 @@ void main() { o = uColor; }`;
     pointers.set(e.pointerId, [x, y]);
     stopAnim();
     if (pointers.size === 1) startDrag(x, y);
-    else if (pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      gesture = {type: "pinch", d0: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, z0: view.z,
-                 ll: screenToLL((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), moved: true};
-    }
+    else if (pointers.size === 2) startPinch();
+    else gesture = {type: "none", moved: true};   // three fingers or more: wait until two remain
   });
+  function startPinch() {
+    const [a, b] = [...pointers.values()];
+    gesture = {type: "pinch", d0: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, z0: view.z,
+               ll: screenToLL((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), moved: true};
+  }
   ov.addEventListener("pointermove", e => {
     const [x, y] = localXY(e);
     if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [x, y]);
     if (gesture && gesture.type === "drag" && pointers.size === 1) {
       if (!gesture.moved && Math.hypot(x - gesture.x0, y - gesture.y0) < 4) return;
       gesture.moved = true; ov.classList.add("dragging");
-      if (gesture.ll) anchor(gesture.ll[0], gesture.ll[1], x, y);
+      if (gesture.ll) gesture.ll = follow(gesture.ll, x, y);
       else { view.lon = gesture.lon0 - (x - gesture.x0) / (view.S * eeK(0)) * R2D; clampView(); }   // grabbed off the world
       requestRender();
       return;
@@ -1012,7 +1094,7 @@ void main() { o = uColor; }`;
     if (gesture && gesture.type === "pinch" && pointers.size === 2) {
       const [a, b] = [...pointers.values()];
       view.z = gesture.z0 + Math.log2(Math.hypot(a[0] - b[0], a[1] - b[1]) / gesture.d0); clampView();
-      if (gesture.ll) anchor(gesture.ll[0], gesture.ll[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+      if (gesture.ll) gesture.ll = follow(gesture.ll, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
       requestRender();
       return;
     }
@@ -1028,7 +1110,8 @@ void main() { o = uColor; }`;
       if (hoverCell >= 0 && LANDPOS[hoverCell] >= 0) { pinned = true; tipEl.classList.add("pinned"); renderTip(); }
       else clearCell();
     }
-    if (pointers.size === 1) { const [p] = [...pointers.values()]; startDrag(p[0], p[1]); gesture.moved = true; }
+    if (pointers.size === 2) startPinch();
+    else if (pointers.size === 1) { const [p] = [...pointers.values()]; startDrag(p[0], p[1]); gesture.moved = true; }
     else if (pointers.size === 0) { gesture = null; ov.classList.remove("dragging"); writeHash(); }
   }
   ov.addEventListener("pointerup", endPointer);
@@ -1042,7 +1125,7 @@ void main() { o = uColor; }`;
     zoomAround(x, y, view.z - clampN(dy, -200, 200) / 250);
     clearTimeout(wheelHash); wheelHash = setTimeout(writeHash, 250);
   }, {passive: false});
-  ov.addEventListener("dblclick", e => { const [x, y] = localXY(e); animateZoom(x, y, e.shiftKey ? -1 : 1); });
+  ov.addEventListener("dblclick", e => { const [x, y] = localXY(e); clearCell(); animateZoom(x, y, e.shiftKey ? -1 : 1); });
   $("zin").addEventListener("click", () => animateZoom(view.W / 2, view.H / 2, 1));
   $("zout").addEventListener("click", () => animateZoom(view.W / 2, view.H / 2, -1));
   new ResizeObserver(resize).observe($("map"));
@@ -1165,7 +1248,7 @@ void main() { o = uColor; }`;
       pts.push([la, w], [la, e], [s, lo], [n, lo]);
     }
     const fits = () => {
-      derive();
+      view.lat = (s + n) / 2; view.lon = wrap180((w + e) / 2); clampView();   // the centre that will be used
       const mx = (view.W / 2 - 24) / view.S, my = (view.H / 2 - 24) / view.S;
       for (const [la, lo] of pts) {
         const p = projectLL(la, lo);
@@ -1240,14 +1323,19 @@ void main() { o = uColor; }`;
     showStatus("Loading data…");
 
     if (gl) {
-      try { initGL(); } catch (err) { console.error(err); showStatus(`Could not start the map graphics: ${err.message}`); }
-      glCanvas.addEventListener("webglcontextlost", e => { e.preventDefault(); showStatus("The map's graphics were lost: reload the page."); });
+      try { initGL(); } catch (err) { console.error(err); QP = LP = null; setFatal(`Could not start the map graphics: ${err.message}`); }
+      glCanvas.addEventListener("webglcontextlost", e => { e.preventDefault(); QP = LP = null; setFatal("The map's graphics were interrupted; restoring…"); });
+      glCanvas.addEventListener("webglcontextrestored", () => {
+        try { initGL(); buildDataLayers(); uploadColors(); setFatal(""); }
+        catch (err) { console.error(err); QP = LP = null; setFatal("The map's graphics were lost: reload the page."); }
+        requestRender();
+      });
     } else {
-      showStatus("This map needs WebGL 2 (Chrome 56, Firefox 51, Safari 15 or later).");
+      setFatal("This map needs WebGL 2 (Chrome 56, Firefox 51, Safari 15 or later).");
     }
     requestRender();
     fetch(`data/basemap.json${v()}`).then(r => r.json()).then(bm => { prepBasemap(bm); requestRender(); })
-      .catch(err => { console.error(err); showStatus(`Could not load the basemap: ${err.message}`); });
+      .catch(err => { console.error(err); setFatal(`Could not load the borders and names: ${err.message}`); });
     if (document.fonts) Promise.all([document.fonts.load(FONT_C), document.fonts.load(FONT_P)])
       .then(() => { FONTS_READY = true; requestRender(); }).catch(() => {});
     const [landBuf, annBuf, polarBuf, countries] = await Promise.all([
@@ -1261,22 +1349,21 @@ void main() { o = uColor; }`;
     for (let i = 0; i < cells; i++) if ((bits[i >> 3] >> (7 - (i & 7))) & 1) LANDPOS[i] = k++;
     if (k !== N) throw new Error(`land mask has ${k} cells, expected ${N}`);
     ANNUAL = new Uint16Array(annBuf);
-    if (gl && QP) {
-      const cen = new Float32Array(2 * N);                    // cell centres, in land-cell order
-      for (let i = 0; i < cells; i++) {
-        const q = LANDPOS[i];
-        if (q >= 0) { cen[2 * q] = G.lon0 + (i % G.nx) * G.d; cen[2 * q + 1] = G.lat0 - Math.floor(i / G.nx) * G.d; }
-      }
-      DATA_L = quadLayer(cen, true);
-      const pb = new Uint8Array(polarBuf), pc = [];             // land beyond the data grid
-      let bit = 0;
-      for (const cap of ["north", "south"]) {
-        const [lat0, rows] = META.polar[cap];
-        for (let r = 0; r < rows; r++) for (let c = 0; c < G.nx; c++, bit++)
-          if ((pb[bit >> 3] >> (7 - (bit & 7))) & 1) pc.push(G.lon0 + c * G.d, lat0 - r * G.d);
-      }
-      POLAR_L = quadLayer(new Float32Array(pc), false);
+    CENTRES = new Float32Array(2 * N);                       // cell centres, in land-cell order
+    for (let i = 0; i < cells; i++) {
+      const q = LANDPOS[i];
+      if (q >= 0) { CENTRES[2 * q] = G.lon0 + (i % G.nx) * G.d; CENTRES[2 * q + 1] = G.lat0 - Math.floor(i / G.nx) * G.d; }
     }
+    const pb = new Uint8Array(polarBuf), pc = [];               // land beyond the data grid
+    let bit = 0;
+    for (const cap of ["north", "south"]) {
+      const [lat0, rows] = META.polar[cap];
+      for (let r = 0; r < rows; r++) for (let c = 0; c < G.nx; c++, bit++)
+        if ((pb[bit >> 3] >> (7 - (bit & 7))) & 1) pc.push(G.lon0 + c * G.d, lat0 - r * G.d);
+    }
+    POLAR_CENTRES = new Float32Array(pc);
+    buildDataLayers();
+    uploadColors();          // a season loaded before the layer existed: give it its colours now
     COUNTRIES = countries;
     $("countrylist").innerHTML = countries.map(c => `<option value="${c.name} (${c.iso3})"></option>`).join("");
     $("foot").insertAdjacentHTML("beforeend",

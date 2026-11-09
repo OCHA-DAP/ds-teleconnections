@@ -159,8 +159,10 @@ form), the equal-area projection the UN General Assembly encouraged in September
 meridian on the view centre: dragging east-west turns the globe, across 180° too. Zooming in blends it
 into a Lambert azimuthal equal-area projection centred on the view (true to shape at the centre, north
 up), by the share of the world's width in view (Equal Earth above 55%, azimuthal below 15%; after Jenny
-2012, adaptive composite map projections). Both ends are equal-area; the blend between them is close to,
-not exactly, equal-area. Zoom out stops at the whole world. Vertically the centre is held so that Equal
+2012, adaptive composite map projections). Both ends are equal-area; in the blend, areas are close to true
+in the middle of the view but can be off by up to about a third towards the corners at mid zoom, most at
+high latitudes (Fable review: area scale 0.61 at the top corners at z 3.7 centred 38.5°N). On tall frames
+the blend waits until the poles have left the frame. Zoom out stops at the whole world. Vertically the centre is held so that Equal
 Earth's pole line stays at or beyond the frame (otherwise its back seam opens into a gap over the pole at
 mid zooms); high latitudes can be centred once zoomed in.
 
@@ -170,8 +172,12 @@ land beyond the data grid (`polar.bin.gz`, Antarctica) are instanced quads whose
 their own centre, clamped at the seam; borders (Natural Earth 1:50m from `basemap.json`, per-vertex
 trigonometry precomputed), the world's edge, the cell highlight and names (Natural Earth label points and
 zooms, placed greedily without overlaps) are drawn on a 2D canvas above. Hover, zoom anchoring and fitting
-a country invert the projection numerically (exact at either end, Newton between; round trips agree to
-1e-8 px). `?debug` exposes the projection as `window.ENSO_MAP` for such checks. Needs WebGL 2.
+a country invert the projection numerically (exact at either end, Newton between, retried from the other
+seed; round trips agree to 1e-8 px). Dragging keeps the grabbed place under the pointer with damped,
+backtracking steps, and re-grabs whatever is under the pointer where the map cannot follow (latitude
+limit, world's edge), so nothing jumps. Cell edges are computed in exact degrees in the shader, so
+neighbours share bit-identical edges; edges along the 180° cut and the South Pole (Natural Earth's
+polygon cuts) are not stroked as borders. `?debug` exposes the projection as `window.ENSO_MAP` for such checks. Needs WebGL 2.
 
 Data files (the binaries are gzip, decompressed in the page with `DecompressionStream`; Pages compresses
 the JSON in transit): `meta.json` (grid, seasons,

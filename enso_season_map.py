@@ -99,7 +99,7 @@ def _bbox(geom) -> list[float] | None:
 
     Countries that cross 180° (Fiji, Russia, Kiribati, the US with the
     Aleutians) get a bbox in 0-360° longitudes when that is the tighter one;
-    the viewer passes it to Leaflet as is (east > 180 is a world copy)."""
+    the viewer centres on it as is (the globe turns to east > 180)."""
     polys = _polys(geom)
     if not polys:
         return None
