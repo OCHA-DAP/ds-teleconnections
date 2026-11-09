@@ -1878,6 +1878,11 @@ def main() -> None:
             import ago_deep_dive
             ago_deep_dive.build(spec, publish=bool(os.environ.get("AGO_PUBLISH")))
             continue
+        if spec.get("builder") == "cadc":
+            # Dry Corridor Primera/Postrera 2027 outlook: page filled from the committed analysis outputs; docs/ only with CADC_PUBLISH=1
+            import cadc_deep_dive
+            cadc_deep_dive.build(spec, publish=bool(os.environ.get("CADC_PUBLISH")))
+            continue
         if spec.get("builder") == "hti":
             # Haiti spring 2027 outlook: page filled from the committed analysis outputs; docs/ only with HTI_PUBLISH=1
             import hti_deep_dive

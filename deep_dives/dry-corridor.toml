@@ -1,0 +1,20 @@
+# The Central American Dry Corridor (Guatemala, Honduras, El Salvador) — Primera and Postrera 2027 after the 2026/27
+# El Niño. Built by cadc_deep_dive.py (builder = "cadc"). The page text lives in deep_dives/data/dry-corridor/template.html;
+# its numbers come from the committed analysis outputs in deep_dives/data/dry-corridor/ (see analysis/README.md). The build
+# stops when a number in the text no longer matches the data.
+iso3 = "GTM"
+name = "Dry Corridor (Guatemala, Honduras, El Salvador)"
+builder = "cadc"
+
+[catalogue]
+direction = "drier"
+season = "JAS"
+evidence = "robust"
+source_html = '<a href="https://agupubs.onlinelibrary.wiley.com/doi/10.1029/1999GL011140">Dai &amp; Wigley 2000 (GRL)</a>'
+
+[assessment]
+direction = "drier while El Niño is under way; no clear shift in seasonal totals the year after, but a later start to Primera"
+season = "Primera (May–August) and Postrera (September–November) 2027"
+evidence = "moderate"
+evidence_note = "The catalogue's drying is the developing-year effect (2015, 2023, 2026). The page reviews the year after a strong event: six past cases, ocean-index regressions and the NMME, none pointing to a dry total."
+one_line = "The survey's robust El Niño drying comes while El Niño is under way, as in 2015 and 2026. For the year after, totals do not lean dry: Primera 2027 is expected near typical in the framework departments (99–106%) and Postrera slightly below (93–101%), with ranges as wide as usual. The documented risk is a late start: after strong El Niño winters the Primera rains began 8–14 days late on average."

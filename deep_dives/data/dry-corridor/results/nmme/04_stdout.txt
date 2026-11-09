@@ -1,0 +1,76 @@
+Analog years: Nov starts with model MME NDJ Nino3.4 >= 1.0 (target year = following year); 2027 = forecast.
+mme_rain_index_z: standardised MME rainfall index (0 = model normal, negative = drier); ranks 1 = driest.
+
+--- GT MJJA ---
+ target_year  n_models  mme_nino34_NDJ  obs_nino34_NDJ  mme_rain_index_z mme_rain_rank  mme_rain_pct_model_clim  chirps_mm  chirps_pct_9120 chirps_rank  era5_pct_9120
+        1998         5            2.48            1.73              2.59         36/36                   128.85     816.87            85.34       10/36          93.79
+        2003         5            1.36            0.92              1.31         35/36                   115.57     912.26            95.31       16/36          89.65
+        2007         5            1.02            0.83              0.63         27/36                   106.07     896.62            93.67       14/36          95.33
+        2010         5            1.55            1.35              0.60         26/36                   105.23    1461.83           152.72       36/36         144.62
+        2016         5            2.49            2.07              0.19         21/36                    98.12     843.62            88.13       11/36          89.62
+        2019         5            1.15            0.96             -0.35         13/36                    95.72     706.69            73.83        3/36          72.49
+        2024         5            1.83            1.67              0.94         32/36                   107.74     982.97           102.69       22/36         115.05
+        2027         5            3.41             NaN              1.73         36/37                   119.06        NaN              NaN                        NaN
+
+--- GT SO ---
+ target_year  n_models  mme_nino34_NDJ  obs_nino34_NDJ  mme_rain_index_z mme_rain_rank  mme_rain_pct_model_clim  chirps_mm  chirps_pct_9120 chirps_rank  era5_pct_9120
+        1998         4            2.48            1.73              2.25         36/36                   122.74     653.78           117.94       29/35         134.37
+        2003         4            1.36            0.92              1.21         33/36                   109.18     475.07            85.70        8/35          87.10
+        2007         4            1.02            0.83              0.51         28/36                   101.83     606.38           109.39       28/35         111.79
+        2010         4            1.55            1.35              0.26         24/36                   103.59     523.97            94.52       16/35          87.05
+        2016         4            2.49            2.07             -0.21         15/36                    95.37     403.28            72.75        2/35          79.00
+        2019         4            1.15            0.96             -1.59          3/36                    87.74     585.43           105.61       23/35         103.68
+        2024         4            1.83            1.67             -0.04         20/36                    97.28     476.36            85.93        9/35         102.59
+        2027         4            3.41             NaN              1.51         34/37                   108.84        NaN              NaN                        NaN
+
+--- HN MJJA ---
+ target_year  n_models  mme_nino34_NDJ  obs_nino34_NDJ  mme_rain_index_z mme_rain_rank  mme_rain_pct_model_clim  chirps_mm  chirps_pct_9120 chirps_rank  era5_pct_9120
+        1998         5            2.48            1.73              2.56         36/36                   130.84     764.73            99.62       21/36          99.54
+        2003         5            1.36            0.92              1.20         35/36                   114.61     729.78            95.07       17/36          92.54
+        2007         5            1.02            0.83              0.56         25/36                   106.87     657.38            85.64        8/36          93.09
+        2010         5            1.55            1.35              0.82         31/36                   109.41    1123.75           146.39       36/36         142.55
+        2016         5            2.49            2.07              0.13         19/36                    98.02     708.05            92.24       15/36          90.91
+        2019         5            1.15            0.96             -0.31         14/36                    94.99     525.75            68.49        2/36          78.54
+        2024         5            1.83            1.67              1.08         34/36                   107.79     699.09            91.07       14/36         110.03
+        2027         5            3.41             NaN              1.71         36/37                   120.80        NaN              NaN                        NaN
+
+--- HN SO ---
+ target_year  n_models  mme_nino34_NDJ  obs_nino34_NDJ  mme_rain_index_z mme_rain_rank  mme_rain_pct_model_clim  chirps_mm  chirps_pct_9120 chirps_rank  era5_pct_9120
+        1998         4            2.48            1.73              2.28         36/36                   135.12     724.11           158.33       35/35         165.80
+        2003         4            1.36            0.92              1.05         33/36                   111.55     402.98            88.11       13/35          85.22
+        2007         4            1.02            0.83              0.67         26/36                   103.54     448.09            97.98       20/35         113.36
+        2010         4            1.55            1.35              0.03         20/36                   101.88     518.25           113.32       27/35          90.73
+        2016         4            2.49            2.07             -1.43          3/36                    85.45     348.21            76.14        7/35          83.60
+        2019         4            1.15            0.96             -1.95          2/36                    81.50     343.81            75.18        6/35          88.31
+        2024         4            1.83            1.67             -0.66         10/36                    89.29     427.46            93.47       16/35         114.01
+        2027         4            3.41             NaN              1.42         35/37                   107.54        NaN              NaN                        NaN
+
+--- SV MJJA ---
+ target_year  n_models  mme_nino34_NDJ  obs_nino34_NDJ  mme_rain_index_z mme_rain_rank  mme_rain_pct_model_clim  chirps_mm  chirps_pct_9120 chirps_rank  era5_pct_9120
+        1998         5            2.48            1.73              2.60         36/36                   137.76    1111.76           105.17       24/36         100.12
+        2003         5            1.36            0.92              1.13         34/36                   116.26    1092.61           103.36       23/36          96.42
+        2007         5            1.02            0.83              0.41         24/36                   105.65     899.71            85.11        8/36         108.17
+        2010         5            1.55            1.35              0.51         27/36                   106.14    1668.92           157.88       36/36         187.45
+        2016         5            2.49            2.07             -0.00         18/36                    93.39     830.71            78.58        6/36          78.43
+        2019         5            1.15            0.96             -0.08         16/36                    98.88     821.14            77.68        5/36          85.87
+        2024         5            1.83            1.67              1.17         35/36                   112.84    1221.08           115.51       29/36         139.55
+        2027         5            3.41             NaN              1.97         36/37                   127.22        NaN              NaN                        NaN
+
+--- SV SO ---
+ target_year  n_models  mme_nino34_NDJ  obs_nino34_NDJ  mme_rain_index_z mme_rain_rank  mme_rain_pct_model_clim  chirps_mm  chirps_pct_9120 chirps_rank  era5_pct_9120
+        1998         4            2.48            1.73              1.24         34/36                   127.90     657.60           107.21       25/35         143.41
+        2003         4            1.36            0.92              1.02         31/36                   108.88     583.14            95.07       16/35          82.57
+        2007         4            1.02            0.83              0.28         22/36                   100.54     713.66           116.35       27/35         115.59
+        2010         4            1.55            1.35              0.16         20/36                   102.94     490.48            79.96        6/35          89.98
+        2016         4            2.49            2.07             -1.26          5/36                    87.57     511.39            83.37        9/35          70.64
+        2019         4            1.15            0.96             -1.95          2/36                    85.81     624.67           101.84       21/35         105.67
+        2024         4            1.83            1.67             -0.59          9/36                    93.99     453.88            74.00        3/35          87.15
+        2027         4            3.41             NaN              0.52         27/37                   104.07        NaN              NaN                        NaN
+
+Summary over analog years with observations (target <= 2026):
+GT MJJA: n=7 years [1998, 2003, 2007, 2010, 2016, 2019, 2024]; mean CHIRPS 99% (range 74-153%), below 90%: 3, mean ERA5 100%; mean MME index z +0.84; r(index, CHIRPS%) -0.00
+GT SO: n=7 years [1998, 2003, 2007, 2010, 2016, 2019, 2024]; mean CHIRPS 96% (range 73-118%), below 90%: 3, mean ERA5 101%; mean MME index z +0.34; r(index, CHIRPS%) 0.29
+HN MJJA: n=7 years [1998, 2003, 2007, 2010, 2016, 2019, 2024]; mean CHIRPS 97% (range 68-146%), below 90%: 2, mean ERA5 101%; mean MME index z +0.86; r(index, CHIRPS%) 0.31
+HN SO: n=7 years [1998, 2003, 2007, 2010, 2016, 2019, 2024]; mean CHIRPS 100% (range 75-158%), below 90%: 3, mean ERA5 106%; mean MME index z -0.00; r(index, CHIRPS%) 0.81
+SV MJJA: n=7 years [1998, 2003, 2007, 2010, 2016, 2019, 2024]; mean CHIRPS 103% (range 78-158%), below 90%: 3, mean ERA5 114%; mean MME index z +0.82; r(index, CHIRPS%) 0.27
+SV SO: n=7 years [1998, 2003, 2007, 2010, 2016, 2019, 2024]; mean CHIRPS 94% (range 74-116%), below 90%: 3, mean ERA5 99%; mean MME index z -0.16; r(index, CHIRPS%) 0.29
