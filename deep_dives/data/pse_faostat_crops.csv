@@ -1,0 +1,952 @@
+item,element,year,unit,value,flag
+Bananas,Area harvested,1994,ha,569.000000,A
+Bananas,Area harvested,1995,ha,569.000000,A
+Bananas,Area harvested,1996,ha,589.000000,A
+Bananas,Area harvested,1997,ha,579.000000,A
+Bananas,Area harvested,1998,ha,517.000000,A
+Bananas,Area harvested,1999,ha,530.000000,A
+Bananas,Area harvested,2000,ha,236.000000,A
+Bananas,Area harvested,2001,ha,203.000000,A
+Bananas,Area harvested,2002,ha,186.000000,A
+Bananas,Area harvested,2003,ha,278.000000,A
+Bananas,Area harvested,2004,ha,337.000000,A
+Bananas,Area harvested,2005,ha,330.000000,A
+Bananas,Area harvested,2006,ha,267.000000,A
+Bananas,Area harvested,2007,ha,211.000000,A
+Bananas,Area harvested,2008,ha,168.000000,A
+Bananas,Area harvested,2009,ha,157.000000,I
+Bananas,Area harvested,2010,ha,112.000000,A
+Bananas,Area harvested,2011,ha,121.000000,I
+Bananas,Area harvested,2012,ha,113.000000,I
+Bananas,Area harvested,2013,ha,108.000000,I
+Bananas,Area harvested,2014,ha,100.000000,X
+Bananas,Area harvested,2015,ha,80.000000,X
+Bananas,Area harvested,2016,ha,80.000000,X
+Bananas,Area harvested,2017,ha,87.000000,E
+Bananas,Area harvested,2018,ha,70.000000,A
+Bananas,Area harvested,2019,ha,36.000000,A
+Bananas,Area harvested,2020,ha,41.000000,A
+Bananas,Area harvested,2021,ha,104.000000,A
+Bananas,Area harvested,2022,ha,92.000000,I
+Bananas,Production,1994,t,18383.000000,A
+Bananas,Production,1995,t,18383.000000,A
+Bananas,Production,1996,t,19762.000000,A
+Bananas,Production,1997,t,23132.000000,A
+Bananas,Production,1998,t,20653.000000,A
+Bananas,Production,1999,t,26365.000000,A
+Bananas,Production,2000,t,9430.000000,A
+Bananas,Production,2001,t,5923.000000,A
+Bananas,Production,2002,t,5442.000000,A
+Bananas,Production,2003,t,7750.000000,A
+Bananas,Production,2004,t,9148.000000,A
+Bananas,Production,2005,t,9800.000000,A
+Bananas,Production,2006,t,8000.000000,A
+Bananas,Production,2007,t,6160.000000,A
+Bananas,Production,2008,t,5120.000000,A
+Bananas,Production,2009,t,4956.900000,I
+Bananas,Production,2010,t,3665.610000,I
+Bananas,Production,2011,t,4072.340000,I
+Bananas,Production,2012,t,3915.040000,I
+Bananas,Production,2013,t,3964.450000,I
+Bananas,Production,2014,t,3840.000000,X
+Bananas,Production,2015,t,3220.000000,X
+Bananas,Production,2016,t,2880.000000,X
+Bananas,Production,2017,t,3313.330000,E
+Bananas,Production,2018,t,2860.000000,A
+Bananas,Production,2019,t,1258.000000,A
+Bananas,Production,2020,t,1428.000000,A
+Bananas,Production,2021,t,3804.000000,A
+Bananas,Production,2022,t,3379.000000,X
+Bananas,Yield,1994,kg/ha,32307.600000,A
+Bananas,Yield,1995,kg/ha,32307.600000,A
+Bananas,Yield,1996,kg/ha,33551.800000,A
+Bananas,Yield,1997,kg/ha,39951.600000,A
+Bananas,Yield,1998,kg/ha,39947.800000,A
+Bananas,Yield,1999,kg/ha,49745.300000,A
+Bananas,Yield,2000,kg/ha,39957.600000,A
+Bananas,Yield,2001,kg/ha,29177.300000,A
+Bananas,Yield,2002,kg/ha,29258.100000,A
+Bananas,Yield,2003,kg/ha,27877.700000,A
+Bananas,Yield,2004,kg/ha,27145.400000,A
+Bananas,Yield,2005,kg/ha,29697.000000,A
+Bananas,Yield,2006,kg/ha,29962.500000,A
+Bananas,Yield,2007,kg/ha,29249.800000,A
+Bananas,Yield,2008,kg/ha,30476.200000,A
+Bananas,Yield,2009,kg/ha,31615.200000,E
+Bananas,Yield,2010,kg/ha,32728.700000,E
+Bananas,Yield,2011,kg/ha,33750.400000,E
+Bananas,Yield,2012,kg/ha,34561.400000,E
+Bananas,Yield,2013,kg/ha,36836.600000,E
+Bananas,Yield,2014,kg/ha,38400.000000,X
+Bananas,Yield,2015,kg/ha,40250.000000,X
+Bananas,Yield,2016,kg/ha,36000.000000,X
+Bananas,Yield,2017,kg/ha,38230.800000,E
+Bananas,Yield,2018,kg/ha,40857.100000,A
+Bananas,Yield,2019,kg/ha,34944.400000,A
+Bananas,Yield,2020,kg/ha,34829.300000,A
+Bananas,Yield,2021,kg/ha,36576.900000,A
+Bananas,Yield,2022,kg/ha,36732.100000,E
+Barley,Area harvested,1994,ha,12598.000000,A
+Barley,Area harvested,1995,ha,15075.000000,A
+Barley,Area harvested,1996,ha,14685.000000,A
+Barley,Area harvested,1997,ha,12725.000000,A
+Barley,Area harvested,1998,ha,12631.000000,A
+Barley,Area harvested,1999,ha,7197.000000,A
+Barley,Area harvested,2000,ha,9110.000000,A
+Barley,Area harvested,2001,ha,10300.000000,A
+Barley,Area harvested,2002,ha,10945.000000,A
+Barley,Area harvested,2003,ha,11166.000000,A
+Barley,Area harvested,2004,ha,10184.000000,A
+Barley,Area harvested,2005,ha,10949.000000,A
+Barley,Area harvested,2006,ha,10889.000000,A
+Barley,Area harvested,2007,ha,11112.000000,A
+Barley,Area harvested,2008,ha,10755.000000,A
+Barley,Area harvested,2009,ha,11000.000000,E
+Barley,Area harvested,2010,ha,4298.000000,A
+Barley,Area harvested,2011,ha,4150.000000,A
+Barley,Area harvested,2012,ha,4600.000000,A
+Barley,Area harvested,2013,ha,9280.000000,A
+Barley,Area harvested,2014,ha,9280.000000,A
+Barley,Area harvested,2015,ha,10020.000000,A
+Barley,Area harvested,2016,ha,8730.000000,A
+Barley,Area harvested,2017,ha,9343.000000,E
+Barley,Area harvested,2018,ha,9130.000000,A
+Barley,Area harvested,2019,ha,7520.000000,A
+Barley,Area harvested,2020,ha,7190.000000,A
+Barley,Area harvested,2021,ha,3661.000000,A
+Barley,Area harvested,2022,ha,5303.000000,I
+Barley,Production,1994,t,14000.000000,A
+Barley,Production,1995,t,24901.000000,A
+Barley,Production,1996,t,20446.000000,A
+Barley,Production,1997,t,14213.000000,A
+Barley,Production,1998,t,15726.000000,A
+Barley,Production,1999,t,2804.000000,A
+Barley,Production,2000,t,13883.000000,A
+Barley,Production,2001,t,12609.000000,A
+Barley,Production,2002,t,21879.000000,A
+Barley,Production,2003,t,21448.000000,A
+Barley,Production,2004,t,14672.000000,A
+Barley,Production,2005,t,22217.000000,A
+Barley,Production,2006,t,13895.000000,A
+Barley,Production,2007,t,14957.000000,A
+Barley,Production,2008,t,9740.000000,A
+Barley,Production,2009,t,9800.000000,E
+Barley,Production,2010,t,8700.000000,A
+Barley,Production,2011,t,5770.000000,A
+Barley,Production,2012,t,8290.000000,A
+Barley,Production,2013,t,16380.000000,A
+Barley,Production,2014,t,16380.000000,A
+Barley,Production,2015,t,22800.000000,A
+Barley,Production,2016,t,19700.000000,A
+Barley,Production,2017,t,19626.670000,E
+Barley,Production,2018,t,18230.000000,A
+Barley,Production,2019,t,15330.000000,A
+Barley,Production,2020,t,15260.000000,A
+Barley,Production,2021,t,9750.000000,A
+Barley,Production,2022,t,12750.940000,I
+Barley,Yield,1994,kg/ha,1111.300000,A
+Barley,Yield,1995,kg/ha,1651.800000,A
+Barley,Yield,1996,kg/ha,1392.300000,A
+Barley,Yield,1997,kg/ha,1116.900000,A
+Barley,Yield,1998,kg/ha,1245.000000,A
+Barley,Yield,1999,kg/ha,389.600000,A
+Barley,Yield,2000,kg/ha,1523.900000,A
+Barley,Yield,2001,kg/ha,1224.200000,A
+Barley,Yield,2002,kg/ha,1999.000000,A
+Barley,Yield,2003,kg/ha,1920.800000,A
+Barley,Yield,2004,kg/ha,1440.700000,A
+Barley,Yield,2005,kg/ha,2029.100000,A
+Barley,Yield,2006,kg/ha,1276.100000,A
+Barley,Yield,2007,kg/ha,1346.000000,A
+Barley,Yield,2008,kg/ha,905.600000,A
+Barley,Yield,2009,kg/ha,890.900000,E
+Barley,Yield,2010,kg/ha,2024.200000,A
+Barley,Yield,2011,kg/ha,1390.400000,A
+Barley,Yield,2012,kg/ha,1802.200000,A
+Barley,Yield,2013,kg/ha,1765.100000,A
+Barley,Yield,2014,kg/ha,1765.100000,A
+Barley,Yield,2015,kg/ha,2275.400000,A
+Barley,Yield,2016,kg/ha,2256.600000,A
+Barley,Yield,2017,kg/ha,2100.600000,E
+Barley,Yield,2018,kg/ha,1996.700000,A
+Barley,Yield,2019,kg/ha,2038.600000,A
+Barley,Yield,2020,kg/ha,2122.400000,A
+Barley,Yield,2021,kg/ha,2663.200000,A
+Barley,Yield,2022,kg/ha,2404.600000,E
+"Chick peas, dry",Area harvested,1995,ha,3249.000000,A
+"Chick peas, dry",Area harvested,1996,ha,3697.000000,A
+"Chick peas, dry",Area harvested,1997,ha,2724.000000,A
+"Chick peas, dry",Area harvested,1998,ha,2638.000000,A
+"Chick peas, dry",Area harvested,1999,ha,1832.000000,A
+"Chick peas, dry",Area harvested,2000,ha,1747.000000,A
+"Chick peas, dry",Area harvested,2001,ha,1844.000000,A
+"Chick peas, dry",Area harvested,2002,ha,2095.000000,A
+"Chick peas, dry",Area harvested,2003,ha,2171.000000,A
+"Chick peas, dry",Area harvested,2004,ha,2120.000000,A
+"Chick peas, dry",Area harvested,2005,ha,1800.000000,A
+"Chick peas, dry",Area harvested,2006,ha,1753.000000,A
+"Chick peas, dry",Area harvested,2007,ha,1794.000000,A
+"Chick peas, dry",Area harvested,2008,ha,1458.000000,A
+"Chick peas, dry",Area harvested,2009,ha,1500.000000,E
+"Chick peas, dry",Area harvested,2010,ha,568.000000,A
+"Chick peas, dry",Area harvested,2011,ha,855.000000,I
+"Chick peas, dry",Area harvested,2012,ha,1044.000000,I
+"Chick peas, dry",Area harvested,2013,ha,1153.000000,I
+"Chick peas, dry",Area harvested,2014,ha,1117.000000,X
+"Chick peas, dry",Area harvested,2015,ha,1090.000000,X
+"Chick peas, dry",Area harvested,2016,ha,787.000000,X
+"Chick peas, dry",Area harvested,2017,ha,998.000000,E
+"Chick peas, dry",Area harvested,2018,ha,890.000000,A
+"Chick peas, dry",Area harvested,2019,ha,990.000000,A
+"Chick peas, dry",Area harvested,2020,ha,880.000000,A
+"Chick peas, dry",Area harvested,2021,ha,241.000000,A
+"Chick peas, dry",Area harvested,2022,ha,439.000000,I
+"Chick peas, dry",Production,1995,t,4305.000000,A
+"Chick peas, dry",Production,1996,t,4185.000000,A
+"Chick peas, dry",Production,1997,t,2465.000000,A
+"Chick peas, dry",Production,1998,t,2009.000000,A
+"Chick peas, dry",Production,1999,t,1021.000000,A
+"Chick peas, dry",Production,2000,t,2306.000000,A
+"Chick peas, dry",Production,2001,t,1291.000000,A
+"Chick peas, dry",Production,2002,t,2638.000000,A
+"Chick peas, dry",Production,2003,t,2618.000000,A
+"Chick peas, dry",Production,2004,t,2867.000000,A
+"Chick peas, dry",Production,2005,t,1985.000000,A
+"Chick peas, dry",Production,2006,t,2029.000000,A
+"Chick peas, dry",Production,2007,t,2324.000000,A
+"Chick peas, dry",Production,2008,t,1741.000000,A
+"Chick peas, dry",Production,2009,t,2000.000000,E
+"Chick peas, dry",Production,2010,t,761.270000,I
+"Chick peas, dry",Production,2011,t,1185.690000,I
+"Chick peas, dry",Production,2012,t,1485.390000,I
+"Chick peas, dry",Production,2013,t,1732.680000,I
+"Chick peas, dry",Production,2014,t,1908.000000,X
+"Chick peas, dry",Production,2015,t,1494.000000,X
+"Chick peas, dry",Production,2016,t,1123.000000,X
+"Chick peas, dry",Production,2017,t,1508.330000,E
+"Chick peas, dry",Production,2018,t,1200.000000,A
+"Chick peas, dry",Production,2019,t,1540.000000,A
+"Chick peas, dry",Production,2020,t,1380.000000,A
+"Chick peas, dry",Production,2021,t,374.000000,A
+"Chick peas, dry",Production,2022,t,699.050000,I
+"Chick peas, dry",Yield,1995,kg/ha,1325.000000,A
+"Chick peas, dry",Yield,1996,kg/ha,1132.000000,A
+"Chick peas, dry",Yield,1997,kg/ha,904.900000,A
+"Chick peas, dry",Yield,1998,kg/ha,761.600000,A
+"Chick peas, dry",Yield,1999,kg/ha,557.300000,A
+"Chick peas, dry",Yield,2000,kg/ha,1320.000000,A
+"Chick peas, dry",Yield,2001,kg/ha,700.100000,A
+"Chick peas, dry",Yield,2002,kg/ha,1259.200000,A
+"Chick peas, dry",Yield,2003,kg/ha,1205.900000,A
+"Chick peas, dry",Yield,2004,kg/ha,1352.400000,A
+"Chick peas, dry",Yield,2005,kg/ha,1102.800000,A
+"Chick peas, dry",Yield,2006,kg/ha,1157.400000,A
+"Chick peas, dry",Yield,2007,kg/ha,1295.400000,A
+"Chick peas, dry",Yield,2008,kg/ha,1194.100000,A
+"Chick peas, dry",Yield,2009,kg/ha,1333.300000,E
+"Chick peas, dry",Yield,2010,kg/ha,1340.300000,E
+"Chick peas, dry",Yield,2011,kg/ha,1386.100000,E
+"Chick peas, dry",Yield,2012,kg/ha,1422.200000,E
+"Chick peas, dry",Yield,2013,kg/ha,1503.300000,E
+"Chick peas, dry",Yield,2014,kg/ha,1708.100000,X
+"Chick peas, dry",Yield,2015,kg/ha,1370.600000,X
+"Chick peas, dry",Yield,2016,kg/ha,1426.900000,X
+"Chick peas, dry",Yield,2017,kg/ha,1511.400000,E
+"Chick peas, dry",Yield,2018,kg/ha,1348.300000,A
+"Chick peas, dry",Yield,2019,kg/ha,1555.600000,A
+"Chick peas, dry",Yield,2020,kg/ha,1568.200000,A
+"Chick peas, dry",Yield,2021,kg/ha,1551.900000,A
+"Chick peas, dry",Yield,2022,kg/ha,1592.700000,E
+Cucumbers and gherkins,Area harvested,1995,ha,3044.000000,A
+Cucumbers and gherkins,Area harvested,1996,ha,3098.000000,A
+Cucumbers and gherkins,Area harvested,1997,ha,2973.000000,A
+Cucumbers and gherkins,Area harvested,1998,ha,3062.000000,A
+Cucumbers and gherkins,Area harvested,1999,ha,2945.000000,A
+Cucumbers and gherkins,Area harvested,2000,ha,3294.000000,A
+Cucumbers and gherkins,Area harvested,2001,ha,3495.000000,A
+Cucumbers and gherkins,Area harvested,2002,ha,3282.000000,A
+Cucumbers and gherkins,Area harvested,2003,ha,3670.000000,A
+Cucumbers and gherkins,Area harvested,2004,ha,3409.000000,A
+Cucumbers and gherkins,Area harvested,2005,ha,3088.000000,A
+Cucumbers and gherkins,Area harvested,2006,ha,3280.000000,A
+Cucumbers and gherkins,Area harvested,2007,ha,3614.000000,A
+Cucumbers and gherkins,Area harvested,2008,ha,3852.000000,A
+Cucumbers and gherkins,Area harvested,2009,ha,2872.000000,I
+Cucumbers and gherkins,Area harvested,2010,ha,2203.000000,A
+Cucumbers and gherkins,Area harvested,2011,ha,2764.000000,I
+Cucumbers and gherkins,Area harvested,2012,ha,2627.000000,I
+Cucumbers and gherkins,Area harvested,2013,ha,2945.000000,I
+Cucumbers and gherkins,Area harvested,2014,ha,2931.000000,X
+Cucumbers and gherkins,Area harvested,2015,ha,1171.000000,X
+Cucumbers and gherkins,Area harvested,2016,ha,2383.000000,X
+Cucumbers and gherkins,Area harvested,2017,ha,2162.000000,E
+Cucumbers and gherkins,Area harvested,2018,ha,2320.000000,A
+Cucumbers and gherkins,Area harvested,2019,ha,2260.000000,A
+Cucumbers and gherkins,Area harvested,2020,ha,2240.000000,A
+Cucumbers and gherkins,Area harvested,2021,ha,2420.000000,A
+Cucumbers and gherkins,Area harvested,2022,ha,2549.000000,I
+Cucumbers and gherkins,Production,1995,t,94215.000000,A
+Cucumbers and gherkins,Production,1996,t,99165.000000,A
+Cucumbers and gherkins,Production,1997,t,112383.000000,A
+Cucumbers and gherkins,Production,1998,t,108412.000000,A
+Cucumbers and gherkins,Production,1999,t,108994.000000,A
+Cucumbers and gherkins,Production,2000,t,135745.000000,A
+Cucumbers and gherkins,Production,2001,t,147689.000000,A
+Cucumbers and gherkins,Production,2002,t,147641.000000,A
+Cucumbers and gherkins,Production,2003,t,152817.000000,A
+Cucumbers and gherkins,Production,2004,t,160119.000000,A
+Cucumbers and gherkins,Production,2005,t,136009.000000,A
+Cucumbers and gherkins,Production,2006,t,154012.000000,A
+Cucumbers and gherkins,Production,2007,t,164780.000000,A
+Cucumbers and gherkins,Production,2008,t,211322.000000,A
+Cucumbers and gherkins,Production,2009,t,142900.240000,I
+Cucumbers and gherkins,Production,2010,t,111504.840000,I
+Cucumbers and gherkins,Production,2011,t,135067.230000,I
+Cucumbers and gherkins,Production,2012,t,135485.000000,I
+Cucumbers and gherkins,Production,2013,t,139953.720000,I
+Cucumbers and gherkins,Production,2014,t,143978.000000,X
+Cucumbers and gherkins,Production,2015,t,37794.000000,X
+Cucumbers and gherkins,Production,2016,t,127628.000000,X
+Cucumbers and gherkins,Production,2017,t,103133.330000,E
+Cucumbers and gherkins,Production,2018,t,113870.000000,A
+Cucumbers and gherkins,Production,2019,t,110050.000000,A
+Cucumbers and gherkins,Production,2020,t,107120.000000,A
+Cucumbers and gherkins,Production,2021,t,142264.000000,A
+Cucumbers and gherkins,Production,2022,t,133573.870000,I
+Cucumbers and gherkins,Yield,1995,kg/ha,30951.100000,A
+Cucumbers and gherkins,Yield,1996,kg/ha,32009.400000,A
+Cucumbers and gherkins,Yield,1997,kg/ha,37801.200000,A
+Cucumbers and gherkins,Yield,1998,kg/ha,35405.600000,A
+Cucumbers and gherkins,Yield,1999,kg/ha,37009.800000,A
+Cucumbers and gherkins,Yield,2000,kg/ha,41209.800000,A
+Cucumbers and gherkins,Yield,2001,kg/ha,42257.200000,A
+Cucumbers and gherkins,Yield,2002,kg/ha,44985.100000,A
+Cucumbers and gherkins,Yield,2003,kg/ha,41639.500000,A
+Cucumbers and gherkins,Yield,2004,kg/ha,46969.500000,A
+Cucumbers and gherkins,Yield,2005,kg/ha,44044.400000,A
+Cucumbers and gherkins,Yield,2006,kg/ha,46954.900000,A
+Cucumbers and gherkins,Yield,2007,kg/ha,45594.900000,A
+Cucumbers and gherkins,Yield,2008,kg/ha,54860.300000,A
+Cucumbers and gherkins,Yield,2009,kg/ha,49752.700000,E
+Cucumbers and gherkins,Yield,2010,kg/ha,50615.000000,E
+Cucumbers and gherkins,Yield,2011,kg/ha,48858.200000,E
+Cucumbers and gherkins,Yield,2012,kg/ha,51577.100000,E
+Cucumbers and gherkins,Yield,2013,kg/ha,47515.400000,E
+Cucumbers and gherkins,Yield,2014,kg/ha,49122.500000,X
+Cucumbers and gherkins,Yield,2015,kg/ha,32275.000000,X
+Cucumbers and gherkins,Yield,2016,kg/ha,53557.700000,X
+Cucumbers and gherkins,Yield,2017,kg/ha,47710.100000,E
+Cucumbers and gherkins,Yield,2018,kg/ha,49081.900000,A
+Cucumbers and gherkins,Yield,2019,kg/ha,48694.700000,A
+Cucumbers and gherkins,Yield,2020,kg/ha,47821.400000,A
+Cucumbers and gherkins,Yield,2021,kg/ha,58786.800000,A
+Cucumbers and gherkins,Yield,2022,kg/ha,52411.000000,E
+Dates,Area harvested,1994,ha,298.000000,A
+Dates,Area harvested,1995,ha,298.000000,A
+Dates,Area harvested,1996,ha,312.000000,A
+Dates,Area harvested,1997,ha,332.000000,A
+Dates,Area harvested,1998,ha,281.000000,A
+Dates,Area harvested,1999,ha,346.000000,A
+Dates,Area harvested,2000,ha,368.000000,A
+Dates,Area harvested,2001,ha,378.000000,A
+Dates,Area harvested,2002,ha,424.000000,A
+Dates,Area harvested,2003,ha,476.000000,A
+Dates,Area harvested,2004,ha,550.000000,A
+Dates,Area harvested,2005,ha,550.000000,A
+Dates,Area harvested,2006,ha,593.000000,A
+Dates,Area harvested,2007,ha,642.000000,A
+Dates,Area harvested,2008,ha,790.000000,A
+Dates,Area harvested,2009,ha,780.000000,I
+Dates,Area harvested,2010,ha,691.000000,A
+Dates,Area harvested,2011,ha,803.000000,I
+Dates,Area harvested,2012,ha,804.000000,I
+Dates,Area harvested,2013,ha,1039.000000,I
+Dates,Area harvested,2014,ha,1200.000000,X
+Dates,Area harvested,2015,ha,800.000000,X
+Dates,Area harvested,2016,ha,1000.000000,X
+Dates,Area harvested,2017,ha,1332.000000,I
+Dates,Area harvested,2018,ha,2290.000000,A
+Dates,Area harvested,2019,ha,680.000000,A
+Dates,Area harvested,2020,ha,720.000000,A
+Dates,Area harvested,2021,ha,2894.000000,A
+Dates,Area harvested,2022,ha,3090.000000,I
+Dates,Production,1994,t,3096.000000,A
+Dates,Production,1995,t,3100.000000,A
+Dates,Production,1996,t,3179.000000,A
+Dates,Production,1997,t,3429.000000,A
+Dates,Production,1998,t,3498.000000,A
+Dates,Production,1999,t,3470.000000,A
+Dates,Production,2000,t,3852.000000,A
+Dates,Production,2001,t,3819.000000,A
+Dates,Production,2002,t,5051.000000,A
+Dates,Production,2003,t,3657.000000,A
+Dates,Production,2004,t,5015.000000,A
+Dates,Production,2005,t,3608.000000,A
+Dates,Production,2006,t,2443.000000,A
+Dates,Production,2007,t,3030.000000,A
+Dates,Production,2008,t,3997.000000,A
+Dates,Production,2009,t,4745.660000,I
+Dates,Production,2010,t,4553.640000,I
+Dates,Production,2011,t,6004.620000,I
+Dates,Production,2012,t,6857.600000,I
+Dates,Production,2013,t,9288.700000,I
+Dates,Production,2014,t,12030.000000,X
+Dates,Production,2015,t,7970.000000,X
+Dates,Production,2016,t,10075.000000,X
+Dates,Production,2017,t,14493.700000,I
+Dates,Production,2018,t,28360.000000,A
+Dates,Production,2019,t,7730.000000,A
+Dates,Production,2020,t,8080.000000,A
+Dates,Production,2021,t,25085.000000,A
+Dates,Production,2022,t,25494.000000,X
+Dates,Yield,1994,kg/ha,10389.300000,A
+Dates,Yield,1995,kg/ha,10402.700000,A
+Dates,Yield,1996,kg/ha,10189.100000,A
+Dates,Yield,1997,kg/ha,10328.300000,A
+Dates,Yield,1998,kg/ha,12448.400000,A
+Dates,Yield,1999,kg/ha,10028.900000,A
+Dates,Yield,2000,kg/ha,10467.400000,A
+Dates,Yield,2001,kg/ha,10103.200000,A
+Dates,Yield,2002,kg/ha,11912.700000,A
+Dates,Yield,2003,kg/ha,7682.800000,A
+Dates,Yield,2004,kg/ha,9118.200000,A
+Dates,Yield,2005,kg/ha,6560.000000,A
+Dates,Yield,2006,kg/ha,4119.700000,A
+Dates,Yield,2007,kg/ha,4722.600000,A
+Dates,Yield,2008,kg/ha,5059.500000,A
+Dates,Yield,2009,kg/ha,6084.600000,E
+Dates,Yield,2010,kg/ha,6589.900000,E
+Dates,Yield,2011,kg/ha,7473.200000,E
+Dates,Yield,2012,kg/ha,8534.000000,E
+Dates,Yield,2013,kg/ha,8943.000000,E
+Dates,Yield,2014,kg/ha,10025.000000,X
+Dates,Yield,2015,kg/ha,9962.500000,X
+Dates,Yield,2016,kg/ha,10075.000000,X
+Dates,Yield,2017,kg/ha,10878.900000,E
+Dates,Yield,2018,kg/ha,12384.300000,A
+Dates,Yield,2019,kg/ha,11367.600000,A
+Dates,Yield,2020,kg/ha,11222.200000,A
+Dates,Yield,2021,kg/ha,8667.900000,A
+Dates,Yield,2022,kg/ha,8251.300000,E
+Grapes,Area harvested,1994,ha,9049.000000,A
+Grapes,Area harvested,1995,ha,7628.000000,A
+Grapes,Area harvested,1996,ha,8317.000000,A
+Grapes,Area harvested,1997,ha,8366.000000,A
+Grapes,Area harvested,1998,ha,7480.000000,A
+Grapes,Area harvested,1999,ha,6767.000000,A
+Grapes,Area harvested,2000,ha,7361.000000,A
+Grapes,Area harvested,2001,ha,7203.000000,A
+Grapes,Area harvested,2002,ha,7890.000000,A
+Grapes,Area harvested,2003,ha,7480.000000,A
+Grapes,Area harvested,2004,ha,7611.000000,A
+Grapes,Area harvested,2005,ha,7622.000000,A
+Grapes,Area harvested,2006,ha,7178.000000,A
+Grapes,Area harvested,2007,ha,8414.000000,A
+Grapes,Area harvested,2008,ha,7400.000000,A
+Grapes,Area harvested,2009,ha,5000.000000,E
+Grapes,Area harvested,2010,ha,2140.000000,A
+Grapes,Area harvested,2011,ha,3813.000000,I
+Grapes,Area harvested,2012,ha,4342.000000,I
+Grapes,Area harvested,2013,ha,4627.000000,I
+Grapes,Area harvested,2014,ha,4500.000000,X
+Grapes,Area harvested,2015,ha,3660.000000,X
+Grapes,Area harvested,2016,ha,3820.000000,X
+Grapes,Area harvested,2017,ha,3993.000000,E
+Grapes,Area harvested,2018,ha,4800.000000,A
+Grapes,Area harvested,2019,ha,3184.000000,A
+Grapes,Area harvested,2020,ha,3200.000000,A
+Grapes,Area harvested,2021,ha,2912.000000,A
+Grapes,Area harvested,2022,ha,3287.000000,I
+Grapes,Production,1994,t,51755.000000,A
+Grapes,Production,1995,t,40912.000000,A
+Grapes,Production,1996,t,56981.000000,A
+Grapes,Production,1997,t,52835.000000,A
+Grapes,Production,1998,t,56912.000000,A
+Grapes,Production,1999,t,44468.000000,A
+Grapes,Production,2000,t,59260.000000,A
+Grapes,Production,2001,t,59446.000000,A
+Grapes,Production,2002,t,78217.000000,A
+Grapes,Production,2003,t,57118.000000,A
+Grapes,Production,2004,t,56346.000000,A
+Grapes,Production,2005,t,66244.000000,A
+Grapes,Production,2006,t,52487.000000,A
+Grapes,Production,2007,t,64770.000000,A
+Grapes,Production,2008,t,55164.000000,A
+Grapes,Production,2009,t,38000.000000,E
+Grapes,Production,2010,t,17912.350000,I
+Grapes,Production,2011,t,33664.080000,I
+Grapes,Production,2012,t,39702.650000,I
+Grapes,Production,2013,t,44345.050000,I
+Grapes,Production,2014,t,46480.000000,X
+Grapes,Production,2015,t,37560.000000,X
+Grapes,Production,2016,t,39910.000000,X
+Grapes,Production,2017,t,41316.670000,E
+Grapes,Production,2018,t,63440.000000,A
+Grapes,Production,2019,t,34379.000000,A
+Grapes,Production,2020,t,36514.000000,A
+Grapes,Production,2021,t,47117.000000,A
+Grapes,Production,2022,t,47000.000000,E
+Grapes,Yield,1994,kg/ha,5719.400000,A
+Grapes,Yield,1995,kg/ha,5363.400000,A
+Grapes,Yield,1996,kg/ha,6851.100000,A
+Grapes,Yield,1997,kg/ha,6315.400000,A
+Grapes,Yield,1998,kg/ha,7608.600000,A
+Grapes,Yield,1999,kg/ha,6571.300000,A
+Grapes,Yield,2000,kg/ha,8050.500000,A
+Grapes,Yield,2001,kg/ha,8253.000000,A
+Grapes,Yield,2002,kg/ha,9913.400000,A
+Grapes,Yield,2003,kg/ha,7636.100000,A
+Grapes,Yield,2004,kg/ha,7403.200000,A
+Grapes,Yield,2005,kg/ha,8691.200000,A
+Grapes,Yield,2006,kg/ha,7312.200000,A
+Grapes,Yield,2007,kg/ha,7697.500000,A
+Grapes,Yield,2008,kg/ha,7454.600000,A
+Grapes,Yield,2009,kg/ha,7600.000000,E
+Grapes,Yield,2010,kg/ha,8370.300000,E
+Grapes,Yield,2011,kg/ha,8829.800000,E
+Grapes,Yield,2012,kg/ha,9144.800000,E
+Grapes,Yield,2013,kg/ha,9583.900000,E
+Grapes,Yield,2014,kg/ha,10328.900000,X
+Grapes,Yield,2015,kg/ha,10262.300000,X
+Grapes,Yield,2016,kg/ha,10447.600000,X
+Grapes,Yield,2017,kg/ha,10346.400000,E
+Grapes,Yield,2018,kg/ha,13216.700000,A
+Grapes,Yield,2019,kg/ha,10797.400000,A
+Grapes,Yield,2020,kg/ha,11410.600000,A
+Grapes,Yield,2021,kg/ha,16180.300000,A
+Grapes,Yield,2022,kg/ha,14297.600000,E
+"Lentils, dry",Area harvested,1994,ha,2897.000000,A
+"Lentils, dry",Area harvested,1995,ha,3071.000000,A
+"Lentils, dry",Area harvested,1996,ha,2991.000000,A
+"Lentils, dry",Area harvested,1997,ha,2552.000000,A
+"Lentils, dry",Area harvested,1998,ha,2707.000000,A
+"Lentils, dry",Area harvested,1999,ha,1384.000000,A
+"Lentils, dry",Area harvested,2000,ha,2020.000000,A
+"Lentils, dry",Area harvested,2001,ha,2031.000000,A
+"Lentils, dry",Area harvested,2002,ha,1903.000000,A
+"Lentils, dry",Area harvested,2003,ha,1923.000000,A
+"Lentils, dry",Area harvested,2004,ha,1577.000000,A
+"Lentils, dry",Area harvested,2005,ha,1676.000000,A
+"Lentils, dry",Area harvested,2006,ha,1937.000000,A
+"Lentils, dry",Area harvested,2007,ha,1492.000000,A
+"Lentils, dry",Area harvested,2008,ha,1140.000000,A
+"Lentils, dry",Area harvested,2009,ha,1241.000000,I
+"Lentils, dry",Area harvested,2010,ha,121.000000,A
+"Lentils, dry",Area harvested,2011,ha,876.000000,I
+"Lentils, dry",Area harvested,2012,ha,747.000000,I
+"Lentils, dry",Area harvested,2013,ha,882.000000,I
+"Lentils, dry",Area harvested,2014,ha,1117.000000,X
+"Lentils, dry",Area harvested,2015,ha,1090.000000,X
+"Lentils, dry",Area harvested,2016,ha,787.000000,X
+"Lentils, dry",Area harvested,2017,ha,687.000000,I
+"Lentils, dry",Area harvested,2018,ha,130.000000,A
+"Lentils, dry",Area harvested,2019,ha,790.000000,A
+"Lentils, dry",Area harvested,2020,ha,780.000000,A
+"Lentils, dry",Area harvested,2021,ha,43.000000,A
+"Lentils, dry",Area harvested,2022,ha,678.000000,I
+"Lentils, dry",Production,1994,t,852.000000,A
+"Lentils, dry",Production,1995,t,1795.000000,A
+"Lentils, dry",Production,1996,t,1615.000000,A
+"Lentils, dry",Production,1997,t,967.000000,A
+"Lentils, dry",Production,1998,t,1469.000000,A
+"Lentils, dry",Production,1999,t,297.000000,A
+"Lentils, dry",Production,2000,t,1192.000000,A
+"Lentils, dry",Production,2001,t,1120.000000,A
+"Lentils, dry",Production,2002,t,1538.000000,A
+"Lentils, dry",Production,2003,t,1500.000000,A
+"Lentils, dry",Production,2004,t,870.000000,A
+"Lentils, dry",Production,2005,t,1083.000000,A
+"Lentils, dry",Production,2006,t,1016.000000,A
+"Lentils, dry",Production,2007,t,814.000000,A
+"Lentils, dry",Production,2008,t,436.000000,A
+"Lentils, dry",Production,2009,t,832.200000,I
+"Lentils, dry",Production,2010,t,89.130000,I
+"Lentils, dry",Production,2011,t,889.720000,I
+"Lentils, dry",Production,2012,t,1008.810000,I
+"Lentils, dry",Production,2013,t,1197.180000,I
+"Lentils, dry",Production,2014,t,1908.000000,X
+"Lentils, dry",Production,2015,t,1494.000000,X
+"Lentils, dry",Production,2016,t,1123.000000,X
+"Lentils, dry",Production,2017,t,904.740000,I
+"Lentils, dry",Production,2018,t,110.000000,A
+"Lentils, dry",Production,2019,t,1360.000000,A
+"Lentils, dry",Production,2020,t,1390.000000,A
+"Lentils, dry",Production,2021,t,42.000000,A
+"Lentils, dry",Production,2022,t,784.240000,I
+"Lentils, dry",Yield,1994,kg/ha,294.100000,A
+"Lentils, dry",Yield,1995,kg/ha,584.500000,A
+"Lentils, dry",Yield,1996,kg/ha,540.000000,A
+"Lentils, dry",Yield,1997,kg/ha,378.900000,A
+"Lentils, dry",Yield,1998,kg/ha,542.700000,A
+"Lentils, dry",Yield,1999,kg/ha,214.600000,A
+"Lentils, dry",Yield,2000,kg/ha,590.100000,A
+"Lentils, dry",Yield,2001,kg/ha,551.500000,A
+"Lentils, dry",Yield,2002,kg/ha,808.200000,A
+"Lentils, dry",Yield,2003,kg/ha,780.000000,A
+"Lentils, dry",Yield,2004,kg/ha,551.700000,A
+"Lentils, dry",Yield,2005,kg/ha,646.200000,A
+"Lentils, dry",Yield,2006,kg/ha,524.500000,A
+"Lentils, dry",Yield,2007,kg/ha,545.600000,A
+"Lentils, dry",Yield,2008,kg/ha,382.500000,A
+"Lentils, dry",Yield,2009,kg/ha,670.600000,E
+"Lentils, dry",Yield,2010,kg/ha,736.600000,E
+"Lentils, dry",Yield,2011,kg/ha,1015.900000,E
+"Lentils, dry",Yield,2012,kg/ha,1351.300000,E
+"Lentils, dry",Yield,2013,kg/ha,1357.200000,E
+"Lentils, dry",Yield,2014,kg/ha,1708.100000,X
+"Lentils, dry",Yield,2015,kg/ha,1370.600000,X
+"Lentils, dry",Yield,2016,kg/ha,1426.900000,X
+"Lentils, dry",Yield,2017,kg/ha,1316.100000,E
+"Lentils, dry",Yield,2018,kg/ha,846.200000,A
+"Lentils, dry",Yield,2019,kg/ha,1721.500000,A
+"Lentils, dry",Yield,2020,kg/ha,1782.100000,A
+"Lentils, dry",Yield,2021,kg/ha,976.700000,A
+"Lentils, dry",Yield,2022,kg/ha,1156.700000,E
+Olives,Area harvested,1994,ha,81872.000000,A
+Olives,Area harvested,1995,ha,82313.000000,A
+Olives,Area harvested,1996,ha,80675.000000,A
+Olives,Area harvested,1997,ha,83757.000000,A
+Olives,Area harvested,1998,ha,87706.000000,A
+Olives,Area harvested,1999,ha,89369.000000,A
+Olives,Area harvested,2000,ha,93643.000000,A
+Olives,Area harvested,2001,ha,92147.000000,A
+Olives,Area harvested,2002,ha,92631.000000,A
+Olives,Area harvested,2003,ha,92716.000000,A
+Olives,Area harvested,2004,ha,93435.000000,A
+Olives,Area harvested,2005,ha,93394.000000,A
+Olives,Area harvested,2006,ha,92555.000000,A
+Olives,Area harvested,2007,ha,93386.000000,A
+Olives,Area harvested,2008,ha,95067.000000,A
+Olives,Area harvested,2009,ha,95061.000000,A
+Olives,Area harvested,2010,ha,46282.000000,A
+Olives,Area harvested,2011,ha,55801.000000,A
+Olives,Area harvested,2012,ha,56270.000000,X
+Olives,Area harvested,2013,ha,46280.000000,X
+Olives,Area harvested,2014,ha,46000.000000,X
+Olives,Area harvested,2015,ha,56000.000000,X
+Olives,Area harvested,2016,ha,59000.000000,X
+Olives,Area harvested,2017,ha,56101.000000,I
+Olives,Area harvested,2018,ha,40385.000000,I
+Olives,Area harvested,2019,ha,96882.000000,I
+Olives,Area harvested,2020,ha,39657.000000,I
+Olives,Area harvested,2021,ha,57517.000000,A
+Olives,Area harvested,2022,ha,66416.000000,I
+Olives,Production,1994,t,83652.000000,A
+Olives,Production,1995,t,44452.000000,A
+Olives,Production,1996,t,130514.000000,A
+Olives,Production,1997,t,50694.000000,A
+Olives,Production,1998,t,98137.000000,A
+Olives,Production,1999,t,35347.000000,A
+Olives,Production,2000,t,156493.000000,A
+Olives,Production,2001,t,38463.000000,A
+Olives,Production,2002,t,143630.000000,A
+Olives,Production,2003,t,85024.000000,A
+Olives,Production,2004,t,141354.000000,A
+Olives,Production,2005,t,85765.000000,A
+Olives,Production,2006,t,137805.000000,A
+Olives,Production,2007,t,50573.000000,A
+Olives,Production,2008,t,85651.000000,A
+Olives,Production,2009,t,105000.000000,E
+Olives,Production,2010,t,112000.000000,A
+Olives,Production,2011,t,75530.000000,A
+Olives,Production,2012,t,114070.000000,X
+Olives,Production,2013,t,60630.000000,X
+Olives,Production,2014,t,60900.000000,X
+Olives,Production,2015,t,87000.000000,X
+Olives,Production,2016,t,88000.000000,X
+Olives,Production,2017,t,87799.000000,A
+Olives,Production,2018,t,59345.000000,A
+Olives,Production,2019,t,177610.780000,A
+Olives,Production,2020,t,76630.000000,A
+Olives,Production,2021,t,174643.000000,A
+Olives,Production,2022,t,143100.000000,E
+Olives,Yield,1994,kg/ha,1021.700000,A
+Olives,Yield,1995,kg/ha,540.000000,A
+Olives,Yield,1996,kg/ha,1617.800000,A
+Olives,Yield,1997,kg/ha,605.300000,A
+Olives,Yield,1998,kg/ha,1118.900000,A
+Olives,Yield,1999,kg/ha,395.500000,A
+Olives,Yield,2000,kg/ha,1671.200000,A
+Olives,Yield,2001,kg/ha,417.400000,A
+Olives,Yield,2002,kg/ha,1550.600000,A
+Olives,Yield,2003,kg/ha,917.000000,A
+Olives,Yield,2004,kg/ha,1512.900000,A
+Olives,Yield,2005,kg/ha,918.300000,A
+Olives,Yield,2006,kg/ha,1488.900000,A
+Olives,Yield,2007,kg/ha,541.500000,A
+Olives,Yield,2008,kg/ha,901.000000,A
+Olives,Yield,2009,kg/ha,1104.600000,E
+Olives,Yield,2010,kg/ha,2419.900000,A
+Olives,Yield,2011,kg/ha,1353.600000,A
+Olives,Yield,2012,kg/ha,2027.200000,X
+Olives,Yield,2013,kg/ha,1310.100000,X
+Olives,Yield,2014,kg/ha,1323.900000,X
+Olives,Yield,2015,kg/ha,1553.600000,X
+Olives,Yield,2016,kg/ha,1491.500000,X
+Olives,Yield,2017,kg/ha,1565.000000,E
+Olives,Yield,2018,kg/ha,1469.500000,E
+Olives,Yield,2019,kg/ha,1833.300000,E
+Olives,Yield,2020,kg/ha,1932.300000,E
+Olives,Yield,2021,kg/ha,3036.400000,A
+Olives,Yield,2022,kg/ha,2154.600000,E
+Tomatoes,Area harvested,1994,ha,3437.000000,A
+Tomatoes,Area harvested,1995,ha,3607.000000,A
+Tomatoes,Area harvested,1996,ha,2983.000000,A
+Tomatoes,Area harvested,1997,ha,2920.000000,A
+Tomatoes,Area harvested,1998,ha,2592.000000,A
+Tomatoes,Area harvested,1999,ha,2290.000000,A
+Tomatoes,Area harvested,2000,ha,2539.000000,A
+Tomatoes,Area harvested,2001,ha,2274.000000,A
+Tomatoes,Area harvested,2002,ha,2530.000000,A
+Tomatoes,Area harvested,2003,ha,2629.000000,A
+Tomatoes,Area harvested,2004,ha,2617.000000,A
+Tomatoes,Area harvested,2005,ha,2776.000000,A
+Tomatoes,Area harvested,2006,ha,2476.000000,A
+Tomatoes,Area harvested,2007,ha,2371.000000,A
+Tomatoes,Area harvested,2008,ha,2492.000000,A
+Tomatoes,Area harvested,2009,ha,1833.000000,I
+Tomatoes,Area harvested,2010,ha,1420.000000,A
+Tomatoes,Area harvested,2011,ha,1560.000000,X
+Tomatoes,Area harvested,2012,ha,1530.000000,I
+Tomatoes,Area harvested,2013,ha,2080.000000,X
+Tomatoes,Area harvested,2014,ha,213.000000,I
+Tomatoes,Area harvested,2015,ha,360.000000,I
+Tomatoes,Area harvested,2016,ha,1590.000000,X
+Tomatoes,Area harvested,2017,ha,1607.000000,I
+Tomatoes,Area harvested,2018,ha,2080.000000,A
+Tomatoes,Area harvested,2019,ha,1030.000000,A
+Tomatoes,Area harvested,2020,ha,1930.000000,A
+Tomatoes,Area harvested,2021,ha,1288.000000,A
+Tomatoes,Area harvested,2022,ha,1167.000000,I
+Tomatoes,Production,1994,t,108842.000000,A
+Tomatoes,Production,1995,t,175923.000000,A
+Tomatoes,Production,1996,t,122457.000000,A
+Tomatoes,Production,1997,t,140729.000000,A
+Tomatoes,Production,1998,t,153658.000000,A
+Tomatoes,Production,1999,t,172010.000000,A
+Tomatoes,Production,2000,t,196096.000000,A
+Tomatoes,Production,2001,t,176210.000000,A
+Tomatoes,Production,2002,t,192781.000000,A
+Tomatoes,Production,2003,t,197944.000000,A
+Tomatoes,Production,2004,t,205809.000000,A
+Tomatoes,Production,2005,t,212148.000000,A
+Tomatoes,Production,2006,t,207188.000000,A
+Tomatoes,Production,2007,t,203999.000000,A
+Tomatoes,Production,2008,t,207559.000000,A
+Tomatoes,Production,2009,t,176389.630000,I
+Tomatoes,Production,2010,t,151675.850000,I
+Tomatoes,Production,2011,t,198200.000000,X
+Tomatoes,Production,2012,t,181663.400000,I
+Tomatoes,Production,2013,t,248900.000000,X
+Tomatoes,Production,2014,t,24890.000000,X
+Tomatoes,Production,2015,t,41490.000000,X
+Tomatoes,Production,2016,t,172730.000000,X
+Tomatoes,Production,2017,t,175329.190000,I
+Tomatoes,Production,2018,t,218890.000000,A
+Tomatoes,Production,2019,t,128890.000000,A
+Tomatoes,Production,2020,t,306510.000000,A
+Tomatoes,Production,2021,t,239332.000000,A
+Tomatoes,Production,2022,t,239000.000000,E
+Tomatoes,Yield,1994,kg/ha,31667.700000,A
+Tomatoes,Yield,1995,kg/ha,48772.700000,A
+Tomatoes,Yield,1996,kg/ha,41051.600000,A
+Tomatoes,Yield,1997,kg/ha,48194.900000,A
+Tomatoes,Yield,1998,kg/ha,59281.600000,A
+Tomatoes,Yield,1999,kg/ha,75113.500000,A
+Tomatoes,Yield,2000,kg/ha,77233.600000,A
+Tomatoes,Yield,2001,kg/ha,77489.000000,A
+Tomatoes,Yield,2002,kg/ha,76198.000000,A
+Tomatoes,Yield,2003,kg/ha,75292.500000,A
+Tomatoes,Yield,2004,kg/ha,78643.100000,A
+Tomatoes,Yield,2005,kg/ha,76422.200000,A
+Tomatoes,Yield,2006,kg/ha,83678.500000,A
+Tomatoes,Yield,2007,kg/ha,86039.200000,A
+Tomatoes,Yield,2008,kg/ha,83290.100000,A
+Tomatoes,Yield,2009,kg/ha,96224.700000,E
+Tomatoes,Yield,2010,kg/ha,106814.000000,E
+Tomatoes,Yield,2011,kg/ha,127051.300000,X
+Tomatoes,Yield,2012,kg/ha,118763.100000,E
+Tomatoes,Yield,2013,kg/ha,119663.500000,X
+Tomatoes,Yield,2014,kg/ha,116728.000000,E
+Tomatoes,Yield,2015,kg/ha,115185.900000,E
+Tomatoes,Yield,2016,kg/ha,108635.200000,X
+Tomatoes,Yield,2017,kg/ha,109103.800000,E
+Tomatoes,Yield,2018,kg/ha,105235.600000,A
+Tomatoes,Yield,2019,kg/ha,125135.900000,A
+Tomatoes,Yield,2020,kg/ha,158813.500000,A
+Tomatoes,Yield,2021,kg/ha,185816.800000,A
+Tomatoes,Yield,2022,kg/ha,204817.200000,E
+Vetches,Area harvested,1994,ha,5933.000000,A
+Vetches,Area harvested,1995,ha,6300.000000,A
+Vetches,Area harvested,1996,ha,3937.000000,A
+Vetches,Area harvested,1997,ha,5804.000000,A
+Vetches,Area harvested,1998,ha,4535.000000,A
+Vetches,Area harvested,1999,ha,2562.000000,A
+Vetches,Area harvested,2000,ha,4518.000000,A
+Vetches,Area harvested,2001,ha,4005.000000,A
+Vetches,Area harvested,2002,ha,3692.000000,A
+Vetches,Area harvested,2003,ha,4063.000000,A
+Vetches,Area harvested,2004,ha,4822.000000,A
+Vetches,Area harvested,2005,ha,5168.000000,A
+Vetches,Area harvested,2006,ha,4317.000000,A
+Vetches,Area harvested,2007,ha,4235.000000,A
+Vetches,Area harvested,2008,ha,4368.000000,A
+Vetches,Area harvested,2009,ha,1600.000000,E
+Vetches,Area harvested,2010,ha,476.000000,A
+Vetches,Area harvested,2011,ha,2479.000000,I
+Vetches,Area harvested,2012,ha,3350.000000,I
+Vetches,Area harvested,2013,ha,3469.000000,I
+Vetches,Area harvested,2014,ha,3374.000000,I
+Vetches,Area harvested,2015,ha,3245.000000,I
+Vetches,Area harvested,2016,ha,3226.000000,I
+Vetches,Area harvested,2017,ha,3264.000000,I
+Vetches,Area harvested,2018,ha,2780.000000,I
+Vetches,Area harvested,2019,ha,2308.000000,I
+Vetches,Area harvested,2020,ha,1833.000000,I
+Vetches,Area harvested,2021,ha,141.000000,A
+Vetches,Area harvested,2022,ha,1295.000000,I
+Vetches,Production,1994,t,7566.000000,A
+Vetches,Production,1995,t,5385.000000,A
+Vetches,Production,1996,t,2804.000000,A
+Vetches,Production,1997,t,5398.000000,A
+Vetches,Production,1998,t,12436.000000,A
+Vetches,Production,1999,t,2129.000000,A
+Vetches,Production,2000,t,9717.000000,A
+Vetches,Production,2001,t,8971.000000,A
+Vetches,Production,2002,t,8941.000000,A
+Vetches,Production,2003,t,10757.000000,A
+Vetches,Production,2004,t,12793.000000,A
+Vetches,Production,2005,t,12359.000000,A
+Vetches,Production,2006,t,10864.000000,A
+Vetches,Production,2007,t,10646.000000,A
+Vetches,Production,2008,t,9826.000000,A
+Vetches,Production,2009,t,800.000000,E
+Vetches,Production,2010,t,809.510000,I
+Vetches,Production,2011,t,4973.310000,I
+Vetches,Production,2012,t,6514.100000,I
+Vetches,Production,2013,t,6726.790000,I
+Vetches,Production,2014,t,6930.990000,I
+Vetches,Production,2015,t,6717.800000,I
+Vetches,Production,2016,t,6796.070000,I
+Vetches,Production,2017,t,6839.930000,I
+Vetches,Production,2018,t,5840.400000,I
+Vetches,Production,2019,t,5015.010000,I
+Vetches,Production,2020,t,4043.640000,I
+Vetches,Production,2021,t,340.000000,A
+Vetches,Production,2022,t,2940.900000,I
+Vetches,Yield,1994,kg/ha,1275.200000,A
+Vetches,Yield,1995,kg/ha,854.800000,A
+Vetches,Yield,1996,kg/ha,712.200000,A
+Vetches,Yield,1997,kg/ha,930.000000,A
+Vetches,Yield,1998,kg/ha,2742.200000,A
+Vetches,Yield,1999,kg/ha,831.000000,A
+Vetches,Yield,2000,kg/ha,2150.700000,A
+Vetches,Yield,2001,kg/ha,2240.000000,A
+Vetches,Yield,2002,kg/ha,2421.700000,A
+Vetches,Yield,2003,kg/ha,2647.600000,A
+Vetches,Yield,2004,kg/ha,2653.000000,A
+Vetches,Yield,2005,kg/ha,2391.400000,A
+Vetches,Yield,2006,kg/ha,2516.600000,A
+Vetches,Yield,2007,kg/ha,2513.800000,A
+Vetches,Yield,2008,kg/ha,2249.500000,A
+Vetches,Yield,2009,kg/ha,500.000000,E
+Vetches,Yield,2010,kg/ha,1700.700000,E
+Vetches,Yield,2011,kg/ha,2005.900000,E
+Vetches,Yield,2012,kg/ha,1944.500000,E
+Vetches,Yield,2013,kg/ha,1939.200000,E
+Vetches,Yield,2014,kg/ha,2054.500000,E
+Vetches,Yield,2015,kg/ha,2069.900000,E
+Vetches,Yield,2016,kg/ha,2106.400000,E
+Vetches,Yield,2017,kg/ha,2095.800000,E
+Vetches,Yield,2018,kg/ha,2101.000000,E
+Vetches,Yield,2019,kg/ha,2172.500000,E
+Vetches,Yield,2020,kg/ha,2206.300000,E
+Vetches,Yield,2021,kg/ha,2411.300000,A
+Vetches,Yield,2022,kg/ha,2270.600000,E
+Wheat,Area harvested,1994,ha,16298.000000,A
+Wheat,Area harvested,1995,ha,21270.000000,A
+Wheat,Area harvested,1996,ha,16816.000000,A
+Wheat,Area harvested,1997,ha,18687.000000,A
+Wheat,Area harvested,1998,ha,20944.000000,A
+Wheat,Area harvested,1999,ha,14207.000000,A
+Wheat,Area harvested,2000,ha,21667.000000,A
+Wheat,Area harvested,2001,ha,20609.000000,A
+Wheat,Area harvested,2002,ha,22448.000000,A
+Wheat,Area harvested,2003,ha,21662.000000,A
+Wheat,Area harvested,2004,ha,21896.000000,A
+Wheat,Area harvested,2005,ha,21399.000000,A
+Wheat,Area harvested,2006,ha,21105.000000,A
+Wheat,Area harvested,2007,ha,20233.000000,A
+Wheat,Area harvested,2008,ha,22944.000000,A
+Wheat,Area harvested,2009,ha,22000.000000,E
+Wheat,Area harvested,2010,ha,9714.000000,A
+Wheat,Area harvested,2011,ha,11000.000000,A
+Wheat,Area harvested,2012,ha,13340.000000,A
+Wheat,Area harvested,2013,ha,17360.000000,A
+Wheat,Area harvested,2014,ha,17360.000000,A
+Wheat,Area harvested,2015,ha,13270.000000,A
+Wheat,Area harvested,2016,ha,14400.000000,A
+Wheat,Area harvested,2017,ha,15459.000000,I
+Wheat,Area harvested,2018,ha,29190.000000,A
+Wheat,Area harvested,2019,ha,15300.000000,A
+Wheat,Area harvested,2020,ha,15150.000000,A
+Wheat,Area harvested,2021,ha,8490.000000,A
+Wheat,Area harvested,2022,ha,12761.000000,I
+Wheat,Production,1994,t,18241.000000,A
+Wheat,Production,1995,t,40732.000000,A
+Wheat,Production,1996,t,30872.000000,A
+Wheat,Production,1997,t,28310.000000,A
+Wheat,Production,1998,t,36523.000000,A
+Wheat,Production,1999,t,11052.000000,A
+Wheat,Production,2000,t,53422.000000,A
+Wheat,Production,2001,t,24983.000000,A
+Wheat,Production,2002,t,54308.000000,A
+Wheat,Production,2003,t,44947.000000,A
+Wheat,Production,2004,t,46340.000000,A
+Wheat,Production,2005,t,44720.000000,A
+Wheat,Production,2006,t,39430.000000,A
+Wheat,Production,2007,t,39799.000000,A
+Wheat,Production,2008,t,31826.000000,A
+Wheat,Production,2009,t,30000.000000,E
+Wheat,Production,2010,t,17380.000000,A
+Wheat,Production,2011,t,17840.000000,A
+Wheat,Production,2012,t,26670.000000,A
+Wheat,Production,2013,t,41720.000000,A
+Wheat,Production,2014,t,41720.000000,A
+Wheat,Production,2015,t,26320.000000,A
+Wheat,Production,2016,t,37030.000000,A
+Wheat,Production,2017,t,34559.880000,I
+Wheat,Production,2018,t,69080.000000,A
+Wheat,Production,2019,t,34370.000000,A
+Wheat,Production,2020,t,34370.000000,A
+Wheat,Production,2021,t,25939.000000,A
+Wheat,Production,2022,t,32811.000000,A
+Wheat,Yield,1994,kg/ha,1119.200000,A
+Wheat,Yield,1995,kg/ha,1915.000000,A
+Wheat,Yield,1996,kg/ha,1835.900000,A
+Wheat,Yield,1997,kg/ha,1515.000000,A
+Wheat,Yield,1998,kg/ha,1743.800000,A
+Wheat,Yield,1999,kg/ha,777.900000,A
+Wheat,Yield,2000,kg/ha,2465.600000,A
+Wheat,Yield,2001,kg/ha,1212.200000,A
+Wheat,Yield,2002,kg/ha,2419.300000,A
+Wheat,Yield,2003,kg/ha,2074.900000,A
+Wheat,Yield,2004,kg/ha,2116.400000,A
+Wheat,Yield,2005,kg/ha,2089.800000,A
+Wheat,Yield,2006,kg/ha,1868.300000,A
+Wheat,Yield,2007,kg/ha,1967.000000,A
+Wheat,Yield,2008,kg/ha,1387.100000,A
+Wheat,Yield,2009,kg/ha,1363.600000,E
+Wheat,Yield,2010,kg/ha,1789.200000,A
+Wheat,Yield,2011,kg/ha,1621.800000,A
+Wheat,Yield,2012,kg/ha,1999.300000,A
+Wheat,Yield,2013,kg/ha,2403.200000,A
+Wheat,Yield,2014,kg/ha,2403.200000,A
+Wheat,Yield,2015,kg/ha,1983.400000,A
+Wheat,Yield,2016,kg/ha,2571.500000,A
+Wheat,Yield,2017,kg/ha,2235.500000,E
+Wheat,Yield,2018,kg/ha,2366.600000,A
+Wheat,Yield,2019,kg/ha,2246.400000,A
+Wheat,Yield,2020,kg/ha,2268.600000,A
+Wheat,Yield,2021,kg/ha,3055.200000,A
+Wheat,Yield,2022,kg/ha,2571.300000,E

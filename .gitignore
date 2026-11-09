@@ -3,3 +3,7 @@ out/
 __pycache__/
 *.pyc
 .venv/
+
+# partner documents that must never be committed (rendered only into encrypted pages)
+deep_dives/private/
+.staticrypt.json
