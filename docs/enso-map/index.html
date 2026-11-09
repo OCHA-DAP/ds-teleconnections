@@ -42,7 +42,16 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 #search{font:14px 'Roboto',system-ui,sans-serif;padding:6px 10px;border:1px solid var(--n3);border-radius:4px;width:220px}
 #search:focus,.seasons button:focus-visible,.seg button:focus-visible,.play:focus-visible{outline:2px solid var(--b5);outline-offset:1px}
 .mapwrap{position:relative;height:max(460px,calc(100vh - 150px))}
-#map{position:absolute;inset:0;background:#dfe3e6}
+#map{position:absolute;inset:0;background:#f7f8f8}
+.leaflet-data-pane canvas{image-rendering:pixelated}
+.lbl-layer span{position:absolute;white-space:nowrap;pointer-events:none;
+  text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff}
+.lbl-c{transform:translate(-50%,-50%);font:500 10.5px/1 'Roboto',system-ui,sans-serif;letter-spacing:.08em;
+  text-transform:uppercase;color:#4a5354}
+.lbl-p{transform:translate(-3px,-50%);font:400 11px/1 'Roboto',system-ui,sans-serif;color:#2c3233;padding-left:8px}
+.lbl-p::before{content:"";position:absolute;left:0;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;
+  background:#2c3233;box-shadow:0 0 0 1px #fff}
+.lbl-p.cap::before{border-radius:0;width:5px;height:5px;margin-top:-2.5px}
 .leaflet-container{font-family:'Roboto',system-ui,sans-serif}
 .season-badge{position:absolute;top:10px;left:10px;z-index:800;background:rgba(255,255,255,.94);border-radius:6px;
   padding:8px 12px 7px;box-shadow:0 1px 6px rgba(31,35,36,.18);pointer-events:none}
@@ -191,10 +200,15 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
         differ from satellite and station records; check CHIRPS or station data before relying on one area.</li>
       <li>Coverage: all land between 60°S and 84°N. The survey’s maps stop at 100°W, 36°S and 56°N. Coastlines are
         Natural Earth 1:10m with minor islands, so small islands have cells; coastal cells mix land and sea.</li>
+      <li>The map uses the Equal Earth projection, which shows every region at its true relative size (the
+        projection the UN General Assembly encouraged in September 2026). Countries that cross 180°, such as
+        Fiji and Kiribati, appear at both edges.</li>
     </ul>
   </div>
   <p class="foot" id="foot">Data: ERA5 (Copernicus Climate Change Service), NOAA CPC Niño3.4, Natural Earth.
-    Basemap: Esri. Built by <code>enso_season_map.py</code> in
+    Map: Equal Earth projection; boundaries, coastlines and names from Natural Earth. The boundaries and names
+    shown and the designations used on this map do not imply official endorsement or acceptance by the United
+    Nations. Built by <code>enso_season_map.py</code> in
     <a href="https://github.com/OCHA-DAP/ds-teleconnections">OCHA-DAP/ds-teleconnections</a>.</p>
 </section>
 
@@ -313,51 +327,109 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     }
   }
 
+  // ---------------------------------------------------------------- projection
+  // Equal Earth (Šavrič, Patterson & Jenny 2018), spherical form, Greenwich-centred: the
+  // equal-area world projection the UN General Assembly encouraged in September 2026.
+  // Leaflet ships only Web Mercator, so the projection is a custom CRS. Projected units are
+  // on the unit sphere; unproject clamps to the poles so pointer positions outside the
+  // world's outline never give NaN (Leaflet throws on a NaN LatLng).
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+  const A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796, EM = Math.sqrt(3) / 2;
+  const eeY = t => { const t2 = t * t, t6 = t2 * t2 * t2; return t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)); };
+  const eeDY = t => { const t2 = t * t, t6 = t2 * t2 * t2; return A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2); };
+  const eeK = t => Math.cos(t) / (EM * eeDY(t));         // x = lambda * eeK(theta)
+  const T_MAX = Math.PI / 3, YMAX = eeY(T_MAX), XMAX = Math.PI * eeK(0);
+  function eeTheta(Y) {                                    // y -> parametric latitude (Newton)
+    if (Y >= YMAX) return T_MAX;
+    if (Y <= -YMAX) return -T_MAX;
+    let t = Y / A1;
+    for (let i = 0; i < 10; i++) { const dt = (eeY(t) - Y) / eeDY(t); t -= dt; if (Math.abs(dt) < 1e-12) break; }
+    return t;
+  }
+  const latOfTheta = t => Math.asin(Math.max(-1, Math.min(1, Math.sin(t) / EM))) * R2D;
+  const EqualEarth = {
+    project(ll) {
+      const t = Math.asin(EM * Math.sin(Math.max(-90, Math.min(90, ll.lat)) * D2R));
+      return L.point(ll.lng * D2R * eeK(t), eeY(t));
+    },
+    unproject(p) { const t = eeTheta(p.y); return L.latLng(latOfTheta(t), p.x / eeK(t) * R2D); },
+    bounds: L.bounds([-XMAX, -YMAX], [XMAX, YMAX]),
+  };
+  // zoom 0: the world is 256 px wide, as in Web Mercator, so Natural Earth's label zooms carry over
+  const PX0 = 256 / (2 * XMAX);
+  const EE = L.extend({}, L.CRS, {
+    code: "EqualEarth", projection: EqualEarth,
+    transformation: new L.Transformation(PX0, 128, -PX0, YMAX * PX0),
+    scale: z => Math.pow(2, z), zoom: s => Math.log(s) / Math.LN2,
+    distance: L.CRS.Earth.distance, R: L.CRS.Earth.R, infinite: false,
+  });
+  const inWorld = ll => Math.abs(ll.lng) <= 180;
+
   // ---------------------------------------------------------------- map
-  const map = L.map("map", {zoomControl: false, worldCopyJump: true, minZoom: 2, maxZoom: 9,
-                            maxBounds: [[-75, -1080], [88, 1080]], maxBoundsViscosity: 1.0});
+  const MINZ = 1, MAXZ = 8;
+  const map = L.map("map", {crs: EE, zoomControl: false, minZoom: MINZ, maxZoom: MAXZ, zoomSnap: 0.25,
+                            zoomDelta: 0.5, wheelPxPerZoomLevel: 90,
+                            maxBounds: L.latLngBounds(EqualEarth.unproject(L.point(-XMAX, -YMAX)),
+                                                      EqualEarth.unproject(L.point(XMAX, YMAX))),
+                            maxBoundsViscosity: 0.9});
   L.control.zoom({position: "topright"}).addTo(map);
   L.control.scale({position: "bottomright", imperial: false}).addTo(map);
+  map.attributionControl.setPrefix(false);
+  map.attributionControl.addAttribution(
+    'Equal Earth projection &middot; boundaries <a href="https://www.naturalearthdata.com/">Natural Earth</a>');
+  map.createPane("base").style.zIndex = 200;
   map.createPane("data").style.zIndex = 350;
+  map.createPane("borders").style.zIndex = 420;
   map.createPane("labels").style.zIndex = 450;
-  map.getPane("labels").style.pointerEvents = "none";
-  const ESRI = "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/";
-  const esriAttr = "Tiles &copy; Esri &mdash; Esri, HERE, Garmin, &copy; OpenStreetMap contributors";
-  L.tileLayer(ESRI + "World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}", {maxZoom: 16, attribution: esriAttr}).addTo(map);
-  L.tileLayer(ESRI + "World_Light_Gray_Reference/MapServer/tile/{z}/{y}/{x}", {maxZoom: 16, pane: "labels"}).addTo(map);
+  map.createPane("hl").style.zIndex = 460;
+  ["base", "borders", "labels", "hl"].forEach(p => map.getPane(p).style.pointerEvents = "none");
+  const baseR = L.canvas({pane: "base", padding: 0.3}), borderR = L.canvas({pane: "borders", padding: 0.3});
+
+  // ocean = the world's outline (the +-180 meridians), then a 30-degree graticule
+  const OCEAN = "#dde3e6", LAND = "#f1f1ee", BORDER = "#8e979a";
+  const merid = (lon, a = -90, b = 90) => { const out = []; for (let lat = a; lat <= b; lat += 1) out.push([lat, lon]); return out; };
+  L.polygon(merid(180).concat(merid(-180).reverse()), {renderer: baseR, stroke: false, fillColor: OCEAN,
+    fillOpacity: 1, interactive: false}).addTo(map);
+  const grat = [];
+  for (let lon = -150; lon <= 150; lon += 30) grat.push(merid(lon, -80, 80));
+  for (let lat = -60; lat <= 60; lat += 30) grat.push([[lat, -180], [lat, 180]]);  // parallels are straight in Equal Earth
+  L.polyline(grat, {renderer: baseR, color: "#ffffff", weight: 0.8, opacity: 0.7, interactive: false}).addTo(map);
+  L.polyline(merid(180).concat(merid(-180).reverse(), [[-90, 180]]), {renderer: borderR, color: "#b9c2c6",
+    weight: 1, interactive: false}).addTo(map);    // on the borders canvas, so land at the edge can't hide it
 
   const tiles = new Set();
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
 
+  // each device pixel -> projected point -> (lat, lon) -> 0.25-degree cell. In Equal Earth
+  // latitude depends on y alone, so the Newton inverse runs once per row.
   function paintTile(canvas) {
     const c = canvas._wc, W = canvas.width, H = canvas.height;
     const ctx = canvas.getContext("2d");
     if (!COLORS) { ctx.clearRect(0, 0, W, H); return; }
-    const world = 256 * Math.pow(2, c.z) * DPR;
-    const x0 = c.x * W, y0 = c.y * H;
+    const S = Math.pow(2, c.z) * PX0;                    // CSS px per projected unit at this tile zoom
+    const ts = W / DPR, x0 = c.x * ts, y0 = c.y * ts;      // tile origin in CSS px
     const lonEdge = G.lon0 - G.d / 2, latEdge = G.lat0 + G.d / 2;
-    const cols = new Int32Array(W), rows = new Int32Array(H);
-    for (let i = 0; i < W; i++) {
-      const lon = ((x0 + i + 0.5) / world) * 360 - 180;
-      let col = Math.floor((lon - lonEdge) / G.d);
-      cols[i] = ((col % G.nx) + G.nx) % G.nx;
-    }
-    for (let j = 0; j < H; j++) {
-      const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * (y0 + j + 0.5) / world))) * 180 / Math.PI;
-      const row = Math.floor((latEdge - lat) / G.d);
-      rows[j] = (row >= 0 && row < G.ny) ? row : -1;
-    }
     const img = ctx.createImageData(W, H);
     const out = new Uint32Array(img.data.buffer);
     for (let j = 0; j < H; j++) {
-      const row = rows[j]; if (row < 0) continue;
-      const base = row * G.nx, o = j * W;
-      const yy = Math.floor((y0 + j) / DPR);
+      const ycss = y0 + (j + 0.5) / DPR;
+      const Y = YMAX - ycss / S;
+      if (Y > YMAX || Y < -YMAX) continue;
+      const t = eeTheta(Y), lat = latOfTheta(t);
+      const row = Math.floor((latEdge - lat) / G.d);
+      if (row < 0 || row >= G.ny) continue;
+      const kinv = R2D / eeK(t), base = row * G.nx, o = j * W;
+      const yy = Math.floor(ycss);
       for (let i = 0; i < W; i++) {
-        const p = LANDPOS[base + cols[i]];
+        const xcss = x0 + (i + 0.5) / DPR;
+        const lon = (xcss / S - XMAX) * kinv;
+        if (lon < -180 || lon >= 180) continue;
+        let col = Math.floor((lon - lonEdge) / G.d);
+        if (col >= G.nx) col -= G.nx;                      // 179.875..180 is the cell centred on -180
+        const p = LANDPOS[base + col];
         if (p < 0) continue;
         const hc = HATCH[p];
-        out[o + i] = (hc && (Math.floor((x0 + i) / DPR) + yy) % 6 === 0) ? hc : COLORS[p];
+        out[o + i] = (hc && (Math.floor(xcss) + yy) % 6 === 0) ? hc : COLORS[p];
       }
     }
     ctx.putImageData(img, 0, 0);
@@ -368,36 +440,86 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
       const t = L.DomUtil.create("canvas", "leaflet-tile");
       const s = this.getTileSize();
       t.width = s.x * DPR; t.height = s.y * DPR;
-      t._wc = coords;               // GridLayer hands createTile the wrapped coords
+      t._wc = coords;
       tiles.add(t);
       paintTile(t);
       return t;
     },
   });
-  const dataLayer = new DataLayer({pane: "data", opacity: 0.92, keepBuffer: 2, updateWhenZooming: false});
+  const dataLayer = new DataLayer({pane: "data", opacity: 0.92, keepBuffer: 2, updateWhenZooming: false,
+                                   noWrap: true});
   dataLayer.on("tileunload", e => tiles.delete(e.tile));
   dataLayer.addTo(map);
 
   function repaint() { recolor(); tiles.forEach(paintTile); }
 
+  // ---------------------------------------------------------------- basemap: land, borders, names
+  // Natural Earth 1:50m countries: filled under the data (shows at coasts and outside the
+  // land mask), stroked above it. Names: Natural Earth label points and zoom levels.
+  let LABELS = [];
+  function addBasemap(bm) {
+    L.geoJSON(bm.countries, {renderer: baseR, interactive: false,
+      style: {stroke: false, fillColor: LAND, fillOpacity: 1}}).addTo(map);
+    L.geoJSON(bm.countries, {renderer: borderR, interactive: false,
+      style: {color: BORDER, weight: 0.7, fill: false}}).addTo(map);
+    // one priority order: the zoom each name appears at, countries first on ties (a minor
+    // territory that appears at z6 no longer outranks London)
+    LABELS = bm.labels.countries.map(([name, lat, lon, z]) => ({name, lat, lon, z, cls: "lbl-c", k: 0}))
+      .concat(bm.labels.cities.map(([name, lat, lon, z, cap]) => ({name, lat, lon, z, cls: cap ? "lbl-p cap" : "lbl-p", k: 1})))
+      .sort((a, b) => a.z - b.z || a.k - b.k);
+    labelLayer.addTo(map);
+  }
+  // greedy placement in priority order (countries, then places by zoom); a label is skipped
+  // if its box would overlap one already placed
+  const labelLayer = L.layerGroup();
+  labelLayer.onAdd = function (m) {
+    this._el = L.DomUtil.create("div", "lbl-layer", m.getPane("labels"));
+    m.on("zoomstart", this._hide, this); m.on("moveend zoomend resize", this._draw, this);
+    this._draw();
+  };
+  labelLayer._hide = function () { this._el.style.display = "none"; };
+  labelLayer._draw = function () {
+    const el = this._el, z = map.getZoom(), size = map.getSize();
+    el.style.display = ""; el.textContent = "";
+    const boxes = [], frag = document.createDocumentFragment();
+    for (const lb of LABELS) {
+      if (lb.z > z + 0.3) continue;
+      const cp = map.latLngToContainerPoint([lb.lat, lb.lon]);
+      if (cp.x < -60 || cp.y < -20 || cp.x > size.x + 60 || cp.y > size.y + 20) continue;
+      const country = lb.cls === "lbl-c";
+      const w = lb.name.length * (country ? 7.2 : 6.4) + 8, h = 15;
+      const bx = country ? cp.x - w / 2 : cp.x + 4, by = country ? cp.y - h / 2 : cp.y - h / 2;
+      if (boxes.some(b => bx < b[2] && bx + w > b[0] && by < b[3] && by + h > b[1])) continue;
+      boxes.push([bx - 3, by - 2, bx + w + 3, by + h + 2]);
+      const lp = map.latLngToLayerPoint([lb.lat, lb.lon]);
+      const s = document.createElement("span");
+      s.className = lb.cls; s.textContent = lb.name;
+      s.style.left = lp.x + "px"; s.style.top = lp.y + "px";
+      frag.appendChild(s);
+    }
+    el.appendChild(frag);
+  };
+
   // ---------------------------------------------------------------- hover / pin
   let hoverCell = -1, pinned = false, tipLatLng = null;
-  const cellBox = L.rectangle([[0, 0], [0, 0]], {color: "#1f2324", weight: 1.5, fill: false, interactive: false});
+  const cellBox = L.polygon([[0, 0], [0, 0], [0, 0]], {color: "#1f2324", weight: 1.5, fill: false,
+                                                       interactive: false, pane: "hl"});
 
+  // one world, no copies: a pointer outside the outline (|lon| > 180) is no cell
   function cellAt(latlng) {
-    if (!G) return -1;
-    const lon = ((latlng.lng + 180) % 360 + 360) % 360 - 180;
-    let col = Math.floor((lon - (G.lon0 - G.d / 2)) / G.d);
-    col = ((col % G.nx) + G.nx) % G.nx;
+    if (!G || !inWorld(latlng)) return -1;
+    let col = Math.floor((latlng.lng - (G.lon0 - G.d / 2)) / G.d);
+    if (col >= G.nx) col -= G.nx;                   // 179.875..180 is the cell centred on -180
     const row = Math.floor((G.lat0 + G.d / 2 - latlng.lat) / G.d);
-    if (row < 0 || row >= G.ny) return -1;
+    if (row < 0 || row >= G.ny || col < 0) return -1;
     return row * G.nx + col;
   }
+  // centre of a cell, on the side of the 180 degree line nearest the pointer
   function cellCentre(cell, nearLng) {
     const row = Math.floor(cell / G.nx), col = cell % G.nx;
     const lat = G.lat0 - row * G.d;
     let lon = G.lon0 + col * G.d;
-    lon += 360 * Math.round((nearLng - lon) / 360);
+    if (lon === -180 && nearLng > 0) lon = 180;
     return [lat, lon];
   }
 
@@ -518,7 +640,8 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
       hoverCell = cell;
       if (cell >= 0 && LANDPOS[cell] >= 0) {
         const [lat, lon] = cellCentre(cell, latlng.lng), h = G.d / 2;
-        cellBox.setBounds([[lat - h, lon - h], [lat + h, lon + h]]);
+        const w = Math.max(-180, lon - h), e = Math.min(180, lon + h);   // keep the box inside the outline
+        cellBox.setLatLngs([[lat - h, w], [lat + h, w], [lat + h, e], [lat - h, e]]);
         if (!map.hasLayer(cellBox)) cellBox.addTo(map);
       } else if (map.hasLayer(cellBox)) map.removeLayer(cellBox);
       renderTip();
@@ -645,8 +768,28 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
       || COUNTRIES.find(c => c.iso3.toLowerCase() === q || c.name.toLowerCase() === q || (c.alt || "").toLowerCase() === q)
       || COUNTRIES.find(c => c.name.toLowerCase().startsWith(q) || (c.alt || "").toLowerCase().startsWith(q));
     if (!hit) { showStatus(`No country matches “${text}”`); setTimeout(() => showStatus(""), 1800); return; }
-    const [s, w, n, e] = hit.bbox;
-    map.fitBounds([[s, w], [n, e]], {padding: [24, 24], maxZoom: 7});
+    let [s, w, n, e] = hit.bbox;
+    if (w >= 180) { w -= 360; e -= 360; }  // a western box written in 0-360 longitudes
+    if (e > 180) {                         // crosses 180 degrees: the map has one world, take the larger side
+      if (180 - w >= e - 180) e = 180; else { w = -180; e -= 360; }
+    }
+    fitBox(s, w, n, e, 7);
+  }
+  // Leaflet's fitBounds projects two corners only, which misjudges a lat/lon box in a projection
+  // whose meridians curve: fit the projected outline of the box instead
+  function fitBox(s, w, n, e, maxZoom) {
+    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    for (let k = 0; k <= 16; k++) {
+      const lat = s + (n - s) * k / 16, lon = w + (e - w) * k / 16;
+      for (const ll of [[lat, w], [lat, e], [s, lon], [n, lon]]) {
+        const pt = EqualEarth.project(L.latLng(ll[0], ll[1]));
+        x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x); y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
+      }
+    }
+    const size = map.getSize(), pad = 48;
+    const z = Math.log2(Math.min((size.x - pad) / ((x1 - x0) * PX0), (size.y - pad) / ((y1 - y0) * PX0)));
+    const zz = Math.max(MINZ, Math.min(maxZoom, Math.floor(z * 4) / 4));
+    map.setView(EqualEarth.unproject(L.point((x0 + x1) / 2, (y0 + y1) / 2)), zz);
   }
   $("search").addEventListener("change", e => zoomTo(e.target.value));
   $("search").addEventListener("keydown", e => { if (e.key === "Enter") zoomTo(e.target.value); });
@@ -655,7 +798,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   function writeHash() {
     if (!META) return;
     const c = map.getCenter();
-    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}&m=${map.getZoom()}/${c.lat.toFixed(2)}/${c.lng.toFixed(2)}`;
+    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}&p=ee&m=${map.getZoom()}/${c.lat.toFixed(2)}/${c.lng.toFixed(2)}`;
     history.replaceState(null, "", "#" + h);
   }
   function readHash() {
@@ -664,16 +807,21 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (q.get("s")) out.season = q.get("s").toUpperCase();
     if (q.get("c") === "ramp" || q.get("c") === "classes") out.mode = q.get("c");
     out.dry = q.get("d") === "1";
+    out.ee = q.get("p") === "ee";      // written by the Equal Earth version: longitude as is
     const m = (q.get("m") || "").split("/").map(Number);
     if (m.length === 3 && m.every(Number.isFinite)) out.view = {z: m[0], lat: m[1], lng: m[2]};
     return out;
   }
   map.on("moveend", writeHash);
+  // links from the Mercator version (no p=ee) may carry a world-copy longitude: fold it into
+  // the one world. This version's own centres can lie beyond +-180 near the edges, so keep them.
+  const foldLng = lng => ((lng + 180) % 360 + 360) % 360 - 180;
+  const hashCentre = h => [h.view.lat, h.ee ? h.view.lng : foldLng(h.view.lng)];
   // a pasted link that differs only after "#" does not reload the page
   window.addEventListener("hashchange", () => {
     if (!META) return;
     const h = readHash();
-    if (h.view) map.setView([h.view.lat, h.view.lng], Math.min(9, Math.max(2, h.view.z)));
+    if (h.view) map.setView(hashCentre(h), Math.min(MAXZ, Math.max(MINZ, h.view.z)));
     if (h.mode && h.mode !== state.mode) setMode(h.mode);
     if (h.dry !== state.dry) setDry(h.dry);
     if (h.season && CODES.includes(h.season) && h.season !== state.season) { stopPlay(); selectSeason(h.season); }
@@ -699,14 +847,16 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (h.season && CODES.includes(h.season)) state.season = h.season;
     if (h.mode) state.mode = h.mode;
     state.dry = h.dry;
-    if (h.view) map.setView([h.view.lat, h.view.lng], Math.min(9, Math.max(2, h.view.z)));
-    else map.fitBounds([[-52, -125], [68, 165]]);
+    if (h.view) map.setView(hashCentre(h), Math.min(MAXZ, Math.max(MINZ, h.view.z)));
+    else fitBox(-58, -180, 80, 180, MAXZ);
     document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
     document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === state.dry)));
     $("legend").innerHTML = legendHtml();
     updateBadge();
     showStatus("Loading data…");
 
+    fetch(`data/basemap.json${v()}`).then(r => r.json()).then(addBasemap)
+      .catch(err => { console.error(err); showStatus(`Could not load the basemap: ${err.message}`); });
     const [landBuf, annBuf, countries] = await Promise.all([
       fetchBuf(`data/land.bin.gz${v()}`), fetchBuf(`data/annual.bin.gz${v()}`),
       fetch(`data/countries.json${v()}`).then(r => r.json()),
