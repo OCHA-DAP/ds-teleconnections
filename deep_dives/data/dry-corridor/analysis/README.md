@@ -35,6 +35,7 @@ Printed, not saved: the CHIRPS/ERA5 agreement and the sub-season correlations wi
 totals), the correlation of onset with March–May Niño3.4 (inline on `daily_metrics_units.parquet`), and the check that the
 Pacific–Atlantic gradient cross-validates at least as well as Niño3.4 and TNA as two separate predictors.
 
-Notes: CHIRPS daily for 2026 was not available when the page was built, so the timing analysis covers 1981–2025 and the
+Notes: every percentage (pages and CSVs) is of the 1991–2020 median of the dataset concerned. The onset rule's dry-spell test
+looks at the 30 days after the three-day opening total, as on the Haiti page. CHIRPS daily for 2026 was not available when the page was built, so the timing analysis covers 1981–2025 and the
 2026 figures on the page come from the monthly files. The canícula dry-spell metric in `daily_metrics.py` is computed but
 not used on the page: CHIRPS records rain on too many July–August days for spell lengths to be meaningful.

@@ -1,4 +1,4 @@
-"""Season and sub-season rainfall (% of 1991-2020) by ENSO situation, national and framework areas, CHIRPS and ERA5.
+"""Season and sub-season rainfall (% of the 1991-2020 median) by ENSO situation, national and framework areas, CHIRPS and ERA5.
 Groups: 'after' = after a strong El Niño winter; 'during' = El Niño (concurrent Niño3.4 >= +0.5) during the season, not
 'after'; 'nina' = concurrent <= -0.5; 'other'. Usage: composites.py SP -> composites.csv, subseason_after.csv"""
 import sys, numpy as np, pandas as pd
@@ -10,7 +10,7 @@ PCS = ["GT", "HN", "SV", "GT_AOI", "HN_AOI", "SV_AOI"]
 rows, sub = [], []
 for src, X in [("CHIRPS", CH), ("ERA5", ER)]:
     for s, ms in SUB.items():
-        S = season_tot(X, ms); P = 100 * S / S.loc[1991:2020].mean()
+        S = season_tot(X, ms); P = 100 * S / S.loc[1991:2020].median()
         yrs = [y for y in range(1981, 2026) if y in P.index]
         c = {y: nseas(y, CONCS[s]) for y in yrs}
         G = {"after": AFTER, "during": [y for y in yrs if c[y] >= 0.5 and y not in AFTER],

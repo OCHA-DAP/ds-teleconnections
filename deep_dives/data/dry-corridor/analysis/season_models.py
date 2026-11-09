@@ -16,6 +16,7 @@ TNA = read_psl(os.environ.get("TNA_FILE", f"{SP}/idx/tna.data"))
 tna = lambda y, ms: float(np.mean([TNA.get((y, m)) for m in ms]))
 NI["TNA_MJJ"] = [tna(y, [5, 6, 7]) if y <= 2026 else np.nan for y in NI.index]
 rng = np.random.default_rng(0)
+rng2 = np.random.default_rng(1)  # own stream for the two-term sensitivity, so it leaves the main draws unchanged
 Z = stats.norm.ppf(0.9)
 def design(sea, yrs):
     if sea == "primera": return np.column_stack([np.ones(len(yrs)), NI.loc[yrs, "MJJ"] - NI.loc[yrs, "TNA_MJJ"]])
@@ -48,6 +49,15 @@ for src, Xd in [("CHIRPS", CH), ("ERA5", ER)]:
             d = predictive(sea, X, y)
             xl = NI.loc[hy, "DJF"].values; xc = NI.loc[hy, CONC[sea]].values
             X1 = np.column_stack([np.ones(len(hy)), xc]); b1, s1 = fit(X1, y)
+            if sea == "primera":  # sensitivity: separate Pacific and Atlantic terms instead of their difference
+                X2 = np.column_stack([np.ones(len(hy)), NI.loc[hy, "MJJ"], NI.loc[hy, "TNA_MJJ"]]); d2 = []
+                for _ in range(400):
+                    ii = rng2.integers(0, len(y), len(y)); b2, s2 = fit(X2[ii], y[ii])
+                    xs = np.column_stack([np.ones(25), rng2.normal(*INP["n34_mjj"], 25), rng2.normal(*INP["tna_mjj"], 25)])
+                    d2.append(xs @ b2 + rng2.normal(0, s2, 25))
+                twoterm_med = 100 * np.median(np.expm1(np.concatenate(d2))) / base.median()
+            else:
+                twoterm_med = np.nan
             mu1 = INP["n34_mjj" if sea == "primera" else "n34_son"]
             d1 = np.expm1(np.column_stack([np.ones(10000), rng.normal(*mu1, 10000)]) @ b1 + rng.normal(0, s1, 10000))
             r = dict(src=src, season=sea, pcode=pc, name=NAMES[pc], level=LEVEL[pc], iso3=ISO[pc], n=len(y),
@@ -55,7 +65,7 @@ for src, Xd in [("CHIRPS", CH), ("ERA5", ER)]:
                      clim_p10_pct=100 * np.quantile(hist, 0.1) / typ, clim_p90_pct=100 * np.quantile(hist, 0.9) / typ,
                      r_n34=stats.pearsonr(xc, y)[0], r_lag=stats.pearsonr(xl, y)[0], loo_r=loo_r(X, y),
                      slope=b[1], t_slope=b[1] / np.sqrt(np.diag(s**2 * np.linalg.inv(X.T @ X)))[1],
-                     reg_med=100 * np.median(d) / typ, n34only_med=100 * np.median(d1) / typ, loo_r_n34only=loo_r(X1, y), reg_p10=100 * np.quantile(d, .1) / typ, reg_p90=100 * np.quantile(d, .9) / typ)
+                     reg_med=100 * np.median(d) / typ, twoterm_med=twoterm_med, n34only_med=100 * np.median(d1) / typ, loo_r_n34only=loo_r(X1, y), reg_p10=100 * np.quantile(d, .1) / typ, reg_p90=100 * np.quantile(d, .9) / typ)
             scen = [("rawnmme", INP["n34_mjj_raw"] - INP["tna_mjj"][0])] if sea == "primera" else [("nino", 1.0), ("neutral", 0.0), ("nina", -1.0)]
             for nm, x0 in scen:
                 xr0 = np.array([1, x0])

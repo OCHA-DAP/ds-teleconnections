@@ -84,7 +84,6 @@ def _check(page: str, d: dict, one_line: str) -> None:
     expect[f"Primera 2026 then came in at {_span(six('y2026'))}% of typical in CHIRPS ({_span(six('y2026_er'))}% in ERA5)"] = "Primera 2026"
     expect[f"below typical in most areas ({_span(six('y2025'))}%)"] = "Primera 2025"
     late = d["y2026_late"]
-    expect[f"September 2026 at {_span(late['CHIRPS_Sep'].values())}% in CHIRPS, and September–October at {_span(late['ERA5_SO'].values())}% in ERA5"] = "Sep/Sep–Oct 2026"
     y23 = six("y2023") + six("y2023_er")
     expect[f"came in at {_span(y23)}%."] = "2023 observed"
     # regressions (CHIRPS and ERA5, six areas)
@@ -104,7 +103,13 @@ def _check(page: str, d: dict, one_line: str) -> None:
     expect[f"the tropical Atlantic at +{inp['tna_mjj'][0]:.2f} ± {inp['tna_mjj'][1]:.2f} °C"] = "TNA input"
     son = inp["n34_son"]
     expect[f"the 2027 input is wide: {'+' if son[0] >= 0 else '−'}{abs(son[0]):.2f} ± {son[1]:.2f} °C"] = "SON input"
-    expect[f"Corrected, May–July sits at +{inp['n34_mjj'][0]:.2f} °C and September–October at {('+' if inp['n34_son'][0] >= 0 else '−')}{abs(inp['n34_son'][0]):.2f} °C"] = "corrected inputs"
+    expect[f"May–July then sits at +{inp['n34_mjj'][0]:.2f} °C and September–October at {('+' if inp['n34_son'][0] >= 0 else '−')}{abs(inp['n34_son'][0]):.2f} °C"] = "corrected inputs"
+    expect[f"Separate Pacific and Atlantic terms fit about as well and centre at {_span(R['pri_twoterm'])}%"] = "two-term sensitivity"
+    a24 = [U[p]["pri"]["ch_an"][5] for p in SIX]
+    expect[f"2024 a mixed one ({_span(a24)}% of typical"] = "2024 Primera"
+    expect[f"September 2026 came in at {_span(late['CHIRPS_Sep'].values())}% of typical in CHIRPS but {_span(late['ERA5_Sep'].values())}% in ERA5"] = "Sep 2026 both datasets"
+    expect[f"El Salvador ({late['CHIRPS_Sep']['SV']}% against {late['ERA5_Sep']['SV']}%)"] = "El Salvador Sep 2026"
+    expect[f"ERA5 has September–October at {_span(late['ERA5_SO'].values())}%"] = "Sep–Oct 2026 ERA5"
     # NMME
     nm = d["nmme"]
     expect[f"puts Primera at {nm['GT']['pri']['c']}% in Guatemala, {nm['HN']['pri']['c']}% in Honduras and {nm['SV']['pri']['c']}% in El Salvador"] = "NMME Primera"
