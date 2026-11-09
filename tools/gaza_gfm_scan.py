@@ -131,7 +131,8 @@ def main() -> None:
                 r = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if "err" not in r:                       # failed scenes are retried; the reader keeps the last line per id
+            transient = [e for e in r.get("lerr", []) if "404" not in e]   # a 404 layer (e.g. advisory_flags) will not appear later
+            if "err" not in r and not transient:      # failed scenes and transient layer errors are retried; the reader keeps the last line per id
                 done.add(r["id"])
     items = list(client.search(collections=["GFM"], intersects=sc.g.geometry.iloc[0].__geo_interface__,
                                datetime=f"{args.start}/{args.end}T23:59:59Z").items())

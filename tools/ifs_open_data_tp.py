@@ -29,6 +29,7 @@ import random
 import time
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta
+from itertools import zip_longest
 
 import eccodes
 import numpy as np
@@ -136,8 +137,7 @@ def main() -> None:
         with ThreadPoolExecutor(a.threads) as ex:
             per_file = list(ex.map(lambda j: messages(*j), jobs))
         # interleave the files so that parallel requests mostly hit different objects
-        msgs = [m for grp in zip(*[iter(f) for f in per_file]) for m in grp] if per_file else []
-        msgs += [m for f in per_file for m in f[min(map(len, per_file)):]] if per_file else []
+        msgs = [m for grp in zip_longest(*per_file) for m in grp if m is not None]
         with ThreadPoolExecutor(a.threads) as ex:
             rows = list(ex.map(lambda m: fetch(*m), msgs))
         df = pd.DataFrame(rows)

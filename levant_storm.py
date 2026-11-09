@@ -112,7 +112,7 @@ def gfm_scenes(path: Path | None = None, min_cover: float = 0.9) -> pd.DataFrame
     num = ["n_valid", "n_flood", "n_excl", "n_visible", "n_tuw", "n_dlr", "n_list"]
     for c in num:
         d[c] = pd.to_numeric(d.get(c), errors="coerce")
-    g = d.groupby("acq").agg(n_gaza=("n_gaza", "max"), **{c: (c, "sum") for c in num}, items=("id", "size")).reset_index()
+    g = d.groupby("acq").agg(n_gaza=("n_gaza", "max"), **{c: (c, lambda v: v.sum(min_count=1)) for c in num}, items=("id", "size")).reset_index()
     g["cover"] = (g.n_valid / g.n_gaza).clip(upper=1)
     g = g[g.cover >= min_cover].copy()
     g["flood_km2"] = g.n_flood * GFM_PX_KM2
@@ -174,11 +174,13 @@ def analyse(spec: dict, a: dict) -> dict:
                 rank_all=int((pr > dmax).sum()) + 1, n_all=int(pr.notna().sum()), first_year=pr.index[0].year, last=pr.index[-1],
                 rank_month=int((pr[pr.index.month == day.month] > dmax).sum()) + 1)
     # first storm whose wettest day reached 20 mm, each season (days after 1 September)
-    f20 = ei[ei["max"] >= 20].groupby("sy").start.min()
+    b20 = ei[ei["max"] >= 20].sort_values("start").copy()
+    b20["peak"] = [pr.loc[s_:e_].idxmax() for s_, e_ in zip(b20.start, b20.end)]
+    f20 = b20.groupby("sy").peak.first()                     # each winter's first day of 20 mm or more (its storm's wettest day)
     doy = lambda t: (t - pd.Timestamp(t.year if t.month >= 8 else t.year - 1, 9, 1)).days
     past = f20[(f20.index >= 1998) & (f20.index < rain["sy"])]
-    rain["first20"] = S["max"] >= 20 and f20.get(rain["sy"]) == S.start
-    rain["first_earlier"] = [t for t in past if doy(t) < doy(S.start)]
+    rain["first20"] = S["max"] >= 20 and f20.get(rain["sy"]) == day
+    rain["first_earlier"] = [t for t in past if doy(t) < doy(day)]
     rain["first_n"] = rain["sy"] - 1998                      # winters 1998/99 … last winter (some never had one)
     rain["first_since"] = {int(y): f20.get(y) for y in range(SINCE.year, rain["sy"])}
     # storms of a similar size before October 2023 and what the catalogue has on them
@@ -224,19 +226,22 @@ def analyse(spec: dict, a: dict) -> dict:
     gfm = None
     if (fdir / "gfm_passes.jsonl").exists():
         sc = gfm_scenes()
-        after = sc[(sc.acq >= S.start) & (sc.acq < S.end + pd.Timedelta(days=cfg.get("gfm_days_after", 4)))]
+        as_of = pd.Timestamp(cfg["as_of"]) + pd.Timedelta(days=1)          # scenes up to the end of the as-of day
+        after = sc[(sc.acq >= S.start) & (sc.acq < as_of)]
         sc["since"] = sc.acq >= SINCE
         day = sc.acq.dt.normalize()
         sc["rain3"] = [float(pr.loc[d - pd.Timedelta(days=2): d].sum()) for d in day]      # the scene's day and the two before
         sc["rain9"] = [float(pr.loc[d - pd.Timedelta(days=8): d].sum()) for d in day]
-        wet, dry = sc[sc.rain3 >= 5], sc[sc.rain9 < 1]
+        wet, dry = sc[sc.rain9 >= 10], sc[sc.rain9 < 1]
         before = sc[(sc.acq < S.start) & (sc.acq >= S.start - pd.Timedelta(days=7))]
-        mk = sc[sc.n_excl > 0]                              # a few scenes come without the exclusion layer
+        mk = sc[(sc.n_excl > 0) & (sc.cover >= 0.99)]       # a few scenes come without the exclusion layer or cover 90–99%
+        tuw_y = sc[sc.acq < SINCE].groupby(sc.acq.dt.year).tuw_km2.median()
         gfm = dict(scenes=sc, after=after, before=before, first=sc.acq.min(), n=len(sc), excl_share=float(mk.excl_share.median()),
                    excl_range=(float(mk.excl_share.min()), float(mk.excl_share.max())), n_nomask=int((sc.n_excl == 0).sum()),
                    top_wet=wet.loc[wet.flood_km2.idxmax()] if len(wet) else None, n_wet=len(wet),
                    top_dry=dry.loc[dry.flood_km2.idxmax()] if len(dry) else None,
-                   tuw_since=float(sc[sc.acq >= "2024-01-01"].tuw_km2.median()), tuw_pre=float(sc[(sc.acq >= "2021-01-01") & (sc.acq < SINCE)].tuw_km2.median()))
+                   tuw_since=float(sc[sc.acq >= "2024-01-01"].tuw_km2.median()), tuw_pre=(float(tuw_y.min()), float(tuw_y.max())),
+                   as_of=pd.Timestamp(cfg["as_of"]))
         mp = fdir / f"gfm_map_{cfg['gfm_map']}.npz"
         if mp.exists():
             gfm["map"] = dict(np.load(mp, allow_pickle=False))
@@ -249,6 +254,7 @@ def analyse(spec: dict, a: dict) -> dict:
     st["fs"] = [fs.loc[s - pd.Timedelta(days=1): e + pd.Timedelta(days=5)].max() for s, e in zip(st.start, st.end)]
     big = st.nlargest(10, "total")
     floodscan = dict(series=fs, w=fw, last=fs.index[-1], now=float(fs.loc[S.start - pd.Timedelta(days=1):].max()),
+                     open=fs.index[-1] < S.end + pd.Timedelta(days=5),
                      storms=st, n25=len(st), n25_hit=int((st.fs >= 0.01).sum()), big=big,
                      top=fs.groupby(np.where(fs.index.month >= 8, fs.index.year, fs.index.year - 1)).max().sort_values(ascending=False).head(6))
 
@@ -293,16 +299,13 @@ def gfm_by_box(m: dict, boxes: list[dict]) -> list[dict]:
 
 
 def event_table(spec, a, pr, fs, sc, S, cfg) -> list[dict]:
-    """Every catalogued rain event (before October 2023 from [[prewar]], since from the events CSV), plus this storm:
+    """Every rain event in the page's curated impact lists (section 4: [[prewar]] before October 2023, [[impacts]] since), plus this storm:
     IMERG wettest day, FloodScan's largest Gaza share from the day before to five days after, and GFM's largest flooded
     area in any scene from the start to three days after the end (GFM only since 2015)."""
     rows = [dict(start=pd.Timestamp(p["start"]), end=pd.Timestamp(p.get("end", p["start"])), what=re.sub("<[^>]+>", "", p["what_html"]),
                  since=False) for p in spec.get("prewar", []) if "R" in p["hazard"].split()]
-    ev = a.get("ev")
-    if ev is not None:
-        for _, r in ev.iterrows():
-            if "R" in str(r.hazard).split("+"):
-                rows.append(dict(start=r.start, end=r.end, what=str(r.description), since=True))
+    rows += [dict(start=pd.Timestamp(p["start"]), end=pd.Timestamp(p.get("end", p["start"])), what=re.sub("<[^>]+>", "", p["what_html"]),
+                  since=True) for p in spec.get("impacts", []) if "R" in p["hazard"].split()]
     rows.append(dict(start=S.start, end=S.end, what=cfg["label"], since=True, now=True))
     out = []
     for r in rows:
@@ -405,7 +408,7 @@ def fig_satellites(r: dict, out: Path) -> None:
             a.vlines(v.index, 0, v.clip(upper=cap).values, color=ink, lw=1.1)
             r9 = sc.set_index("acq").rain9
             for tt, val in v[v > cap].items():
-                why = "after nine dry days:\nalmost certainly a false detection" if r9.loc[tt] < 1 else "(axis cut)"
+                why = "after under 1 mm of rain in nine days:\nalmost certainly a false detection" if r9.loc[tt] < 1 else "(axis cut)"
                 a.annotate(f"{val:.0f}% on {tt:%-d %b %Y}, {why}", (tt, cap), xytext=(-8, -2),
                            textcoords="offset points", ha="right", va="top", fontsize=7, color=C_MUTED)
             ymax = cap * 1.08
@@ -456,8 +459,8 @@ def render(spec: dict, a: dict) -> str:
     o.append(f'<p><strong>The rain.</strong> IMERG puts {R["max"]:.0f} mm over Gaza on {R["day"]:%-d %B} ({R["north"]:.0f} mm in the north, '
              f'{R["south"]:.0f} mm in the south) and {R["total"]:.0f} mm over the storm. That is {_rank(R["rank_all"], "wettest day")} of '
              f'{R["n_all"]:,} since {R["first_year"]} and {_rank(R["rank_month"], "wettest " + R["day"].strftime("%B") + " day")}. '
-             + (f'It is also the first storm of the winter whose wettest day reached 20 mm, and it came earlier than in any of the winters '
-                f'since October 2023 ({since}); in the {R["first_n"]} winters of IMERG before this one, the first came earlier only {len(ear)} times '
+             + (f'It is also the winter\'s first day of 20 mm or more, earlier than in any of the winters since October 2023 ({since}); in the '
+                f'{R["first_n"]} winters of IMERG before this one, the first such day came earlier only {len(ear)} times '
                 f'({", ".join(f"{t:%-d %b %Y}" for t in ear)}). ' if R["first20"] else '')
              + 'Storms that begin in October–December are the one kind El Niño winters have brought more often (see "How many storms a winter brings" below); '
                'one storm does not show that this winter is following that pattern.'
@@ -487,11 +490,16 @@ def render(spec: dict, a: dict) -> str:
         else:
             txt += (f'Only partly. Over Gaza for {win}, ECMWF\'s ensemble kept its middle member at {full.loc[:f1].med.iloc[:-1].min():.0f}–'
                     f'{full.loc[:f1].med.iloc[:-1].max():.0f} mm until the run of {when(f1)}, {ahead(f1)}, which put it at {q1.med:.0f} mm '
-                    f'({100 * q1.P20:.0f}% of members at 20 mm or more; the high-resolution run, HRES, {q1.hres:.0f} mm). ')
+                    f'({100 * q1.P20:.0f}% of members at 20 mm or more). ')
             if len(dip) and fm is not None and fm > f1:
-                txt += (f'The next runs backed off (median {dip.med.min():.0f}–{dip.med.max():.0f} mm), and the forecast held at 20 mm or more only from '
+                txt += (f'The next runs backed off (median {dip.med.min():.0f}–{dip.med.max():.0f} mm), and the ensemble held at 20 mm or more only from '
                         f'{when(fm)}, {ahead(fm)}. ')
-        txt += (('Even so, n' if f1 is not None else 'N') + f'o run before the window expected as much as fell: the wettest ensemble median, {best.med:.0f} mm '
+            h1 = next((t for t in full.index if full.loc[t, "hres"] >= 20), None)
+            if h1 is not None:
+                hs = full.loc[h1:].hres
+                txt += (f'The high-resolution run first reached 20 mm in the run of {when(h1)}, {ahead(h1)}, then swung between '
+                        f'{hs.min():.0f} and {hs.max():.0f} mm. ')
+        txt += (('Even so, n' if f1 is not None else 'N') + f'o run that started at or before the opening of the window expected as much as fell: the wettest ensemble median, {best.med:.0f} mm '
                 f'(run of {when(best.name)}), is about {100 * best.med / fc["obs"]:.0f}% of the {fc["obs"]:.0f} mm IMERG measured, and at most '
                 f'{100 * full.P40.max():.0f}% of members reached 40 mm')
         txt += (f' ({100 * part.P40.max():.0f}% in the run that started on {when(part.index[0])}, inside the window).' if len(part) else '.')
@@ -528,7 +536,7 @@ def _past_summary(pastfc: list[dict], cfg: dict) -> str:
     the ERA5 values); how the ensemble did with each group."""
     cut = cfg.get("past_era5_mm", 12)
     both = [p for p in pastfc if p["era5"] >= cut]
-    only = [p for p in pastfc if not p["era5"] >= cut]
+    only = [p for p in pastfc if p["era5"] < cut]             # NaN (no ERA5 yet) is in neither group
     p3 = lambda p: p["runs"][p["runs"].lead_d == 3].P20
     b3 = [float(p3(p).iloc[0]) for p in both if len(p3(p))]
     o_max = max((float(p["runs"].P20.max()) for p in only), default=np.nan)
@@ -538,8 +546,8 @@ def _past_summary(pastfc: list[dict], cfg: dict) -> str:
          f'{100 * min(b3):.0f}–{100 * max(b3):.0f}% of members had 20 mm or more for each of them. The {_word(len(only))} that ERA5 barely saw '
          f'({rng(only)}, against {min(p["obs"] for p in only):.0f}–{max(p["obs"] for p in only):.0f} mm in IMERG) got almost nothing from the forecasts '
          f'at any lead (at most {100 * o_max:.0f}% of members). '
-         if b3 and only else '<p>')
-    return t + cfg.get("past_note_html", "") + '</p>'
+         if b3 and only else None)
+    return "" if t is None else t + cfg.get("past_note_html", "") + '</p>'
 
 
 def _past_table(pastfc: list[dict]) -> str:
@@ -566,33 +574,39 @@ def _satellite_text(r: dict) -> str:
     gov = sorted(g.get("gov", []), key=lambda q: -q["excl"])
     gtxt = (f' — from {100 * gov[-1]["excl"]:.0f}% in {gov[-1]["name"]} to {100 * gov[0]["excl"]:.0f}% in {gov[0]["name"]}' if gov else "")
     tw, td = g["top_wet"], g["top_dry"]
-    p1 = (f'<p><strong>What the flood satellites saw.</strong> Neither of the two satellite flood products the team uses picked up this flood. '
+    gfm_none = not (len(af) and af.flood_km2.max() >= 0.1)
+    fs_none = F["now"] < 0.01
+    lead = (f'So far (to {g["as_of"]:%-d %B}), neither of the two satellite flood products the team uses has picked up this flood. '
+            if gfm_none and fs_none else '')
+    p1 = (f'<p><strong>What the flood satellites saw.</strong> {lead}'
           f'<em>GFM</em> (Copernicus Global Flood Monitoring) maps water in every Sentinel-1 radar scene at 20 m. '
-          f'Sentinel-1 covered all of Gaza {_times(len(af))} in the {cfg.get("gfm_days_after", 4)} days from the start of the storm'
-          + (f' (first at {af.acq.iloc[0]:%-d %B %H:%M} UTC)' if len(af) else '') + ', and GFM mapped '
+          f'Between the start of the storm and {g["as_of"]:%-d %B}, Sentinel-1 covered all of Gaza {_times(len(af))}'
+          + (f' ({", ".join(f"{t:%-d %B %H:%M}" for t in af.acq)} UTC)' if len(af) else '') + ', and GFM mapped '
           + (f'{af.flood_km2.max():.2f} km² of flood water' if len(af) and af.flood_km2.max() > 0 else 'no flood water') + '. '
-          f'GFM cannot map {100 * g["excl_share"]:.0f}% of Gaza at all{gtxt}: its exclusion mask covers built-up land (taken from a 2018 map of buildings) and '
-          'surfaces that look like water to the radar, such as sand. The mask has been the same in every scene since 2015 '
-          f'({100 * g["excl_range"][0]:.1f}–{100 * g["excl_range"][1]:.1f}% of Gaza), so it still treats destroyed neighbourhoods as built-up'
+          f'GFM cannot map {100 * g["excl_share"]:.0f}% of Gaza at all{gtxt}: its exclusion mask covers built-up land (cells more than 35% built-up in the 2018 Global Human Settlement Layer) and '
+          'surfaces that look like water to the radar, such as sand (from Sentinel-1 statistics for 2020–2022). The mask has been the same in every scene '
+          f'that covered all of Gaza since 2015 ({100 * g["excl_range"][0]:.1f}–{100 * g["excl_range"][1]:.1f}% of it), so it still treats destroyed neighbourhoods as built-up'
           + (': it leaves out ' + " and ".join(f'{100 * b["excl"]:.0f}% of {b["name"]}' for b in g["boxes"]) if g.get("boxes") else '')
           + '. In the part it can map, one algorithm flagged '
           f'{_one_alg_km2(g):.1f} km² on {pd.Timestamp(str(cfg["gfm_map_time"])):%-d %B}; GFM publishes a pixel as flooded only when most of its three algorithms agree. '
-          f'In the {g["n"]:,} scenes that covered Gaza since {g["first"]:%B %Y}, the most GFM mapped within three days of rain was {tw.flood_km2:.1f} km² '
-          f'({tw.acq:%-d %B %Y}, about {100 * tw.flood_km2 / _gaza_km2(g):.1f}% of Gaza).'
-          + (f' Its largest map of all, {td.flood_km2:.0f} km² on {td.acq:%-d %B %Y}, came after nine days without rain and matches no report.'
+          f'In the {g["n"]:,} scenes that covered Gaza since {g["first"]:%B %Y}, the most GFM mapped after rain (10 mm or more in the nine days before the '
+          f'scene) was {tw.flood_km2:.1f} km² ({tw.acq:%-d %B %Y}, about {100 * tw.flood_km2 / _gaza_km2(g):.1f}% of Gaza).'
+          + (f' Its largest map of all, {td.flood_km2:.0f} km² on {td.acq:%-d %B %Y}, came after less than 1 mm of rain in nine days and matches no report.'
              if td is not None and td.flood_km2 > tw.flood_km2 else '')
           + '<!--more-->'
           + (f' The single-algorithm flags are not a sign of this flood either: since 2024 the TUW algorithm flags about {g["tuw_since"]:.0f} km² in a typical '
-             f'scene (against {_km2(g["tuw_pre"])} in 2021–2023), and it flagged less after the storm '
+             f'scene, against a yearly median of at most {g["tuw_pre"][1]:.1f} km² in 2015–2023, and it flagged less after the storm '
              f'({_tuw_after(g):.1f} km²) than in the dry days before it ({", ".join(f"{q.tuw_km2:.0f}" for q in g["before"].itertuples())} km²).'
-             if len(g["before"]) else '')
+             if len(g["before"]) and len(af) else '')
           + cfg.get("gfm_note_html", "") + '</p>')
     big = F["big"].sort_values("total", ascending=False)
     seen = big[big.fs >= 0.01]; missed = big[big.fs < 0.01]
     wadi = missed[(missed.start <= "2010-01-19") & (missed.end >= "2010-01-18")]
     p2 = (f'<p><em>FloodScan</em> does cover Gaza: its Africa grid reaches 40°N and 60°E, and the team\'s archive holds every day since January 1998. '
-          f'It shows nothing for this storm so far (file of {F["last"]:%-d %B}). Its pixels are about 9 km across and every one that touches Gaza is '
-          f'part sea and part Israel, so it rarely sees Gaza\'s floods: of the {F["n25"]} IMERG storms of 25 mm or more since 1998, it put at least 1% of '
+          + (f'It shows nothing for this storm so far (files to {F["last"]:%-d %B}). ' if fs_none else
+             f'So far (files to {F["last"]:%-d %B}) it puts up to {100 * F["now"]:.1f}% of Gaza under water. ')
+          + f'Its pixels are about 9 km across and every one that touches Gaza is '
+          f'part sea and part Israel, so it rarely sees Gaza\'s floods: of the {F["n25"]} IMERG storms of 25 mm or more in total since 1998, it put at least 1% of '
           f'Gaza under water within five days for {F["n25_hit"]}. Of the {_word(len(big))} largest it registered {_word(len(seen))}: '
           + ", ".join(f'{q.start:%B %Y} ({100 * q.fs:.0f}%)' if q.fs >= 0.1 else f'{q.start:%B %Y} ({100 * q.fs:.1f}%)' for q in seen.itertuples())
           + f'; for the other {_word(len(missed))} it showed less than 1%' + (', including the Wadi Gaza flood of January 2010' if len(wadi) else '') + '. '
@@ -608,8 +622,8 @@ def _word(n: int) -> str:
     return {1: "one", 2: "two", 3: "three", 4: "four", 5: "five", 6: "six", 7: "seven", 8: "eight", 9: "nine", 10: "ten"}.get(n, str(n))
 
 
-def _km2(v: float) -> str:
-    return "less than 0.1 km²" if v < 0.1 else f"{v:.1f} km²"
+def _km2(v: float, unit: str = " km²") -> str:
+    return f"less than 0.1{unit}" if v < 0.1 else (f"{v:.1f}{unit}" if v < 10 else f"{v:.0f}{unit}")
 
 
 def _gaza_km2(g: dict) -> float:
@@ -635,7 +649,7 @@ def _sat_caption(r: dict) -> str:
     return ('Left: the GFM layers of the first Sentinel-1 scene after the storm, inside the Gaza Strip (COD-AB). Grey: GFM\'s exclusion mask; orange: pixels '
             'flagged by only one of GFM\'s three algorithms, which GFM does not publish as flooded; red: GFM\'s flood map. Right: the two records over Gaza. '
             'FloodScan: daily share of Gaza\'s area called flooded, each 1/12° pixel weighted by its share of the Gaza Strip (team prod archive, Africa grid). '
-            'GFM: share of Gaza in the flood map, for each scene that covered at least 90% of Gaza. Triangles: the rain events of the catalogue in section 4.')
+            'GFM: share of Gaza in the flood map, for each scene that covered at least 90% of Gaza. Triangles: the rain events listed in section 4.')
 
 
 def _event_table_html(r: dict) -> str:
@@ -647,8 +661,8 @@ def _event_table_html(r: dict) -> str:
         cls = ' class="now"' if e.get("now") else ""
         rows.append(f'<tr{cls}><td>{_d(e["start"])}</td><td>{html.escape(what)}</td><td>{e["rain"]:.0f}</td>'
                     f'<td>{100 * e["fs"]:.1f}%</td><td>{gtxt}</td></tr>')
-    return ('<details class="note"><summary>Every catalogued rain event against both satellites</summary>'
+    return ('<details class="note"><summary>Every rain event listed in section 4, against both satellites</summary>'
             '<table><thead><tr><th>Start</th><th>Reported</th><th>IMERG wettest day, mm</th><th>FloodScan, largest share of Gaza</th>'
             '<th>GFM, largest flood map (scenes)</th></tr></thead><tbody>' + "".join(rows) + '</tbody></table>'
             '<p class="small">IMERG over the event window from the day before; FloodScan from the day before to five days after; GFM in scenes '
-            'from the start to three days after the end (— before the GFM archive begins in 2015).</p></details>')
+            'from the start to three days after the end (— before the GFM archive begins in 2015).' + (' For this storm the FloodScan window is still open.' if r["fs"]["open"] else '') + '</p></details>')
