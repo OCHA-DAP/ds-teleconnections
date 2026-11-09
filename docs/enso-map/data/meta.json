@@ -1,6 +1,6 @@
 {
- "version": "8cf38cc481d9",
- "built": "2026-11-08",
+ "version": "89fad08aeeb0",
+ "built": "2026-11-09",
  "period": [
   1981,
   2025
@@ -23,6 +23,16 @@
   "min_years": 25
  },
  "nino34_last_month": "2026-06",
+ "polar": {
+  "north": [
+   89.75,
+   23
+  ],
+  "south": [
+   -60.25,
+   119
+  ]
+ },
  "seasons": [
   {
    "code": "NDJ",

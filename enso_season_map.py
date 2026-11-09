@@ -326,6 +326,17 @@ def main() -> None:
     _gz(out_dir / "annual.bin.gz", ann_bytes)
     digests += [hashlib.sha1(land_bytes).hexdigest(), hashlib.sha1(ann_bytes).hexdigest()]
 
+    # land outside the data grid (Antarctica, the far north), drawn by the viewer as plain land
+    # cells: same 0.25-degree grid and mask as the data, one bit per cell, north cap then south cap
+    d = float(abs(px.x[1] - px.x[0]))
+    caps = {"north": np.arange(px.y[0] + d * 23, px.y[0], -d),        # 89.75 .. 84.25
+            "south": np.arange(px.y[-1] - d, -90 + d / 2, -d)}        # -60.25 .. -89.75
+    polar_bits = np.concatenate([ts.pixel_land_mask(gdf, px.x, ys).ravel() for ys in caps.values()])
+    polar_bytes = np.packbits(polar_bits).tobytes()
+    _gz(out_dir / "polar.bin.gz", polar_bytes)
+    digests.append(hashlib.sha1(polar_bytes).hexdigest())
+    polar_meta = {k: [float(ys[0]), int(len(ys))] for k, ys in caps.items()}
+
     # the JSON files are fetched with ?v=<version> too, so they count towards it
     for name, obj in (("countries.json", countries(cache_dir)), ("basemap.json", basemap(cache_dir))):
         text = json.dumps(obj, ensure_ascii=False, separators=(",", ":"))
@@ -347,6 +358,7 @@ def main() -> None:
                        "min_mm_day": ts.PIXEL_MIN_TRI_MM_DAY,
                        "min_years": cfg["min_years"]},
         "nino34_last_month": nino_last.strftime("%Y-%m"),
+        "polar": polar_meta,
         "seasons": seasons,
         "counts": counts,
         "survey_check": check,

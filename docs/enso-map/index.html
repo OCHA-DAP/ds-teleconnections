@@ -8,7 +8,6 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 <style>
 /* HDX v2 tokens, as in ../assets/site.css */
 :root{--b5:#269777;--b6:#1e795f;--b7:#18614c;--b05:#e9f5f1;--b1:#d4eae4;
@@ -42,17 +41,24 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 #search{font:14px 'Roboto',system-ui,sans-serif;padding:6px 10px;border:1px solid var(--n3);border-radius:4px;width:220px}
 #search:focus,.seasons button:focus-visible,.seg button:focus-visible,.play:focus-visible{outline:2px solid var(--b5);outline-offset:1px}
 .mapwrap{position:relative;height:max(460px,calc(100vh - 150px))}
-#map{position:absolute;inset:0;background:#f7f8f8}
-.leaflet-data-pane canvas{image-rendering:pixelated}
-.lbl-layer span{position:absolute;white-space:nowrap;pointer-events:none;
-  text-shadow:0 0 2px #fff,0 0 2px #fff,0 0 3px #fff,0 0 4px #fff}
-.lbl-c{transform:translate(-50%,-50%);font:500 10.5px/1 'Roboto',system-ui,sans-serif;letter-spacing:.08em;
-  text-transform:uppercase;color:#4a5354}
-.lbl-p{transform:translate(-3px,-50%);font:400 11px/1 'Roboto',system-ui,sans-serif;color:#2c3233;padding-left:8px}
-.lbl-p::before{content:"";position:absolute;left:0;top:50%;width:4px;height:4px;margin-top:-2px;border-radius:50%;
-  background:#2c3233;box-shadow:0 0 0 1px #fff}
-.lbl-p.cap::before{border-radius:0;width:5px;height:5px;margin-top:-2.5px}
-.leaflet-container{font-family:'Roboto',system-ui,sans-serif}
+#map{position:absolute;inset:0;background:#f7f8f8;overflow:hidden}
+#gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ov{touch-action:none;cursor:grab}
+#ov.dragging{cursor:grabbing}
+.zoom-ctl{position:absolute;top:10px;right:10px;z-index:800;display:flex;flex-direction:column;border-radius:6px;
+  overflow:hidden;box-shadow:0 1px 6px rgba(31,35,36,.18)}
+.zoom-ctl button{width:32px;height:32px;border:0;background:#fff;font:500 18px/1 'Roboto',system-ui,sans-serif;
+  color:var(--n8);cursor:pointer}
+.zoom-ctl button+button{border-top:1px solid var(--n1)}
+.zoom-ctl button:hover:not(:disabled){color:var(--b7);background:var(--b05)}
+.zoom-ctl button:disabled{color:var(--n3);cursor:default}
+.zoom-ctl button:focus-visible{outline:2px solid var(--b5);outline-offset:-2px}
+.scale{position:absolute;right:10px;bottom:22px;z-index:800;font-size:11px;line-height:1.2;color:var(--n8);
+  background:rgba(255,255,255,.85);padding:1px 5px 2px;border:1.5px solid var(--n8);border-top:0;pointer-events:none;
+  white-space:nowrap;text-align:left}
+.attrib{position:absolute;right:0;bottom:0;z-index:800;font-size:10.5px;color:var(--n7);background:rgba(255,255,255,.82);
+  padding:1px 6px}
+.attrib a{color:var(--n7)}
 .season-badge{position:absolute;top:10px;left:10px;z-index:800;background:rgba(255,255,255,.94);border-radius:6px;
   padding:8px 12px 7px;box-shadow:0 1px 6px rgba(31,35,36,.18);pointer-events:none}
 .season-badge .big{font:700 18px/1.15 'Merriweather',Georgia,serif}
@@ -114,7 +120,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     <p class="sub">How closely each three-month season’s rainfall has followed ENSO (the Niño3.4 index)
       from 1981 to 2025, for every 0.25° land cell. <strong style="color:var(--wet2)">Blue</strong>: wetter in El Niño years,
       drier in La Niña years. <strong style="color:var(--dry2)">Brown</strong>: drier in El Niño years, wetter in La Niña years.
-      Hover a cell for its values; click to keep the box open.</p>
+      Hover a cell for its values; click to keep the box open. Drag to turn the globe; scroll or pinch to zoom.</p>
   </div>
 </header>
 
@@ -144,7 +150,12 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 </div>
 
 <div class="mapwrap">
-  <div id="map" role="region" aria-label="Map of ENSO correlation with seasonal rainfall"></div>
+  <div id="map" role="region" aria-label="Map of ENSO correlation with seasonal rainfall">
+    <canvas id="gl"></canvas><canvas id="ov"></canvas>
+    <div class="zoom-ctl"><button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">&minus;</button></div>
+    <div class="scale" id="scale"></div>
+    <div class="attrib">Equal Earth &rarr; Lambert azimuthal equal-area &middot; <a href="https://www.naturalearthdata.com/">Natural Earth</a></div>
+  </div>
   <div class="season-badge" aria-live="polite"><div class="big" id="badge-big">…</div><div class="small" id="badge-small">Loading data…</div></div>
   <div class="legend" id="legend"></div>
   <div class="status" id="status"></div>
@@ -200,13 +211,17 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
         differ from satellite and station records; check CHIRPS or station data before relying on one area.</li>
       <li>Coverage: all land between 60°S and 84°N. The survey’s maps stop at 100°W, 36°S and 56°N. Coastlines are
         Natural Earth 1:10m with minor islands, so small islands have cells; coastal cells mix land and sea.</li>
-      <li>The map uses the Equal Earth projection, which shows every region at its true relative size (the
-        projection the UN General Assembly encouraged in September 2026). Countries that cross 180°, such as
-        Fiji and Kiribati, appear at both edges.</li>
+      <li>Projection: with the whole world in view the map is in Equal Earth, which shows every region at its
+        true relative size (the projection the UN General Assembly encouraged in September 2026). Dragging turns
+        the globe, so any place, including those across 180° such as Fiji, can be brought to the middle. Zooming
+        in changes the projection gradually to a Lambert azimuthal equal-area projection centred on the middle of
+        the view, which keeps the area you look at true to shape, with north up. Both are equal-area; the
+        gradual change between them is close to, but not exactly, equal-area.</li>
     </ul>
   </div>
   <p class="foot" id="foot">Data: ERA5 (Copernicus Climate Change Service), NOAA CPC Niño3.4, Natural Earth.
-    Map: Equal Earth projection; boundaries, coastlines and names from Natural Earth. The boundaries and names
+    Map: Equal Earth for the whole world, Lambert azimuthal equal-area centred on the view when zoomed in, blended
+    in between; boundaries, coastlines and names from Natural Earth. The boundaries and names
     shown and the designations used on this map do not imply official endorsement or acceptance by the United
     Nations. Built by <code>enso_season_map.py</code> in
     <a href="https://github.com/OCHA-DAP/ds-teleconnections">OCHA-DAP/ds-teleconnections</a>.</p>
@@ -214,7 +229,6 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
 
 </div>
 
-<script src="vendor/leaflet/leaflet.js"></script>
 <script>
 "use strict";
 (function () {
@@ -328,199 +342,495 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   }
 
   // ---------------------------------------------------------------- projection
-  // Equal Earth (Šavrič, Patterson & Jenny 2018), spherical form, Greenwich-centred: the
-  // equal-area world projection the UN General Assembly encouraged in September 2026.
-  // Leaflet ships only Web Mercator, so the projection is a custom CRS. Projected units are
-  // on the unit sphere; unproject clamps to the poles so pointer positions outside the
-  // world's outline never give NaN (Leaflet throws on a NaN LatLng).
-  const D2R = Math.PI / 180, R2D = 180 / Math.PI;
+  // Adaptive equal-area projection. With the whole world in view: Equal Earth (Šavrič, Patterson &
+  // Jenny 2018), the projection the UN General Assembly encouraged in September 2026, with its
+  // central meridian on the view centre, so dragging east-west turns the globe, across 180° too.
+  // Zoomed in: Lambert azimuthal equal-area centred on the view, true to shape at the centre
+  // (north up, the meridian through the centre straight). In between, the two are blended by the
+  // share of the world's width in view (after Jenny 2012, "Adaptive composite map projections");
+  // the blend is close to, not exactly, equal-area. projCore() is the one implementation: the
+  // WebGL shader below is a line-for-line port, and everything else (hover, zoom anchor, labels,
+  // borders, fitting a country) goes through it.
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI, PI = Math.PI;
   const A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796, EM = Math.sqrt(3) / 2;
   const eeY = t => { const t2 = t * t, t6 = t2 * t2 * t2; return t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)); };
   const eeDY = t => { const t2 = t * t, t6 = t2 * t2 * t2; return A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2); };
-  const eeK = t => Math.cos(t) / (EM * eeDY(t));         // x = lambda * eeK(theta)
-  const T_MAX = Math.PI / 3, YMAX = eeY(T_MAX), XMAX = Math.PI * eeK(0);
-  function eeTheta(Y) {                                    // y -> parametric latitude (Newton)
+  const eeK = t => Math.cos(t) / (EM * eeDY(t));         // Equal Earth: x = lambda * eeK(theta)
+  const T_MAX = PI / 3, YMAX = eeY(T_MAX), XMAX = PI * eeK(0);
+  function eeTheta(Y) {                                    // Equal Earth y -> parametric latitude (Newton)
     if (Y >= YMAX) return T_MAX;
     if (Y <= -YMAX) return -T_MAX;
     let t = Y / A1;
     for (let i = 0; i < 10; i++) { const dt = (eeY(t) - Y) / eeDY(t); t -= dt; if (Math.abs(dt) < 1e-12) break; }
     return t;
   }
-  const latOfTheta = t => Math.asin(Math.max(-1, Math.min(1, Math.sin(t) / EM))) * R2D;
-  const EqualEarth = {
-    project(ll) {
-      const t = Math.asin(EM * Math.sin(Math.max(-90, Math.min(90, ll.lat)) * D2R));
-      return L.point(ll.lng * D2R * eeK(t), eeY(t));
-    },
-    unproject(p) { const t = eeTheta(p.y); return L.latLng(latOfTheta(t), p.x / eeK(t) * R2D); },
-    bounds: L.bounds([-XMAX, -YMAX], [XMAX, YMAX]),
-  };
-  // zoom 0: the world is 256 px wide, as in Web Mercator, so Natural Earth's label zooms carry over
-  const PX0 = 256 / (2 * XMAX);
-  const EE = L.extend({}, L.CRS, {
-    code: "EqualEarth", projection: EqualEarth,
-    transformation: new L.Transformation(PX0, 128, -PX0, YMAX * PX0),
-    scale: z => Math.pow(2, z), zoom: s => Math.log(s) / Math.LN2,
-    distance: L.CRS.Earth.distance, R: L.CRS.Earth.R, infinite: false,
-  });
-  const inWorld = ll => Math.abs(ll.lng) <= 180;
+  const PX0 = 256 / (2 * XMAX);      // CSS px per projected unit at zoom 0: the world is 256 px wide, as in
+                                     // web maps, so Natural Earth's label zoom levels carry over
+  const MAXZ = 8, COS_CULL = Math.cos(170 * D2R);
+  const BLEND_FROM = 0.55, BLEND_TO = 0.15;    // share of the world's width in view: Equal Earth above, LAEA below
+  const wrapPi = a => a - 2 * PI * Math.floor((a + PI) / (2 * PI));
+  const wrap180 = d => d - 360 * Math.floor((d + 180) / 360);
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
 
-  // ---------------------------------------------------------------- map
-  const MINZ = 1, MAXZ = 8;
-  const map = L.map("map", {crs: EE, zoomControl: false, minZoom: MINZ, maxZoom: MAXZ, zoomSnap: 0.25,
-                            zoomDelta: 0.5, wheelPxPerZoomLevel: 90,
-                            maxBounds: L.latLngBounds(EqualEarth.unproject(L.point(-XMAX, -YMAX)),
-                                                      EqualEarth.unproject(L.point(XMAX, YMAX))),
-                            maxBoundsViscosity: 0.9});
-  L.control.zoom({position: "topright"}).addTo(map);
-  L.control.scale({position: "bottomright", imperial: false}).addTo(map);
-  map.attributionControl.setPrefix(false);
-  map.attributionControl.addAttribution(
-    'Equal Earth projection &middot; boundaries <a href="https://www.naturalearthdata.com/">Natural Earth</a>');
-  map.createPane("base").style.zIndex = 200;
-  map.createPane("data").style.zIndex = 350;
-  map.createPane("borders").style.zIndex = 420;
-  map.createPane("labels").style.zIndex = 450;
-  map.createPane("hl").style.zIndex = 460;
-  ["base", "borders", "labels", "hl"].forEach(p => map.getPane(p).style.pointerEvents = "none");
-  const baseR = L.canvas({pane: "base", padding: 0.3}), borderR = L.canvas({pane: "borders", padding: 0.3});
+  const view = {lon: 0, lat: 0, z: 2, W: 0, H: 0};          // centre (degrees), zoom, frame (CSS px)
+  function blendAt(S) {                                       // 0: Equal Earth ... 1: azimuthal
+    const u = clampN((view.W / S / (2 * XMAX) - BLEND_FROM) / (BLEND_TO - BLEND_FROM), 0, 1);
+    return u * u * (3 - 2 * u);
+  }
+  function derive() {                                         // the terms every projection call reuses
+    view.S = Math.pow(2, view.z) * PX0;
+    view.lam0 = view.lon * D2R;
+    const p0 = view.lat * D2R;
+    view.sP0 = Math.sin(p0); view.cP0 = Math.cos(p0);
+    view.sL0 = Math.sin(view.lam0); view.cL0 = Math.cos(view.lam0);
+    view.th0 = Math.asin(EM * view.sP0); view.yE0 = eeY(view.th0);
+    view.t = blendAt(view.S);
+  }
 
-  // ocean = the world's outline (the +-180 meridians), then a 30-degree graticule
-  const OCEAN = "#dde3e6", LAND = "#f1f1ee", BORDER = "#8e979a";
-  const merid = (lon, a = -90, b = 90) => { const out = []; for (let lat = a; lat <= b; lat += 1) out.push([lat, lon]); return out; };
-  L.polygon(merid(180).concat(merid(-180).reverse()), {renderer: baseR, stroke: false, fillColor: OCEAN,
-    fillOpacity: 1, interactive: false}).addTo(map);
-  const grat = [];
-  for (let lon = -150; lon <= 150; lon += 30) grat.push(merid(lon, -80, 80));
-  for (let lat = -60; lat <= 60; lat += 30) grat.push([[lat, -180], [lat, 180]]);  // parallels are straight in Equal Earth
-  L.polyline(grat, {renderer: baseR, color: "#ffffff", weight: 0.8, opacity: 0.7, interactive: false}).addTo(map);
-  L.polyline(merid(180).concat(merid(-180).reverse(), [[-90, 180]]), {renderer: borderR, color: "#b9c2c6",
-    weight: 1, interactive: false}).addTo(map);    // on the borders canvas, so land at the edge can't hide it
+  // dl: longitude minus the centre's, in [-pi, pi], with its cosine and sine; sP, cP: sine and cosine
+  // of the latitude; K, Y: its Equal Earth terms. Writes view-centred units (y up) to out; false when
+  // the point is too near the far side of the globe (the azimuthal part is singular there).
+  function projCore(dl, cdl, sdl, sP, cP, K, Y, out) {
+    let x = dl * K, y = Y - view.yE0;
+    const t = view.t;
+    if (t > 0) {
+      const cosc = view.sP0 * sP + view.cP0 * cP * cdl;
+      if (cosc < COS_CULL) return false;
+      const k = Math.sqrt(2 / (1 + cosc));
+      x = (1 - t) * x + t * k * cP * sdl;
+      y = (1 - t) * y + t * k * (view.cP0 * sP - view.sP0 * cP * cdl);
+    }
+    out[0] = x; out[1] = y;
+    return true;
+  }
+  function projDL(dl, phi, out) {                           // radians; dl already relative to the centre
+    const sP = Math.sin(phi), cP = Math.cos(phi), th = Math.asin(EM * sP);
+    return projCore(dl, Math.cos(dl), Math.sin(dl), sP, cP, eeK(th), eeY(th), out);
+  }
+  const TMP = [0, 0];
+  function projectLL(lat, lon) {                            // degrees -> view-centred units, or null
+    return projDL(wrapPi(lon * D2R - view.lam0), clampN(lat, -90, 90) * D2R, TMP) ? TMP : null;
+  }
+  const scrX = x => view.W / 2 + x * view.S, scrY = y => view.H / 2 - y * view.S;
 
-  const tiles = new Set();
+  // view-centred units -> [lat, lon] in degrees, or null (off the world). Exact at either end;
+  // in between, Newton's method on the blend, seeded from whichever projection dominates.
+  function unproject(x, y) {
+    const t = view.t;
+    let dl, phi;
+    if (t < 0.5) {
+      const Y = y + view.yE0;
+      if (t === 0 && Math.abs(Y) > YMAX) return null;
+      const th = eeTheta(Y);
+      phi = Math.asin(clampN(Math.sin(th) / EM, -1, 1)); dl = x / eeK(th);
+      if (t === 0) return Math.abs(dl) <= PI ? [phi * R2D, wrap180(view.lon + dl * R2D)] : null;
+      dl = clampN(dl, -PI, PI);
+    } else {
+      const rho = Math.hypot(x, y);
+      if (t === 1 && rho >= 2) return null;
+      if (rho < 1e-12) { phi = view.lat * D2R; dl = 0; }
+      else {
+        const c = 2 * Math.asin(Math.min(1, rho / 2)), sc = Math.sin(c), cc = Math.cos(c);
+        phi = Math.asin(clampN(cc * view.sP0 + y * sc * view.cP0 / rho, -1, 1));
+        dl = Math.atan2(x * sc, rho * view.cP0 * cc - y * view.sP0 * sc);
+      }
+      if (t === 1) return [phi * R2D, wrap180(view.lon + dl * R2D)];
+    }
+    const f = [0, 0], g = [0, 0], h = 1e-7;
+    for (let i = 0; i < 30; i++) {
+      if (!projDL(dl, phi, f)) return null;
+      const ex = f[0] - x, ey = f[1] - y;
+      if (Math.abs(ex) + Math.abs(ey) < 1e-11) return [phi * R2D, wrap180(view.lon + dl * R2D)];
+      if (!projDL(dl + h, phi, g)) return null;
+      const a = (g[0] - f[0]) / h, c = (g[1] - f[1]) / h;
+      if (!projDL(dl, phi + h, g)) return null;
+      const b = (g[0] - f[0]) / h, d = (g[1] - f[1]) / h, det = a * d - b * c;
+      if (Math.abs(det) < 1e-14) return null;
+      let sx = (d * ex - b * ey) / det, sy = (a * ey - c * ex) / det;
+      const m = Math.max(Math.abs(sx), Math.abs(sy));
+      if (m > 0.3) { sx *= 0.3 / m; sy *= 0.3 / m; }           // damped: no leaps across the globe
+      dl -= sx; phi = clampN(phi - sy, -PI / 2, PI / 2);
+      if (Math.abs(dl) > PI) return null;
+    }
+    return null;
+  }
+  const screenToLL = (X, Y) => unproject((X - view.W / 2) / view.S, (view.H / 2 - Y) / view.S);
+  // ?debug exposes the projection for checks in the console
+  if (/[?&]debug\b/.test(location.search)) window.ENSO_MAP = {view, projectLL, unproject, screenToLL, derive, clampView,
+                                                                   render: () => render()};
+
+  // zoom limits: never smaller than the whole world in the frame
+  const minZoom = () => Math.log2(Math.max(1e-6, Math.min((view.W - 16) / (2 * XMAX * PX0),
+                                                          (view.H - 16) / (2 * YMAX * PX0))));
+  function clampView() {
+    view.z = clampN(view.z, minZoom(), MAXZ);
+    view.lon = wrap180(view.lon);
+    // vertically: keep Equal Earth's pole line at or beyond the top/bottom of the frame (the whole
+    // world: centred on the equator). The blended map's pole is always further out than Equal
+    // Earth's, so nothing beyond a pole is ever in view; without this, the Equal Earth seam at the
+    // back of the globe opens into a blank gap over the pole at mid zooms. High latitudes can be
+    // centred once zoomed in (70 degrees from about zoom 6).
+    const S = Math.pow(2, view.z) * PX0, lim = YMAX - view.H / 2 / S;
+    const bound = lim <= 0 ? 0 : Math.min(85, Math.asin(clampN(Math.sin(eeTheta(lim)) / EM, -1, 1)) * R2D);
+    view.lat = clampN(view.lat, -bound, bound);
+    derive();
+  }
+  // move the centre so that (lat, lon) sits at screen point (X, Y): a few Newton-like steps with the
+  // local scale at the centre (the sign is right everywhere, so it converges)
+  function anchor(lat, lon, X, Y) {
+    for (let i = 0; i < 8; i++) {
+      derive();
+      const p = projectLL(lat, lon);
+      if (!p) break;
+      const ex = (X - view.W / 2) / view.S - p[0], ey = (view.H / 2 - Y) / view.S - p[1];
+      if (Math.abs(ex) + Math.abs(ey) < 1e-10) break;
+      const t = view.t;
+      const sx = (1 - t) * eeK(view.th0) + t * view.cP0;
+      const sy = (1 - t) * eeDY(view.th0) * EM * view.cP0 / Math.cos(view.th0) + t;
+      view.lon = view.lon - ex / Math.max(sx, 0.05) * R2D;
+      view.lat = view.lat - ey / Math.max(sy, 0.05) * R2D;
+      clampView();
+    }
+    derive();
+  }
+
+  // ---------------------------------------------------------------- WebGL: ocean, graticule, land, cells
+  const glCanvas = $("gl"), ov = $("ov"), octx = ov.getContext("2d");
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const gl = glCanvas.getContext("webgl2", {antialias: false, alpha: false});
+  const OCEAN = "#dde3e6", LAND = "#f1f1ee", BORDER = "#8e979a", EDGE = "#b9c2c6", BG = "#f7f8f8";
+  const rgbaF = hex => hexRgb(hex).map(v => v / 255).concat(1);
 
-  // each device pixel -> projected point -> (lat, lon) -> 0.25-degree cell. In Equal Earth
-  // latitude depends on y alone, so the Newton inverse runs once per row.
-  function paintTile(canvas) {
-    const c = canvas._wc, W = canvas.width, H = canvas.height;
-    const ctx = canvas.getContext("2d");
-    if (!COLORS) { ctx.clearRect(0, 0, W, H); return; }
-    const S = Math.pow(2, c.z) * PX0;                    // CSS px per projected unit at this tile zoom
-    const ts = W / DPR, x0 = c.x * ts, y0 = c.y * ts;      // tile origin in CSS px
-    const lonEdge = G.lon0 - G.d / 2, latEdge = G.lat0 + G.d / 2;
-    const img = ctx.createImageData(W, H);
-    const out = new Uint32Array(img.data.buffer);
-    for (let j = 0; j < H; j++) {
-      const ycss = y0 + (j + 0.5) / DPR;
-      const Y = YMAX - ycss / S;
-      if (Y > YMAX || Y < -YMAX) continue;
-      const t = eeTheta(Y), lat = latOfTheta(t);
-      const row = Math.floor((latEdge - lat) / G.d);
-      if (row < 0 || row >= G.ny) continue;
-      const kinv = R2D / eeK(t), base = row * G.nx, o = j * W;
-      const yy = Math.floor(ycss);
-      for (let i = 0; i < W; i++) {
-        const xcss = x0 + (i + 0.5) / DPR;
-        const lon = (xcss / S - XMAX) * kinv;
-        if (lon < -180 || lon >= 180) continue;
-        let col = Math.floor((lon - lonEdge) / G.d);
-        if (col >= G.nx) col -= G.nx;                      // 179.875..180 is the cell centred on -180
-        const p = LANDPOS[base + col];
-        if (p < 0) continue;
-        const hc = HATCH[p];
-        out[o + i] = (hc && (Math.floor(xcss) + yy) % 6 === 0) ? hc : COLORS[p];
+  const GLSL_HEAD = `#version 300 es
+precision highp float;
+uniform float uLam0, uSP0, uCP0, uYE0, uT, uS, uCosCull;
+uniform vec2 uHalf;
+const float PI = 3.141592653589793;
+const float EM = 0.8660254037844386;
+const float A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796;
+float wrapPi(float a) { return a - 2.0 * PI * floor((a + PI) / (2.0 * PI)); }
+float eeY(float t) { float t2 = t * t, t6 = t2 * t2 * t2; return t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)); }
+float eeDY(float t) { float t2 = t * t, t6 = t2 * t2 * t2; return A1 + 3.0 * A2 * t2 + t6 * (7.0 * A3 + 9.0 * A4 * t2); }
+// port of projCore() in the page script
+vec2 proj(float dl, float phi) {
+  float sP = sin(phi), cP = cos(phi), th = asin(EM * sP);
+  vec2 e = vec2(dl * cos(th) / (EM * eeDY(th)), eeY(th) - uYE0);
+  if (uT <= 0.0) return e;
+  float cdl = cos(dl), sdl = sin(dl);
+  float cosc = uSP0 * sP + uCP0 * cP * cdl;
+  float k = sqrt(2.0 / max(1.0 + cosc, 1e-6));
+  return mix(e, vec2(k * cP * sdl, k * (uCP0 * sP - uSP0 * cP * cdl)), uT);
+}
+bool culled(float dl, float phi) { return uT > 0.0 && uSP0 * sin(phi) + uCP0 * cos(phi) * cos(dl) < uCosCull; }
+vec4 clipPos(vec2 p) { return vec4(p.x * uS / uHalf.x, p.y * uS / uHalf.y, 0.0, 1.0); }
+`;
+  // one instanced quad per cell; corners are offsets from the cell's own centre and clamped at the
+  // seam, so a cell on the far edge is cut there instead of stretching across the map
+  const QUAD_VS = GLSL_HEAD + `
+uniform float uHalfDeg;
+layout(location = 0) in vec2 aCorner;
+layout(location = 1) in vec2 aCenter;
+layout(location = 2) in vec4 aColor;
+layout(location = 3) in vec4 aHatch;
+out vec4 vColor; out vec4 vHatch;
+void main() {
+  vColor = aColor; vHatch = aHatch;
+  float phi = radians(aCenter.y), dlc = wrapPi(radians(aCenter.x) - uLam0);
+  if (culled(dlc, phi)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  float dl = clamp(dlc + radians(aCorner.x * uHalfDeg), -PI, PI);
+  float ph = clamp(phi + radians(aCorner.y * uHalfDeg), -0.5 * PI, 0.5 * PI);
+  gl_Position = clipPos(proj(dl, ph));
+}`;
+  const QUAD_FS = `#version 300 es
+precision highp float;
+uniform float uDpr;
+in vec4 vColor; in vec4 vHatch;
+out vec4 o;
+void main() {
+  o = vColor;
+  if (vHatch.a > 0.0 && mod(floor(gl_FragCoord.x / uDpr) - floor(gl_FragCoord.y / uDpr), 6.0) < 0.5) o = vHatch;
+}`;
+  // graticule segments: both ends share the segment's midpoint as reference (same seam rule)
+  const LINE_VS = GLSL_HEAD + `
+layout(location = 0) in vec2 aLL;
+layout(location = 1) in vec2 aRef;
+void main() {
+  float phr = radians(aRef.y), dlr = wrapPi(radians(aRef.x) - uLam0);
+  if (culled(dlr, phr)) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  gl_Position = clipPos(proj(clamp(dlr + radians(aLL.x - aRef.x), -PI, PI), radians(aLL.y)));
+}`;
+  const LINE_FS = `#version 300 es
+precision highp float;
+uniform vec4 uColor;
+out vec4 o;
+void main() { o = uColor; }`;
+
+  function makeProgram(vs, fs) {
+    const sh = (type, src) => {
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const u = {};
+    for (let i = 0, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i < n; i++) {
+      const name = gl.getActiveUniform(p, i).name; u[name] = gl.getUniformLocation(p, name);
+    }
+    return {p, u};
+  }
+  let QP = null, LP = null, CORNERS = null, OCEAN_L = null, GRAT_L = null, POLAR_L = null, DATA_L = null;
+  function quadLayer(centers, perInstanceColours) {
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, CORNERS);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    const cb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, cb); gl.bufferData(gl.ARRAY_BUFFER, centers, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0); gl.vertexAttribDivisor(1, 1);
+    const L = {vao, n: centers.length / 2, col: null, hat: null};
+    if (perInstanceColours) {
+      for (const [loc, key] of [[2, "col"], [3, "hat"]]) {
+        L[key] = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, L[key]);
+        gl.bufferData(gl.ARRAY_BUFFER, L.n * 4, gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+        gl.vertexAttribDivisor(loc, 1);
       }
     }
-    ctx.putImageData(img, 0, 0);
+    gl.bindVertexArray(null);
+    return L;
+  }
+  function initGL() {
+    QP = makeProgram(QUAD_VS, QUAD_FS); LP = makeProgram(LINE_VS, LINE_FS);
+    CORNERS = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, CORNERS);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const oc = [];                                            // the sphere as 2-degree quads: the ocean
+    for (let la = -89; la <= 89; la += 2) for (let lo = -179; lo <= 179; lo += 2) oc.push(lo, la);
+    OCEAN_L = quadLayer(new Float32Array(oc), false);
+    const gv = [];                                            // 30-degree graticule
+    const seg = (lo1, la1, lo2, la2) => { const rl = (lo1 + lo2) / 2, ra = (la1 + la2) / 2; gv.push(lo1, la1, rl, ra, lo2, la2, rl, ra); };
+    for (let lo = -180; lo < 180; lo += 30) for (let la = -80; la < 80; la += 2) seg(lo, la, lo, la + 2);
+    for (let la = -60; la <= 60; la += 30) for (let lo = -180; lo < 180; lo += 2) seg(lo, la, lo + 2, la);
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gv), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
+    gl.bindVertexArray(null);
+    GRAT_L = {vao, n: gv.length / 4};
+  }
+  function uploadColors() {
+    if (!gl || !DATA_L || !COLORS) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER, DATA_L.col); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Uint8Array(COLORS.buffer));
+    gl.bindBuffer(gl.ARRAY_BUFFER, DATA_L.hat); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Uint8Array(HATCH.buffer));
+  }
+  function repaint() { recolor(); uploadColors(); requestRender(); }
+
+  function renderGL() {
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    const bg = rgbaF(BG); gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    const use = pr => {
+      gl.useProgram(pr.p); const u = pr.u;
+      gl.uniform1f(u.uLam0, view.lam0); gl.uniform1f(u.uSP0, view.sP0); gl.uniform1f(u.uCP0, view.cP0);
+      gl.uniform1f(u.uYE0, view.yE0); gl.uniform1f(u.uT, view.t); gl.uniform1f(u.uS, view.S);
+      gl.uniform1f(u.uCosCull, COS_CULL); gl.uniform2f(u.uHalf, view.W / 2, view.H / 2);
+    };
+    const draw = (L, halfDeg, colour) => {
+      gl.uniform1f(QP.u.uHalfDeg, halfDeg);
+      if (colour) { gl.vertexAttrib4f(2, ...colour); gl.vertexAttrib4f(3, 0, 0, 0, 0); }
+      gl.bindVertexArray(L.vao); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, L.n);
+    };
+    use(QP); gl.uniform1f(QP.u.uDpr, DPR);
+    draw(OCEAN_L, 1.0, rgbaF(OCEAN));
+    use(LP);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniform4f(LP.u.uColor, 1, 1, 1, 0.75);
+    gl.bindVertexArray(GRAT_L.vao); gl.drawArrays(gl.LINES, 0, GRAT_L.n);
+    gl.disable(gl.BLEND);
+    use(QP);
+    if (POLAR_L) draw(POLAR_L, G.d / 2, rgbaF(LAND));
+    if (DATA_L && COLORS) draw(DATA_L, G.d / 2, null);
+    gl.bindVertexArray(null);
   }
 
-  const DataLayer = L.GridLayer.extend({
-    createTile(coords) {
-      const t = L.DomUtil.create("canvas", "leaflet-tile");
-      const s = this.getTileSize();
-      t.width = s.x * DPR; t.height = s.y * DPR;
-      t._wc = coords;
-      tiles.add(t);
-      paintTile(t);
-      return t;
-    },
-  });
-  const dataLayer = new DataLayer({pane: "data", opacity: 0.92, keepBuffer: 2, updateWhenZooming: false,
-                                   noWrap: true});
-  dataLayer.on("tileunload", e => tiles.delete(e.tile));
-  dataLayer.addTo(map);
-
-  function repaint() { recolor(); tiles.forEach(paintTile); }
-
-  // ---------------------------------------------------------------- basemap: land, borders, names
-  // Natural Earth 1:50m countries: filled under the data (shows at coasts and outside the
-  // land mask), stroked above it. Names: Natural Earth label points and zoom levels.
-  let LABELS = [];
-  function addBasemap(bm) {
-    L.geoJSON(bm.countries, {renderer: baseR, interactive: false,
-      style: {stroke: false, fillColor: LAND, fillOpacity: 1}}).addTo(map);
-    L.geoJSON(bm.countries, {renderer: borderR, interactive: false,
-      style: {color: BORDER, weight: 0.7, fill: false}}).addTo(map);
-    // one priority order: the zoom each name appears at, countries first on ties (a minor
-    // territory that appears at z6 no longer outranks London)
-    LABELS = bm.labels.countries.map(([name, lat, lon, z]) => ({name, lat, lon, z, cls: "lbl-c", k: 0}))
-      .concat(bm.labels.cities.map(([name, lat, lon, z, cap]) => ({name, lat, lon, z, cls: cap ? "lbl-p cap" : "lbl-p", k: 1})))
-      .sort((a, b) => a.z - b.z || a.k - b.k);
-    labelLayer.addTo(map);
-  }
-  // greedy placement in priority order (countries, then places by zoom); a label is skipped
-  // if its box would overlap one already placed
-  const labelLayer = L.layerGroup();
-  labelLayer.onAdd = function (m) {
-    this._el = L.DomUtil.create("div", "lbl-layer", m.getPane("labels"));
-    m.on("zoomstart", this._hide, this); m.on("moveend zoomend resize", this._draw, this);
-    this._draw();
-  };
-  labelLayer._hide = function () { this._el.style.display = "none"; };
-  labelLayer._draw = function () {
-    const el = this._el, z = map.getZoom(), size = map.getSize();
-    el.style.display = ""; el.textContent = "";
-    const boxes = [], frag = document.createDocumentFragment();
-    for (const lb of LABELS) {
-      if (lb.z > z + 0.3) continue;
-      const cp = map.latLngToContainerPoint([lb.lat, lb.lon]);
-      if (cp.x < -60 || cp.y < -20 || cp.x > size.x + 60 || cp.y > size.y + 20) continue;
-      const country = lb.cls === "lbl-c";
-      const w = lb.name.length * (country ? 7.2 : 6.4) + 8, h = 15;
-      const bx = country ? cp.x - w / 2 : cp.x + 4, by = country ? cp.y - h / 2 : cp.y - h / 2;
-      if (boxes.some(b => bx < b[2] && bx + w > b[0] && by < b[3] && by + h > b[1])) continue;
-      boxes.push([bx - 3, by - 2, bx + w + 3, by + h + 2]);
-      const lp = map.latLngToLayerPoint([lb.lat, lb.lon]);
-      const s = document.createElement("span");
-      s.className = lb.cls; s.textContent = lb.name;
-      s.style.left = lp.x + "px"; s.style.top = lp.y + "px";
-      frag.appendChild(s);
+  // ---------------------------------------------------------------- overlay: borders, outline, names
+  // Natural Earth 1:50m borders, projected in the page each frame. Per vertex the trigonometry is
+  // precomputed (the longitude's sine/cosine, the latitude's and its Equal Earth terms), so a frame
+  // costs multiplications and one square root per vertex.
+  let RINGS = [], LABELS = [], FONTS_READY = false;
+  const FONT_C = "500 10.5px Roboto, system-ui, sans-serif", FONT_P = "400 11px Roboto, system-ui, sans-serif";
+  function prepBasemap(bm) {
+    for (const f of bm.countries.features) {
+      const g = f.geometry, polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+      for (const poly of polys) for (const ring of poly) {
+        const n = ring.length, v = new Float64Array(n * 7);
+        let cx = 0, cy = 0, cz = 0;
+        for (let i = 0; i < n; i++) {
+          const lam = ring[i][0] * D2R, phi = ring[i][1] * D2R, sP = Math.sin(phi), cP = Math.cos(phi);
+          const th = Math.asin(EM * sP), o = i * 7;
+          v[o] = lam; v[o + 1] = sP; v[o + 2] = cP; v[o + 3] = eeK(th); v[o + 4] = eeY(th);
+          v[o + 5] = Math.sin(lam); v[o + 6] = Math.cos(lam);
+          cx += cP * v[o + 6]; cy += cP * v[o + 5]; cz += sP;
+        }
+        const m = Math.hypot(cx, cy, cz) || 1; cx /= m; cy /= m; cz /= m;
+        let minDot = 1;
+        for (let i = 0; i < n; i++) {
+          const o = i * 7; minDot = Math.min(minDot, v[o + 2] * (v[o + 6] * cx + v[o + 5] * cy) + v[o + 1] * cz);
+        }
+        RINGS.push({v, n, c: [cx, cy, cz], rad: Math.acos(clampN(minDot, -1, 1))});
+      }
     }
-    el.appendChild(frag);
-  };
+    // one priority order: the zoom each name appears at, countries first on ties
+    LABELS = bm.labels.countries.map(([name, lat, lon, z]) => ({text: name.toUpperCase(), lat, lon, z, k: 0}))
+      .concat(bm.labels.cities.map(([name, lat, lon, z, cap]) => ({text: name, lat, lon, z, k: 1, cap: !!cap})))
+      .sort((a, b) => a.z - b.z || a.k - b.k);
+  }
+  // angular radius of the frame around its centre (pi when part of it is off the world)
+  function frameRadius() {
+    if (view.t <= 0) return PI;
+    const W = view.W, H = view.H;
+    let r = 0;
+    for (const [X, Y] of [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H], [0, H / 2], [W, H / 2]]) {
+      const ll = screenToLL(X, Y);
+      if (!ll) return PI;
+      const p = ll[0] * D2R, dl = ll[1] * D2R - view.lam0;
+      r = Math.max(r, Math.acos(clampN(view.sP0 * Math.sin(p) + view.cP0 * Math.cos(p) * Math.cos(dl), -1, 1)));
+    }
+    return r;
+  }
+  function drawBorders(c) {
+    const W2 = view.W / 2, H2 = view.H / 2, S = view.S, out = [0, 0], R = frameRadius() + 0.02;
+    const vx = view.cP0 * view.cL0, vy = view.cP0 * view.sL0, vz = view.sP0;
+    c.beginPath();
+    for (const ring of RINGS) {
+      if (R < PI && Math.acos(clampN(ring.c[0] * vx + ring.c[1] * vy + ring.c[2] * vz, -1, 1)) - ring.rad > R) continue;
+      const v = ring.v;
+      let pen = false, pdl = 0;
+      for (let i = 0; i < ring.n; i++) {
+        const o = i * 7;
+        let dl = v[o] - view.lam0; dl -= 2 * PI * Math.floor((dl + PI) / (2 * PI));
+        const cdl = v[o + 6] * view.cL0 + v[o + 5] * view.sL0, sdl = v[o + 5] * view.cL0 - v[o + 6] * view.sL0;
+        if (!projCore(dl, cdl, sdl, v[o + 1], v[o + 2], v[o + 3], v[o + 4], out)) { pen = false; continue; }
+        const X = W2 + out[0] * S, Y = H2 - out[1] * S;
+        if (pen && Math.abs(dl - pdl) > PI) pen = false;   // crossed the seam at the back of the globe
+        if (pen) c.lineTo(X, Y); else c.moveTo(X, Y);
+        pen = true; pdl = dl;
+      }
+    }
+    c.strokeStyle = BORDER; c.lineWidth = 0.7; c.stroke();
+  }
+  function drawOutline(c) {                                 // the world's edge while it is in view
+    if (view.t >= 0.3) return;
+    const out = [0, 0];
+    c.beginPath();
+    for (const side of [PI, -PI]) {
+      let pen = false;
+      for (let la = -90; la <= 90; la += 1) {
+        if (!projDL(side, la * D2R, out)) { pen = false; continue; }
+        if (pen) c.lineTo(scrX(out[0]), scrY(out[1])); else c.moveTo(scrX(out[0]), scrY(out[1]));
+        pen = true;
+      }
+    }
+    c.strokeStyle = EDGE; c.lineWidth = 1; c.stroke();
+  }
+  function drawHighlight(c) {
+    if (hoverCell < 0 || !LANDPOS || LANDPOS[hoverCell] < 0) return;
+    const [lat, lon] = cellCentre(hoverCell), h = G.d / 2, out = [0, 0];
+    const dlc = wrapPi(lon * D2R - view.lam0);
+    c.beginPath();
+    let k = 0;
+    for (const [dx, dy] of [[-h, -h], [h, -h], [h, h], [-h, h]]) {
+      if (!projDL(clampN(dlc + dx * D2R, -PI, PI), (lat + dy) * D2R, out)) return;
+      if (k++) c.lineTo(scrX(out[0]), scrY(out[1])); else c.moveTo(scrX(out[0]), scrY(out[1]));
+    }
+    c.closePath(); c.strokeStyle = "#1f2324"; c.lineWidth = 1.5; c.stroke();
+  }
+  // greedy placement in priority order: a name is skipped if its box would overlap one already placed
+  function drawLabels(c) {
+    if (!LABELS.length) return;
+    const W = view.W, H = view.H, boxes = [];
+    c.textBaseline = "middle"; c.lineJoin = "round";
+    for (const lb of LABELS) {
+      if (lb.z > view.z + 0.3) continue;
+      const p = projectLL(lb.lat, lb.lon);
+      if (!p) continue;
+      const X = scrX(p[0]), Y = scrY(p[1]);
+      if (X < -80 || Y < -20 || X > W + 80 || Y > H + 20) continue;
+      const country = lb.k === 0;
+      c.font = country ? FONT_C : FONT_P;
+      if ("letterSpacing" in c) c.letterSpacing = country ? "0.8px" : "0px";
+      if (lb.w === undefined || lb.wf !== FONTS_READY) { lb.w = c.measureText(lb.text).width; lb.wf = FONTS_READY; }
+      const w = lb.w + (country ? 0 : 9), h = country ? 13 : 14;
+      const bx = country ? X - w / 2 : X - 3, by = Y - h / 2;
+      let hit = false;
+      for (const b of boxes) if (bx < b[2] && bx + w > b[0] && by < b[3] && by + h > b[1]) { hit = true; break; }
+      if (hit) continue;
+      boxes.push([bx - 3, by - 2, bx + w + 3, by + h + 2]);
+      c.textAlign = country ? "center" : "left";
+      const tx = country ? X : X + 6;
+      c.strokeStyle = "rgba(255,255,255,0.92)"; c.lineWidth = 3; c.strokeText(lb.text, tx, Y);
+      c.fillStyle = country ? "#4a5354" : "#2c3233"; c.fillText(lb.text, tx, Y);
+      if (!country) {
+        c.beginPath();
+        if (lb.cap) c.rect(X - 2.5, Y - 2.5, 5, 5); else c.arc(X, Y, 2, 0, 2 * PI);
+        c.fillStyle = "#2c3233"; c.fill(); c.lineWidth = 1; c.strokeStyle = "#fff"; c.stroke();
+      }
+    }
+  }
+  function renderOverlay() {
+    const c = octx;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, view.W, view.H);
+    drawOutline(c);
+    if (RINGS.length) drawBorders(c);
+    drawHighlight(c);
+    drawLabels(c);
+  }
+  function updateScale() {                                  // approximate: the scale at the centre, east-west
+    const kx = (1 - view.t) * eeK(view.th0) / Math.max(view.cP0, 1e-6) + view.t;
+    const kmPerPx = 6371 / (view.S * kx), target = 90 * kmPerPx;
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const nice = [1, 2, 5, 10].map(m => m * pow).filter(v => v <= target).pop() || pow;
+    const el = $("scale");
+    el.style.width = Math.round(nice / kmPerPx) + "px";
+    el.textContent = `${nice.toLocaleString("en")} km`;
+  }
+
+  let renderQueued = false;
+  function requestRender() { if (!renderQueued) { renderQueued = true; requestAnimationFrame(render); } }
+  function render() {
+    renderQueued = false;
+    if (!view.W) return;
+    derive();
+    if (gl && QP) renderGL();
+    renderOverlay();
+    updateScale();
+    $("zout").disabled = view.z <= minZoom() + 1e-3;
+    $("zin").disabled = view.z >= MAXZ - 1e-3;
+    if (tipEl.style.display === "block") placeTip();
+  }
+  function resize() {
+    const W = ov.clientWidth, H = ov.clientHeight;
+    if (!W || !H) return;
+    view.W = W; view.H = H;
+    for (const cv of [glCanvas, ov]) { cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+    clampView(); requestRender();
+  }
 
   // ---------------------------------------------------------------- hover / pin
   let hoverCell = -1, pinned = false, tipLatLng = null;
-  const cellBox = L.polygon([[0, 0], [0, 0], [0, 0]], {color: "#1f2324", weight: 1.5, fill: false,
-                                                       interactive: false, pane: "hl"});
 
-  // one world, no copies: a pointer outside the outline (|lon| > 180) is no cell
-  function cellAt(latlng) {
-    if (!G || !inWorld(latlng)) return -1;
-    let col = Math.floor((latlng.lng - (G.lon0 - G.d / 2)) / G.d);
+  function cellAt(ll) {
+    if (!G || !ll) return -1;
+    let col = Math.floor((ll.lng - (G.lon0 - G.d / 2)) / G.d);
     if (col >= G.nx) col -= G.nx;                   // 179.875..180 is the cell centred on -180
-    const row = Math.floor((G.lat0 + G.d / 2 - latlng.lat) / G.d);
-    if (row < 0 || row >= G.ny || col < 0) return -1;
+    if (col < 0) col += G.nx;
+    const row = Math.floor((G.lat0 + G.d / 2 - ll.lat) / G.d);
+    if (row < 0 || row >= G.ny) return -1;
     return row * G.nx + col;
   }
-  // centre of a cell, on the side of the 180 degree line nearest the pointer
-  function cellCentre(cell, nearLng) {
+  function cellCentre(cell) {
     const row = Math.floor(cell / G.nx), col = cell % G.nx;
-    const lat = G.lat0 - row * G.d;
-    let lon = G.lon0 + col * G.d;
-    if (lon === -180 && nearLng > 0) lon = 180;
-    return [lat, lon];
+    return [G.lat0 - row * G.d, G.lon0 + col * G.d];
   }
 
   function fmtLat(v) { return `${Math.abs(v).toFixed(2)}°${v >= 0 ? "N" : "S"}`; }
@@ -624,51 +934,124 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   function placeTip() {
     tipEl.style.display = "block";
     if (!tipLatLng) return;
-    const pt = map.latLngToContainerPoint(tipLatLng);
-    const size = map.getSize(), w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
-    let x = pt.x + 16, y = pt.y + 16;
-    if (x + w > size.x - 8) x = pt.x - w - 16;
-    if (y + hgt > size.y - 8) y = pt.y - hgt - 16;
+    const p = projectLL(tipLatLng.lat, tipLatLng.lng);
+    if (!p) return;
+    const px = scrX(p[0]), py = scrY(p[1]);
+    const w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
+    let x = px + 16, y = py + 16;
+    if (x + w > view.W - 8) x = px - w - 16;
+    if (y + hgt > view.H - 8) y = py - hgt - 16;
     tipEl.style.left = Math.max(8, x) + "px";
     tipEl.style.top = Math.max(8, y) + "px";
   }
 
-  function setCell(latlng) {
-    const cell = cellAt(latlng);
-    tipLatLng = latlng;
-    if (cell !== hoverCell) {
-      hoverCell = cell;
-      if (cell >= 0 && LANDPOS[cell] >= 0) {
-        const [lat, lon] = cellCentre(cell, latlng.lng), h = G.d / 2;
-        const w = Math.max(-180, lon - h), e = Math.min(180, lon + h);   // keep the box inside the outline
-        cellBox.setLatLngs([[lat - h, w], [lat + h, w], [lat + h, e], [lat - h, e]]);
-        if (!map.hasLayer(cellBox)) cellBox.addTo(map);
-      } else if (map.hasLayer(cellBox)) map.removeLayer(cellBox);
-      renderTip();
-    } else placeTip();
+  function setCell(ll) {
+    const cell = cellAt(ll);
+    tipLatLng = ll;
+    if (cell !== hoverCell) { hoverCell = cell; renderTip(); requestRender(); }
+    else placeTip();
   }
   function clearCell() {
     hoverCell = -1; pinned = false; tipEl.classList.remove("pinned"); tipEl.style.display = "none";
-    if (map.hasLayer(cellBox)) map.removeLayer(cellBox);
+    requestRender();
   }
+  const llAt = (x, y) => { const ll = screenToLL(x, y); return ll ? {lat: ll[0], lng: ll[1]} : null; };
 
-  map.on("mousemove", e => { if (!pinned && LANDPOS) setCell(e.latlng); });
-  map.on("mouseout", () => { if (!pinned) clearCell(); });
-  map.on("click", e => {
-    if (!LANDPOS) return;
-    pinned = false; hoverCell = -1;
-    setCell(e.latlng);
-    if (hoverCell >= 0 && LANDPOS[hoverCell] >= 0) { pinned = true; tipEl.classList.add("pinned"); renderTip(); }
-    else clearCell();
+  // ---------------------------------------------------------------- pan and zoom
+  // Dragging keeps the grabbed place under the pointer, which turns the globe east-west and moves
+  // it north-south; zooming keeps the place under the pointer fixed.
+  const pointers = new Map();
+  let gesture = null, anim = null;
+  const localXY = e => { const r = ov.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = null; } }
+  function startDrag(x, y) {
+    gesture = {type: "drag", x0: x, y0: y, ll: screenToLL(x, y), lon0: view.lon, moved: false};
+  }
+  function zoomAround(x, y, z) {
+    const ll = screenToLL(x, y);
+    view.z = z; clampView();
+    if (ll) anchor(ll[0], ll[1], x, y);
+    requestRender();
+  }
+  function animateZoom(x, y, dz) {
+    stopAnim();
+    const ll = screenToLL(x, y), z0 = view.z, z1 = clampN(z0 + dz, minZoom(), MAXZ), t0 = performance.now();
+    const step = now => {
+      const u = Math.min(1, (now - t0) / 220), e = 1 - (1 - u) * (1 - u);
+      view.z = z0 + (z1 - z0) * e; clampView();
+      if (ll) anchor(ll[0], ll[1], x, y);
+      requestRender();
+      if (u < 1) anim = requestAnimationFrame(step); else { anim = null; writeHash(); }
+    };
+    anim = requestAnimationFrame(step);
+  }
+  ov.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    ov.setPointerCapture(e.pointerId);
+    const [x, y] = localXY(e);
+    pointers.set(e.pointerId, [x, y]);
+    stopAnim();
+    if (pointers.size === 1) startDrag(x, y);
+    else if (pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      gesture = {type: "pinch", d0: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, z0: view.z,
+                 ll: screenToLL((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), moved: true};
+    }
   });
-  map.on("move zoom", () => { if (tipEl.style.display === "block") placeTip(); });
+  ov.addEventListener("pointermove", e => {
+    const [x, y] = localXY(e);
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [x, y]);
+    if (gesture && gesture.type === "drag" && pointers.size === 1) {
+      if (!gesture.moved && Math.hypot(x - gesture.x0, y - gesture.y0) < 4) return;
+      gesture.moved = true; ov.classList.add("dragging");
+      if (gesture.ll) anchor(gesture.ll[0], gesture.ll[1], x, y);
+      else { view.lon = gesture.lon0 - (x - gesture.x0) / (view.S * eeK(0)) * R2D; clampView(); }   // grabbed off the world
+      requestRender();
+      return;
+    }
+    if (gesture && gesture.type === "pinch" && pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      view.z = gesture.z0 + Math.log2(Math.hypot(a[0] - b[0], a[1] - b[1]) / gesture.d0); clampView();
+      if (gesture.ll) anchor(gesture.ll[0], gesture.ll[1], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+      requestRender();
+      return;
+    }
+    if (!gesture && e.pointerType === "mouse" && !pinned && LANDPOS) setCell(llAt(x, y));
+  });
+  function endPointer(e) {
+    if (!pointers.delete(e.pointerId)) return;
+    const [x, y] = localXY(e);
+    if (gesture && gesture.type === "drag" && !gesture.moved && e.type === "pointerup" && LANDPOS) {
+      // a click or tap: pin the box on the cell, or close it on sea
+      pinned = false; hoverCell = -1;
+      setCell(llAt(x, y));
+      if (hoverCell >= 0 && LANDPOS[hoverCell] >= 0) { pinned = true; tipEl.classList.add("pinned"); renderTip(); }
+      else clearCell();
+    }
+    if (pointers.size === 1) { const [p] = [...pointers.values()]; startDrag(p[0], p[1]); gesture.moved = true; }
+    else if (pointers.size === 0) { gesture = null; ov.classList.remove("dragging"); writeHash(); }
+  }
+  ov.addEventListener("pointerup", endPointer);
+  ov.addEventListener("pointercancel", endPointer);
+  ov.addEventListener("pointerleave", e => { if (e.pointerType === "mouse" && !gesture && !pinned) clearCell(); });
+  let wheelHash = null;
+  ov.addEventListener("wheel", e => {
+    e.preventDefault(); stopAnim();
+    const [x, y] = localXY(e);
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    zoomAround(x, y, view.z - clampN(dy, -200, 200) / 250);
+    clearTimeout(wheelHash); wheelHash = setTimeout(writeHash, 250);
+  }, {passive: false});
+  ov.addEventListener("dblclick", e => { const [x, y] = localXY(e); animateZoom(x, y, e.shiftKey ? -1 : 1); });
+  $("zin").addEventListener("click", () => animateZoom(view.W / 2, view.H / 2, 1));
+  $("zout").addEventListener("click", () => animateZoom(view.W / 2, view.H / 2, -1));
+  new ResizeObserver(resize).observe($("map"));
+
   tipEl.addEventListener("click", e => {
     if (e.target.closest(".close")) { clearCell(); return; }
     const hit = e.target.closest(".hit");
     if (hit) { stopPlay(); selectSeason(hit.dataset.code); }
   });
-  L.DomEvent.disableClickPropagation(tipEl);
-  L.DomEvent.disableScrollPropagation(tipEl);
   document.addEventListener("keydown", e => {
     if (e.key === "Escape") { clearCell(); stopPlay(); return; }
     if (e.target.closest && e.target.closest("input")) return;
@@ -713,7 +1096,7 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (!SEASON[code]) showStatus(`Loading ${code}…`);
     try { await loadSeason(code); } catch (err) {
       if (state.season !== code) return;
-      COLORS = null; tiles.forEach(paintTile);   // blank rather than the previous season under this label
+      COLORS = null; requestRender();            // blank rather than the previous season under this label
       showStatus(`Could not load ${code}: ${err.message}. Click the season to try again.`);
       return;
     }
@@ -768,28 +1151,32 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
       || COUNTRIES.find(c => c.iso3.toLowerCase() === q || c.name.toLowerCase() === q || (c.alt || "").toLowerCase() === q)
       || COUNTRIES.find(c => c.name.toLowerCase().startsWith(q) || (c.alt || "").toLowerCase().startsWith(q));
     if (!hit) { showStatus(`No country matches “${text}”`); setTimeout(() => showStatus(""), 1800); return; }
-    let [s, w, n, e] = hit.bbox;
-    if (w >= 180) { w -= 360; e -= 360; }  // a western box written in 0-360 longitudes
-    if (e > 180) {                         // crosses 180 degrees: the map has one world, take the larger side
-      if (180 - w >= e - 180) e = 180; else { w = -180; e -= 360; }
-    }
+    const [s, w, n, e] = hit.bbox;          // a box across 180 degrees has e > 180: the globe turns to it
     fitBox(s, w, n, e, 7);
   }
-  // Leaflet's fitBounds projects two corners only, which misjudges a lat/lon box in a projection
-  // whose meridians curve: fit the projected outline of the box instead
+  // centre the view on the box, then the largest zoom at which its projected outline fits the frame
   function fitBox(s, w, n, e, maxZoom) {
-    let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
+    if (e < w) e += 360;
+    stopAnim();
+    view.lon = wrap180((w + e) / 2); view.lat = (s + n) / 2;
+    const pts = [];
     for (let k = 0; k <= 16; k++) {
-      const lat = s + (n - s) * k / 16, lon = w + (e - w) * k / 16;
-      for (const ll of [[lat, w], [lat, e], [s, lon], [n, lon]]) {
-        const pt = EqualEarth.project(L.latLng(ll[0], ll[1]));
-        x0 = Math.min(x0, pt.x); x1 = Math.max(x1, pt.x); y0 = Math.min(y0, pt.y); y1 = Math.max(y1, pt.y);
-      }
+      const la = s + (n - s) * k / 16, lo = w + (e - w) * k / 16;
+      pts.push([la, w], [la, e], [s, lo], [n, lo]);
     }
-    const size = map.getSize(), pad = 48;
-    const z = Math.log2(Math.min((size.x - pad) / ((x1 - x0) * PX0), (size.y - pad) / ((y1 - y0) * PX0)));
-    const zz = Math.max(MINZ, Math.min(maxZoom, Math.floor(z * 4) / 4));
-    map.setView(EqualEarth.unproject(L.point((x0 + x1) / 2, (y0 + y1) / 2)), zz);
+    const fits = () => {
+      derive();
+      const mx = (view.W / 2 - 24) / view.S, my = (view.H / 2 - 24) / view.S;
+      for (const [la, lo] of pts) {
+        const p = projectLL(la, lo);
+        if (!p || Math.abs(p[0]) > mx || Math.abs(p[1]) > my) return false;
+      }
+      return true;
+    };
+    let lo = minZoom(), hi = Math.max(lo, maxZoom);
+    view.z = lo;
+    if (fits()) for (let i = 0; i < 16; i++) { view.z = (lo + hi) / 2; if (fits()) lo = view.z; else hi = view.z; }
+    view.z = lo; clampView(); requestRender(); writeHash();
   }
   $("search").addEventListener("change", e => zoomTo(e.target.value));
   $("search").addEventListener("keydown", e => { if (e.key === "Enter") zoomTo(e.target.value); });
@@ -797,8 +1184,8 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
   // ---------------------------------------------------------------- URL hash
   function writeHash() {
     if (!META) return;
-    const c = map.getCenter();
-    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}&p=ee&m=${map.getZoom()}/${c.lat.toFixed(2)}/${c.lng.toFixed(2)}`;
+    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}` +
+              `&m=${view.z.toFixed(2)}/${view.lat.toFixed(2)}/${view.lon.toFixed(2)}`;
     history.replaceState(null, "", "#" + h);
   }
   function readHash() {
@@ -807,21 +1194,17 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (q.get("s")) out.season = q.get("s").toUpperCase();
     if (q.get("c") === "ramp" || q.get("c") === "classes") out.mode = q.get("c");
     out.dry = q.get("d") === "1";
-    out.ee = q.get("p") === "ee";      // written by the Equal Earth version: longitude as is
     const m = (q.get("m") || "").split("/").map(Number);
     if (m.length === 3 && m.every(Number.isFinite)) out.view = {z: m[0], lat: m[1], lng: m[2]};
     return out;
   }
-  map.on("moveend", writeHash);
-  // links from the Mercator version (no p=ee) may carry a world-copy longitude: fold it into
-  // the one world. This version's own centres can lie beyond +-180 near the edges, so keep them.
-  const foldLng = lng => ((lng + 180) % 360 + 360) % 360 - 180;
-  const hashCentre = h => [h.view.lat, h.ee ? h.view.lng : foldLng(h.view.lng)];
+  // any longitude works now (links from earlier versions too): the globe turns to it
+  function setViewTo(v) { stopAnim(); view.lat = v.lat; view.lon = wrap180(v.lng); view.z = v.z; clampView(); requestRender(); }
   // a pasted link that differs only after "#" does not reload the page
   window.addEventListener("hashchange", () => {
     if (!META) return;
     const h = readHash();
-    if (h.view) map.setView(hashCentre(h), Math.min(MAXZ, Math.max(MINZ, h.view.z)));
+    if (h.view) setViewTo(h.view);
     if (h.mode && h.mode !== state.mode) setMode(h.mode);
     if (h.dry !== state.dry) setDry(h.dry);
     if (h.season && CODES.includes(h.season) && h.season !== state.season) { stopPlay(); selectSeason(h.season); }
@@ -847,18 +1230,28 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     if (h.season && CODES.includes(h.season)) state.season = h.season;
     if (h.mode) state.mode = h.mode;
     state.dry = h.dry;
-    if (h.view) map.setView(hashCentre(h), Math.min(MAXZ, Math.max(MINZ, h.view.z)));
-    else fitBox(-58, -180, 80, 180, MAXZ);
+    resize();
+    if (h.view) setViewTo(h.view);
+    else { view.lon = 0; view.lat = 0; view.z = minZoom(); clampView(); }   // the whole world, Greenwich in the middle
     document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
     document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === state.dry)));
     $("legend").innerHTML = legendHtml();
     updateBadge();
     showStatus("Loading data…");
 
-    fetch(`data/basemap.json${v()}`).then(r => r.json()).then(addBasemap)
+    if (gl) {
+      try { initGL(); } catch (err) { console.error(err); showStatus(`Could not start the map graphics: ${err.message}`); }
+      glCanvas.addEventListener("webglcontextlost", e => { e.preventDefault(); showStatus("The map's graphics were lost: reload the page."); });
+    } else {
+      showStatus("This map needs WebGL 2 (Chrome 56, Firefox 51, Safari 15 or later).");
+    }
+    requestRender();
+    fetch(`data/basemap.json${v()}`).then(r => r.json()).then(bm => { prepBasemap(bm); requestRender(); })
       .catch(err => { console.error(err); showStatus(`Could not load the basemap: ${err.message}`); });
-    const [landBuf, annBuf, countries] = await Promise.all([
-      fetchBuf(`data/land.bin.gz${v()}`), fetchBuf(`data/annual.bin.gz${v()}`),
+    if (document.fonts) Promise.all([document.fonts.load(FONT_C), document.fonts.load(FONT_P)])
+      .then(() => { FONTS_READY = true; requestRender(); }).catch(() => {});
+    const [landBuf, annBuf, polarBuf, countries] = await Promise.all([
+      fetchBuf(`data/land.bin.gz${v()}`), fetchBuf(`data/annual.bin.gz${v()}`), fetchBuf(`data/polar.bin.gz${v()}`),
       fetch(`data/countries.json${v()}`).then(r => r.json()),
       loadSeason(state.season),
     ]);
@@ -868,6 +1261,22 @@ header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
     for (let i = 0; i < cells; i++) if ((bits[i >> 3] >> (7 - (i & 7))) & 1) LANDPOS[i] = k++;
     if (k !== N) throw new Error(`land mask has ${k} cells, expected ${N}`);
     ANNUAL = new Uint16Array(annBuf);
+    if (gl && QP) {
+      const cen = new Float32Array(2 * N);                    // cell centres, in land-cell order
+      for (let i = 0; i < cells; i++) {
+        const q = LANDPOS[i];
+        if (q >= 0) { cen[2 * q] = G.lon0 + (i % G.nx) * G.d; cen[2 * q + 1] = G.lat0 - Math.floor(i / G.nx) * G.d; }
+      }
+      DATA_L = quadLayer(cen, true);
+      const pb = new Uint8Array(polarBuf), pc = [];             // land beyond the data grid
+      let bit = 0;
+      for (const cap of ["north", "south"]) {
+        const [lat0, rows] = META.polar[cap];
+        for (let r = 0; r < rows; r++) for (let c = 0; c < G.nx; c++, bit++)
+          if ((pb[bit >> 3] >> (7 - (bit & 7))) & 1) pc.push(G.lon0 + c * G.d, lat0 - r * G.d);
+      }
+      POLAR_L = quadLayer(new Float32Array(pc), false);
+    }
     COUNTRIES = countries;
     $("countrylist").innerHTML = countries.map(c => `<option value="${c.name} (${c.iso3})"></option>`).join("");
     $("foot").insertAdjacentHTML("beforeend",

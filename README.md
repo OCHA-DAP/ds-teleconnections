@@ -131,7 +131,7 @@ For each country × trimester × index, Pearson *r* is computed across lags up t
 ## ENSO season map
 
 `enso_season_map.py` writes the data behind [`/enso-map/`](https://ocha-dap.github.io/ds-teleconnections/enso-map/),
-an interactive Leaflet map (`docs/enso-map/index.html`) of the Niño3.4 correlation with ERA5 rainfall for
+an interactive map (`docs/enso-map/index.html`, WebGL 2, no libraries) of the Niño3.4 correlation with ERA5 rainfall for
 each of the 12 rolling seasons, per 0.25° land cell. The survey's pixel ENSO map shows each cell's
 strongest season; this map shows every season.
 
@@ -154,21 +154,32 @@ minute. Niño3.4 is the survey's pinned `cache/nino34.data`. Rerun it whenever t
 rerun, so the two stay in step. `--cache-dir` / `--survey-npz` point at another checkout's cache and
 `out/` (useful from a worktree).
 
-**Projection.** The map is drawn in Equal Earth (spherical form, Greenwich-centred), the equal-area
-projection the UN General Assembly encouraged in September 2026. Leaflet has no such CRS, so the page
-defines one (forward formula + Newton inverse, checked against PROJ `+proj=eqearth` to 1e-15) and paints
-each tile pixel by inverting it to a 0.25° cell. There are no Web Mercator basemap tiles: ocean, land,
-borders, a 30° graticule and names are drawn from `basemap.json` (Natural Earth 1:50m countries simplified
-at 0.02°, their label points and `MIN_LABEL` zooms, and 1:50m populated places with their `min_zoom`;
-labels placed greedily without overlaps). One world, no copies: countries across 180° (Fiji, Kiribati)
-appear at both edges.
+**Projection (adaptive, equal-area).** With the whole world in view the map is Equal Earth (spherical
+form), the equal-area projection the UN General Assembly encouraged in September 2026, with its central
+meridian on the view centre: dragging east-west turns the globe, across 180° too. Zooming in blends it
+into a Lambert azimuthal equal-area projection centred on the view (true to shape at the centre, north
+up), by the share of the world's width in view (Equal Earth above 55%, azimuthal below 15%; after Jenny
+2012, adaptive composite map projections). Both ends are equal-area; the blend between them is close to,
+not exactly, equal-area. Zoom out stops at the whole world. Vertically the centre is held so that Equal
+Earth's pole line stays at or beyond the frame (otherwise its back seam opens into a gap over the pole at
+mid zooms); high latitudes can be centred once zoomed in.
+
+Rendering is the page's own (no map library, no Web Mercator tiles): `projCore()` is the one projection
+implementation and the WebGL 2 vertex shader is a line-for-line port. Cells, the ocean (2° quads) and
+land beyond the data grid (`polar.bin.gz`, Antarctica) are instanced quads whose corners are offsets from
+their own centre, clamped at the seam; borders (Natural Earth 1:50m from `basemap.json`, per-vertex
+trigonometry precomputed), the world's edge, the cell highlight and names (Natural Earth label points and
+zooms, placed greedily without overlaps) are drawn on a 2D canvas above. Hover, zoom anchoring and fitting
+a country invert the projection numerically (exact at either end, Newton between; round trips agree to
+1e-8 px). `?debug` exposes the projection as `window.ENSO_MAP` for such checks. Needs WebGL 2.
 
 Data files (the binaries are gzip, decompressed in the page with `DecompressionStream`; Pages compresses
 the JSON in transit): `meta.json` (grid, seasons,
 thresholds, cross-check result, a content hash used to bust caches), `land.bin.gz` (land mask, one bit per
 grid cell, row-major from 84°N/180°W), `annual.bin.gz` (uint16 annual sum of the four canonical seasons'
 mean rainfall, 0.01 mm/day, rounded up), `countries.json` (Natural Earth 1:50m names and bounding boxes for the
-zoom box), `basemap.json` (see above) and one `{season}.bin.gz` per season holding, per land cell, the season's mean rainfall
+zoom box), `basemap.json` (see above), `polar.bin.gz` (land mask beyond the data grid: 23 rows from
+89.75°N, then 119 from 60.25°S, 1,440 columns, one bit per 0.25° cell) and one `{season}.bin.gz` per season holding, per land cell, the season's mean rainfall
 (uint16, 0.01 mm/day, rounded down so the 0.25 mm/day test reads the same as in Python), *r* × 100
 (int8, truncated towards zero so the printed value never crosses a class edge; −128 = none) and a flags byte (bits 0–1 best lag, 2 rainy season,
 3 p < 0.05, 4 *r* computed, 5–7 the survey's colour class wherever p < 0.05). The "Drier months: Show"
@@ -296,7 +307,7 @@ out/                              intermediate correlation tables (git-ignored)
 cache/era5_pixel/                 cached ERA5 monthly grid stack (~850 MB, git-ignored)
   monthly.npy / meta.json
 cache/era5_pixel_global/          the same for the ENSO season map, 60°S–84°N (~1.8 GB, git-ignored)
-docs/enso-map/                    ENSO season map (index.html + vendored Leaflet 1.9.4; data/ from enso_season_map.py)
+docs/enso-map/                    ENSO season map (index.html, WebGL 2; data/ from enso_season_map.py)
 ```
 
 ---
