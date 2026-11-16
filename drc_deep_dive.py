@@ -1689,6 +1689,9 @@ def values(a: dict) -> dict:
     if set(aff.nlargest(2).index) != {2019, 2023}:
         raise ValueError("2023/24 and 2019/20 are no longer the two largest EM-DAT flood seasons: reword the reported headline")
     fs_end = a["fs"]["valid_date"].max()
+    kin_pk = pk[(pk.region == "kinshasa") & (pk.season < NOW)].set_index("season")["peak"]
+    if list(kin_pk[kin_pk >= SEEN_BELOW].index) != [2023]:
+        raise ValueError("Kinshasa no longer has exactly one river flood in the FloodScan record (2023/24): reword partner row 2")
     # how many: the four regions' peaks added up, and the part already in the 2026 PiN
     b = a["split"][a["split"].season.isin(BOTH)].groupby("season")[NEED_KEYS].sum()
     fs_tot = b.sum(axis=1)
@@ -1764,7 +1767,7 @@ def values(a: dict) -> dict:
         **now_climate(),
         **a.get("se", {}),
         **a.get("fc", {}),
-        hm_others=seasons(others5), hm_rank_1516=_ordinal(int(rk[2015])), hm_n=len(allt),
+        kin_n=len(kin_pk), hm_others=seasons(others5), hm_rank_1516=_ordinal(int(rk[2015])), hm_n=len(allt),
     )
 
 
