@@ -230,10 +230,10 @@ def boundaries(level: int) -> gpd.GeoDataFrame:
     return g
 
 
-def _fetch(url: str, p: Path, days: float) -> Path:
+def _fetch(url: str, p: Path, days: float, headers: dict | None = None) -> Path:
     if _stale(p, days):
         try:
-            r = requests.get(url, timeout=120)
+            r = requests.get(url, timeout=120, headers=headers)
             r.raise_for_status()
             p.write_bytes(r.content)
         except Exception as e:  # noqa: BLE001
@@ -287,6 +287,14 @@ def dmi() -> pd.Series:
 
 def dmi_weekly() -> pd.Series:
     return xr.open_dataset(CACHE / "osmc_dmi.nc")["DMI"].to_series()
+
+
+def dmi_bom() -> pd.Series:
+    """Bureau of Meteorology weekly IOD index (OISST), from 2008, indexed by the week's first day. Kept apart from dmi():
+    its monthly values differ from OSMC's by 0.27 °C RMS, so it is never spliced onto that series."""
+    p = _fetch("https://www.bom.gov.au/clim_data/IDCK000072/iod_1.txt", CACHE / "bom_iod.txt", 3, {"User-Agent": "Mozilla/5.0"})
+    df = pd.read_csv(p, header=None, names=["start", "end", "iod"])
+    return df.set_index(pd.to_datetime(df.start.astype(str)))["iod"]
 
 
 def seasonal(s: pd.Series, months: list[int]) -> pd.Series:
@@ -667,12 +675,32 @@ def _place_column(ax, items: list[tuple[float, float, str]], dy: float = 0.075, 
                     arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.5, shrinkA=2, shrinkB=2))
 
 
+ONI_SEASONS = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"]
+DMI_WEEK_YEARS = [2015, 2019, 2023]  # the analogue seasons inside BoM's weekly record (from 2008)
+
+
+def _oni_months(seas: str) -> str:
+    """'ASO' -> 'Aug–Oct' (or 'août–oct.')."""
+    m0 = (ONI_SEASONS.index(seas) - 1) % 12
+    mo = MONTH_ABBR[LANG]
+    return f"{mo[m0]}–{mo[(m0 + 2) % 12]}"
+
+
+def dmi_now() -> dict:
+    """Mean weekly Dipole from 1 October to the latest BoM week, in 2026 and in the analogue years over the same weeks."""
+    b = dmi_bom()
+    end = b.index.max() + pd.Timedelta(days=6)
+    mid = b.index + pd.Timedelta(days=3)
+    out = {y: b[(mid >= pd.Timestamp(y, 10, 1)) & (mid <= end.replace(year=y))].mean() for y in DMI_WEEK_YEARS + [NOW]}
+    return dict(mean=out, last=end)
+
+
 def fig_setup() -> Path:
-    """Where 2026 sits: SON ONI vs SON DMI, 1950–2025, with 2026 so far."""
+    """Left: SON ONI vs SON DMI, 1950–2025, with 2026 so far. Right: BoM weekly Dipole, Jul–Dec, 2026 vs the analogues."""
     son = oni_season("SON")
     d = seasonal(dmi(), [9, 10, 11])
     df = pd.DataFrame({"oni": son, "dmi": d}).dropna().loc[1950:2025]
-    fig, ax = plt.subplots(figsize=(7.2, 4.6))
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(10.2, 4.6), gridspec_kw=dict(width_ratios=[1.5, 1], wspace=0.28))
     _grid(ax, "both")
     ax.axhline(0, color="#9a9993", lw=0.6)
     ax.axvline(0, color="#9a9993", lw=0.6)
@@ -683,29 +711,56 @@ def fig_setup() -> Path:
         if y in BOTH + BOTH_PRE + IOD_ONLY + [1994, 2006]:
             ax.annotate(str(y), (r.oni, r.dmi), xytext=offsets.get(y, (5, 3)), textcoords="offset points", fontsize=8,
                         color="#0b0b0b" if c != OTHER_C else TEXT2)
-    # 2026: latest ONI season (JAS) and September DMI
-    o = oni()
-    latest = o.iloc[-1]
-    dm = dmi()
-    m26 = dm["2026-09-01":"2026-11-30"]  # the months of Sep–Nov 2026 published so far
+    # 2026: latest ONI season and the Sep–Nov 2026 months of the same DMI published so far
+    latest = oni().iloc[-1]
+    m26 = dmi()["2026-09-01":"2026-11-30"]
     d26 = m26.mean()
     mo = MONTH_ABBR[LANG]
     mlab = mo[m26.index[0].month - 1] + ("" if len(m26) == 1 else "–" + mo[m26.index[-1].month - 1])
     ax.scatter(latest.anom, d26, s=90, marker="*", color=NOW_C, zorder=5)
-    ax.annotate(_t(f"2026 so far\n(ONI {latest.seas} {latest.anom:+.1f}, DMI {mlab} {d26:+.1f})",
-                   f"2026 à ce jour\n(ONI {latest.seas} {latest.anom:+.1f}".replace(".", ",") + f", DMI {mlab} " + f"{d26:+.1f})".replace(".", ",")),
-                (latest.anom, d26), xytext=(-4, -62), textcoords="offset points", fontsize=8, ha="center", fontweight="bold",
-                arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.6, shrinkB=6))
+    lab = _t(f"2026 so far\n(ONI {_oni_months(latest.seas)} {latest.anom:+.1f},\nDMI {mlab} {d26:+.1f})",
+             f"2026 à ce jour\n(ONI {_oni_months(latest.seas)} " + f"{latest.anom:+.1f},".replace(".", ",")
+             + f"\nDMI {mlab} " + f"{d26:+.1f})".replace(".", ","))
+    ax.annotate(lab, (latest.anom, d26), xytext=(-22, -112), textcoords="offset points", fontsize=8, ha="center",
+                fontweight="bold", arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.6, shrinkB=6))
     ax.set_xlabel(_t("El Niño strength: ONI, Sep–Nov (°C)", "Force d'El Niño : ONI, sept.–nov. (°C)"))
     ax.set_ylabel(_t("Indian Ocean Dipole: DMI, Sep–Nov (°C)", "Dipôle de l'océan Indien : DMI, sept.–nov. (°C)"))
     ax.legend(handles=[
         Line2D([], [], marker="o", ls="", color=BOTH_C, label=_t(*CLASS_BOTH)),
         Line2D([], [], marker="o", ls="", color=IOD_C, label=_t(*CLASS_IOD)),
         Line2D([], [], marker="*", ls="", color=NOW_C, ms=10, label="2026"),
-    ], loc="upper left", fontsize=8)
+    ], loc="upper left", bbox_to_anchor=(0, 0.88), fontsize=8)
+    _titled(ax, _t("Sep–Nov, 1950–2025", "Sept.–nov., 1950–2025"), "")
+
+    # right: the Dipole week by week (one index, BoM), so 2026 can be read against the analogues to date
+    b = dmi_bom()
+    _grid(bx)
+    bx.axhline(0, color="#9a9993", lw=0.6)
+    bx.axhline(0.4, color=TEXT2, lw=0.7, ls=(0, (3, 2)))
+    bx.text(pd.Timestamp(NOW, 11, 12), 0.36, _t("positive Dipole\n(+0.4)", "dipôle positif\n(+0,4)"), fontsize=7.5, color=TEXT2, va="top")
+    ends = []
+    for y in DMI_WEEK_YEARS + [NOW]:
+        w = b[pd.Timestamp(y, 7, 1):pd.Timestamp(y, 12, 31)]
+        w.index = [t.replace(year=NOW) for t in w.index]
+        now = y == NOW
+        bx.plot(w.index, w.values, color=season_color(y), lw=2.2 if now else 1.3, zorder=4 if now else 3)
+        end = b.index.max() + pd.Timedelta(days=6)
+        ends.append((w.index[-1], w.iloc[-1], season_label(y) if not now else f"2026, {_t('to', 'au')} {end.day} {mo[end.month - 1]}", y))
+    for x, v, t, y in ends:
+        bx.annotate(t, (x, v), xytext=(4, 0), textcoords="offset points", fontsize=7.5, va="center",
+                    color="#0b0b0b", fontweight="bold" if y == NOW else "normal")
+    bx.set_xlim(pd.Timestamp(NOW, 7, 1), pd.Timestamp(NOW, 12, 31))
+    bx.xaxis.set_major_locator(mdates.MonthLocator())
+    bx.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: mo[mdates.num2date(x).month - 1]))
+    bx.set_ylabel(_t("Dipole index, weekly (°C)", "Indice du dipôle, hebdomadaire (°C)"))
+    _titled(bx, _t("The Dipole week by week, Jul–Dec", "Le dipôle semaine par semaine, juil.–déc."), "")
     wk = dmi_weekly().index.max()
-    _source(fig, _t(f"Sources: NOAA CPC ONI; DMI from NOAA OSMC (OISST) since Oct 1981 (latest week {_date(wk)}), NOAA PSL (HadISST) before.",
-                    f"Sources : NOAA CPC (ONI) ; DMI : NOAA OSMC (OISST) depuis oct. 1981 (dernière semaine {_date(wk)}), NOAA PSL (HadISST) avant."))
+    _source(fig, _t(f"Left: NOAA CPC ONI; DMI from NOAA OSMC (OISST) since Oct 1981 (no data after {_date(wk)}), NOAA PSL (HadISST) before. "
+                    f"Right: Bureau of Meteorology weekly IOD index (OISST, from 2008, so 1997 is not shown); its values differ "
+                    f"a little from OSMC's, so values in the two panels are not directly comparable.",
+                    f"Gauche : NOAA CPC (ONI) ; DMI : NOAA OSMC (OISST) depuis oct. 1981 (pas de données après le {_date(wk)}), NOAA PSL "
+                    f"(HadISST) avant. Droite : indice hebdomadaire IOD du Bureau of Meteorology (OISST, depuis 2008 : 1997 n'y figure pas) ; "
+                    f"ses valeurs diffèrent un peu de celles d'OSMC : les valeurs des deux panneaux ne se comparent pas directement."))
     return _save(fig, "setup")
 
 
@@ -819,17 +874,40 @@ def _titled(ax, title: str, sub: str) -> None:
     ax.text(0, 1.015, sub, transform=ax.transAxes, fontsize=7.5, color=TEXT2, va="bottom")
 
 
-def fig_flood_cycle(series: dict) -> Path:
+LUBUMBASHI = "CD7101"
+
+
+def _full_window(s: pd.Series) -> pd.Series:
+    """Drop the last days, where the centred median only has half its window."""
+    return s[:s.dropna().index.max() - pd.Timedelta(days=SMOOTH_DAYS // 2)]
+
+
+def fig_flood_cycle(series: dict, fs: pd.DataFrame) -> Path:
     fig, axes = plt.subplots(2, 2, figsize=(9.2, 6.8))
     for ax, (k, r) in zip(axes.flat, REGIONS.items()):
-        labels = _season_lines(ax, series[k])
+        labels = _season_lines(ax, _full_window(series[k]))
         _titled(ax, _t(r["en"], r["fr"]), _t(*REGION_SUB[k]))
         top = max(v for _, v, _ in labels) if labels else ax.get_ylim()[1]
         ax.set_ylim(0, max(ax.get_ylim()[1], top * 1.12))
         _place_column(ax, labels)
+        # Lubumbashi city (territory CD7101) switches on and off from one day to the next in the rainy season; the
+        # median keeps part of it, so say so while it is happening
+        f2 = floodscan_adm2() if k == "southeast" else None
+        lub = None if f2 is None else f2[(f2.pcode == LUBUMBASHI) & (f2.valid_date > f2.valid_date.max() - pd.Timedelta(days=SMOOTH_DAYS))]["sum"]
+        if lub is not None and lub.max() > 100_000 and lub.min() < 0.1 * lub.max():
+            se = _full_window(series[k])
+            x = (se.index[-1] - pd.Timestamp(NOW, 7, 1)).days
+            when = f"{MONTH_ABBR[LANG][se.index[-1].month - 1]} {se.index[-1].year}"
+            lo, hi = _num(lub.min() / 1000), _num(lub.max() / 1000)
+            ax.annotate(_t(f"{when}: Lubumbashi city\nswitches between {lo}k and {hi}k\nfrom one day to the next, as\n"
+                           "in past rainy seasons; unlikely\nto be a flood",
+                           f"{when} : la ville de\nLubumbashi passe de {lo} k\nà {hi} k d'un jour à l'autre,\n"
+                           "comme lors des saisons des\npluies passées ; sans doute\npas une inondation"),
+                        (x, se.iloc[-1] / 1000), xytext=(0.02, 0.42), textcoords="axes fraction", fontsize=7.5, color="#0b0b0b",
+                        va="bottom", arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.5, shrinkB=3))
     for ax in axes[:, 0]:
         ax.set_ylabel(_t("people in flooded areas (thousands)", "personnes en zone inondée (milliers)"))
-    last = max(s.dropna().index.max() for s in series.values())
+    last = max(_full_window(s).index.max() for s in series.values())
     fig.legend(handles=[
         Line2D([], [], color=BOTH_C, lw=1.8, label="2023/24"),
         Line2D([], [], color=BOTH_C, lw=1.8, ls=(0, (4, 1.5)), label="2015/16"),
@@ -1362,7 +1440,8 @@ def fig_southeast() -> tuple[Path, dict]:
 # --------------------------------------------------------------------------- #
 EXTRA_CSS = """
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0 8px}
-.tile{border:1px solid #e2e7e7;border-top:3px solid #eb6834;border-radius:6px;padding:12px 14px;background:#fff}
+.tilehead{font-size:13px;font-weight:600;color:var(--n7);margin:18px 0 -10px;text-transform:uppercase;letter-spacing:.04em}
+.tile{border:1px solid #e2e7e7;border-top:3px solid #0b0b0b;border-radius:6px;padding:12px 14px;background:#fff}
 .tile .big{font-size:24px;font-weight:700;margin:0 0 4px;line-height:1.15}
 .tile p{font-size:13px;color:var(--n8);margin:0}
 section h2{font-size:18px;line-height:1.35}
@@ -1418,21 +1497,35 @@ def now_corridor(series: dict, fs: pd.DataFrame, pk: pd.DataFrame) -> dict:
     day = int(df.loc[last, "day"])
     on = df[df.day == day].set_index("season")["v"]
     now = on[NOW]
-    july = df[(df.season == NOW) & (df.index.month == 7)]["v"].min()
-    if not now > 2 * july:
-        raise ValueError("the Congo/Ubangi line is no longer rising since July: reword the timing note")
-    p = fs[fs.pcode.isin(REGIONS["corridor"]["pcodes"]) & fs.valid_date.between(last - pd.Timedelta(days=13), last)]
-    by_prov = p.groupby("pcode")["sum"].mean()
-    if by_prov.max() < 0.5 * by_prov.sum():
-        raise ValueError("no single province holds most of the 2026/27 water: reword the timing note")
     corr = pk[pk.region == "corridor"].set_index("season")["peak"].rank(ascending=False)
     if on.get(2015, np.inf) >= now:
         raise ValueError("2015/16 was not lower than 2026/27 on this date: reword the timing note")
-    return dict(now_k=_num(now / 1000), now_date=_date(last), now_n=len(on),
+    mo = MONTH_ABBR[LANG]
+    return dict(now_k=_num(now / 1000), now_date=_date(last), now_day=f"{last.day} {mo[last.month - 1]}", now_n=len(on),
                 now_rank_en=_rank_en(int(on.rank(ascending=False)[NOW])), now_rank_fr=_rank_fr(int(on.rank(ascending=False)[NOW])),
-                now_prov=boundaries(1).set_index("ADM1_PCODE")["ADM1_FR"][by_prov.idxmax()],
                 early_1516=_num(on[2015] / 1000, 1), rank_1516_en=_rank_en(int(corr[2015]), "largest"),
                 rank_1516_fr=_rank_fr(int(corr[2015]), "plus grande", "la"))
+
+
+def now_climate() -> dict:
+    """2026 so far: the latest ONI season against every year, and the weekly Dipole since 1 October against the analogues."""
+    o = oni()
+    latest = o.iloc[-1]
+    same = o[o.seas == latest.seas].set_index("year")["anom"]
+    if same.idxmax() != latest.year:
+        raise ValueError(f"ONI {latest.seas} {latest.year} is no longer the highest on record: reword tile 1")
+    son = seasonal(dmi(), [9, 10, 11])
+    if son.loc[[y for y in BOTH if y in son.index]].idxmin() != 2015:
+        raise ValueError("2015/16 is no longer the analogue season with the weakest Dipole: reword the setup headline")
+    dn = dmi_now()
+    m = dn["mean"]
+    ratios = [m[NOW] / m[y] for y in (2019, 2023)]
+    if abs(m[NOW] - m[2015]) > 0.15 or not all(0.35 <= r <= 0.6 for r in ratios) or m[NOW] < 0.4:
+        raise ValueError(f"the 2026 Dipole is no longer like 2015 and about half of 2019/2023 ({m}): reword tile 2 and the setup headline")
+    sign = lambda x: ("+" if x >= 0 else "−") + _num(abs(x), 1)  # noqa: E731
+    mo = MONTH_ABBR[LANG]
+    return dict(oni_now=sign(latest.anom), oni_months=_oni_months(latest.seas), oni_year=int(latest.year), oni_n=len(same),
+                dmi_now=sign(m[NOW]), dmi_end=_t(f"{dn['last'].day} {mo[dn['last'].month - 1]}", f"{dn['last'].day} {mo[dn['last'].month - 1]}"))
 
 
 def values(a: dict) -> dict:
@@ -1449,7 +1542,7 @@ def values(a: dict) -> dict:
     corr = pk[pk.region == "corridor"].set_index("season")["peak"].rank(ascending=False)
     top = sorted(int(corr[y]) for y in BOTH if y in corr.index)
     if top != [1, 2, 3]:
-        raise ValueError(f"the El Niño + Dipole seasons are no longer the top 3 on the Congo and Ubangi ({top}): reword tile 1")
+        raise ValueError(f"the El Niño + Dipole seasons are no longer the top 3 on the Congo and Ubangi ({top}): reword the range headline and partner row 2")
     if set(aff.nlargest(2).index) != {2019, 2023}:
         raise ValueError("2023/24 and 2019/20 are no longer the two largest EM-DAT flood seasons: reword the reported headline")
     fs_end = a["fs"]["valid_date"].max()
@@ -1461,40 +1554,35 @@ def values(a: dict) -> dict:
     i = a["split"][a["split"].season.isin(IOD_ONLY)][NEED_KEYS].sum()
     riv = a["split"][a["split"].region.isin(["corridor", "kinshasa"]) & a["split"].season.isin(BOTH)][NEED_KEYS].sum()
     if riv["sev12"] / riv.sum() < 0.85:
-        raise ValueError("people in flooded areas on the rivers are no longer almost all in severity-2 zones: reword the hnrp-split note")
+        raise ValueError("people in flooded areas on the rivers are no longer almost all in severity-2 zones: reword the hnrp-split headline")
     # other seasons ranking with the analogues on the Lualaba floodplains and in the south-east
     tops = [set(pk[pk.region == k].nlargest(3, "peak").season) - set(BOTH + IOD_ONLY) for k in ("tanganyika", "southeast")]
     others = sorted(tops[0] & tops[1])
     if not others:
-        raise ValueError("no other season is in the top 3 of both the Lualaba floodplains and the south-east: reword the range note")
+        raise ValueError("no other season is in the top 3 of both the Lualaba floodplains and the south-east: reword the range headline")
     # deadliest reported floods
     dead = ev.set_index("DisNo.")["deaths"]
     deadliest = ["2023-0281-COD", "2024-0268-COD", "2022-0805-COD", "2025-0245-COD"]  # Kalehe; 2023/24 rivers; Kinshasa x2
-    if set(dead.nlargest(4).index) != set(deadliest) or dead.idxmax() != deadliest[0]:
-        raise ValueError(f"the four deadliest EM-DAT floods changed ({list(dead.nlargest(4).index)}): reword the reported note")
+    if dead.idxmax() != deadliest[0]:
+        raise ValueError(f"Kalehe is no longer the deadliest EM-DAT flood ({dead.idxmax()}): reword the reported headline")
     # rain in the analogue seasons
     rs = rain_shares(a["anoms"]).sort_values("year")
-    ond, jfm = rs[rs.season == "OND"], rs[rs.season == "JFM"]
+    ond = rs[rs.season == "OND"]
     ond_dry = list(ond[ond.cls == "dry"].year)
-    jfm_dry = jfm[jfm.cls == "dry"]
-    if ond_dry != [2015] or ond[ond.cls == "wet"].empty or jfm_dry.empty or jfm_dry.dry.min() < 60:
+    if ond_dry != [2015] or ond[ond.cls == "wet"].empty:
         raise ValueError("the rain maps no longer say what the rain headline says: reword it")
     # El Niño's own drying around Kinshasa (CHIRPS, Sep–Nov)
     adm1 = boundaries(1)
     kin = _cells(a["maps"][("enso", "SON")], adm1[adm1.ADM1_PCODE.isin(["CD10", "CD20"])])
     later = [(_cells(a["maps"][("enso", s)], adm1[adm1.ADM1_PCODE.isin(["CD10", "CD20"])]) <= -0.3).mean() for s in ("NDJ", "JFM")]
     if (kin <= -0.3).mean() < 0.5 or max(later) > 0.2:
-        raise ValueError("El Niño's drying around Kinshasa is no longer confined to Sep–Nov: reword the drivers note")
+        raise ValueError("El Niño's drying around Kinshasa is no longer confined to Sep–Nov: reword the drivers headline")
     fl, fr = a["lists"], hnrp_flood_risk()
     unseen = fl[fl[2023] < SEEN_BELOW]
-    if fl.loc[LULUA_BLIND, "record"].max() > 0:
-        raise ValueError("Luebo has been seen flooded: reword the hnrp-list headline")
     blind = {k: unseen[unseen.index.str.startswith(tuple(v))]["risk"].sum() / fr.sum() * 100 for k, v in UNSEEN_GROUPS.items()}
-    if sum(blind.values()) <= unseen["risk"].sum() / fr.sum() * 50:
-        raise ValueError("the called-out places no longer hold most of the unseen list: reword the hnrp-list note")
     # the lake: rises like the strongest-Dipole seasons pass the record, a 2015/16-like rise stops short (tile 3, lake, partner row)
     if lk["oct26"] + min(rz.loc[strong, "rise"]) <= lk["record"] or lk["oct26"] + rz.loc[2015, "rise"] >= lk["record"]:
-        raise ValueError("the lake scenarios no longer straddle the 2024 peak as the text says: reword tile 3 and the lake section")
+        raise ValueError("the lake scenarios no longer straddle the 2024 peak as the text says: reword the lake headline and partner row 3")
     z = pin().set_index("admin3_code")
     by_sev = z.groupby([hz_territory(), z["final_severity"]])["population"].sum().unstack(fill_value=0)
     seasons = lambda ys: _join([season_label(y) for y in ys])  # noqa: E731
@@ -1525,10 +1613,10 @@ def values(a: dict) -> dict:
         dead_kalehe=_num(dead["2023-0281-COD"]), dead_rivers=_num(dead["2024-0268-COD"]),
         dead_kin22=_num(dead["2022-0805-COD"]), dead_kin25=_num(dead["2025-0245-COD"]),
         ond_wet_years=seasons(ond[ond.cls == "wet"].year), ond_dry_years=seasons(ond_dry),
-        jfm_dry_years=seasons(jfm_dry.year), jfm_dry_hi=_num(jfm_dry.dry.max()),
         enso_kin=_num((kin <= -0.3).mean() * 100),
         emdat_end=_date(ev["Last Update"].max()),
         **now_corridor(a["series"], a["fs"], pk),
+        **now_climate(),
         **a.get("se", {}),
     )
 
@@ -1556,6 +1644,7 @@ def render(spec: dict, a: dict, figs: dict) -> str:
     out.append(f'<a class="lang" href="{"fr/" if L == "en" else "../"}">{"Français" if L == "en" else "English"}</a>')
     out.append(f'<p class="eyebrow">{_t("Restricted · El Niño 2026/27", "Accès restreint · El Niño 2026/27")}</p>')
     out.append(f'<h1>{pg["title_" + L]}</h1><p class="meta">{pg["sub_" + L]}<br>{pg["dateline_" + L].format(**v)}</p>')
+    out.append(f'<p class="tilehead">{pg["tiles_" + L]}</p>')
     out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t.get("big_" + L, t["big"]).format(**v)}</p><p>{t[L].format(**v)}</p></div>'
                                                 for t in spec["tiles"]) + "</div>")
     for sec in spec["sections"]:
@@ -1625,7 +1714,7 @@ def figures(a: dict) -> dict:
     f["setup"] = fig_setup()
     f["drivers"] = fig_drivers(a["maps"], a["maps_era5"])
     f["rain_years"] = fig_rain_years(a["anoms"])
-    f["flood_cycle"] = fig_flood_cycle(a["series"])
+    f["flood_cycle"] = fig_flood_cycle(a["series"], a["fs"])
     f["flood_peaks"] = fig_flood_peaks(a["peaks"])
     f["lake"], a["lake"] = fig_lake()
     f["reported"] = fig_reported(a["events"])
