@@ -395,6 +395,27 @@ def lubumbashi_maize() -> dict[str, pd.Series]:
     return out
 
 
+def era5_adm1() -> pd.DataFrame:
+    """ERA5 monthly mean precipitation (mm/day) per province, team raster stats (prod)."""
+    df = _db("era5_adm1", "select pcode, valid_date, mean from public.era5 where iso3 = 'COD' and adm_level = 1", "prod", 20)
+    df["valid_date"] = pd.to_datetime(df["valid_date"])
+    return df
+
+
+def seas5_adm1() -> pd.DataFrame:
+    """SEAS5 monthly ensemble-mean precipitation (mm/day) per province by issuance and lead, team raster stats (prod);
+    refetched once a new issuance should be in (from the 6th of the month)."""
+    now = pd.Timestamp.now()
+    expected = (now if now.day >= 6 else now - pd.DateOffset(months=1)).to_period("M").to_timestamp()
+    p = CACHE / "seas5_adm1.parquet"
+    stale = not p.exists() or pd.Timestamp(pd.read_parquet(p, columns=["issued_date"]).issued_date.max()) < expected
+    df = _db("seas5_adm1", "select pcode, issued_date, valid_date, leadtime, mean from public.seas5 "
+             "where iso3 = 'COD' and adm_level = 1", "prod", 0 if stale else 3650)
+    for c in ("issued_date", "valid_date"):
+        df[c] = pd.to_datetime(df[c])
+    return df
+
+
 # --------------------------------------------------------------------------- #
 # Regions (FloodScan sees river and lake floods; it does not see flash floods on the Kivu slopes)
 # --------------------------------------------------------------------------- #
@@ -465,7 +486,6 @@ def partial_r(y: np.ndarray, x: np.ndarray, z: np.ndarray) -> np.ndarray:
     return (rx @ ry) / np.sqrt((rx**2).sum() * (ry**2).sum(0))
 
 
-DRY_SEASON_MM = 150
 RAIN_SEASONS = {"SON": [9, 10, 11], "OND": [10, 11, 12], "NDJ": [11, 12, 13], "DJF": [12, 13, 14], "JFM": [13, 14, 15]}
 INDEX_MONTHS = {"SON": [9, 10, 11], "OND": [9, 10, 11], "NDJ": [10, 11, 12], "DJF": [11, 12, 13], "JFM": [11, 12, 13]}
 
@@ -487,19 +507,6 @@ def driver_maps(product: str = "chirps_v3", y0: int = 1981, y1: int = 2025) -> d
             r[good] = partial_r(Y[:, good], x, z)
             out[(key, sname)] = xr.DataArray(r.reshape(rs.shape[1:]), coords=dict(lat=rs.lat, lon=rs.lon))
         out["n"] = int(ok.sum())
-    return out
-
-
-def rain_anomalies(product: str = "chirps_v3") -> dict:
-    da = rain(product)
-    out = {}
-    for sname in ("OND", "JFM"):
-        rs = rain_season(da, RAIN_SEASONS[sname])
-        clim = rs.sel(year=slice(1991, 2020)).mean("year")
-        for y in BOTH_PRE[1:] + BOTH + IOD_ONLY:
-            if y in rs.year:
-                # cells whose normal 3-month total is under 150 mm are in their dry season: % anomalies mean little there
-                out[(sname, y)] = (rs.sel(year=y) / clim * 100).where(clim >= DRY_SEASON_MM, -1)
     return out
 
 
@@ -563,14 +570,18 @@ def territory_cross(sm: pd.DataFrame) -> gpd.GeoDataFrame:
     return g
 
 
-# People in flooded areas by the 2026 HNRP status of the health zones they live in (ordinal ink ramp, darkest = counted
-# in need in the most severe zones; validated as an ordinal ramp on the page surface).
+# People in flooded areas by the 2026 HNRP status of the health zones they live in: purple = in the PiN, teal = not in
+# the PiN, dark = severity 4–5, light = severity 3, grey = severity 2 or less (almost no PiN). Each two-step ramp passes the
+# dataviz ordinal checks on the page surface; all five pass CVD separation pairwise (the grey gets an outline: < 2:1).
 NEED_CATS = [
-    ("pin45", "in PiN, severity 4–5 zones", "dans le PiN, zones en sévérité 4–5", "#1f1e1c"),
-    ("pin3", "in PiN, severity 3 zones", "dans le PiN, zones en sévérité 3", "#55544f"),
-    ("out345", "not in PiN, severity 3–5 zones", "hors PiN, zones en sévérité 3–5", "#86857e"),
-    ("sev12", "zones at severity 2 or less (almost no PiN)", "zones en sévérité 2 ou moins (presque pas de PiN)", "#b0afa8"),
+    ("pin45", "in PiN, severity 4–5", "dans le PiN, sévérité 4–5", "#4a2a7f"),
+    ("pin3", "in PiN, severity 3", "dans le PiN, sévérité 3", "#8b78c4"),
+    ("out45", "not in PiN, severity 4–5", "hors PiN, sévérité 4–5", "#1f6f63"),
+    ("out3", "not in PiN, severity 3", "hors PiN, sévérité 3", "#6bb3a5"),
+    ("sev12", "severity 2 or less (almost no PiN)", "sévérité 2 ou moins (presque pas de PiN)", "#d4d2cb"),
 ]
+SEV12_EDGE = "#a8a69f"
+LIST_C = "#55544f"  # the HNRP flood-risk list bars
 NEED_KEYS = [k for k, *_ in NEED_CATS]
 
 
@@ -587,7 +598,8 @@ def need_counts() -> pd.DataFrame:
     hz = pd.DataFrame({
         "pin45": z["final_pin"].where(sev >= 4, 0),
         "pin3": z["final_pin"].where(sev == 3, 0),
-        "out345": (z["population"] - z["final_pin"]).clip(lower=0).where(sev >= 3, 0),
+        "out45": (z["population"] - z["final_pin"]).clip(lower=0).where(sev >= 4, 0),
+        "out3": (z["population"] - z["final_pin"]).clip(lower=0).where(sev == 3, 0),
         "sev12": z["population"].where(sev <= 2, 0),
     })
     return hz.groupby(hz_territory()).sum()
@@ -673,6 +685,167 @@ def _place_column(ax, items: list[tuple[float, float, str]], dy: float = 0.075, 
         ax.annotate(text, (x, y), xytext=(col, 0.95 - i * dy), textcoords="axes fraction", ha="right", va="center",
                     fontsize=fontsize, color="#0b0b0b",
                     arrowprops=dict(arrowstyle="-", color=TEXT2, lw=0.5, shrinkA=2, shrinkB=2))
+
+
+# --------------------------------------------------------------------------- #
+# SEAS5, latest issuance: where this year's forecast ranks among the 1981–2025 forecasts issued in the same month, per
+# province (the seas5-skill viewer's admin-level method, as on the Venezuela page: three-month means, log1p, scaled to
+# ERA5, both detrended; skill = hindcast correlation with ERA5)
+# --------------------------------------------------------------------------- #
+SEAS5_T = {"sev_rp": 3, "vsev_rp": 10, "r_mod": 0.3, "r_high": 0.5, "rainy_share": 0.15}
+SEAS5_FILL = {"vsev_dry": "#7f5619", "sev_dry": "#dda555", "none": "#e2e8e8", "sev_wet": "#74a1e8", "vsev_wet": "#134ead",
+              "off_season": "#b1c1c2", "low_skill": "#ffffff"}
+SEAS5_HATCH_WHITE, SEAS5_HATCH_GREY, SEAS5_CROSS = (1, 1, 1, 0.7), "#9db1b3", "#b1c1c2"
+FC_N = 4  # three-month windows shown, starting with the issuance month
+MONTH_FULL = {"en": ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October",
+                     "November", "December"],
+              "fr": ["janvier", "février", "mars", "avril", "mai", "juin", "juillet", "août", "septembre", "octobre",
+                     "novembre", "décembre"]}
+
+
+def _fc_windows(im: int) -> dict[str, list[int]]:
+    return {"".join("JFMAMJJASOND"[(im - 1 + k + j) % 12] for j in range(3)): [(im - 1 + k + j) % 12 + 1 for j in range(3)]
+            for k in range(FC_N)}
+
+
+def _fc_pair(f: pd.Series, o: pd.Series) -> tuple[pd.Series, pd.Series, pd.Index]:
+    """Forecast and observed three-month means by season year -> both log1p, the forecast scaled to ERA5, both detrended."""
+    f, o = np.log1p(f.clip(lower=0)), np.log1p(o.clip(lower=0))
+    hist = f.index.intersection(o.index)
+    f = (f - f[hist].mean()) / max(f[hist].std(ddof=1), 1e-9) * o[hist].std(ddof=1) + o[hist].mean()
+    x = hist.values.astype(float)
+    a_, b_ = np.polyfit(x, f[hist].values, 1)
+    f = f - (a_ * f.index.values.astype(float) + b_) + f[hist].mean()
+    a_, b_ = np.polyfit(x, o[hist].values, 1)
+    o = o - (a_ * o.index.values.astype(float) + b_) + o[hist].mean()
+    return f, o, hist
+
+
+def _fc_series(s: pd.DataFrame, e: pd.DataFrame, pcs: list[str], months: list[int], im: int) -> tuple[pd.Series, pd.Series]:
+    """Mean over `pcs` and the window's three months: forecasts by issue year; ERA5 by the same season year (months from
+    the issuance month on belong to that year, earlier months to the next)."""
+    f = s[s.pcode.isin(pcs) & s.valid_date.dt.month.isin(months)]
+    f = f.groupby(f.issued_date.dt.year)["mean"].mean()
+    o = e[e.pcode.isin(pcs) & e.valid_date.dt.month.isin(months)]
+    sy = np.where(o.valid_date.dt.month >= im, o.valid_date.dt.year, o.valid_date.dt.year - 1)
+    g = o.groupby(sy)
+    o = g["mean"].mean()[g["valid_date"].nunique() == 3]
+    return f, o
+
+
+def seas5_rank() -> dict:
+    s, e = seas5_adm1(), era5_adm1()
+    issued = s.issued_date.max()
+    im, year = issued.month, issued.year
+    s = s[s.issued_date.dt.month == im].dropna(subset=["mean"])
+    win = _fc_windows(im)
+    pcs = sorted(s.pcode.unique())
+    pct, skill = {}, {}
+    for code, months in win.items():
+        for pc in pcs:
+            f, o, hist = _fc_pair(*_fc_series(s, e, [pc], months, im))
+            if year in o.index or year not in f.index:
+                raise ValueError(f"{code} {pc}: the {year} forecast is missing or already observed")
+            pct.setdefault(code, {})[pc] = 100.0 * float((f[hist] < f[year]).sum()) / len(hist)
+            skill.setdefault(code, {})[pc] = float(np.corrcoef(f[hist].values, o[hist].values)[0, 1])
+    mc = e.groupby(["pcode", e.valid_date.dt.month])["mean"].mean().unstack()
+    rainy = pd.DataFrame({code: 3 * mc[months].mean(axis=1) / mc.sum(axis=1) >= SEAS5_T["rainy_share"] for code, months in win.items()})
+    # the Congo and Ubangi provinces as one area, in this year's and the analogue years' forecasts and rain
+    first = list(win.values())[0]
+    f, o, hist = _fc_pair(*_fc_series(s, e, REGIONS["corridor"]["pcodes"], first, im))
+    region = dict(fc={y: float((f[hist] < f[y]).mean() * 100) for y in BOTH + [year]},
+                  obs={y: float((o[hist] < o[y]).mean() * 100) for y in BOTH})
+    return dict(pct=pd.DataFrame(pct).reindex(pcs), skill=pd.DataFrame(skill).reindex(pcs), rainy=rainy.reindex(pcs),
+                year=year, im=im, win=win, n_hist=len(hist), region=region)
+
+
+def seas5_class(pct: float, r: float, rainy: bool) -> tuple[str, str]:
+    """(class, skill) for one forecast cell, as the seas5-skill viewer's classify(): outside the rainy season first, then
+    low skill, then the forecast class."""
+    if np.isnan(pct) or np.isnan(r):
+        raise ValueError("SEAS5 rank or skill missing for a province: the viewer would show it as not monitored")
+    if not rainy:
+        return "off_season", ""
+    if r < SEAS5_T["r_mod"]:
+        return "low_skill", ""
+    v, sev = 100 / SEAS5_T["vsev_rp"], 100 / SEAS5_T["sev_rp"]
+    cls = "vsev" if pct <= v or pct >= 100 - v else "sev" if pct <= sev or pct >= 100 - sev else "none"
+    if cls != "none":
+        cls += "_dry" if pct < 50 else "_wet"
+    return cls, "high" if r >= SEAS5_T["r_high"] else "mod"
+
+
+def fig_forecast() -> tuple[Path, dict]:
+    fc = seas5_rank()
+    pr, sk, rainy, win = fc["pct"], fc["skill"], fc["rainy"], fc["win"]
+    adm1 = boundaries(1)
+    adm0 = boundaries(0)
+    mo = MONTH_ABBR[LANG]
+    fig, axes = plt.subplots(1, len(win), figsize=(10.2, 3.6))
+    classes = {}
+    for ax, (code, months) in zip(axes, win.items()):
+        cls = {pc: seas5_class(pr.loc[pc, code], sk.loc[pc, code], bool(rainy.loc[pc, code])) for pc in pr.index}
+        classes[code] = cls
+        g = adm1.assign(cls=adm1.ADM1_PCODE.map(lambda pc: cls[pc][0]), skill=adm1.ADM1_PCODE.map(lambda pc: cls[pc][1]))
+        g.plot(ax=ax, color=g.cls.map(SEAS5_FILL), edgecolor="none", lw=0)
+        for mask, colour, hatch in ((g.cls == "low_skill", SEAS5_CROSS, "xxx"),
+                                    ((g.skill == "mod") & (g.cls != "none"), SEAS5_HATCH_WHITE, "////"),
+                                    ((g.skill == "mod") & (g.cls == "none"), SEAS5_HATCH_GREY, "////")):
+            if mask.any():
+                g[mask].plot(ax=ax, facecolor="none", edgecolor=colour, hatch=hatch, lw=0)
+        _map_axes(ax, adm1)
+        adm0.boundary.plot(ax=ax, color="#52514e", lw=0.6)
+        ax.set_title(f"{mo[months[0] - 1]}–{mo[months[-1] - 1]}", fontsize=10)
+    leg = [Patch(facecolor=SEAS5_FILL[k], label=lab) for k, lab in (
+        ("vsev_dry", _t("Strongly below normal", "Très inférieur à la normale")), ("sev_dry", _t("Below normal", "Inférieur à la normale")),
+        ("none", _t("Near normal", "Proche de la normale")), ("sev_wet", _t("Above normal", "Supérieur à la normale")),
+        ("vsev_wet", _t("Strongly above normal", "Très supérieur à la normale")),
+        ("off_season", _t("Outside rainy season", "Hors saison des pluies")))]
+    skl = [Patch(facecolor="#ffffff", edgecolor="#c4d0d1", label=_t("High — solid", "Élevée — uni")),
+           Patch(facecolor="#ffffff", edgecolor=SEAS5_HATCH_GREY, hatch="////", label=_t("Moderate — hatched", "Moyenne — hachuré")),
+           Patch(facecolor="#ffffff", edgecolor=SEAS5_CROSS, hatch="xxx", label=_t("Low — not shown", "Faible — non montré"))]
+    fig.legend(handles=leg, loc="lower center", ncols=3, fontsize=7.5, bbox_to_anchor=(0.36, -0.03), title=_t("Forecast rain", "Pluie prévue"),
+               title_fontsize=8)
+    fig.legend(handles=skl, loc="lower center", ncols=1, fontsize=7.5, bbox_to_anchor=(0.82, -0.03), title=_t("Skill", "Fiabilité"),
+               title_fontsize=8)
+    fig.subplots_adjust(left=0.01, right=0.99, top=0.93, bottom=0.2, wspace=0.03)
+    year, n = fc["year"], fc["n_hist"]
+    m0 = MONTH_FULL[LANG][fc["im"] - 1]
+    _source(fig, _t(f"Where the {m0} {year} forecast ranks among the {n} {m0} forecasts for 1981–2025, by province (ECMWF SEAS5 "
+                    "ensemble mean, detrended), classed as in the team's seas5-skill viewer: strongly below or above normal = the driest "
+                    "or wettest 10% of forecasts, below or above = the driest or wettest third. Skill = hindcast correlation with ERA5: "
+                    "high from 0.5, moderate 0.3–0.5, low under 0.3. Outside rainy season: the three months bring less than 15% of the "
+                    "year's rain (ERA5).",
+                    f"Rang de la prévision de {m0} {year} parmi les {n} prévisions de {m0} de 1981–2025, par province (moyenne de "
+                    "l'ensemble ECMWF SEAS5, sans tendance), classée comme dans le visualiseur seas5-skill de l'équipe : très inférieur ou "
+                    "très supérieur = les 10 % de prévisions les plus sèches ou les plus humides ; inférieur ou supérieur = le tiers le "
+                    "plus sec ou le plus humide. Fiabilité = corrélation des prévisions rétrospectives avec ERA5 : élevée à partir de 0,5, "
+                    "moyenne 0,3–0,5, faible sous 0,3. Hors saison des pluies : les trois mois apportent moins de 15 % de la pluie de l'année (ERA5)."),
+            y=-0.06)
+    # what the headline and note say: dry first window in every shown Congo/Ubangi province; wet first two windows in the
+    # centre and south; the analogue years' forecasts for the Congo/Ubangi provinces as one area
+    c1, c2 = list(win)[:2]
+    corr = [pc for pc in REGIONS["corridor"]["pcodes"] if classes[c1][pc][0] not in ("off_season", "low_skill")]
+    wet2 = [pc for pc in pr.index if all(classes[c][pc][0].endswith("_wet") for c in (c1, c2))]
+    rg = fc["region"]
+    if (len(corr) < 4 or not all(classes[c1][pc][0].endswith("_dry") for pc in corr) or len(wet2) < 6
+            or any(pc in REGIONS["corridor"]["pcodes"] for pc in wet2)):
+        raise ValueError(f"the SEAS5 pattern changed (dry {c1} in the Congo/Ubangi provinces, wet {c1}–{c2} in the centre and "
+                         "south): reword the forecast headline and partner rows 2 and 4")
+    if not (rg["fc"][year] <= 10 and min(rg["fc"][1997], rg["fc"][2023]) >= 90 and min(rg["obs"][1997], rg["obs"][2023]) >= 85
+            and 33 <= rg["fc"][2015] <= 67 and rg["obs"][2015] < 50):
+        raise ValueError(f"the analogue forecasts for the Congo/Ubangi provinces no longer read as the forecast note says ({rg}): reword it")
+    if not {"CD74", "CD62"} <= set(wet2):
+        raise ValueError("the forecast is no longer wet in Tanganyika and Sud-Kivu: reword partner row 3")
+    if any(classes[c][pc][0].endswith("_dry") for c in win for pc in REGIONS["southeast"]["pcodes"]):
+        raise ValueError("the forecast now shows a skilful dry signal in the south-east: reword partner row 4")
+    names = adm1.set_index("ADM1_PCODE")["ADM1_FR"]
+    w1, w2 = win[c1], win[c2]
+    full = MONTH_FULL[LANG]
+    v = dict(fc_month=m0, fc_year=year, fc_w1=f"{full[w1[0] - 1]}–{full[w1[-1] - 1]}", fc_w2_end=full[w2[-1] - 1],
+             fc_end=full[list(win.values())[-1][-1] - 1],
+             fc_n_dry=len(corr), fc_n_wet=len(wet2), fc_wet_names=_join(sorted(names[pc] for pc in wet2)))
+    return _save(fig, "forecast"), v
 
 
 ONI_SEASONS = ["DJF", "JFM", "FMA", "MAM", "AMJ", "MJJ", "JJA", "JAS", "ASO", "SON", "OND", "NDJ"]
@@ -817,36 +990,6 @@ def fig_drivers(maps: dict, maps_era5: dict) -> Path:
                     f"1981–2025 (n = {maps['n']}) ; |r| ≥ 0,3 ≈ p < 0,05. El Niño dans ERA5 : pas de signal net dans au moins 96 % des cellules à chaque saison."),
             y=-0.08)
     return _save(fig, "drivers")
-
-
-def fig_rain_years(anoms: dict) -> Path:
-    adm0, adm1 = boundaries(0), boundaries(1)
-    years = [y for y in BOTH_PRE[1:] + BOTH + IOD_ONLY]
-    bounds = [-2, 0, 60, 80, 90, 110, 125, 150, 1000]
-    cmap = mcolors.ListedColormap(["#d6d5cf"] + DIV)
-    norm = mcolors.BoundaryNorm(bounds, cmap.N)
-    fig, axes = plt.subplots(2, len(years), figsize=(1.85 * len(years), 4.6))
-    for i, s in enumerate(("OND", "JFM")):
-        for j, y in enumerate(years):
-            ax = axes[i, j]
-            da = anoms.get((s, y))
-            if da is not None:
-                ax.pcolormesh(da.lon, da.lat, _clip(da, adm0), cmap=cmap, norm=norm, shading="nearest")
-            _map_axes(ax, adm1)
-            adm0.boundary.plot(ax=ax, color="#52514e", lw=0.6)
-            if i == 0:
-                ax.set_title(season_label(y), color=season_color(y), fontsize=11)
-        axes[i, 0].text(-0.1, 0.5, _t({"OND": "Oct–Dec", "JFM": "Jan–Mar"}[s], {"OND": "oct.–déc.", "JFM": "janv.–mars"}[s]),
-                        transform=axes[i, 0].transAxes, rotation=90, va="center", ha="center", fontsize=10, fontweight="bold")
-    labels = ["< 60%", "60–80%", "80–90%", "90–110%", "110–125%", "125–150%", "> 150%"]
-    handles = [Patch(color=c, label=lab) for c, lab in zip(DIV, labels)]
-    handles.append(Patch(color="#d6d5cf", label=_t(f"dry season (normal < {DRY_SEASON_MM} mm)", f"saison sèche (normale < {DRY_SEASON_MM} mm)")))
-    fig.legend(handles=handles, loc="lower center", ncol=4, fontsize=8,
-               bbox_to_anchor=(0.5, -0.1), title=_t("rainfall, % of the 1991–2020 average", "pluie, % de la moyenne 1991–2020"),
-               title_fontsize=8)
-    fig.subplots_adjust(wspace=0.02, hspace=0.06, bottom=0.12)
-    _source(fig, _t(f"CHIRPS v3, 0.5°. Titles {SHADING[0]}.", f"CHIRPS v3, 0,5°. Titres {SHADING[1]}."), y=-0.13)
-    return _save(fig, "rain_years")
 
 
 def _season_lines(ax, s: pd.Series) -> list[tuple[float, float, str]]:
@@ -1192,7 +1335,8 @@ def fig_need_split(sp: pd.DataFrame, pk: pd.DataFrame) -> Path:
             row = d.loc[s] if s in d.index else pd.Series(0.0, index=NEED_KEYS)
             left = 0.0
             for key, *_, col in NEED_CATS:
-                ax.barh(y, row[key] / 1000, left=left, height=0.7, color=col, edgecolor=SURFACE, lw=1)
+                ax.barh(y, row[key] / 1000, left=left, height=0.7, color=col, edgecolor=SEV12_EDGE if key == "sev12" else SURFACE,
+                        lw=0.6 if key == "sev12" else 1)
                 left += row[key] / 1000
             inpin = (row["pin45"] + row["pin3"]) / 1000
             ip = _num(inpin) if inpin >= 0.5 else "<1" if LANG == "en" else "< 1"
@@ -1216,7 +1360,8 @@ def fig_need_split(sp: pd.DataFrame, pk: pd.DataFrame) -> Path:
     ax.set_xlim(0, xmax * 1.3)
     _grid(ax, "x")
     ax.set_xlabel(_t("people in flooded areas at the region's peak (thousands)", "personnes en zone inondée au pic de la région (milliers)"))
-    fig.legend(handles=[Patch(color=col, label=_t(en, fr)) for _, en, fr, col in NEED_CATS], loc="lower center", ncol=2,
+    fig.legend(handles=[Patch(facecolor=col, edgecolor=SEV12_EDGE if k == "sev12" else col, lw=0.6, label=_t(en, fr))
+                        for k, en, fr, col in NEED_CATS], loc="lower center", ncol=3,
                fontsize=8, bbox_to_anchor=(0.5, -0.005), title=_t("2026 HNRP status of the health zones flooded", "Statut HNRP 2026 des zones de santé inondées"),
                title_fontsize=8)
     fig.tight_layout(rect=(0, 0.07, 1, 1))
@@ -1253,7 +1398,7 @@ def fig_flood_lists(t: pd.DataFrame) -> Path:
     axl.set_yticklabels([f"{r['name']} ({r.prov})" for _, r in rows.iterrows()], fontsize=7.5)
     axr.set_yticklabels([])
     rk = rows["risk"].fillna(0) / 1000
-    axl.barh(y, rk, color=NEED_CATS[1][3], height=0.62)
+    axl.barh(y, rk, color=LIST_C, height=0.62)
     for yy, (_, r) in zip(y, rows.iterrows()):
         if pd.isna(r.risk) or r.risk == 0:
             axl.text(rk.max() * 0.015, yy, _t("left blank", "non renseigné") if pd.isna(r.risk) else "0", fontsize=7, color=TEXT2, va="center")
@@ -1285,62 +1430,63 @@ def fig_flood_lists(t: pd.DataFrame) -> Path:
     return _save(fig, "flood_lists")
 
 
-HOW_MANY_SEASONS = [1997, 2015, 2023, 2019]
+# Class colours for the first chart: the part of each bar in the 2026 PiN in the darker step (each pair passes the
+# dataviz ordinal checks on the page surface)
+HM_SHADES = {BOTH_C: "#9c3d17", IOD_C: "#164a8c", OTHER_C: "#8f8e88"}
 
 
-def outside_regions(fs: pd.DataFrame) -> pd.Series:
-    """Per season, the provinces outside REGIONS: their season peaks (same smoothing) added up."""
-    inside = sum((r["pcodes"] for r in REGIONS.values()), [])
-    out = {}
-    for pc, g in fs[~fs.pcode.isin(inside)].groupby("pcode"):
-        df = by_season(smooth(g.set_index("valid_date")["sum"]).dropna())
-        out[pc] = df.groupby("season")["v"].max()
-    return pd.DataFrame(out).sum(axis=1)
-
-
-def fig_how_many(sp: pd.DataFrame, ev: pd.DataFrame, outside: pd.Series) -> Path:
-    """Per analogue season: people in flooded areas (adding up the four regions' peaks), the part already in the 2026
-    PiN, and the people EM-DAT reports affected. One axis, people."""
-    tot = sp.groupby("season")[NEED_KEYS].sum()
-    aff = ev.groupby("season")["affected"].sum()
-    fig, ax = plt.subplots(figsize=(8.6, 4.6))
-    y, ticks, labels = 0.0, [], []
-    xmax = max(aff.reindex(HOW_MANY_SEASONS).max(), tot.sum(axis=1).max()) / 1e6
-    for s in HOW_MANY_SEASONS:
-        row = tot.loc[s]
-        inpin = (row["pin45"] + row["pin3"]) / 1e6
-        fs = row.sum() / 1e6
-        ax.text(0, y - 0.62, season_label(s) + ("*" if s == 1997 else ""), fontsize=9.5, fontweight="bold",
-                color=season_color(s), va="bottom")
-        ax.barh(y, inpin, height=0.62, color=NEED_CATS[0][3], edgecolor=SURFACE, lw=1)
-        ax.barh(y, fs - inpin, left=inpin, height=0.62, color=NEED_CATS[3][3], edgecolor=SURFACE, lw=1)
-        ax.text(fs + xmax * 0.01, y, _t(f"{_num(fs * 1000)}k · {_num(inpin * 1000)}k in PiN", f"{_num(fs * 1000)} k · {_num(inpin * 1000)} k dans le PiN"),
-                va="center", fontsize=8)
-        a = aff.get(s, 0) / 1e6
-        ax.barh(y + 0.75, a, height=0.62, color=SURFACE, edgecolor="#3f3e3a", lw=1, hatch="////")
-        ax.text(a + xmax * 0.01, y + 0.75, _t(f"{_num(a, 2)} M", f"{_num(a, 2)} M"), va="center", fontsize=8)
-        ticks += [y, y + 0.75]
-        labels += [_t("in flooded areas (FloodScan)", "en zone inondée (FloodScan)"), _t("reported affected (EM-DAT)", "signalées affectées (EM-DAT)")]
-        y += 2.4
-    ax.set_yticks(ticks)
-    ax.set_yticklabels(labels, fontsize=8)
-    ax.set_ylim(y - 1.4, -1.0)
-    ax.set_xlim(0, xmax * 1.18)
-    _grid(ax, "x")
-    ax.set_xlabel(_t("people (millions)", "personnes (millions)"))
-    fig.legend(handles=[Patch(color=NEED_CATS[0][3], label=_t("in flooded areas, already in the 2026 PiN", "en zone inondée, déjà dans le PiN 2026")),
-                        Patch(color=NEED_CATS[3][3], label=_t("in flooded areas, not in the PiN", "en zone inondée, hors PiN")),
-                        Patch(facecolor=SURFACE, edgecolor="#3f3e3a", hatch="////", label=_t("reported affected", "signalées affectées"))],
-               loc="lower center", ncol=3, fontsize=8, bbox_to_anchor=(0.5, 0.0))
+def fig_how_many(sp: pd.DataFrame, ev: pd.DataFrame) -> Path:
+    """Every season in the FloodScan record, ranked by people in flooded areas (the four regions' peaks added up), with the
+    part in the 2026 PiN; beside it, the people EM-DAT reports affected in the same season."""
+    tot = sp[sp.season < NOW].groupby("season")[NEED_KEYS].sum()
+    fs_ = tot.sum(axis=1)
+    inpin = tot["pin45"] + tot["pin3"]
+    order = list(fs_.sort_values(ascending=False).index)
+    aff = ev.groupby("season")["affected"].sum().reindex(order).fillna(0)
+    snap = pd.Timestamp(ev["Last Update"].max())  # seasons that end after the team's EM-DAT snapshot are not in it
+    fig, (ax, bx) = plt.subplots(1, 2, figsize=(9.6, 7.6), sharey=True, gridspec_kw=dict(width_ratios=[1.55, 1], wspace=0.05))
+    xmax, amax = fs_.max() / 1000, aff.max() / 1e6
+    for i, s in enumerate(order):
+        c = season_color(s)
+        hl = c != OTHER_C
+        ax.barh(i, inpin[s] / 1000, color=HM_SHADES[c], height=0.72, edgecolor=SURFACE, lw=0.8)
+        ax.barh(i, (fs_[s] - inpin[s]) / 1000, left=inpin[s] / 1000, color=c, height=0.72, edgecolor=SURFACE, lw=0.8)
+        if hl:
+            ax.text(fs_[s] / 1000 + xmax * 0.01, i, _t(f"{_num(fs_[s] / 1000)}k · {_num(inpin[s] / 1000)}k in the 2026 PiN",
+                                                       f"{_num(fs_[s] / 1000)} k · {_num(inpin[s] / 1000)} k dans le PiN 2026"),
+                    va="center", fontsize=7.5, color="#0b0b0b")
+        bx.barh(i, aff[s] / 1e6, color=c, height=0.72, edgecolor=SURFACE, lw=0.8)
+        if pd.Timestamp(s + 1, 6, 30) > snap:
+            bx.text(amax * 0.02, i, _t(f"after the EM-DAT snapshot ({_date(snap)})", f"après la copie EM-DAT ({_date(snap)})"),
+                    va="center", fontsize=7.5, color=TEXT2)
+        elif hl or aff[s] >= 0.1e6:
+            bx.text(aff[s] / 1e6 + amax * 0.02, i, f"{_num(aff[s] / 1e6, 2)} M", va="center", fontsize=7.5, color="#0b0b0b")
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels([season_label(s) + ("*" if s == 1997 else "") for s in order], fontsize=7.5)
+    for tl, s in zip(ax.get_yticklabels(), order):
+        tl.set_color(season_color(s) if season_color(s) != OTHER_C else TEXT2)
+        tl.set_fontweight("bold" if season_color(s) != OTHER_C else "normal")
+    ax.set_ylim(len(order) - 0.4, -0.6)
+    ax.set_xlim(0, xmax * 1.62)
+    bx.set_xlim(0, amax * 1.3)
+    for a_ in (ax, bx):
+        _grid(a_, "x")
+    _titled(ax, _t("People in flooded areas (FloodScan)", "Personnes en zone inondée (FloodScan)"), "")
+    _titled(bx, _t("People reported affected (EM-DAT)", "Personnes signalées affectées (EM-DAT)"), "")
+    ax.set_xlabel(_t("thousands, the four regions' peaks added up", "milliers, pics des quatre régions additionnés"))
+    bx.set_xlabel(_t("millions", "millions"))
+    fig.legend(handles=[Patch(color=BOTH_C, label=_t(*CLASS_BOTH)), Patch(color=IOD_C, label=_t(*CLASS_IOD)),
+                        Patch(color=OTHER_C, label=_t("other seasons", "autres saisons")),
+                        Patch(color=HM_SHADES[OTHER_C], label=_t("darker part: in the 2026 PiN", "partie foncée : dans le PiN 2026"))],
+               loc="lower center", ncol=2, fontsize=8, bbox_to_anchor=(0.5, 0.0))
     fig.tight_layout(rect=(0, 0.07, 1, 1))
-    rest = _num(np.ceil(outside.reindex(HOW_MANY_SEASONS).max() / 5000) * 5)
-    _source(fig, _t("FloodScan × WorldPop 2020: the four regions' season peaks added up (they come months apart; other provinces add "
-                    f"under {rest}k in any of these seasons); PiN share as in the HNRP section below. *1997/98 from 12 January 1998, a floor. "
-                    "EM-DAT (CRED/UCLouvain): everyone reported affected, flash and city floods included; a floor too.",
-                    "FloodScan × WorldPop 2020 : pics de saison des quatre régions additionnés (ils surviennent à des mois d'écart ; les autres "
-                    f"provinces ajoutent moins de {rest} k lors de ces saisons) ; part dans le PiN comme dans la section HNRP plus bas. *1997/98 à partir "
-                    "du 12 janvier 1998, un minimum. EM-DAT (CRED/UCLouvain) : toutes les personnes signalées affectées, crues éclair et urbaines "
-                    "comprises ; un minimum aussi."), y=-0.01)
+    _source(fig, _t("FloodScan × WorldPop 2020: the four regions' season peaks added up (they come months apart); PiN share as in the HNRP "
+                    "section below. *1997/98 from 12 January 1998, a floor. EM-DAT (CRED/UCLouvain): everyone reported affected, flash and "
+                    "city floods included; a floor, thinner in earlier years.",
+                    "FloodScan × WorldPop 2020 : pics de saison des quatre régions additionnés (ils surviennent à des mois d'écart) ; part dans "
+                    "le PiN comme dans la section HNRP plus bas. *1997/98 à partir du 12 janvier 1998, un minimum. EM-DAT (CRED/UCLouvain) : "
+                    "toutes les personnes signalées affectées, crues éclair et urbaines comprises ; un minimum, plus lacunaire les premières années."),
+            y=-0.005)
     return _save(fig, "how_many")
 
 
@@ -1440,6 +1586,9 @@ def fig_southeast() -> tuple[Path, dict]:
 # --------------------------------------------------------------------------- #
 EXTRA_CSS = """
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:18px 0 8px}
+.key{font-size:13px;color:var(--n8);margin:12px 0 0;line-height:1.9}
+.key .it{display:inline-block;margin-right:16px}
+.key .sw{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:5px;vertical-align:-1px}
 .tilehead{font-size:13px;font-weight:600;color:var(--n7);margin:18px 0 -10px;text-transform:uppercase;letter-spacing:.04em}
 .tile{border:1px solid #e2e7e7;border-top:3px solid #0b0b0b;border-radius:6px;padding:12px 14px;background:#fff}
 .tile .big{font-size:24px;font-weight:700;margin:0 0 4px;line-height:1.15}
@@ -1459,6 +1608,12 @@ def _img(path: Path) -> str:
     return "data:image/png;base64," + base64.b64encode(path.read_bytes()).decode()
 
 
+def _ordinal(n: int) -> str:
+    if LANG == "fr":
+        return "1er" if n == 1 else f"{n}e"
+    return f"{n}{'th' if 10 <= n % 100 <= 20 else {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
+
+
 def _rank_en(n: int, word: str = "highest") -> str:
     return {1: word, 2: f"second-{word}", 3: f"third-{word}", 4: f"fourth-{word}", 5: f"fifth-{word}"}.get(n, f"{n}th-{word}")
 
@@ -1470,23 +1625,6 @@ def _rank_fr(n: int, word: str = "plus haut", art: str = "le") -> str:
 def _cells(da: xr.DataArray, gdf: gpd.GeoDataFrame) -> np.ndarray:
     v = _clip(da, gdf).ravel()
     return v[~np.isnan(v)]
-
-
-WET, DRY = 110, 90  # % of normal; a season is "wet" (or "dry") when the wet share beats the dry one by RAIN_MARGIN points
-RAIN_MARGIN = 20
-
-
-def rain_shares(anoms: dict) -> pd.DataFrame:
-    """Share of the country (rainy-season cells only) above WET% and below DRY% of normal, per season and year."""
-    adm0 = boundaries(0)
-    rows = []
-    for (s, y), da in anoms.items():
-        v = _cells(da, adm0)
-        v = v[v >= 0]
-        rows.append(dict(season=s, year=y, wet=(v > WET).mean() * 100, dry=(v < DRY).mean() * 100))
-    df = pd.DataFrame(rows)
-    df["cls"] = np.where(df.wet - df.dry >= RAIN_MARGIN, "wet", np.where(df.dry - df.wet >= RAIN_MARGIN, "dry", "mixed"))
-    return df
 
 
 def now_corridor(series: dict, fs: pd.DataFrame, pk: pd.DataFrame) -> dict:
@@ -1552,6 +1690,15 @@ def values(a: dict) -> dict:
     inpin = (b["pin45"] + b["pin3"]) / fs_tot * 100
     lo, hi = int(fs_tot.idxmin()), int(fs_tot.idxmax())
     i = a["split"][a["split"].season.isin(IOD_ONLY)][NEED_KEYS].sum()
+    # every season: three of the four analogue seasons in the top five, the other two without El Niño or a positive Dipole
+    allt = a["split"][a["split"].season < NOW].groupby("season")[NEED_KEYS].sum().sum(axis=1)
+    rk = allt.rank(ascending=False, method="min")
+    top5 = list(allt.nlargest(5).index)
+    others5 = sorted((y for y in top5 if y not in BOTH + IOD_ONLY), key=lambda y: rk[y])
+    son_oni, son_dmi = oni_season("SON"), seasonal(dmi(), [9, 10, 11])
+    if (sum(y in BOTH + IOD_ONLY for y in top5) != 3 or len(others5) != 2 or rk[2015] <= 5
+            or any(son_oni.get(y, 0) >= 0.5 or son_dmi.get(y, 0) >= 0.4 for y in others5)):
+        raise ValueError(f"the ranking of seasons changed (top five {top5}): reword the how-many headline and note")
     riv = a["split"][a["split"].region.isin(["corridor", "kinshasa"]) & a["split"].season.isin(BOTH)][NEED_KEYS].sum()
     if riv["sev12"] / riv.sum() < 0.85:
         raise ValueError("people in flooded areas on the rivers are no longer almost all in severity-2 zones: reword the hnrp-split headline")
@@ -1565,12 +1712,6 @@ def values(a: dict) -> dict:
     deadliest = ["2023-0281-COD", "2024-0268-COD", "2022-0805-COD", "2025-0245-COD"]  # Kalehe; 2023/24 rivers; Kinshasa x2
     if dead.idxmax() != deadliest[0]:
         raise ValueError(f"Kalehe is no longer the deadliest EM-DAT flood ({dead.idxmax()}): reword the reported headline")
-    # rain in the analogue seasons
-    rs = rain_shares(a["anoms"]).sort_values("year")
-    ond = rs[rs.season == "OND"]
-    ond_dry = list(ond[ond.cls == "dry"].year)
-    if ond_dry != [2015] or ond[ond.cls == "wet"].empty:
-        raise ValueError("the rain maps no longer say what the rain headline says: reword it")
     # El Niño's own drying around Kinshasa (CHIRPS, Sep–Nov)
     adm1 = boundaries(1)
     kin = _cells(a["maps"][("enso", "SON")], adm1[adm1.ADM1_PCODE.isin(["CD10", "CD20"])])
@@ -1612,12 +1753,13 @@ def values(a: dict) -> dict:
         affected_2324=_num(aff.get(2023, 0) / 1e6, 2), affected_1516=_num(aff.get(2015, 0) / 1e6, 2),
         dead_kalehe=_num(dead["2023-0281-COD"]), dead_rivers=_num(dead["2024-0268-COD"]),
         dead_kin22=_num(dead["2022-0805-COD"]), dead_kin25=_num(dead["2025-0245-COD"]),
-        ond_wet_years=seasons(ond[ond.cls == "wet"].year), ond_dry_years=seasons(ond_dry),
         enso_kin=_num((kin <= -0.3).mean() * 100),
         emdat_end=_date(ev["Last Update"].max()),
         **now_corridor(a["series"], a["fs"], pk),
         **now_climate(),
         **a.get("se", {}),
+        **a.get("fc", {}),
+        hm_others=seasons(others5), hm_rank_1516=_ordinal(int(rk[2015])), hm_n=len(allt),
     )
 
 
@@ -1644,6 +1786,12 @@ def render(spec: dict, a: dict, figs: dict) -> str:
     out.append(f'<a class="lang" href="{"fr/" if L == "en" else "../"}">{"Français" if L == "en" else "English"}</a>')
     out.append(f'<p class="eyebrow">{_t("Restricted · El Niño 2026/27", "Accès restreint · El Niño 2026/27")}</p>')
     out.append(f'<h1>{pg["title_" + L]}</h1><p class="meta">{pg["sub_" + L]}<br>{pg["dateline_" + L].format(**v)}</p>')
+    key = [(BOTH_C, _t(*CLASS_BOTH), _join([season_label(y) for y in BOTH])),
+           (IOD_C, _t(*CLASS_IOD), _join([season_label(y) for y in IOD_ONLY])),
+           (OTHER_C, _t("other seasons", "autres saisons"), ""), (NOW_C, "2026/27", "")]
+    out.append('<p class="key">' + _t("Colours on this page: ", "Couleurs de cette page : ") + "".join(
+        f'<span class="it"><span class="sw" style="background:{c}"></span>{lab}{" (" + ys + ")" if ys else ""}</span>'
+        for c, lab, ys in key) + "</p>")
     out.append(f'<p class="tilehead">{pg["tiles_" + L]}</p>')
     out.append('<div class="tiles">' + "".join(f'<div class="tile"><p class="big">{t.get("big_" + L, t["big"]).format(**v)}</p><p>{t[L].format(**v)}</p></div>'
                                                 for t in spec["tiles"]) + "</div>")
@@ -1702,18 +1850,17 @@ def analyse() -> dict:
     series = region_series(fs)
     peaks = region_peaks(series)
     sm = territory_smoothed(floodscan_adm2())
-    a = dict(fs=fs, series=series, peaks=peaks, maps=driver_maps(), maps_era5=driver_maps("era5"), anoms=rain_anomalies(),
-             events=emdat_events(), cross=territory_cross(sm), split=need_split(sm, peaks), lists=flood_lists(sm),
-             outside=outside_regions(fs))
+    a = dict(fs=fs, series=series, peaks=peaks, maps=driver_maps(), maps_era5=driver_maps("era5"),
+             events=emdat_events(), cross=territory_cross(sm), split=need_split(sm, peaks), lists=flood_lists(sm))
     return a
 
 
 def figures(a: dict) -> dict:
     f = {}
-    f["how_many"] = fig_how_many(a["split"], a["events"], a["outside"])
+    f["how_many"] = fig_how_many(a["split"], a["events"])
     f["setup"] = fig_setup()
     f["drivers"] = fig_drivers(a["maps"], a["maps_era5"])
-    f["rain_years"] = fig_rain_years(a["anoms"])
+    f["forecast"], a["fc"] = fig_forecast()
     f["flood_cycle"] = fig_flood_cycle(a["series"], a["fs"])
     f["flood_peaks"] = fig_flood_peaks(a["peaks"])
     f["lake"], a["lake"] = fig_lake()

@@ -46,16 +46,26 @@ fr = "Lac Tanganyika en octobre, {lake_oct_rank_fr} octobre sur {lake_n} ; {lake
 [[sections]]
 id = "how-many"
 fig = "how_many"
-en = "{fs_lo}k–{fs_hi}k people in flooded areas in past El Niño + Dipole seasons; by our estimate {out_lo}–{out_hi}% of them are not among the 2026 people in need"
-fr = "De {fs_lo} k à {fs_hi} k personnes en zone inondée lors des saisons El Niño + dipôle passées ; selon notre estimation, {out_lo} à {out_hi} % d'entre elles ne figurent pas parmi les personnes dans le besoin 2026"
+en = "Three of the four El Niño + Dipole seasons are among the five largest flood seasons since 1998; {hm_others} were as large without El Niño or a positive Dipole"
+fr = "Trois des quatre saisons El Niño + dipôle figurent parmi les cinq plus grandes saisons de crue depuis 1998 ; {hm_others} ont été aussi grandes sans El Niño ni dipôle positif"
+note_en = "2015/16, the closest past season so far, ranks {hm_rank_1516} of {hm_n}."
+note_fr = "2015/16, la saison passée la plus proche à ce jour, est {hm_rank_1516} sur {hm_n}."
 
 [[sections]]
 id = "setup"
 fig = "setup"
 en = "El Niño is the strongest on record for the time of year; the Dipole so far is like 2015/16, which had the lowest Dipole of the three analogue seasons in the flood record"
-fr = "El Niño est le plus fort jamais mesuré pour cette période de l'année ; le dipôle ressemble à ce jour à celui de 2015/16, le plus faible des trois saisons analogues de l'archive des crues"
+fr = "El Niño est le plus fort jamais mesuré pour cette période de l'année ; le dipôle ressemble à ce jour à celui de 2015/16, le plus faible parmi les trois saisons analogues de l'archive des crues"
 note_en = "On the Dipole so far, 2015/16 is the closest past season; it is the dashed line in the flood timing chart."
 note_fr = "Pour le dipôle, 2015/16 est à ce jour la saison passée la plus proche ; c'est la ligne en tirets du graphique du calendrier des crues."
+
+[[sections]]
+id = "forecast"
+fig = "forecast"
+en = "The {fc_month} forecast is drier than normal for {fc_w1} in the Congo and Ubangi provinces and wetter than normal to {fc_w2_end} in the centre and south"
+fr = "La prévision de {fc_month} est plus sèche que la normale pour {fc_w1} dans les provinces du Congo et de l'Oubangui, et plus humide que la normale jusqu'en {fc_w2_end} au centre et au sud"
+note_en = "In 1997 and 2023 the {fc_month} forecast for the Congo and Ubangi provinces was among the wettest, and so was the rain; in 2015 it was near normal, the rain was below normal, and the rivers still had their {rank_1516_en} flood since 1998."
+note_fr = "En 1997 et 2023, la prévision de {fc_month} pour les provinces du Congo et de l'Oubangui était parmi les plus humides, et la pluie aussi ; en 2015, elle était proche de la normale, la pluie inférieure à la normale, et les fleuves ont tout de même connu {rank_1516_fr} crue depuis 1998."
 
 [[sections]]
 id = "drivers"
@@ -64,12 +74,6 @@ en = "The extra September–December rain comes with the Dipole; El Niño's own 
 fr = "Le surplus de pluie de septembre–décembre vient avec le dipôle ; l'effet propre d'El Niño est faible, sauf un septembre–novembre plus sec autour de Kinshasa"
 note_en = "CHIRPS and ERA5 agree on a wetter September–December, but not on where, and disagree on January–March."
 note_fr = "CHIRPS et ERA5 s'accordent sur un septembre–décembre plus humide, mais pas sur les endroits, et divergent pour janvier–mars."
-
-[[sections]]
-id = "rain"
-fig = "rain_years"
-en = "October–December was wet in {ond_wet_years} and dry in {ond_dry_years}"
-fr = "Octobre–décembre a été humide en {ond_wet_years} et sec en {ond_dry_years}"
 
 [[sections]]
 id = "timing"
@@ -126,11 +130,11 @@ en = [
   "<b>People in flooded areas</b> (FloodScan × WorldPop 2020): each ~1 km cell's flooded share (where 5% or more) times its population, daily since 12 January 1998, so 1997/98 is a floor. River, lake and wetland floods only: no flash floods, landslides or urban run-off. It is not people affected: in 2023/24 FloodScan had about {fs_2324}k, EM-DAT {affected_2324} M.",
   "<b>Analogue seasons</b>: strong El Niño with a positive Dipole (Sep–Nov ONI ≥ 1.5 °C, DMI ≥ 0.4 °C): 1997/98, 2015/16, 2023/24 (also 1972/73 and 1982/83, before the flood record). Very strong Dipole with a weak El Niño (DMI ≥ 1.0 °C, ONI &lt; 1.0 °C): 2019/20. Three or four seasons give a range, not odds.",
   "<b>Needs</b>: HNRP 2026 as revised in July 2026 ({pin_total} M people in need, {hz_n} health zones). Each territory's people in flooded areas are shared out like its population across its health zones, so the share in need is an estimate: it assumes they are as likely to be in need as their neighbours.",
-  "<b>Other sources</b>: EM-DAT (CRED/UCLouvain, a floor, team snapshot to {emdat_end}); CHIRPS v3 and ERA5 rainfall; NASA GSFC G-REALM lake altimetry (EGM2008 datum, not the national gauge datum); NOAA CPC ONI; NOAA OSMC and Bureau of Meteorology Dipole indices.",
+  "<b>Other sources</b>: EM-DAT (CRED/UCLouvain, a floor, team snapshot to {emdat_end}); CHIRPS v3 and ERA5 rainfall; ECMWF SEAS5 seasonal forecasts; NASA GSFC G-REALM lake altimetry (EGM2008 datum, not the national gauge datum); NOAA CPC ONI; NOAA OSMC and Bureau of Meteorology Dipole indices.",
 ]
 fr = [
   "<b>Personnes en zone inondée</b> (FloodScan × WorldPop 2020) : la part inondée de chaque cellule d'environ 1 km (si 5 % ou plus) multipliée par sa population, chaque jour depuis le 12 janvier 1998 ; 1997/98 est donc un minimum. Crues des fleuves, lacs et zones humides seulement : ni crues éclair, ni glissements de terrain, ni ruissellement urbain. Ce ne sont pas des personnes affectées : en 2023/24, FloodScan en comptait environ {fs_2324} k, EM-DAT {affected_2324} M.",
   "<b>Saisons analogues</b> : El Niño fort avec dipôle positif (ONI sept.–nov. ≥ 1,5 °C, DMI ≥ 0,4 °C) : 1997/98, 2015/16, 2023/24 (aussi 1972/73 et 1982/83, avant l'archive des crues). Dipôle très fort avec El Niño faible (DMI ≥ 1,0 °C, ONI &lt; 1,0 °C) : 2019/20. Trois ou quatre saisons donnent une fourchette, pas des probabilités.",
   "<b>Besoins</b> : HNRP 2026 révisé en juillet 2026 ({pin_total} M de personnes dans le besoin, {hz_n} zones de santé). Les personnes en zone inondée de chaque territoire sont réparties comme sa population entre ses zones de santé : la part dans le besoin est donc une estimation, qui les suppose autant dans le besoin que leurs voisins.",
-  "<b>Autres sources</b> : EM-DAT (CRED/UCLouvain, un minimum, copie de l'équipe au {emdat_end}) ; pluie CHIRPS v3 et ERA5 ; altimétrie G-REALM de la NASA GSFC pour le lac (référence EGM2008, pas celle des échelles nationales) ; ONI de la NOAA CPC ; indices du dipôle de la NOAA OSMC et du Bureau of Meteorology.",
+  "<b>Autres sources</b> : EM-DAT (CRED/UCLouvain, un minimum, copie de l'équipe au {emdat_end}) ; pluie CHIRPS v3 et ERA5 ; prévisions saisonnières ECMWF SEAS5 ; altimétrie G-REALM de la NASA GSFC pour le lac (référence EGM2008, pas celle des échelles nationales) ; ONI de la NOAA CPC ; indices du dipôle de la NOAA OSMC et du Bureau of Meteorology.",
 ]
