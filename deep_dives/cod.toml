@@ -18,8 +18,8 @@ one_line = "Restricted page. What past seasons with a strong El Niño and a posi
 [page]
 title_en = "El Niño, the Indian Ocean Dipole and floods in the DRC, 2026/27"
 title_fr = "El Niño, le dipôle de l'océan Indien et les inondations en RDC, 2026/27"
-sub_en = "What past seasons like this one brought, region by region. A past range, not a forecast."
-sub_fr = "Ce qu'ont apporté les saisons passées comparables, région par région. Une fourchette passée, pas une prévision."
+sub_en = "What past seasons like this one brought, region by region, and what this season's forecast says."
+sub_fr = "Ce qu'ont apporté les saisons passées comparables, région par région, et ce que dit la prévision de cette saison."
 dateline_en = "Draft for the OCHA DRC office · data to {data_end}"
 dateline_fr = "Version de travail pour le bureau OCHA RDC · données au {data_end}"
 tiles_en = "2026/27 so far"
@@ -46,8 +46,8 @@ fr = "Lac Tanganyika en octobre, {lake_oct_rank_fr} octobre sur {lake_n} ; {lake
 [[sections]]
 id = "how-many"
 fig = "how_many"
-en = "Three of the four El Niño + Dipole seasons are among the five largest flood seasons since 1998; {hm_others} were as large without El Niño or a positive Dipole"
-fr = "Trois des quatre saisons El Niño + dipôle figurent parmi les cinq plus grandes saisons de crue depuis 1998 ; {hm_others} ont été aussi grandes sans El Niño ni dipôle positif"
+en = "Two of the three El Niño + Dipole seasons and 2019/20 are among the five largest flood seasons since 1998; {hm_others} were as large without El Niño or a positive Dipole"
+fr = "Deux des trois saisons El Niño + dipôle et 2019/20 figurent parmi les cinq plus grandes saisons de crue depuis 1998 ; {hm_others} ont été aussi grandes sans El Niño ni dipôle positif"
 note_en = "2015/16, the closest past season so far, ranks {hm_rank_1516} of {hm_n}."
 note_fr = "2015/16, la saison passée la plus proche à ce jour, est {hm_rank_1516} sur {hm_n}."
 
@@ -62,10 +62,10 @@ note_fr = "Pour le dipôle, 2015/16 est à ce jour la saison passée la plus pro
 [[sections]]
 id = "forecast"
 fig = "forecast"
-en = "The {fc_month} forecast is drier than normal for {fc_w1} in the Congo and Ubangi provinces and wetter than normal to {fc_w2_end} in the centre and south"
-fr = "La prévision de {fc_month} est plus sèche que la normale pour {fc_w1} dans les provinces du Congo et de l'Oubangui, et plus humide que la normale jusqu'en {fc_w2_end} au centre et au sud"
-note_en = "In 1997 and 2023 the {fc_month} forecast for the Congo and Ubangi provinces was among the wettest, and so was the rain; in 2015 it was near normal, the rain was below normal, and the rivers still had their {rank_1516_en} flood since 1998."
-note_fr = "En 1997 et 2023, la prévision de {fc_month} pour les provinces du Congo et de l'Oubangui était parmi les plus humides, et la pluie aussi ; en 2015, elle était proche de la normale, la pluie inférieure à la normale, et les fleuves ont tout de même connu {rank_1516_fr} crue depuis 1998."
+en = "The {fc_month} forecast is drier than normal for {fc_w1} in the Congo and Ubangi provinces and wetter than normal to {fc_w2_end} from Kwango to Sud-Kivu"
+fr = "La prévision {fc_month_de} est plus sèche que la normale pour {fc_w1} dans les provinces du Congo et de l'Oubangui, et plus humide que la normale jusqu'en {fc_w2_end} du Kwango au Sud-Kivu"
+note_en = "In 1997 and 2023 the {fc_month} forecast for the Congo and Ubangi provinces was among the wettest, and those seasons brought the two largest Congo and Ubangi floods since 1998; in 2015 it was near normal, the rain was below normal, and the rivers still had their {rank_1516_en} flood."
+note_fr = "En 1997 et 2023, la prévision {fc_month_de} pour les provinces du Congo et de l'Oubangui était parmi les plus humides, et ces saisons ont donné les deux plus grandes crues du Congo et de l'Oubangui depuis 1998 ; en 2015, elle était proche de la normale, la pluie inférieure à la normale, et les fleuves ont tout de même connu {rank_1516_fr} crue."
 
 [[sections]]
 id = "drivers"

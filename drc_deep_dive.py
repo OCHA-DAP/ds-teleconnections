@@ -811,12 +811,13 @@ def fig_forecast() -> tuple[Path, dict]:
     fig.subplots_adjust(left=0.01, right=0.99, top=0.93, bottom=0.2, wspace=0.03)
     year, n = fc["year"], fc["n_hist"]
     m0 = MONTH_FULL[LANG][fc["im"] - 1]
+    m0_de = ("d'" if m0[0] in "aeiou" else "de ") + m0
     _source(fig, _t(f"Where the {m0} {year} forecast ranks among the {n} {m0} forecasts for 1981–2025, by province (ECMWF SEAS5 "
                     "ensemble mean, detrended), classed as in the team's seas5-skill viewer: strongly below or above normal = the driest "
                     "or wettest 10% of forecasts, below or above = the driest or wettest third. Skill = hindcast correlation with ERA5: "
                     "high from 0.5, moderate 0.3–0.5, low under 0.3. Outside rainy season: the three months bring less than 15% of the "
                     "year's rain (ERA5).",
-                    f"Rang de la prévision de {m0} {year} parmi les {n} prévisions de {m0} de 1981–2025, par province (moyenne de "
+                    f"Rang de la prévision {m0_de} {year} parmi les {n} prévisions {m0_de} de 1981–2025, par province (moyenne de "
                     "l'ensemble ECMWF SEAS5, sans tendance), classée comme dans le visualiseur seas5-skill de l'équipe : très inférieur ou "
                     "très supérieur = les 10 % de prévisions les plus sèches ou les plus humides ; inférieur ou supérieur = le tiers le "
                     "plus sec ou le plus humide. Fiabilité = corrélation des prévisions rétrospectives avec ERA5 : élevée à partir de 0,5, "
@@ -829,20 +830,21 @@ def fig_forecast() -> tuple[Path, dict]:
     wet2 = [pc for pc in pr.index if all(classes[c][pc][0].endswith("_wet") for c in (c1, c2))]
     rg = fc["region"]
     if (len(corr) < 4 or not all(classes[c1][pc][0].endswith("_dry") for pc in corr) or len(wet2) < 6
-            or any(pc in REGIONS["corridor"]["pcodes"] for pc in wet2)):
+            or any(pc in REGIONS["corridor"]["pcodes"] for pc in wet2) or not {"CD31", "CD62"} <= set(wet2)):
         raise ValueError(f"the SEAS5 pattern changed (dry {c1} in the Congo/Ubangi provinces, wet {c1}–{c2} in the centre and "
                          "south): reword the forecast headline and partner rows 2 and 4")
-    if not (rg["fc"][year] <= 10 and min(rg["fc"][1997], rg["fc"][2023]) >= 90 and min(rg["obs"][1997], rg["obs"][2023]) >= 85
-            and 33 <= rg["fc"][2015] <= 67 and rg["obs"][2015] < 50):
+    if not (rg["fc"][year] <= 10 and min(rg["fc"][1997], rg["fc"][2023]) >= 90
+            and 33 <= rg["fc"][2015] <= 67 and rg["obs"][2015] <= 100 / SEAS5_T["sev_rp"]):
         raise ValueError(f"the analogue forecasts for the Congo/Ubangi provinces no longer read as the forecast note says ({rg}): reword it")
     if not {"CD74", "CD62"} <= set(wet2):
         raise ValueError("the forecast is no longer wet in Tanganyika and Sud-Kivu: reword partner row 3")
-    if any(classes[c][pc][0].endswith("_dry") for c in win for pc in REGIONS["southeast"]["pcodes"]):
-        raise ValueError("the forecast now shows a skilful dry signal in the south-east: reword partner row 4")
+    if any(classes[c][pc][0] != "low_skill" for c in list(win)[2:] for pc in REGIONS["southeast"]["pcodes"]):
+        raise ValueError("the forecast is no longer low-skill in the south-east from the third window: reword partner row 4")
     names = adm1.set_index("ADM1_PCODE")["ADM1_FR"]
     w1, w2 = win[c1], win[c2]
     full = MONTH_FULL[LANG]
-    v = dict(fc_month=m0, fc_year=year, fc_w1=f"{full[w1[0] - 1]}–{full[w1[-1] - 1]}", fc_w2_end=full[w2[-1] - 1],
+    v = dict(fc_month=m0, fc_month_de=("d'" if m0[0] in "aeiou" else "de ") + m0, fc_year=year,
+             fc_w3_start=full[list(win.values())[2][0] - 1], fc_w1=f"{full[w1[0] - 1]}–{full[w1[-1] - 1]}", fc_w2_end=full[w2[-1] - 1],
              fc_end=full[list(win.values())[-1][-1] - 1],
              fc_n_dry=len(corr), fc_n_wet=len(wet2), fc_wet_names=_join(sorted(names[pc] for pc in wet2)))
     return _save(fig, "forecast"), v
@@ -1457,7 +1459,7 @@ def fig_how_many(sp: pd.DataFrame, ev: pd.DataFrame) -> Path:
                     va="center", fontsize=7.5, color="#0b0b0b")
         bx.barh(i, aff[s] / 1e6, color=c, height=0.72, edgecolor=SURFACE, lw=0.8)
         if pd.Timestamp(s + 1, 6, 30) > snap:
-            bx.text(amax * 0.02, i, _t(f"after the EM-DAT snapshot ({_date(snap)})", f"après la copie EM-DAT ({_date(snap)})"),
+            bx.text(aff[s] / 1e6 + amax * 0.02, i, _t(f"EM-DAT snapshot ends {_date(snap)}", f"la copie EM-DAT s'arrête au {_date(snap)}"),
                     va="center", fontsize=7.5, color=TEXT2)
         elif hl or aff[s] >= 0.1e6:
             bx.text(aff[s] / 1e6 + amax * 0.02, i, f"{_num(aff[s] / 1e6, 2)} M", va="center", fontsize=7.5, color="#0b0b0b")
@@ -1479,12 +1481,15 @@ def fig_how_many(sp: pd.DataFrame, ev: pd.DataFrame) -> Path:
                         Patch(color=OTHER_C, label=_t("other seasons", "autres saisons")),
                         Patch(color=HM_SHADES[OTHER_C], label=_t("darker part: in the 2026 PiN", "partie foncée : dans le PiN 2026"))],
                loc="lower center", ncol=2, fontsize=8, bbox_to_anchor=(0.5, 0.0))
+    se = sp[(sp.region == "southeast") & sp.season.isin(order[:5])].set_index("season")[NEED_KEYS].sum(axis=1)
+    if (se / fs_[order[:5]]).min() < 0.5:
+        raise ValueError("the south-east wetlands no longer make up most of the five largest totals: reword the how-many caption")
     fig.tight_layout(rect=(0, 0.07, 1, 1))
-    _source(fig, _t("FloodScan × WorldPop 2020: the four regions' season peaks added up (they come months apart); PiN share as in the HNRP "
-                    "section below. *1997/98 from 12 January 1998, a floor. EM-DAT (CRED/UCLouvain): everyone reported affected, flash and "
+    _source(fig, _t("FloodScan × WorldPop 2020: the four regions' season peaks added up (they come months apart); the south-east wetlands "
+                    "make up most of the largest totals. PiN share as in the HNRP section below. *1997/98 from 12 January 1998, a floor. EM-DAT (CRED/UCLouvain): everyone reported affected, flash and "
                     "city floods included; a floor, thinner in earlier years.",
-                    "FloodScan × WorldPop 2020 : pics de saison des quatre régions additionnés (ils surviennent à des mois d'écart) ; part dans "
-                    "le PiN comme dans la section HNRP plus bas. *1997/98 à partir du 12 janvier 1998, un minimum. EM-DAT (CRED/UCLouvain) : "
+                    "FloodScan × WorldPop 2020 : pics de saison des quatre régions additionnés (ils surviennent à des mois d'écart) ; les zones "
+                    "humides du Sud-Est font l'essentiel des plus grands totaux. Part dans le PiN comme dans la section HNRP plus bas. *1997/98 à partir du 12 janvier 1998, un minimum. EM-DAT (CRED/UCLouvain) : "
                     "toutes les personnes signalées affectées, crues éclair et urbaines comprises ; un minimum, plus lacunaire les premières années."),
             y=-0.005)
     return _save(fig, "how_many")
@@ -1679,7 +1684,7 @@ def values(a: dict) -> dict:
     aff_both = [aff.get(y, 0) for y in BOTH if y >= 2015]
     corr = pk[pk.region == "corridor"].set_index("season")["peak"].rank(ascending=False)
     top = sorted(int(corr[y]) for y in BOTH if y in corr.index)
-    if top != [1, 2, 3]:
+    if top != [1, 2, 3] or {int(corr[1997]), int(corr[2023])} != {1, 2}:
         raise ValueError(f"the El Niño + Dipole seasons are no longer the top 3 on the Congo and Ubangi ({top}): reword the range headline and partner row 2")
     if set(aff.nlargest(2).index) != {2019, 2023}:
         raise ValueError("2023/24 and 2019/20 are no longer the two largest EM-DAT flood seasons: reword the reported headline")
@@ -1696,7 +1701,7 @@ def values(a: dict) -> dict:
     top5 = list(allt.nlargest(5).index)
     others5 = sorted((y for y in top5 if y not in BOTH + IOD_ONLY), key=lambda y: rk[y])
     son_oni, son_dmi = oni_season("SON"), seasonal(dmi(), [9, 10, 11])
-    if (sum(y in BOTH + IOD_ONLY for y in top5) != 3 or len(others5) != 2 or rk[2015] <= 5
+    if (sum(y in BOTH for y in top5) != 2 or not set(IOD_ONLY) <= set(top5) or len(others5) != 2 or rk[2015] <= 5
             or any(son_oni.get(y, 0) >= 0.5 or son_dmi.get(y, 0) >= 0.4 for y in others5)):
         raise ValueError(f"the ranking of seasons changed (top five {top5}): reword the how-many headline and note")
     riv = a["split"][a["split"].region.isin(["corridor", "kinshasa"]) & a["split"].season.isin(BOTH)][NEED_KEYS].sum()
