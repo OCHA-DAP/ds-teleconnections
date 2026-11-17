@@ -175,7 +175,7 @@ for u, pcs in UNITS.items():
     rec["share_ci"] = {"fits": fits_ci, "lo": min(v_[0] for v_ in fits_ci.values()), "hi": max(v_[1] for v_ in fits_ci.values())}
     h = df.loc[1982:2025]
     rec["fc_trend_decade"] = round(float(np.polyfit(h.index.values, h.fp.values, 1)[0] * 10), 1)
-    # observed rainfall that past forecasts of this size were followed by: fit of ERA5 % on forecast %, 1982-2025
+    # observed rainfall for this forecast: the past relation (fit of ERA5 % on forecast %, 1982-2025) extended to 2026
     ho = h.dropna(subset=["op"])
     bo, ao = np.polyfit(ho.fp, ho.op, 1)
     sd = float((ho.op - (ao + bo * ho.fp)).std(ddof=2))

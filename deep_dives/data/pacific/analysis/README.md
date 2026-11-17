@@ -26,8 +26,12 @@ Definitions used throughout:
   without a linear year term. Neutral year = the fit at Niño3.4 = 0 for 2026; El Niño share = the Niño3.4 term at the
   2026 value over the gap between the neutral year and the 2026 forecast, capped at 100%. "Share of variation" = squared
   correlation after removing a linear trend from both series.
-- Observed rainfall that past forecasts point to: linear fit of ERA5 % on forecast %, 1982–2025, 80% prediction interval
-  (with the fit's own uncertainty, since 2026 lies outside the range of past forecasts).
+- Observed rainfall for this forecast: the past relation (linear fit of ERA5 % on forecast %, 1982–2025) extended to the
+  2026 forecast, with a 90% prediction interval that includes the fit's own uncertainty (2026 lies below every past
+  forecast in Fiji and Tonga). Ranked among the 45 observed seasons (rank = 1 + seasons drier).
+- Return periods: Weibull, (n + 1) / rank from the driest (from the wettest above the median); forecasts among the 46
+  November forecasts as issued (`rank_dt`: after removing a linear trend fitted on 1981–2025), observed seasons among
+  the 45 since 1981/82. El Niño share intervals: 5th–95th percentile of 2,000 resampled refits, per fit.
 - Solomon Islands groups are equal-weight means of provinces: south-east SB05, SB08, SB09; centre SB04, SB06, SB07;
   north-west SB01, SB02, SB03. Honiara (SB10) has no ERA5 cell; Ha'apai (TO3) has no SEAS5 cell.
 - Fiji gauges: GHCN-Daily, months with at most two missing days; November–April totals only when all six months pass.

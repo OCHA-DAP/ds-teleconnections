@@ -174,9 +174,9 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     worst = max(o["rank_exp"] for o in oe3)
     T["oexp_n"] = {2: "two", 3: "three", 4: "four", 5: "five"}.get(worst, str(worst))
     T["oexp_rp"] = _f(_rp(worst, oe3[0]["n"]))
-    if worst > 5:
-        problems.append("observed rainfall from the forecast no longer among the five driest seasons in all three")
-    T["ohi_rp3"] = _span([_rp(o["rank_hi"], o["n"]) for o in oe3])
+    if not 2 <= worst <= 5:
+        problems.append(f"observed rainfall from the forecast: worst rank {worst} no longer fits 'among the N driest' (2–5)")
+    T["ohi_rp3"] = _rng([_rp(o["rank_hi"], o["n"]) for o in oe3], ".1f")
     if any(o["rank_hi"] > (o["n"] + 1) / 2 for o in oe3):
         problems.append("wet end of the observed range now above the median (text gives it as a dry return period)")
     for u, o in zip(("FJ", "TO", "VU"), oe3):
@@ -321,7 +321,8 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     T["cerf_note"] = (
         "Since 2006 the driest observed wet seasons (ERA5) were " + ", ".join(parts[:-1]) + " and " + parts[-1] +
         ", with no CERF drought allocation. For this season, the past relation between forecasts and observed rainfall gives "
-        f"about {T['FJ_oexp']}% in Fiji, {T['TO_oexp']}% in Tonga and {T['VU_oexp']}% in Vanuatu (90% ranges {T['oe_ranges3']}), "
+        f"about {T['FJ_oexp']}% in Fiji, {T['TO_oexp']}% in Tonga and {T['VU_oexp']}% in Vanuatu (90% ranges from below the driest "
+        f"season on record up to {T['FJ_ohi']}%, {T['TO_ohi']}% and {T['VU_ohi']}%), "
         f"each among the {T['oexp_n']} driest seasons since 1981. "
         "Papua New Guinea's 2016 allocation covered a dry-season drought (April–November 2015).")
     for u in three:
