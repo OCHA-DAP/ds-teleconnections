@@ -1883,6 +1883,11 @@ def main() -> None:
             import cadc_deep_dive
             cadc_deep_dive.build(spec, publish=bool(os.environ.get("CADC_PUBLISH")))
             continue
+        if spec.get("builder") == "pac":
+            # Fiji, Solomon Islands, Tonga, Vanuatu 2026/27 wet season: page filled from the committed analysis output; docs/ only with PAC_PUBLISH=1
+            import pac_deep_dive
+            pac_deep_dive.build(spec, publish=bool(os.environ.get("PAC_PUBLISH")))
+            continue
         if spec.get("builder") == "hti":
             # Haiti spring 2027 outlook: page filled from the committed analysis outputs; docs/ only with HTI_PUBLISH=1
             import hti_deep_dive

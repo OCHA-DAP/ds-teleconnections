@@ -1,0 +1,20 @@
+# Fiji, Solomon Islands, Tonga and Vanuatu — the 2026/27 wet season (November–April) under the 2026 El Niño.
+# Built by pac_deep_dive.py (builder = "pac"). The page text lives in deep_dives/data/pacific/template.html; its numbers
+# are filled from the committed analysis output deep_dives/data/pacific/page_data.json (see analysis/README.md), and the
+# build stops when a sentence no longer matches the data.
+iso3 = "FJI"
+name = "Fiji, Solomon Islands, Tonga and Vanuatu"
+builder = "pac"
+
+[catalogue]
+direction = "drier"
+season = "DJF"
+evidence = "robust"
+source_html = '<a href="https://doi.org/10.1007/s00382-009-0716-3">Vincent et al. 2011 (Clim. Dyn.)</a>; Cai et al. 2012 (Nature); PACCSAP country reports 2014'
+
+[assessment]
+direction = "drier in the November–April wet season in Fiji, Tonga, Vanuatu and south-east Solomon Islands; no consistent signal in the rest of Solomon Islands"
+season = "November 2026 – April 2027"
+evidence = "robust"
+evidence_note = "Holds for Fiji, Tonga, Vanuatu and the south-east of Solomon Islands in ERA5 and Fiji's rain gauges; the catalogue's 'robust' does not hold for central and north-western Solomon Islands."
+one_line = "SEAS5 forecasts November–April rainfall at 48% of the average forecast in Fiji, 50% in Tonga and 69% in Vanuatu, the driest forecasts since 1981 in Fiji and Tonga; El Niño alone accounts for at least about half of that deficit. In Solomon Islands the south-east is forecast at 80% and the north-west at 116% (low skill). CERF's records since 2006 show no drought allocation to any of the four."
