@@ -57,29 +57,42 @@ def methods(D):
         over the Sahel in 2025–2026 than any gauge-based product and is known to drift there, so it is
         left out.</p>""", "m-rain"),
         det("Vegetation (detrended)", f"""<p><b>MODIS greening</b> (the headline and the x-axis):
-        MOD13A1 NDVI (Terra, 500 m, read at about 2 km) from the Microsoft Planetary Computer,
-        2001–2026. Greening = mean NDVI of the 16-day composites starting 1 July–15 October minus
-        the mean of those starting 1 March–31 May of the same year; cloudy pixels are left out.
-        Raw NDVI as % of average understates deficits on sparse Sahel vegetation, the seasonal
-        rise does not. Detrending, as on the Chad evaluation-villages page: each pixel is divided
-        by its own 2001–2025 mean, units are averaged, a straight line is fitted to the unit's
-        2001–2025 series, and each year is shown as % of that line's level for the year. The map
-        shows each pixel against its département/locality's line; the sides and provinces use
-        their own. Greening rose by {D['veg_slopes']['grn']['chad']:+.0f} (eastern Chad) and
-        {D['veg_slopes']['grn']['darfur']:+.0f} (Darfur) points per decade over 2001–2025. Pixels
-        outside the rainfall belt or with almost no greening are left out.</p>
+        MOD13A1 NDVI (Terra, 500 m) from the Microsoft Planetary Computer, read from the files' 2 km
+        overviews, which average the 500 m pixels (so cloud flags are approximate at that scale; a
+        composite-by-composite check moved 2026 by under a point). Greening = mean NDVI of the
+        16-day composites starting 12 July–30 September (covering mid-July to mid-October; five in
+        2022) minus the mean of those starting 1 March–31 May of the same year. The archive has no
+        2025 season, so the base is 2001–2024. Detrending follows the Chad evaluation-villages page:
+        each pixel is divided by its own 2001–2024 mean, units are averaged, a straight line is
+        fitted to the unit's series, and each year is shown as % of the line's level for that year.
+        Greening rose by {D['veg_slopes']['grn']['chad']:+.0f} (eastern Chad) and
+        {D['veg_slopes']['grn']['darfur']:+.0f} (Darfur) points per decade.</p>
+        <p>Two checks change the size of the 2026 figure, not its direction. As an average of pixel
+        percentages, sparse northern pixels weigh as much as green ones; weighted by area, 2026 is
+        {D['vstat']['chad']['grn_area']['v']:.0f}% (eastern Chad) and
+        {D['vstat']['darfur']['grn_area']['v']:.0f}% (Darfur) of trend. And the March–May 2026 base
+        was unusually high after two wet years, which lowers the rise without the season itself
+        being worse: with a fixed base (each pixel's 2001–2024 mean), 2026 is
+        {D['vstat']['chad']['grn_floor']['v']:.0f}% in eastern Chad, where
+        {D['vstat']['chad']['grn_floor']['next_y']} is slightly lower
+        ({D['vstat']['chad']['grn_floor']['next_v']:.0f}%), and
+        {D['vstat']['darfur']['grn_floor']['v']:.0f}% in Darfur, still the lowest. The map uses
+        each province/state's line and leaves out pixels with very little greening. Terra's
+        overpass has drifted earlier since 2022; bare-desert NDVI is stable over the record, but a
+        sun-angle effect on vegetation cannot be ruled out.</p>
         <p><b>JRC ASAP biomass</b>: cumulative FPAR z-score on cropland, during the growing cycle,
-        by admin-1, read at the 21 October dekad, detrended by subtracting the level of a
-        2001–2025 straight line (the through-season chart does this dekad by dekad). Its export
-        labels the series MODIS, but JRC's current FPAR record joins MODIS (to 2023) with
-        intercalibrated VIIRS (Seguini et al. 2026, ESSD 18:309); a step at the switch cannot be
-        excluded. <b>FAO ASIS</b> (METOP-AVHRR, a different satellite): vegetation health index,
-        mean of the dekads 1 July–21 October, detrended on a 1984–2025 line (the file has no
-        land-type column, so it appears to be the admin-unit mean rather than a cropland mean).
-        FAO's agricultural stress index is kept in the CSV but not ranked: its dekadal mean ranks
-        years only roughly like FAO's own annual index. MODIS and JRC both draw on MODIS-family
-        sensors, so their agreement is not fully independent; FAO is. The GeoSahel biomass used
-        by the Chad drought framework covers West Africa only and its server did not respond.</p>""", "m-veg"),
+        by admin-1, read at the 21 October dekad, detrended by subtracting the level of a 2001–2025
+        straight line (the through-season chart does this dekad by dekad). 2026 is the lowest on
+        both sides with or without detrending. Its export labels the series MODIS, but JRC's
+        current FPAR record joins MODIS (to 2023) with intercalibrated VIIRS (Seguini et al. 2026,
+        ESSD 18:309). <b>FAO ASIS</b> (METOP-AVHRR, a different satellite): vegetation health
+        index, mean of the dekads 1 July–21 October, detrended on a 1984–2025 line. Undetrended,
+        2026 is 8th lowest of 26 on both sides, so FAO's ranking rests on the line; read it as a
+        check, not a headline. The file has no land-type column, so it appears to be the admin-unit
+        mean. MODIS and JRC both draw on MODIS-family sensors, so their agreement is not fully
+        independent. FAO's agricultural stress index is kept in the CSV but not ranked. The GeoSahel
+        biomass used by the Chad drought framework covers West Africa only and its server did not
+        respond.</p>""", "m-veg"),
         det("Yields", """<p>FEWS NET Data Warehouse crop production statistics for Sudan
         (Federal Ministry of Agriculture to 2015, FAO CFSAM from 2016, the latter kept in 2016 where
         both exist). Sorghum and millet, traditional rainfed sector, main season. Greater Darfur
@@ -140,10 +153,13 @@ def _check(D: dict) -> None:
         if min((6, 7, 8, 9), key=mon.get) != 8:
             bad.append(f"lead: August the weakest month ({s})")
         rk = D["ranks"][s]
-        if rk["grn"] != 1 or rk["rain"] != 1 or rk["n"] != 26:
-            bad.append(f"lead/estimate: least greening and driest since 2001 ({s})")
-        if rk["bio_d"] != 1 or rk["vhi_d"] != 1:
-            bad.append(f"lead: JRC and FAO detrended 'lowest since 2001' ({s}: {rk['bio_d']}, {rk['vhi_d']})")
+        vs = D["vstat"][s]
+        if rk["rain"] != 1 or rk["n"] != 26:
+            bad.append(f"lead/estimate: driest since 2001 against trend ({s})")
+        if vs["bio_d"]["rank"] != 1 or vs["bio_d"]["level"]:
+            bad.append(f"lead: JRC biomass 'lowest since 2001' clear of the next season ({s})")
+        if vs["grn"]["rank"] > 2:
+            bad.append(f"lead: MODIS greening lowest or about level with the lowest ({s})")
     r = {(d["side"], d["y"]): d for d in D["rain"]}
     if min(r[(s, 2008)]["pt2"] - r[(s, 2026)]["pt2"] for s in ("chad", "darfur")) > 5:
         bad.append("lead: 'in CHIRPS v2, 2008 comes close'")
@@ -159,8 +175,8 @@ def _check(D: dict) -> None:
     if near != ["1984"]:
         bad.append(f"estimate: 1984 the one earlier season about as dry ({near})")
     yl = [v for y, v in ad["yield_veg"].items() if int(y) not in (2014, 2015, 2018, 2019)]
-    if len(yl) < 3:
-        bad.append("estimate: fewer than three usable analogue yields")
+    if len(yl) != 3:
+        bad.append(f"lead: 'in three of the poorest earlier seasons' ({len(yl)} usable yields)")
     if min(ad["rain_of_veg"].values()) <= r[("darfur", 2026)]["pt"]:
         bad.append("estimate: analogue seasons 'all milder' in rain")
     if not (min(yl) >= 60 and ad["yield_rain_full"]["1984"] < 70 and ad["yield_2023"] < 50):

@@ -133,8 +133,10 @@ def vegetation():
     ys = pd.read_parquet(PROC / "veg" / "yearly_side.parquet")
     v = ys.pivot_table(index=["side", "year"], columns="indicator", values="value").reset_index()
     gr = pd.read_parquet(PROC / "ndvi" / "side_years.parquet").rename(columns={"year": "year"})
-    v = v.merge(gr[["side", "year", "pct_raw", "pct_detr"]], on=["side", "year"], how="outer")
-    v = v.rename(columns={"pct_raw": "grn_raw", "pct_detr": "grn"})
+    v = v.merge(gr[["side", "year", "pct_raw", "pct_detr", "pct_detr_area", "pct_detr_floor"]],
+                on=["side", "year"], how="outer")
+    v = v.rename(columns={"pct_raw": "grn_raw", "pct_detr": "grn", "pct_detr_area": "grn_area",
+                          "pct_detr_floor": "grn_floor"})
     slopes = {"grn": gr.groupby("side")["slope_per_decade"].first().round(1).to_dict()}
     for col, base in (("zfparc_crop", (2001, 2025)), ("zfparc_range", (2001, 2025)),
                       ("vhi", (1984, 2025))):
@@ -234,6 +236,36 @@ def ranks(rain, veg):
     return out
 
 
+def vstat(veg):
+    """2026 against the other seasons since 2001 for each vegetation measure: rank, the next
+    lowest season and whether 2026 is clear of it. 'level' = within the margin below, or not
+    lowest on one of the greening checks (area-weighted, fixed floor). The page words its
+    claims from these flags."""
+    margin = {"grn": 10.0, "bio_d": 0.2, "vhi_d": 0.02}
+    out = {}
+    for s in SIDES:
+        vv = veg[(veg["side"] == s) & (veg["year"] >= 2001)].set_index("year")
+        rec = {}
+        col = {"bio_d": "zfparc_crop_d"}
+        for k in ("grn", "grn_area", "grn_floor", "grn_raw", "bio_d", "vhi_d", "vhi"):
+            x = vv[col.get(k, k)].dropna()
+            others = x.drop(2026)
+            rec[k] = {"v": r(x.loc[2026], 3), "rank": int((x < x.loc[2026]).sum() + 1),
+                      "n": int(len(x)), "next_y": int(others.idxmin()),
+                      "next_v": r(others.min(), 3)}
+        for k, mg in margin.items():
+            gap = rec[k]["next_v"] - rec[k]["v"] if rec[k]["rank"] == 1 else 0
+            level = rec[k]["rank"] > 1 or gap < mg
+            if k == "grn":
+                level = level or rec["grn_area"]["rank"] > 1 or rec["grn_floor"]["rank"] > 1
+            rec[k]["level"] = bool(level)
+            if level:  # the season it is level with: the closest-lowest other season
+                rec[k]["with_y"] = rec[k]["next_y"] if k != "grn" or rec["grn_floor"]["rank"] == 1 \
+                    else rec["grn_floor"]["next_y"]
+        out[s] = rec
+    return out
+
+
 def geometry():
     a2 = load_adm(2)
     a2["geometry"] = a2.geometry.simplify(0.01, preserve_topology=True)
@@ -300,10 +332,12 @@ def main():
         "rain_month": mon,
         "adm1_2026": by_adm1(),
         "veg": [{"side": x.side, "y": int(x.year), "grn": r(x.grn, 1), "grn_raw": r(x.grn_raw, 1),
+                 "grn_area": r(x.grn_area, 1), "grn_floor": r(x.grn_floor, 1),
                  "bio": r(x.zfparc_crop, 2), "bio_d": r(x.zfparc_crop_d, 2),
                  "bior_d": r(x.zfparc_range_d, 2), "vhi": r(x.vhi, 3), "vhi_d": r(x.vhi_d, 3),
                  "asi": r(x.asi, 1)} for x in veg.itertuples()],
         "veg_slopes": slopes,
+        "vstat": vstat(veg),
         "vmap": veg_map(),
         "veg_dekad": env,
         "yield": [{"y": int(x.year), "pct": r(x.yield_pct_local, 0),

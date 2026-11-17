@@ -1,18 +1,29 @@
 """Detrended MODIS greening: per side and year, per state/province for 2026, and the 2026 map.
 
 Same recipe as the Chad evaluation-villages page (ds-aa-tcd-drought), which the user asked
-for there: each pixel's greening is divided by its own 2001-2025 mean (cell-normalised),
-units are averaged, a straight line is fitted to the unit's 2001-2025 series, and a year
+for there: each pixel's greening is divided by its own 2001-2024 mean (cell-normalised),
+units are averaged, a straight line is fitted to the unit's 2001-2024 series, and a year
 is expressed as % of the level that line gives for it. A pixel on the map is its
-cell-normalised 2026 greening as % of its admin-2 unit's trend level for 2026 (a
-pixel-level trend over 25 noisy years is mostly noise).
+cell-normalised 2026 greening as % of its province/state's trend level for 2026 (a
+pixel-level trend over 24 noisy years is mostly noise).
 
 Pixels count only inside the rainfall belt (0.5 deg cells with >= 100 mm in an average
 June-September) and where the average greening is at least MIN_GREEN (bare ground and
 desert, where a ratio is meaningless, drop out).
 
+Two checks are kept next to the headline series (side_years.parquet):
+  pct_detr_area   area-weighted: the unit's mean greening against its own line (a mean of pixel
+                  ratios lets sparse pixels, with large % swings and steep % trends, weigh as much
+                  as green ones)
+  pct_detr_floor  greening with a fixed dry-season floor (each pixel's 2001-2024 mean March-May
+                  NDVI) instead of the same year's: a high floor after wet years lowers the rise
+                  without the season itself being worse (2026's floor was high)
+The map uses each province/state's line (admin-2 lines on 25 points step at unit borders) and
+pixels with average greening of at least MIN_GREEN_MAP.
+
 Writes <work>/processed/ndvi/:
-  side_years.parquet   side, year, pct_raw (% of the 2001-2025 mean), pct_detr (% of trend)
+  side_years.parquet   side, year, pct_raw (% of the 2001-2024 mean), pct_detr (% of trend),
+                       pct_detr_area, pct_detr_floor
   adm1_2026.parquet    adm1_pcode, pct_detr_2026, pct_raw_2026
   map_2026.npz         lat, lon (0.04 deg), pct (detrended 2026, NaN outside the mask)
 """
@@ -28,8 +39,9 @@ from rasterio.transform import from_origin
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from aoi import BBOX, PROC, load_adm  # noqa: E402
 
-MIN_GREEN = 0.03
-BASE = (2001, 2025)
+MIN_GREEN = 0.03      # series: pixels whose average greening is at least this
+MIN_GREEN_MAP = 0.06  # map: percentages swing too much on sparser vegetation
+BASE = (2001, 2024)  # MODIS has no 2025 season on the Planetary Computer
 OUT = PROC / "ndvi"
 
 
@@ -42,6 +54,7 @@ def trend_level(years, series, base=BASE):
 def main():
     z = np.load(OUT / "greening.npz")
     years, lat, lon, g = z["years"], z["lat"], z["lon"], z["greening"]
+    season, dry = z["season"], z["dry"]
     ny, nx = lat.size, lon.size
     res = float(lat[0] - lat[1])
     x0, y0, x1, y1 = BBOX
@@ -60,6 +73,12 @@ def main():
         norm = g / mean
     ok = belt & (mean >= MIN_GREEN) & (np.isfinite(g[base]).sum(0) >= 20)
     norm[:, ~ok] = np.nan
+    # fixed-floor variant
+    with np.errstate(invalid="ignore", divide="ignore"):
+        gf = season - np.nanmean(dry[base], axis=0)
+        normf = gf / np.nanmean(gf[base], axis=0)
+    normf[:, ~ok] = np.nan
+    graw = np.where(ok, g, np.nan)
 
     a2 = load_adm(2).reset_index(drop=True)
     a2["id"] = np.arange(1, len(a2) + 1)
@@ -68,8 +87,9 @@ def main():
     side_of = dict(zip(a2["id"], a2["side"]))
     adm1_of = dict(zip(a2["id"], a2["adm1_pcode"]))
 
-    def unit_series(mask):
-        return np.array([np.nanmean(norm[i][mask]) if np.isfinite(norm[i][mask]).any() else np.nan
+    def unit_series(mask, arr=None):
+        arr = norm if arr is None else arr
+        return np.array([np.nanmean(arr[i][mask]) if np.isfinite(arr[i][mask]).any() else np.nan
                          for i in range(len(years))])
 
     # per side
@@ -78,9 +98,14 @@ def main():
         mask = np.isin(ids, [k for k, v in side_of.items() if v == side])
         s = unit_series(mask)
         lvl, slope = trend_level(years, s)
-        for y, v, t in zip(years, s, lvl):
+        sa = unit_series(mask, graw)
+        lva, _ = trend_level(years, sa)
+        sf = unit_series(mask, normf)
+        lvf, _ = trend_level(years, sf)
+        for y, v, t, va, ta, vf, tf in zip(years, s, lvl, sa, lva, sf, lvf):
             rows.append({"side": side, "year": int(y), "pct_raw": 100 * v,
-                         "pct_detr": 100 * v / t, "slope_per_decade": 1000 * slope})
+                         "pct_detr": 100 * v / t, "pct_detr_area": 100 * va / ta,
+                         "pct_detr_floor": 100 * vf / tf, "slope_per_decade": 1000 * slope})
         print(f"[greening] {side}: {mask.sum() and np.isfinite(norm[-1][mask]).sum()} pixels in 2026, "
               f"trend {1000 * slope:+.1f} %-pts/decade, 2026 raw {100 * s[-1]:.0f}% detr "
               f"{100 * s[-1] / lvl[-1]:.0f}%")
@@ -96,15 +121,15 @@ def main():
                      "pct_raw_2026": 100 * s[-1]})
     pd.DataFrame(rows).to_parquet(OUT / "adm1_2026.parquet", index=False)
 
-    # map: pixel 2026 as % of its admin-2 trend level for 2026
+    # map: pixel 2026 as % of its province/state's trend level for 2026
     pct = np.full((ny, nx), np.nan, np.float32)
-    for k in a2["id"]:
-        mask = ids == k
+    ok_map = ok & (mean >= MIN_GREEN_MAP)
+    for pc in sorted(set(adm1_of.values())):
+        mask = np.isin(ids, [k for k, v in adm1_of.items() if v == pc])
         s = unit_series(mask)
-        if np.isfinite(s[base]).sum() < 15 or not np.isfinite(s[-1]):
-            continue
         lvl, _ = trend_level(years, s)
-        pct[mask] = 100 * norm[-1][mask] / lvl[-1]
+        sel = mask & ok_map
+        pct[sel] = 100 * norm[-1][sel] / lvl[-1]
     # 0.04 deg for the page
     c = pct[: ny // 2 * 2, : nx // 2 * 2].reshape(ny // 2, 2, nx // 2, 2)
     with np.errstate(invalid="ignore"):

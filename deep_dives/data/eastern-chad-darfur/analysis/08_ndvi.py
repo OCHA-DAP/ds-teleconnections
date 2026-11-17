@@ -1,13 +1,15 @@
 """MODIS NDVI season greening, 2001-2026, on a 0.02 deg grid over the AOI box.
 
 Greening = mean NDVI of the 16-day composites starting 12 Jul - 30 Sep (covering mid-July to
-mid-October; the same six composites every year) minus the mean of those starting 1 Mar -
+mid-October; six composites a year, five in 2022 when 30 Sep is missing) minus the mean of those starting 1 Mar -
 31 May of the same year (the dry-season floor). Planetary Computer has no MOD13A1 composites
 from June 2025 to February 2026, so 2025 has no value. Raw NDVI as % of
 average understates deficits on sparse Sahel vegetation; the seasonal rise does not.
 
 Source: MOD13A1 v6.1 (Terra, 500 m, 16-day) COGs from the Microsoft Planetary Computer,
-read at overview level 2 (about 2 km) to keep the transfer small. Items are picked by
+read from the files' first overview (OVR = 1, about 2 km) to keep the transfer small. Those
+overviews AVERAGE the 500 m pixels (checked against full resolution, Aug 2026, h20v07), so the
+cloud flags are only approximate at this scale. Items are picked by
 their id (MOD13A1.*), not the `platform` property, which drops years on this catalogue.
 Pixels flagged cloudy/snow/fill in pixel_reliability are left out of the composite mean.
 Each item read is cached as .npy, so a rerun only fetches what is missing.
@@ -120,6 +122,8 @@ def main():
                 print(f"  {i}/{len(items)} {time.time() - t0:.0f}s", flush=True)
     years = sorted({k[0] for k in sums})
     g = np.full((len(years),) + shape, np.nan, np.float32)
+    sea = np.full((len(years),) + shape, np.nan, np.float32)
+    dry_m = np.full((len(years),) + shape, np.nan, np.float32)
     ns = np.zeros((len(years),) + shape, np.int8)
     nd = np.zeros((len(years),) + shape, np.int8)
     for i, y in enumerate(years):
@@ -131,7 +135,8 @@ def main():
         ns[i], nd[i] = np.isfinite(S).sum(0), np.isfinite(Dr).sum(0)
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", RuntimeWarning)
-            g[i] = np.nanmean(S, 0) - np.nanmean(Dr, 0)
+            sea[i], dry_m[i] = np.nanmean(S, 0), np.nanmean(Dr, 0)
+            g[i] = sea[i] - dry_m[i]
         g[i][(ns[i] < 3) | (nd[i] < 2)] = np.nan
         print(f"  {y}: {len(season)} season, {len(dry)} dry composites "
               f"(dates {min(k[2] for k in sums if k[0] == y)} .. {max(k[2] for k in sums if k[0] == y)})")
@@ -139,7 +144,7 @@ def main():
     lat = y1 - RES / 2 - RES * np.arange(shape[0])
     lon = x0 + RES / 2 + RES * np.arange(shape[1])
     np.savez_compressed(OUT / "greening.npz", years=np.array(years), lat=lat, lon=lon,
-                        greening=g, n_season=ns, n_dry=nd)
+                        greening=g, season=sea, dry=dry_m, n_season=ns, n_dry=nd)
     print(f"[ndvi] wrote {OUT / 'greening.npz'}")
 
 
