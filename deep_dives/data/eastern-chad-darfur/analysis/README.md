@@ -48,3 +48,27 @@ Each script's docstring states its choices. Gotchas found on the way:
   (cell-normalised, trend fitted per unit over 2001–2025).
 - d3-geo needs clockwise rings (07 orients them); maps are equirectangular so the greening raster
   lines up with the outlines.
+
+## Restricted conflict page (`ecd_conflict.py`, builder `ecdc`)
+
+Seasons and local violence, /enso/eastern-chad-darfur-conflict/, encrypted with staticrypt
+(`SITE_PASSWORD`). Built from ACLED events, whose terms limit redistribution: **nothing derived from
+them is committed** (no data, no findings in the template or commit messages). Everything stays in
+`$W/processed/conflict/`:
+
+```
+uv run python 10_acled.py      # ACLED Chad + Sudan, all years (ACLED_USERNAME/ACLED_PASSWORD) -> $W/raw/acled/
+uv run python 12_cast.py       # ACLED CAST forecasts, Chad + Sudan                         -> $W/raw/acled/
+# UCDP GED 25.1 csv (https://ucdp.uu.se/downloads/ged/ged251-csv.zip), unzipped     -> $W/raw/ucdp/
+uv run python 11_conflict.py   # needs 09_greening outputs; -> $W/processed/conflict/conflict_data.json
+# $W/processed/conflict/text.json: curated text (hand-check, literature, forecasting models), by hand
+cd ../../../.. && ECD_WORK=$W SITE_PASSWORD=... uv run python ecd_conflict.py --encrypt
+```
+
+Gotchas:
+- ACLED API pages with a cursor (`next_cursor`), not `page=`; `inter1/inter2` are text labels.
+- ACLED's militia labels for the same kind of attack change over time, so classes exclude only formal
+  war parties (`conflict_classes.py`). Camels as transport ("riding camels") are not livestock.
+- Coverage, labelling and CAST notes that come from looking at the data are in `text.json` (`notes`),
+  not here: this repo is public.
+- `$W` is the only copy of the conflict data and text: back it up before deleting the old local repo.

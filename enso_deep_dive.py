@@ -1899,6 +1899,15 @@ def main() -> None:
             import ecd_deep_dive
             ecd_deep_dive.build(spec, publish=bool(os.environ.get("ECD_PUBLISH")))
             continue
+        if spec.get("builder") == "ecdc":
+            # restricted: poor seasons and local violence (ACLED-based, data in ECD_WORK, never committed);
+            # encrypted into docs/enso/eastern-chad-darfur-conflict/ only with SITE_PASSWORD and ECDC_PUBLISH=1
+            import ecd_conflict
+            if not (ecd_conflict.WORK / "conflict_data.json").exists():
+                print("  skipped: no conflict_data.json in ECD_WORK")
+                continue
+            ecd_conflict.build(spec, encrypt_page=bool(os.environ.get("SITE_PASSWORD") and os.environ.get("ECDC_PUBLISH")))
+            continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack
             import extreme_nord_deep_dive

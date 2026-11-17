@@ -1,0 +1,18 @@
+# Eastern Chad and Darfur: poor seasons and local violence. Built by ecd_conflict.py (builder = "ecdc").
+# RESTRICTED (staticrypt, SITE_PASSWORD): built from ACLED events, whose terms limit redistribution. Nothing
+# derived from them is committed: data and curated text live in <ECD_WORK>/processed/conflict/ (see
+# ecd_conflict.py). The card appears on /enso/ only once the encrypted page exists.
+iso3 = "SDN"
+name = "Eastern Chad and Darfur: poor seasons and local violence"
+builder = "ecdc"
+restricted = true
+
+[catalogue]
+evidence = "moderate"
+
+[assessment]
+evidence = "moderate"
+one_line = "Restricted page. Whether poor rainy seasons have been followed by more farmer–herder and other local violence, and what conflict forecasting models cover."
+
+[page]
+stamp = "17 November 2026"
