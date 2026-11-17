@@ -1,0 +1,18 @@
+# Eastern Chad (Ouaddaï, Wadi Fira, Sila) and Darfur (the five states) — the 2026 rainy season, every season since
+# 1981, and what it points to for the 2027 lean season. Built by ecd_deep_dive.py (builder = "ecd"). RESTRICTED
+# (staticrypt). The page text lives in deep_dives/data/eastern-chad-darfur/template.html; its numbers come from the
+# committed page_data.json (see analysis/README.md), and the build stops when a hard-written sentence no longer matches.
+iso3 = "TCD"
+name = "Eastern Chad and Darfur: the 2026 season"
+builder = "ecd"
+restricted = true
+
+[catalogue]
+evidence = "moderate"
+
+[assessment]
+evidence = "moderate"
+one_line = "Restricted page. How poor the 2026 rainy season was on both sides of the Chad–Sudan border, set against every season since 1981, and what that points to for the harvest and the 2027 lean season."
+
+[page]
+stamp = "17 November 2026"

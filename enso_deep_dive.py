@@ -1893,6 +1893,11 @@ def main() -> None:
             import hti_deep_dive
             hti_deep_dive.build(spec, publish=bool(os.environ.get("HTI_PUBLISH")))
             continue
+        if spec.get("builder") == "ecd":
+            # eastern Chad + Darfur 2026 season (restricted); encrypted into docs/enso/eastern-chad-darfur/ only when SITE_PASSWORD is set
+            import ecd_deep_dive
+            ecd_deep_dive.build(spec, encrypt_page=bool(os.environ.get("SITE_PASSWORD")))
+            continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack
             import extreme_nord_deep_dive
