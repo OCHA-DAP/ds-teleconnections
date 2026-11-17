@@ -173,18 +173,18 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
   <h2 id="now">Now</h2>
   <div class="tiles5">
     <div class="tile"><span class="hd">Niño3.4, October 2026</span><span class="num">+{{n34_oct}} °C</span><span class="lbl">NOAA OISST; NOAA ERSST gives +{{psl_oct}} °C. Both are the highest October values since at least 1982 (OISST before: +{{n34_oct_max}} °C in {{n34_oct_max_year}}).</span></div>
-    <div class="tile"><span class="hd">Fiji</span><span class="num">1 in {{FJ_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry ({{FJ_NA}}% of the average forecast, the {{FJ_NA_rankw}} of {{n_fc}}). Jul–Oct 2026: 1 in {{FJ_JASO_rp}} years ({{FJ_JASO}}% of normal).</span></div>
-    <div class="tile"><span class="hd">Tonga</span><span class="num">1 in {{TO_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry ({{TO_NA}}%, the {{TO_NA_rankw}} of {{n_fc}}). Jul–Oct 2026: 1 in {{TO_JASO_rp}} years ({{TO_JASO}}% of normal).</span></div>
-    <div class="tile"><span class="hd">Vanuatu</span><span class="num">1 in {{VU_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry ({{VU_NA}}%, the {{VU_NA_rankw}} of {{n_fc}}). Jul–Oct 2026: {{VU_JASO}}% of normal (1 in {{VU_JASO_rp}} years).</span></div>
-    <div class="tile"><span class="hd">Solomon Is. south-east</span><span class="num">1 in {{SB_SE_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry ({{SB_SE_NA}}%). The north-west is forecast wet ({{SB_NW_NA}}%; 1 in {{SB_NW_NA_rpw}} years for wet), with low skill.</span></div>
+    <div class="tile"><span class="hd">Fiji</span><span class="num">1 in {{FJ_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry: the {{FJ_NA_rankw}} of {{n_fc}}, {{FJ_NA}}% of the average forecast. Jul–Oct 2026: 1 in {{FJ_JASO_rp}} years ({{FJ_JASO}}% of normal).</span></div>
+    <div class="tile"><span class="hd">Tonga</span><span class="num">1 in {{TO_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry: the {{TO_NA_rankw}} of {{n_fc}}, {{TO_NA}}%. Jul–Oct 2026: 1 in {{TO_JASO_rp}} years ({{TO_JASO}}% of normal).</span></div>
+    <div class="tile"><span class="hd">Vanuatu</span><span class="num">1 in {{VU_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry: the {{VU_NA_rankw}} of {{n_fc}}, {{VU_NA}}%. Jul–Oct 2026: 1 in {{VU_JASO_rp}} years ({{VU_JASO}}% of normal).</span></div>
+    <div class="tile"><span class="hd">Solomon Is. south-east</span><span class="num">1 in {{SB_SE_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry ({{SB_SE_NA}}%). The north-west is forecast wet, 1 in {{SB_NW_NA_rpw}} years ({{SB_NW_NA}}%), with low skill.</span></div>
   </div>
-  <p class="caption">Return period: (n + 1) / rank, ranking the {{n_fc}} November forecasts, or the {{n_fc}} July–October seasons, since 1981 from the driest; 1 in {{n_fc1}} years is the longest this record can show. Rain so far is from ERA5. CHIRPS agrees for Tonga ({{TO_chirps}}%, 1 in {{TO_chirps_rp}} years). For Fiji it is uncertain: Fiji Met's rainfall watch puts the driest August–October in the south and east, ERA5 in the north and west.</p>
+  <p class="caption">Return periods count from the driest of the {{n_fc}} November forecasts, or July–October seasons, since 1981; + marks the driest on record, where the return period could be longer. Rain so far is from ERA5; CHIRPS also has Tonga's July–October among the driest (1 in {{TO_chirps_rp}} years, {{TO_chirps}}%). For Fiji it is uncertain: Fiji Met's rainfall watch puts the driest August–October in the south and east, ERA5 in the north and west.</p>
   <div class="bottomline">
     <ul>
-      <li><b>Fiji, Tonga and Vanuatu.</b> SEAS5 forecasts a much drier wet season than usual. A November–April forecast this dry comes about once in {{FJ_NA_rp}} years in Fiji and Tonga (the driest November forecasts since 1981) and once in {{VU_NA_rp}} years in Vanuatu. It is driest from November to January ({{FJ_NDJ}}%, {{TO_NDJ}}% and {{VU_NDJ}}% of the average forecast), with moderate to high skill (correlation with ERA5 of {{skill3}}).</li>
-      <li><b>Most of the forecast comes from El Niño.</b> Past November forecasts follow Niño3.4 closely (correlation {{r_fc3}} after removing trends). Compared with a neutral year, El Niño accounts for {{FJ_share}}% of the forecast shortfall in Fiji, {{TO_share}}% in Tonga and {{VU_share}}% in Vanuatu, depending on the Niño3.4 series and the trend (100% meaning all of it). Allowing for sampling error, the 90% confidence intervals start at {{FJ_share_lo}}%, {{TO_share_lo}}% and {{VU_share_lo}}%. This year's Niño3.4 is beyond the 1982–2025 range, so these are extrapolations.</li>
-      <li><b>Observed rainfall follows El Niño less closely</b> (correlation {{r_obs3}}). Past forecasts this dry point to an observed season of about 1 in {{FJ_oexp_rp}} years in Fiji, 1 in {{TO_oexp_rp}} in Tonga and 1 in {{VU_oexp_rp}} in Vanuatu, within a wide 80% range: from 1 in {{ohi_rp3}} years to drier than any season since 1981. Of the four strong El Niño events before this one, 1982/83 and 1997/98 brought some of the driest wet seasons on record in Fiji and Tonga (1 in {{o8297_rp}} years), 2015/16 was drier than average (Fiji 1 in {{FJ_o15_rp}} years, Tonga 1 in {{TO_o15_rp}}) and 2023/24 wetter ({{FJ_o23}}%, {{TO_o23}}%).</li>
-      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu ({{SB_SE_NA}}%, 1 in {{SB_SE_NA_rp}} years). The north-west (Choiseul, Western, Isabel) is forecast wet ({{SB_NW_NA}}%, 1 in {{SB_NW_NA_rpw}} years for wet) with low skill; four strong El Niño events are too few to check this (January–March was wetter than average in {{nw_jfm_wet}}).</li>
+      <li><b>Fiji, Tonga and Vanuatu.</b> SEAS5 forecasts a much drier wet season than usual. For November–April it is the driest of {{n_fc}} November forecasts in Fiji and Tonga (1 in {{FJ_NA_rp}} years) and the {{VU_NA_rankw}} in Vanuatu (1 in {{VU_NA_rp}} years; the driest once the forecasts' upward trend is removed). November to January is the driest part. Skill is moderate to high (correlation with ERA5 of {{skill3}}).</li>
+      <li><b>Most of the forecast comes from El Niño.</b> Past November forecasts follow Niño3.4 closely (correlation {{r_fc3}}, trends removed). Against a neutral year, El Niño accounts for {{FJ_share}}% of the forecast shortfall in Fiji, {{TO_share}}% in Tonga and {{VU_share}}% in Vanuatu across six fits. Allowing for sampling error, no fit's 90% confidence interval starts below {{FJ_share_lo}}%, {{TO_share_lo}}% and {{VU_share_lo}}%. Niño3.4 is beyond its 1982–2025 range, so these are extrapolations.</li>
+      <li><b>Observed rainfall follows El Niño less closely</b> (correlation {{r_obs3}}). Extended to this year's forecast, the past relation between forecasts and observed rainfall gives about {{FJ_oexp}}% of average in Fiji, {{TO_oexp}}% in Tonga and {{VU_oexp}}% in Vanuatu. Each would be among the {{oexp_n}} driest seasons since 1981 (1 in {{oexp_rp}} years or rarer), within a wide 90% range: from 1 in {{ohi_rp3}} years to drier than any season since 1981. Of the four strong El Niño events before this one, 1982/83 and 1997/98 brought some of the driest seasons on record in Fiji and Tonga (1 in {{o8297_rp}} years), 2015/16 a moderately dry one (1 in {{FJ_o15_rp}} and 1 in {{TO_o15_rp}} years) and 2023/24 a wet one.</li>
+      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu (1 in {{SB_SE_NA_rp}} years; {{SB_SE_NA}}%). The north-west (Choiseul, Western, Isabel) is forecast wet (1 in {{SB_NW_NA_rpw}} years; {{SB_NW_NA}}%) with low skill; four strong El Niño events are too few to check this (January–March was wetter than average in {{nw_jfm_wet}}).</li>
       <li><b>CERF's records (2006–2026) show no drought allocation to any of the four countries.</b> The {{cerf_n}} allocations to these countries, all since 2014, were for cyclones ({{cerf_storm}}), a flood, a volcanic eruption and an earthquake. CERF's only drought allocations in the Pacific went to Papua New Guinea (2016, El Niño) and the Marshall Islands (2013). In Fiji and Tonga the 2026/27 forecast is drier than any November forecast since 1981, including those made in 1982, 1997 and 2015.</li>
     </ul>
   </div>
@@ -193,22 +193,23 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
 <section aria-labelledby="fc">
   <h2 id="fc">SEAS5 forecast by season</h2>
   <div class="panel">
-    <h3>Forecast rainfall: return period, and % of the average November forecast (1991–2020)</h3>
+    <h3>Forecast return period and % of the average November forecast (1991–2020)</h3>
     <div class="scroll"><table class="heat" id="heat"></table></div>
     <div class="rpleg" id="heatleg"></div>
-    <p class="caption">Return period of a forecast this dry among the {{n_fc}} November forecasts since 1981 (above the median: this wet, in blue). Below it: % of the average November forecast. Dashed outline: low skill (correlation with ERA5 below 0.3). Hover for the rank and skill.</p>
+    <p class="caption">Return period of a forecast this dry among the {{n_fc}} November forecasts since 1981 (wet: this wet), with % of the average forecast below. Faded with a dashed outline: low skill (correlation with ERA5 below 0.3). Forecasts are ranked as issued; with their upward trend removed, as in the seas5-skill viewer, {{dt_cells}} of the {{n_cells3}} cells for Fiji, Tonga and Vanuatu rank drier (hover for both).</p>
   </div>
   <div class="panel">
     <h3 id="maptitle">November–April rainfall across the region</h3>
     <div class="controls"><div class="seg" role="group" aria-label="Map measure" id="mapmetric"></div><div class="seg" role="group" aria-label="Map layer" id="mapbtns"></div></div>
     <div class="mapwrap"><canvas id="mapc" width="1000" height="560" role="img" aria-label="Map of rainfall as a percentage of average across the south-west Pacific"></canvas><svg id="mapsvg" viewBox="0 0 1000 560" aria-hidden="true"></svg></div>
     <div id="mapleg"></div>
-    <p class="caption">Return period at each grid cell: the forecast among the {{n_fc}} November forecasts, an observed season among the {{n_obs_na}} seasons 1981/82–2025/26. Average over the band from Vanuatu to Tonga (12–22°S, 165°E–175°W): forecast {{band_seas5_2026}}% (1 in {{band_rp_seas5_2026}} years); observed {{band_era5_1982}}% (1982/83, 1 in {{band_rp_era5_1982}}), {{band_era5_1997}}% (1997/98, 1 in {{band_rp_era5_1997}}), {{band_era5_2015}}% (2015/16, 1 in {{band_rp_era5_2015}}) and {{band_era5_2023}}% (2023/24, 1 in {{band_rp_era5_2023}}). Percentages are of each layer's own 1991–2020 average; an ensemble-average forecast varies less than a single season.</p>
+    <p class="caption">Return period at each grid cell: the forecast among the {{n_fc}} November forecasts, an observed season among the {{n_obs_na}} seasons 1981/82–2025/26. Band from Vanuatu to Tonga (12–22°S, 165°E–175°W): forecast 1 in {{band_rp_seas5_2026}} years ({{band_seas5_2026}}%); observed 1982/83 1 in {{band_rp_era5_1982}} ({{band_era5_1982}}%), 1997/98 1 in {{band_rp_era5_1997}} ({{band_era5_1997}}%), 2015/16 1 in {{band_rp_era5_2015}} ({{band_era5_2015}}%) and 2023/24 1 in {{band_rp_era5_2023}} ({{band_era5_2023}}%). Percentages are of each layer's own 1991–2020 average; an ensemble-average forecast varies less than a single season.</p>
   </div>
   <div class="panel">
     <h3>November–April forecast by province or division</h3>
     <div id="prov" class="scroll"></div>
-    <p class="caption">Return period of a forecast this dry among the {{n_fc}} November forecasts (wet: this wet). Hollow bar: low skill (correlation with ERA5 below 0.3). Ha'apai (Tonga) is too small for the SEAS5 grid; Honiara has no ERA5 cell, so its skill is not computed.</p>
+    <div class="rpleg" id="provleg"></div>
+    <p class="caption">Return period of a forecast this dry among the {{n_fc}} November forecasts (wet: this wet); bar colour by return period, bar length by % of the average forecast. Hollow bar: low skill (correlation with ERA5 below 0.3). Ha'apai (Tonga) is too small for the SEAS5 grid; Honiara has no ERA5 cell, so its skill is not computed.</p>
   </div>
 </section>
 
@@ -221,11 +222,11 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     </div>
     <div id="scatter" class="scroll"></div>
     <div class="legend"><span><span class="dot" style="background:var(--series)"></span>one season, 1982–2025</span><span><span class="legline"></span>fitted line (OISST, no trend term)</span><span><span class="legline dash"></span>extended to October 2026</span><span><span class="sw" id="scbandsw"></span>90% confidence band for the line</span><span><span class="dot" style="background:var(--dry);outline:2px solid var(--ink)"></span>2026/27 forecast</span><span id="scr"></span></div>
-    <p class="caption">November–April rainfall against October Niño3.4 (NOAA OISST). r: correlation after removing the linear trend from both series, with its 90% confidence interval. Forecasts are ensemble averages and vary less than observed rainfall.</p>
+    <p class="caption">November–April rainfall against October Niño3.4 (NOAA OISST). The band is for the fitted line, not for a single season. Forecasts are ensemble averages and vary less than observed rainfall.</p>
   </div>
   <div class="panel">
     <div class="scroll"><table id="enstab"></table></div>
-    <p class="caption">Below the forecast: its return period. Neutral year: the fits' value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term as a share of the gap between that value and the forecast, capped at 100% (some fits give more); the range covers six fits (see Data and method), and the 90% confidence interval below it adds sampling error. Correlation: with October Niño3.4 (OISST), 1982–2025, after removing trends; 90% confidence interval below.</p>
+    <p class="caption">Forecast: return period, with % of the average forecast below. Neutral year: the fits' value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term as a share of the gap between that value and the forecast, capped at 100%; the range covers six fits (see Data and method), and below it the lowest and highest ends of their 90% confidence intervals. Correlation: with October Niño3.4 (OISST), 1982–2025, trends removed; 90% confidence interval below.</p>
   </div>
 </section>
 
@@ -235,7 +236,7 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     <div class="controls"><div class="seg" role="group" aria-label="Area" id="hunits"></div></div>
     <div id="hist" class="scroll"></div>
     <div class="legend" id="histleg"></div>
-    <p class="caption">Bars: observed (ERA5), coloured by October Niño3.4. Dots: the November forecast, on its own scale (forecasts vary less). Hollow bar: observed rainfall that past forecasts of this size point to (80% range). Shaded: since CERF began (2006). Hover for return periods.</p>
+    <p class="caption">Bars: observed (ERA5), coloured by October Niño3.4. Dots: the November forecast, on its own scale (forecasts vary less). Hollow bar: observed rainfall that the past relation between forecasts and ERA5 gives for this forecast (90% range). Shaded: since CERF began (2006). Hover for return periods.</p>
   </div>
   <div class="panel">
     <h3>When El Niño changes rainfall</h3>
@@ -276,9 +277,9 @@ __OUTLOOKS__
   <summary>Data and method</summary>
   <div class="prose note" style="display:grid;gap:10px;margin-top:10px">
     <p><b>Forecast.</b> ECMWF SEAS5 ensemble-mean monthly rainfall from the November starts 1981–2026, averaged over each country, province or division (team raster statistics). Values are percentages of the 1991–2020 average November forecast for the same months, without detrending. The seas5-skill viewer removes a linear trend first and ranks November–January to February–April 2026 as the driest on record in Fiji, Tonga and Vanuatu; without detrending some of these rank 2nd to 4th, because the forecasts have risen by {{trend3}}% per decade. Rank: among the {{n_fc}} November forecasts 1981–2026. Skill: correlation between forecast and ERA5 over 1982–2025.</p>
-    <p><b>Return periods.</b> (n + 1) / rank, with the n values ranked from the driest (Weibull plotting position): forecasts among the {{n_fc}} November forecasts 1981–2026, observed November–April seasons among the {{n_obs_na}} seasons 1981/82–2025/26, July–October among 1981–2026, and grid cells on the map in the same way. Above the median the count starts from the wettest (marked wet). With these records the longest return period that can be shown is 1 in {{n_fc1}} years (1 in {{n_obs_na1}} for observed November–April seasons); a value drier than every past year could be rarer. A forecast's return period says how unusual the forecast is. For the season itself, the observed rainfall that past forecasts point to is ranked among the observed seasons.</p>
+    <p><b>Return periods.</b> (n + 1) / rank, with the n values ranked from the driest (Weibull plotting position): forecasts among the {{n_fc}} November forecasts 1981–2026, observed November–April seasons among the {{n_obs_na}} seasons 1981/82–2025/26, July–October among 1981–2026, and grid cells on the map in the same way. Above the median the count starts from the wettest (marked wet). + marks the driest (or wettest) on record: the record only shows that the return period is at least that long. Forecasts are ranked as issued, without removing their trend. A forecast's return period says how unusual the forecast is, not the season. For the season, the observed rainfall that the past relation between forecasts and ERA5 gives for this forecast is placed among the observed seasons; a value drier than all of them is described as such.</p>
     <p><b>Observed rainfall.</b> ERA5 monthly rainfall over the same areas, 1981–October 2026, percentages of 1991–2020. ERA5 is a reanalysis; over small islands it largely reflects the surrounding ocean (Tonga's land covers less than one ERA5 cell). Solomon Islands groups are equal-weight averages of their provinces. Rain gauges (GHCN-Daily) were usable only in Fiji; records for Vanuatu, Tonga and Solomon Islands in that archive are too broken. For Tonga, July–October CHIRPS v2 (Climate Hazards Center) over the islands' land cells serves as a second record.</p>
-    <p><b>El Niño share.</b> Straight-line fits of each area's November–April forecast (and of ERA5) on Niño3.4 known at the start of November, 1982–2025, for three series: NOAA OISST October (+{{n34_oct}} °C in 2026; 1982–2025 maximum +{{n34_oct_max}}), NOAA ERSST v6 October (+{{psl_oct}}; maximum +{{psl_oct_max}}) and the ONI for August–October (+{{oni_aso}}; maximum +{{oni_aso_max}}). Each fit is run with and without a linear trend term, since the November forecasts rise by {{trend3}}% per decade. Neutral year: the fit's value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term at the 2026 value as a share of the gap between the neutral year and the forecast, capped at 100%. Past forecasts scatter about the fits by {{fit_sd}} points (one standard deviation). Confidence interval of the El Niño share: each of the six fits refitted on 2,000 resamples of the 1982–2025 seasons, pooled (5th to 95th percentile). Correlations are after removing a linear trend from both series, with 90% confidence intervals (Fisher z); ERSST and the ONI give correlations within {{r_series_diff}} of OISST. OISST and ERSST differ by {{oisst_ersst_gap}} °C for October 2026, far more than in any earlier October. Niño3, Niño4 and their difference did not explain observed rainfall better than Niño3.4 (share of variation, the squared correlation, in Fiji: {{r2_fj_idx}}), except in Vanuatu, where Niño4 does about as well ({{r2_vu_n4}}). October 2026 Niño4 (+{{n4_oct}} °C) is within its past range. Observed rainfall that past forecasts point to: linear fit of ERA5 on the forecast, 1982–2025, with an 80% prediction interval.</p>
+    <p><b>El Niño share.</b> Straight-line fits of each area's November–April forecast (and of ERA5) on Niño3.4 known at the start of November, 1982–2025, for three series: NOAA OISST October (+{{n34_oct}} °C in 2026; 1982–2025 maximum +{{n34_oct_max}}), NOAA ERSST v6 October (+{{psl_oct}}; maximum +{{psl_oct_max}}) and the ONI for August–October (+{{oni_aso}}; maximum +{{oni_aso_max}}). Each fit is run with and without a linear trend term, since the November forecasts rise by {{trend3}}% per decade. Neutral year: the fit's value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term at the 2026 value as a share of the gap between the neutral year and the forecast, capped at 100%. Past forecasts scatter about the fits by {{fit_sd}} points (one standard deviation). Confidence interval of the El Niño share: each of the six fits refitted on 2,000 resamples of the 1982–2025 seasons (5th to 95th percentile); the page gives the lowest and highest ends across the six. Correlations are after removing a linear trend from both series, with 90% confidence intervals (Fisher z); ERSST and the ONI give correlations within {{r_series_diff}} of OISST. OISST and ERSST differ by {{oisst_ersst_gap}} °C for October 2026, far more than in any earlier October. Niño3, Niño4 and their difference did not explain observed rainfall better than Niño3.4 (share of variation, the squared correlation, in Fiji: {{r2_fj_idx}}), except in Vanuatu, where Niño4 does about as well ({{r2_vu_n4}}). October 2026 Niño4 (+{{n4_oct}} °C) is within its past range. Observed rainfall for this forecast: linear fit of ERA5 on the forecast, 1982–2025, extended to the 2026 forecast (below every past forecast in Fiji and Tonga), with a 90% prediction interval.</p>
     <p><b>ENSO colours.</b> October Niño3.4 (OISST): La Niña ≤ −0.5 °C, El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C.</p>
     <p><b>Code.</b> Analysis scripts in <code>deep_dives/data/pacific/analysis/</code> of the ds-teleconnections repository; this page is built by <code>pac_deep_dive.py</code>.</p>
   </div>
@@ -328,11 +329,12 @@ const DATA = __DATA__;
   }
   const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
   /* return periods (Weibull): rank-th driest of n -> (n + 1) / rank; above the median, counted from the wettest */
-  const rpOf = (rank, n) => { const d = (n + 1) / rank, w = (n + 1) / (n + 1 - rank); return d >= w ? { rp: d, wet: false } : { rp: w, wet: true }; };
+  /* top: the driest (or wettest) on record, where the record only bounds the return period ("+") */
+  const rpOf = (rank, n) => { const d = (n + 1) / rank, w = (n + 1) / (n + 1 - rank); return d >= w ? { rp: d, wet: false, top: rank === 1 } : { rp: w, wet: true, top: rank === n }; };
   const fmtRp = r => r >= 9.95 ? String(Math.round(r)) : r.toFixed(1);
-  const rpText = o => `1 in ${fmtRp(o.rp)}${o.wet ? " wet" : ""}`;
-  const rpYears = o => `1 in ${fmtRp(o.rp)} years${o.wet ? " (wet)" : ""}`;
-  const rankIn = (vals, v) => vals.filter(x => x != null && x < v).length + 1;   /* v counted among vals */
+  const rpText = o => `1 in ${fmtRp(o.rp)}${o.top ? "+" : ""}${o.wet ? " wet" : ""}`;
+  const rpYears = o => `1 in ${fmtRp(o.rp)}${o.top ? "+" : ""} years${o.wet ? " (wet)" : ""}`;
+  const nOf = a => a.filter(v => v != null).length;
   function rankWord(rank, n) {
     if (rpOf(rank, n).wet) { const w = n - rank + 1; return w === 1 ? "wettest" : ord(w) + " wettest"; }
     return rank === 1 ? "driest" : ord(rank) + " driest";
@@ -362,7 +364,8 @@ const DATA = __DATA__;
   const rpCls = o => { const k = RP_CUTS.filter(c => o.rp >= c).length; return o.wet ? 4 + k : 4 - k; };
   const rpCol = o => (dark() ? DIV_D : DIV_L)[rpCls(o)];
   function lum(h) { return hex2rgb(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0); }
-  const textOn = h => { const L = lum(h); return 1.05 / (L + 0.05) >= (L + 0.05) / 0.0625 ? "#ffffff" : "#142022"; };
+  const textOn = h => { const L = lum(h); return 1.05 / (L + 0.05) >= (L + 0.05) / 0.05 ? "#ffffff" : "#000000"; };
+  const mix = (a, b, t) => rgb2hex(hex2rgb(a).map((v, i) => v + (hex2rgb(b)[i] - v) * t));
   function rpLegend(host) {
     const C = dark() ? DIV_D : DIV_L, lbl = ["20+", "10–20", "5–10", "3–5", "<3", "3–5", "5–10", "10–20", "20+"];
     host.className = "rpleg";
@@ -382,12 +385,15 @@ const DATA = __DATA__;
       const tr = t.insertRow();
       tr.innerHTML = `<td class="u">${SHORT[u]}${SUB[u] ? `<small>${SUB[u]}</small>` : ""}</td>`;
       TRIS.forEach(k => {
-        const d = U[u].tri[k], td = tr.insertCell(), o = rpOf(d.rank, d.n), bg = rpCol(o);
-        td.className = "c" + (d.skill < 0.3 ? " low" : "");
+        const d = U[u].tri[k], td = tr.insertCell(), o = rpOf(d.rank, d.n), low = d.skill < 0.3;
+        const bg = low ? mix(rpCol(o), css("--surface"), 0.6) : rpCol(o);   /* low skill: faded */
+        td.className = "c" + (low ? " low" : "");
         td.style.background = bg; td.style.color = textOn(bg);
-        td.innerHTML = `1 in ${fmtRp(o.rp)}<small>${Math.round(d.fc)}%${o.wet ? " · wet" : ""}</small>`;
+        td.innerHTML = `${rpText(o)}<small>${Math.round(d.fc)}%</small>`;
         td.tabIndex = 0;
-        bindTip(td, `<b>${SHORT[u]}, ${TRI_LBL[k]}</b><br>Forecast ${d.fc.toFixed(0)}% of the average November forecast<br>${rankWord(d.rank, d.n)} of ${d.n} November forecasts: ${rpYears(o)}<br>Skill (r with ERA5, 1982–2025): ${d.skill.toFixed(2)}`);
+        bindTip(td, `<b>${SHORT[u]}, ${TRI_LBL[k]}</b><br>Forecast ${d.fc.toFixed(0)}% of the average November forecast<br>${rankWord(d.rank, d.n)} of ${d.n} November forecasts: ${rpYears(o)}` +
+          (d.rank_dt !== d.rank ? `<br>With the forecasts' trend removed: ${rankWord(d.rank_dt, d.n)}, ${rpYears(rpOf(d.rank_dt, d.n))}` : "") +
+          `<br>Skill (r with ERA5, 1982–2025): ${d.skill.toFixed(2)}${low ? " (low)" : ""}`);
       });
     });
     rpLegend(document.getElementById("heatleg"));
@@ -441,7 +447,7 @@ const DATA = __DATA__;
     const order = ["FJ", "TO", "VU", "SB"], CN = { FJ: "Fiji", TO: "Tonga", VU: "Vanuatu", SB: "Solomon Islands" };
     const rows = [];
     order.forEach(c => {
-      const ps = DATA.provinces.filter(p => p.c === c).sort((a, b) => (a.fc ?? 999) - (b.fc ?? 999));
+      const ps = DATA.provinces.filter(p => p.c === c).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || (a.fc ?? 999) - (b.fc ?? 999));
       rows.push({ head: CN[c] }); ps.forEach(p => rows.push(p));
     });
     /* columns: name | return period | bar (% of the average forecast); the return period stays in view on phones */
@@ -459,8 +465,8 @@ const DATA = __DATA__;
       if (p.head) { const t = el("text", { x: 0, y: y + 15, "font-size": 13, "font-weight": 700, fill: css("--ink") }, svg); t.textContent = p.head; return; }
       const t = el("text", { x: 12, y: y + 15, "font-size": 12.5, fill: css("--ink-2") }, svg); t.textContent = p.name;
       if (p.fc == null) { const n = el("text", { x: sx(100) + 6, y: y + 15, "font-size": 11.5, fill: css("--muted") }, svg); n.textContent = "no SEAS5 cell"; return; }
-      const a = sx(Math.min(100, p.fc)), b = sx(Math.max(100, p.fc)), low = p.skill != null && p.skill < 0.3;
-      const r = el("rect", { x: a, y: y + 4, width: Math.max(2, b - a), height: rh - 8, rx: 3, fill: low ? "none" : pctCol(p.fc), stroke: pctCol(p.fc), "stroke-width": low ? 2 : 0, tabindex: 0 }, svg);
+      const a = sx(Math.min(100, p.fc)), b = sx(Math.max(100, p.fc)), low = p.skill != null && p.skill < 0.3, col = rpCol(rpOf(p.rank, p.n));
+      const r = el("rect", { x: a, y: y + 4, width: Math.max(2, b - a), height: rh - 8, rx: 3, fill: low ? "none" : col, stroke: col, "stroke-width": low ? 2 : 0, tabindex: 0 }, svg);
       const v = el("text", { x: (p.fc < 100 ? a - 4 : b + 4), y: y + 15, "font-size": 11.5, "text-anchor": p.fc < 100 ? "end" : "start", fill: css("--ink") }, svg); v.textContent = Math.round(p.fc) + "%";
       if (p.fc < 100) v.setAttribute("x", Math.max(LB - 8, a - 4));
       const o = rpOf(p.rank, p.n);
@@ -469,6 +475,7 @@ const DATA = __DATA__;
         `<br>Skill: ${p.skill == null ? "not computed (no ERA5 cell)" : p.skill.toFixed(2)}` +
         (p.JASO ? `<br>Jul–Oct 2026 observed: ${p.JASO.pct.toFixed(0)}% of normal, ${rpYears(rpOf(p.JASO.rank, p.JASO.n))}` : ""));
     });
+    rpLegend(document.getElementById("provleg"));
   }
 
   /* ---------- 4. scatter ---------- */
@@ -485,7 +492,8 @@ const DATA = __DATA__;
     const host = document.getElementById("scatter"); host.innerHTML = "";
     const u = U[scU], Wd = 720, Ht = 420, m = { l: 52, r: 18, t: 14, b: 44 };
     const xs = [], ys = [], yrs = [];
-    u.years.forEach((y, i) => { const v = u[scS][i]; if (y >= 1982 && y <= 2025 && v != null && n34[y] != null) { xs.push(n34[y]); ys.push(v); yrs.push(y); } });
+    const rks = [], rkn = nOf(u[scS]);
+    u.years.forEach((y, i) => { const v = u[scS][i]; if (y >= 1982 && y <= 2025 && v != null && n34[y] != null) { xs.push(n34[y]); ys.push(v); yrs.push(y); rks.push(u[scS + "_rank"][i]); } });
     const sx = x => m.l + (x + 2.5) / 6.2 * (Wd - m.l - m.r), sy = v => m.t + (200 - v) / 180 * (Ht - m.t - m.b);
     const svg = el("svg", { viewBox: `0 0 ${Wd} ${Ht}`, width: "100%", role: "img", "aria-label": `${SHORT[scU]}: November–April rainfall against October Niño3.4` }, host);
     svg.style.maxWidth = Wd + "px"; svg.style.minWidth = "460px";
@@ -503,14 +511,13 @@ const DATA = __DATA__;
     el("line", { x1: sx(xmax), x2: sx(x26), y1: sy(f.a + f.b * xmax), y2: sy(f.a + f.b * x26), stroke: css("--ink"), "stroke-width": 2, "stroke-dasharray": "5 4" }, svg);
     el("line", { x1: sx(x26), x2: sx(x26), y1: m.t, y2: Ht - m.b, stroke: css("--muted"), "stroke-dasharray": "2 3" }, svg);
     const lab = el("text", { x: sx(x26) - 4, y: m.t + 12, "text-anchor": "end", "font-size": 11, fill: css("--ink-2") }, svg); lab.textContent = "October 2026";
-    const all = u[scS].filter(v => v != null);   /* every forecast 1981-2026, or every observed season 1981/82-2025/26 */
     const sg = v => (v < 0 ? "−" : v > 0 ? "+" : "") + Math.abs(v).toFixed(2);
-    const rc = u.enso_est.oisst_oct[scS === "fc" ? "r_fc_dt_ci" : "r_obs_dt_ci"];
-    document.getElementById("scr").innerHTML = `<b>r = ${sg(rc[0])}</b>&nbsp;(90% CI ${sg(rc[1])} to ${sg(rc[2])})`;
+    const e0 = u.enso_est.oisst_oct, rc = e0[scS === "fc" ? "r_fc_dt_ci" : "r_obs_dt_ci"];
+    document.getElementById("scr").innerHTML = `<b>r = ${sg(e0[scS === "fc" ? "r_fc" : "r_obs"])}</b> as plotted; ${sg(rc[0])} with trends removed (90% CI ${sg(rc[1])} to ${sg(rc[2])})`;
     document.getElementById("scbandsw").style.background = css("--ink"); document.getElementById("scbandsw").style.opacity = 0.18;
     xs.forEach((x, i) => {
       const c = el("circle", { cx: sx(x), cy: sy(ys[i]), r: 5, fill: css("--series"), "fill-opacity": 0.75, stroke: css("--surface"), "stroke-width": 1.5, tabindex: 0 }, svg);
-      bindTip(c, `<b>${season(yrs[i])}</b><br>October Niño3.4 ${x > 0 ? "+" : ""}${x.toFixed(2)} °C<br>${scS === "fc" ? "Forecast" : "Observed"} ${ys[i].toFixed(0)}% of average, ${rpYears(rpOf(rankIn(all, ys[i]), all.length))}`);
+      bindTip(c, `<b>${season(yrs[i])}</b><br>October Niño3.4 ${x > 0 ? "+" : ""}${x.toFixed(2)} °C<br>${scS === "fc" ? "Forecast" : "Observed"} ${ys[i].toFixed(0)}% of average, ${rpYears(rpOf(rks[i], rkn))}`);
       if ([1982, 1997, 2015, 2023].includes(yrs[i])) { const t = el("text", { x: sx(x) + 7, y: sy(ys[i]) + 4, "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = season(yrs[i]); }
     });
     if (scS === "fc") {
@@ -534,10 +541,10 @@ const DATA = __DATA__;
     const share = u => { const f = U[u].tri.NA.fc; return span(fits(u).map(x => Math.min(100, -x.nino / (x.neutral - f) * 100))); };
     const sg = v => (v < 0 ? "−" : v > 0 ? "+" : "") + Math.abs(v).toFixed(2);
     const rc = a => `${sg(a[0])}<small>${sg(a[1])} to ${sg(a[2])}</small>`;
-    t.innerHTML = `<tr><th></th><th class="n">2026/27 forecast</th><th class="n">Neutral year</th><th class="n">El Niño share of the shortfall</th><th class="n">Correlation with Niño3.4: past forecasts</th><th class="n">Correlation with Niño3.4: observed rainfall</th></tr>` +
+    t.innerHTML = `<tr><th></th><th class="n">2026/27 forecast</th><th class="n">Neutral year</th><th class="n">El Niño share of the shortfall</th><th class="n">Correlation with Niño3.4, past forecasts</th><th class="n">Correlation with Niño3.4, observed rainfall</th></tr>` +
       SC_UNITS.map(u => {
         const e = U[u].enso_est.oisst_oct, d = U[u].tri.NA, dry = d.fc < 100, ci = U[u].share_ci;
-        return `<tr><td>${SHORT[u]}</td><td class="n">${Math.round(d.fc)}%<small>${rpText(rpOf(d.rank, d.n))}</small></td><td class="n">${span(fits(u).map(x => x.neutral))}</td>` +
+        return `<tr><td>${SHORT[u]}</td><td class="n">${rpText(rpOf(d.rank, d.n))}<small>${Math.round(d.fc)}%</small></td><td class="n">${span(fits(u).map(x => x.neutral))}</td>` +
           `<td class="n">${dry ? share(u) + `<small>${Math.round(ci.lo)}–${Math.round(ci.hi)}%</small>` : "–"}</td><td class="n">${rc(e.r_fc_dt_ci)}</td><td class="n">${rc(e.r_obs_dt_ci)}</td></tr>`;
       }).join("");
   }
@@ -556,25 +563,31 @@ const DATA = __DATA__;
     el("rect", { x: sx(i06), y: m.t, width: Wd - m.r - sx(i06), height: Ht - m.t - m.b, fill: css("--band") }, svg);
     const ct = el("text", { x: sx(i06) + 4, y: m.t + 12, "font-size": 11, fill: css("--ink-2") }, svg); ct.textContent = "since CERF began (2006)";
     [40, 60, 80, 100, 120, 140, 160, 180].forEach(v => { el("line", { x1: m.l, x2: Wd - m.r, y1: sy(v), y2: sy(v), stroke: v === 100 ? css("--ink-2") : css("--rule") }, svg); const t = el("text", { x: m.l - 6, y: sy(v) + 4, "text-anchor": "end", "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = v + "%"; });
-    const allO = u.obs.filter(v => v != null), allF = u.fc.filter(v => v != null);
-    const rpO = v => rpYears(rpOf(rankIn(allO, v), allO.length)), rpF = v => rpYears(rpOf(rankIn(allF, v), allF.length));
+    const nO = nOf(u.obs), nF = nOf(u.fc);
+    const rpO = i => rpYears(rpOf(u.obs_rank[i], nO)), rpF = i => rpYears(rpOf(u.fc_rank[i], nF));
     yrs.forEach((y, i) => {
       const o = u.obs[i], fc = u.fc[i], cls = ensoCls(n34[y]);
       if (o != null) {
         const top = sy(Math.max(o, 100)), bot = sy(Math.min(o, 100));
         const r = el("rect", { x: sx(i) + 1.5, y: top, width: bw - 3, height: Math.max(1, bot - top), rx: 2, fill: E[cls], tabindex: 0 }, svg);
-        bindTip(r, `<b>${season(y)}</b><br>Observed ${o.toFixed(0)}% of average (ERA5), ${rpO(o)}` + (fc != null ? `<br>November forecast ${fc.toFixed(0)}%, ${rpF(fc)} among forecasts` : "") + (n34[y] != null ? `<br>October Niño3.4 ${n34[y] > 0 ? "+" : ""}${n34[y].toFixed(2)} °C (${ENSO_LBL[cls]})` : ""));
+        bindTip(r, `<b>${season(y)}</b><br>Observed ${o.toFixed(0)}% of average (ERA5), ${rpO(i)}` + (fc != null ? `<br>November forecast ${fc.toFixed(0)}%, ${rpF(i)} among forecasts` : "") + (n34[y] != null ? `<br>October Niño3.4 ${n34[y] > 0 ? "+" : ""}${n34[y].toFixed(2)} °C (${ENSO_LBL[cls]})` : ""));
       }
       if (y === 2026 && u.obs_equiv) {
-        const q = u.obs_equiv, top = sy(q.hi), bot = sy(q.lo), rq = k => rpText(rpOf(q["rank_" + k], q.n));
+        /* rank r = 1 + observed seasons drier (n = 45). Each value is given the return period of the nearest less extreme
+           season: dry (n + 1) / r, wet (n + 1) / (n + 2 - r); beyond every season it is described as such */
+        const q = u.obs_equiv, top = sy(q.hi), bot = sy(q.lo);
+        const rq = k => { const r = q["rank_" + k], n = q.n, d = (n + 1) / r, w = (n + 1) / (n + 2 - r);
+          if (r === 1) return "drier than any season since 1981";
+          if (r === n + 1) return "wetter than any season since 1981";
+          return rpYears(d >= w ? { rp: d, wet: false, top: false } : { rp: w, wet: true, top: false }); };
         const r = el("rect", { x: sx(i) + 2, y: top, width: bw - 4, height: bot - top, rx: 2, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, tabindex: 0 }, svg);
         el("line", { x1: sx(i) + 1, x2: sx(i) + bw - 1, y1: sy(q.exp), y2: sy(q.exp), stroke: css("--ink"), "stroke-width": 2 }, svg);
-        bindTip(r, `<b>2026/27, observed rainfall that past forecasts of this size point to</b><br>about ${Math.round(q.exp)}% of average, ${rq("exp")} years among observed seasons<br>80% range ${Math.round(q.lo)}–${Math.round(q.hi)}%: ${rq("lo")} to ${rq("hi")} years`);
+        bindTip(r, `<b>2026/27: observed rainfall that the past relation between forecasts and ERA5 gives for this forecast</b><br>about ${Math.round(q.exp)}% of average: ${rq("exp")} among observed seasons<br>90% range ${Math.round(q.lo)}% (${rq("lo")}) to ${Math.round(q.hi)}% (${rq("hi")})`);
       }
       if (fc != null) {
         const c = el("circle", { cx: sx(i) + bw / 2, cy: sy(fc), r: y === 2026 ? 6 : 3.2, fill: y === 2026 ? css("--dry") : css("--ink"), stroke: y === 2026 ? css("--ink") : css("--surface"), "stroke-width": y === 2026 ? 2 : 1 }, svg);
         if (y === 2026) {
-          bindTip(c, `<b>2026/27</b><br>November forecast ${fc.toFixed(0)}% of the average forecast, ${rpF(fc)} among forecasts`); c.setAttribute("tabindex", 0);
+          bindTip(c, `<b>2026/27</b><br>November forecast ${fc.toFixed(0)}% of the average forecast, ${rpF(i)} among forecasts`); c.setAttribute("tabindex", 0);
           const t = el("text", { x: sx(i) - 2, y: sy(fc) + 4, "text-anchor": "end", "font-size": 11.5, "font-weight": 700, fill: css("--ink") }, svg); t.textContent = "2026/27 forecast";
         }
       }

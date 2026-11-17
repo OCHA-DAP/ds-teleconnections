@@ -118,8 +118,11 @@ for u, pcs in UNITS.items():
         h = df.loc[1982:2025]
         ho = h.dropna(subset=["op"])
         rk, n = rank_dry(df.fp, 2026)
+        fpv = df.fp.dropna()
+        tr_ = np.polyfit(fpv.loc[:2025].index.values, fpv.loc[:2025].values, 1)
+        fdt = fpv - np.polyval(tr_, fpv.index.values)
         rec["tri"][t] = {
-            "fc": round(float(df.loc[2026, "fp"]), 1), "rank": rk, "n": n,
+            "fc": round(float(df.loc[2026, "fp"]), 1), "rank": rk, "n": n, "rank_dt": rank_dry(fdt, 2026)[0],
             "skill": round(r(ho.fp, ho.op), 2),
             "r_fc_n34": round(r(h.fp, h.n34a), 2), "r_obs_n34": round(r(ho.op, ho.n34a), 2),
         }
@@ -128,7 +131,7 @@ for u, pcs in UNITS.items():
     df = pair(pcs, TRI["NA"])
     est = {}
     f26 = float(df.loc[2026, "fp"])
-    boot = []  # El Niño share of the gap below the neutral year, refitted on resampled seasons (all six fits pooled)
+    boot = {}  # El Niño share of the gap below the neutral year, refitted on resampled seasons, per fit
     for k, ix in INDICES.items():
         d = df.join(ix.rename("ix"))
         h = d.loc[1982:2025]
@@ -148,11 +151,12 @@ for u, pcs in UNITS.items():
                 e1[f"{key}{'_trend' if trend else ''}_sd"] = round(float(resid.std(ddof=X.shape[1])), 1)
                 if key == "fc":
                     yv = frame[col].values
+                    bl = boot.setdefault(f"{k}{'_trend' if trend else ''}", [])
                     for ii in rng.integers(0, len(frame), size=(B_BOOT, len(frame))):
                         bb, *_ = np.linalg.lstsq(X[ii], yv[ii], rcond=None)
                         nino = bb[1] * x26
                         gap = float(x @ bb) - nino - f26
-                        boot.append(min(1.0, max(0.0, -nino / gap)) if gap > 0 else (1.0 if nino < 0 else 0.0))
+                        bl.append(min(1.0, max(0.0, -nino / gap)) if gap > 0 else (1.0 if nino < 0 else 0.0))
         # share of variation: squared correlation, raw and after removing a linear trend from both series
         def _r2(frame, col, detrend):
             a, b = frame[col].values, frame.ix.values
@@ -166,7 +170,9 @@ for u, pcs in UNITS.items():
                   r_fc=round(r(h.fp, h.ix), 2), r_obs=round(r(ho.op, ho.ix), 2),
                   r_fc_dt_ci=r_ci(h, "fp"), r_obs_dt_ci=r_ci(ho, "op"))
         est[k] = e1
-    rec["share_ci"] = {q_: round(float(np.percentile(boot, p_)) * 100, 1) for q_, p_ in (("lo", 5), ("med", 50), ("hi", 95))}
+    # 90% interval of each fit (5th-95th percentile of its resamples); the page gives the lowest and highest ends
+    fits_ci = {k_: [round(float(np.percentile(v_, 5)) * 100, 1), round(float(np.percentile(v_, 95)) * 100, 1)] for k_, v_ in boot.items()}
+    rec["share_ci"] = {"fits": fits_ci, "lo": min(v_[0] for v_ in fits_ci.values()), "hi": max(v_[1] for v_ in fits_ci.values())}
     h = df.loc[1982:2025]
     rec["fc_trend_decade"] = round(float(np.polyfit(h.index.values, h.fp.values, 1)[0] * 10), 1)
     # observed rainfall that past forecasts of this size were followed by: fit of ERA5 % on forecast %, 1982-2025
@@ -175,15 +181,17 @@ for u, pcs in UNITS.items():
     sd = float((ho.op - (ao + bo * ho.fp)).std(ddof=2))
     x0 = float(df.loc[2026, "fp"])
     ex = float(ao + bo * x0)
-    # 80% prediction interval including the fit's own uncertainty (2026 lies outside the range of past forecasts)
+    # 90% prediction interval including the fit's own uncertainty (2026 lies outside the range of past forecasts)
     nn = len(ho)
     se = sd * np.sqrt(1 + 1 / nn + (x0 - ho.fp.mean()) ** 2 / ((ho.fp - ho.fp.mean()) ** 2).sum())
-    q = float(stats.t.ppf(0.9, nn - 2))
+    q = float(stats.t.ppf(0.95, nn - 2))
     rec["obs_equiv"] = {"exp": round(ex, 1), "lo": round(ex - q * se, 1), "hi": round(ex + q * se, 1), "slope": round(float(bo), 2)}
-    # where those values fall among the observed seasons 1981/82-2025/26 (rank driest first; return period = (n + 1) / rank)
+    # where those values fall among the 45 observed seasons 1981/82-2025/26: rank = 1 + seasons drier, n = 45, so a value
+    # ranked 1 is drier than every season (the page says so instead of giving a return period)
     obs_all = df.op.loc[:2025].dropna().values
     for k_, v_ in (("exp", ex), ("lo", ex - q * se), ("hi", ex + q * se)):
-        rec["obs_equiv"][f"rank_{k_}"], rec["obs_equiv"]["n"] = rank_among(obs_all, v_)
+        rec["obs_equiv"][f"rank_{k_}"] = rank_among(obs_all, v_)[0]
+    rec["obs_equiv"]["n"] = int(len(obs_all))
     # observed rainfall vs other ENSO indices (r², Nov-Apr, 1982-2025)
     def _r2dt(a, b):
         yy = a.index.values.astype(float)
@@ -200,6 +208,8 @@ for u, pcs in UNITS.items():
     rec["years"] = [int(y) for y in df.index]
     rec["obs"] = [None if pd.isna(v) else round(float(v), 1) for v in df.op]
     rec["fc"] = [None if pd.isna(v) else round(float(v), 1) for v in df.fp]
+    rk_ = lambda ser: [None if pd.isna(v) else int(v) for v in ser.rank(method="min").reindex(df.index)]  # noqa: E731
+    rec["fc_rank"], rec["obs_rank"] = rk_(df.fp.dropna()), rk_(df.op.dropna())
     rec["obs_mm_clim"] = round(float(df.loc[1991:2020].obs.mean()))
     rec["fc_mm_2026"] = round(float(df.loc[2026, "fc"]))
     rec["fc_mm_clim"] = round(float(df.loc[1991:2020].fc.mean()))
@@ -211,6 +221,7 @@ for u, pcs in UNITS.items():
         rec[key] = {"pct": round(float(o.loc[2026] / cl * 100), 1), "rank": rk, "n": n}
         if key == "JASO":
             rec["jaso_pct"] = {int(y): round(float(v / cl * 100), 1) for y, v in o.items()}
+            rec["jaso_rank"] = {int(y): int(v) for y, v in o.rank(method="min").items()}
     units[u] = rec
     # dry-side return periods (Weibull, (n + 1) / rank): forecasts among the 46 November forecasts, observed among the 45 seasons
     rp = lambda ser: (len(ser.dropna()) + 1) / ser.rank(method="max")  # noqa: E731
