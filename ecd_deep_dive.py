@@ -90,7 +90,10 @@ def methods(D):
         2026 is 8th lowest of 26 on both sides, so FAO's ranking rests on the line; read it as a
         check, not a headline. The file has no land-type column, so it appears to be the admin-unit
         mean. MODIS and JRC both draw on MODIS-family sensors, so their agreement is not fully
-        independent. FAO's agricultural stress index is kept in the CSV but not ranked. The GeoSahel
+        independent. FAO's agricultural stress index (% of cropland under stress) is its value at
+        the 21 September dekad, which tracks FAO's annual value closely (r ≥ 0.998); it is not
+        detrended, because a straight line through a share that sits near zero in recent years
+        runs below zero by 2025. The GeoSahel
         biomass used by the Chad drought framework covers West Africa only and its server did not
         respond.</p>""", "m-veg"),
         det("Yields", """<p>FEWS NET Data Warehouse crop production statistics for Sudan
@@ -100,9 +103,10 @@ def methods(D):
         5 from 2012; 4 in 2023). Expressed as % of the median yield of the surrounding years (within five
         years either side, same source, the year itself left out), because the level of the series
         shifts several times (high in 1975–1983, low 1985–2013, a jump in 2014–2015, and again with
-        the source change in 2016). The series ends in 2023. Several values look unreliable (2014,
-        2015, 2018–2019 well above anything earlier), so read single points with care. The Data
-        Warehouse has no series for Chad.</p>""", "m-yield"),
+        the source change in 2016). The series ends in 2023. 2018 and 2019 report the same harvested
+        area to the hectare (copied figures) and are left out of the correlations; 2014 and 2015
+        look high but have no documented problem and stay in, and rank correlations keep single
+        outliers from driving the result. The Data Warehouse has no series for Chad.</p>""", "m-yield"),
         det("Food insecurity", """<p><b>FEWS NET</b>: the classification maps,
         2009–2026, from FEWS NET's regional shapefile archive (East and West Africa) to 2021 and
         the Data Warehouse round packages from 2022. Lean season of year Y = the June round's
@@ -124,15 +128,15 @@ def methods(D):
         det("Reading the scatter plots and the estimate", """<p>One point per season and side.
         Seasons from 2023 on are drawn as open rings and left out of the correlations: Darfur is at
         war and eastern Chad has taken in about a million refugees, so outcomes there are not set
-        by the rain. The links to food insecurity are weak (|r| up to about 0.5 for eastern Chad's FEWS
-        NET series, about zero for Darfur's), consistent with the team's cross-country finding that
-        indicators carry little skill against outcomes at province scale. Darfur yields follow the
-        season more clearly once the four unreliable years are left out (the correlation matrix). So the page does not fit a line to read
-        off a 2027 number. The estimate uses analogue seasons (the five pre-2023 seasons with the
-        least vegetation greening against the trend on each side, all milder than 2026) and what followed them,
-        plus FEWS NET's own projections, which already take the 2026 season into account. Darfur's
-        yield record is noisy: harvested area is identical in 2018 and 2019, and 2014–2015 and
-        2018–2019 are well above anything earlier.</p>""", "m-read"),
+        by the rain. All correlations are Spearman rank correlations. The links to food insecurity are
+        weak to moderate on eastern Chad's FEWS NET series and about zero for Darfur's, consistent
+        with the team's cross-country finding that indicators carry little skill against outcomes at
+        province scale. Darfur yields follow rain modestly and the vegetation indices less (the
+        correlation matrix). So the page does not fit a line to read off a number. For the harvest
+        it uses the driest third of seasons since 1981 and the one season about as dry as 2026
+        (1984); for food insecurity, the five pre-2023 seasons with the least vegetation greening on
+        each side and what followed them, plus FEWS NET's own projections, which already take the
+        2026 season into account.</p>""", "m-read"),
         det("Humanitarian needs", """<p>Team HPC mirror: JIAF intersectoral final
         severity by admin-2 from the 2025 and 2026 HNO workbooks on HDX; intersectoral people in
         need from HDX HAPI (2025; the 2026 plans publish it nationally only).</p>""", "m-hnrp"),
@@ -175,18 +179,20 @@ def _check(D: dict) -> None:
     near = [y for y, v in ad["rain_full"].items() if abs(v - r[("darfur", 2026)]["pt"]) <= 5]
     if near != ["1984"]:
         bad.append(f"estimate: 1984 the one earlier season about as dry ({near})")
-    yl = [v for y, v in ad["yield_veg"].items() if int(y) not in (2014, 2015, 2018, 2019)]
-    if len(yl) != 3:
-        bad.append(f"lead: 'in three of the poorest earlier seasons' ({len(yl)} usable yields)")
-    if min(ad["rain_of_veg"].values()) <= r[("darfur", 2026)]["pt"]:
-        bad.append("estimate: analogue seasons 'all milder' in rain")
-    if not (min(yl) >= 60 and ad["yield_rain_full"]["1984"] < 70 and ad["yield_2023"] < 50):
-        bad.append("estimate: 'below about two-thirds of normal' no longer follows")
+    dt = ad["dry_third"]
+    if dt["n"] < 12 or dt["below"] < 0.75 * dt["n"]:
+        bad.append(f"lead/estimate: driest-third seasons mostly below normal ({dt})")
+    if not ad["yield_rain_full"]["1984"] < dt["median"]:
+        bad.append("estimate: 1984 'nearer … than the typical dry year's'")
+    if min(v["pt"] for (sd, y), v in r.items() if sd == "darfur" and y < 2026) <= r[("darfur", 2026)]["pt"]:
+        bad.append("estimate: 'no season in the record was drier than 2026' (Darfur)")
+    if not (ad["yield_rain_full"]["1984"] < 70 and ad["yield_2023"] < 50):
+        bad.append("estimate: 'well below normal, nearer 1984's level' no longer follows")
     cd = D["corr"]["darfur"]
     iy = cd["vars"].index("yield")
-    ry = {v: cd["r"][iy][cd["vars"].index(v)] for v in ("rain", "grn", "bio")}
-    if not (ry["rain"] > 0.3 and min(ry["grn"], ry["bio"]) > 0.3 and ry["grn"] <= ry["bio"]):
-        bad.append(f"estimate: Darfur yields 'move with rain and vegetation' ({ry})")
+    ry = {v: cd["r"][iy][cd["vars"].index(v)] for v in ("rain", "grn", "bio", "vhi", "asi")}
+    if not all(abs(ry["rain"]) > abs(ry[v]) for v in ("grn", "bio", "vhi", "asi")):
+        bad.append(f"estimate: Darfur yields 'follow rain most' ({ry})")
     if next(d for d in D["yield"] if d["y"] == 2023)["n"] != 4:
         bad.append("estimate: 2023 'four of five states reported'")
     ipc26 = next(d for d in D["ipcch"] if d["side"] == "darfur" and d["y"] == 2026 and d["kind"] == "lean")

@@ -215,6 +215,14 @@ def analogues(rain, veg, fn, ic, yl):
             rec["yield_rain_full"] = {int(a): r(yy_.loc[a, "yield_pct_local"], 0)
                                       for a in rec["rain_full"] if a in yy_.index}
             rec["yield_2023"] = r(yy_.loc[2023, "yield_pct_local"], 0)
+            # driest third of seasons since 1981 (pre-war) and their yields
+            z = pd.concat([rain[rain["side"] == s].set_index("y")["pct_trend"],
+                           yy_["yield_pct_local"]], axis=1, keys=["x", "y"]).dropna()
+            z = z[(z.index < WAR_FROM) & ~z.index.isin(BAD_YIELD)]
+            d = z[z["x"] <= z["x"].quantile(1 / 3)]
+            rec["dry_third"] = {"n": int(len(d)), "below": int((d["y"] < 100).sum()),
+                                "median": r(d["y"].median(), 0), "max_rain": r(d["x"].max(), 0),
+                                "drier_than_2026": [int(a) for a in d.index[d["x"] <= rb.get(2026)]]}
         out[s] = rec
     return out
 
@@ -266,12 +274,16 @@ def vstat(veg):
     return out
 
 
-BAD_YIELD = (2014, 2015, 2018, 2019)  # reported far above any other year; left out of r and ranges
+# 2018 and 2019 report the same harvested area (3,903,000 ha) to the hectare: copied figures, a
+# reason that does not depend on the season indicators. Other high years (2014, 2015) stay in;
+# rank correlation keeps single outliers from driving r.
+BAD_YIELD = (2018, 2019)
 
 
 def corr_matrices(rain, veg, fn, ic, yl):
-    """Pairwise Pearson r per side, seasons before the war: predictors and yields up to the 2022
-    season, next-lean-season outcomes up to the 2021 season (lean 2022). n kept per cell."""
+    """Pairwise Spearman rank correlation per side, seasons before the war: predictors and yields
+    up to the 2022 season, next-lean-season outcomes up to the 2021 season (lean 2022). Used for
+    the build guards; the page computes its matrix in the browser from the same series."""
     out = {}
     for s in SIDES:
         t = pd.DataFrame(index=pd.Index(range(1981, 2027), name="y"))
@@ -304,8 +316,8 @@ def corr_matrices(rain, veg, fn, ic, yl):
                     continue
                 z = t[[a, b]].dropna()
                 N[-1].append(int(len(z)))
-                R[-1].append(r(z[a].corr(z[b]), 2) if len(z) >= 3 and z[a].std() > 0 and z[b].std() > 0
-                             else None)
+                R[-1].append(r(z[a].corr(z[b], method="spearman"), 2)
+                             if len(z) >= 3 and z[a].std() > 0 and z[b].std() > 0 else None)
         out[s] = {"vars": cols, "r": R, "n": N}
     return out
 
