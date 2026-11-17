@@ -8,6 +8,7 @@ All rainfall percentages are of the 1991-2020 mean of the same series (forecasts
 """
 import json, sys, glob, os
 import numpy as np, pandas as pd, geopandas as gpd, xarray as xr
+from scipy import stats
 
 
 def _open(f):
@@ -84,6 +85,31 @@ def rank_dry(series, year):
     return int((v < v.loc[year]).sum() + 1), int(len(v))
 
 
+def rank_among(values, v):
+    """Rank (driest first) of the value v once it is added to `values`, and that n. Return period (Weibull) = (n + 1) / rank."""
+    vals = np.asarray(values, dtype=float)
+    vals = vals[np.isfinite(vals)]
+    return int((vals < v).sum() + 1), int(len(vals) + 1)
+
+
+def _detrend(a, yy):
+    return a - np.polyval(np.polyfit(yy, a, 1), yy)
+
+
+def r_ci(frame, col, level=0.90):
+    """Correlation of frame[col] with frame.ix after removing a linear trend from both, and its confidence interval
+    (Fisher z; one degree of freedom less for the trend: standard error 1 / sqrt(n - 4))."""
+    yy = frame.index.values.astype(float)
+    rr = float(np.corrcoef(_detrend(frame[col].values, yy), _detrend(frame.ix.values, yy))[0, 1])
+    q = float(stats.norm.ppf(0.5 + level / 2)) / np.sqrt(len(frame) - 4)
+    z = np.arctanh(rr)
+    return [round(rr, 2), round(float(np.tanh(z - q)), 2), round(float(np.tanh(z + q)), 2)]
+
+
+B_BOOT = 2000
+rng = np.random.default_rng(2026)
+
+
 units = {}
 for u, pcs in UNITS.items():
     rec = {"name": UNIT_NAMES[u], "tri": {}}
@@ -101,6 +127,8 @@ for u, pcs in UNITS.items():
     # issuance, each with and without a linear year term (the November forecasts rise over 1982-2025), at the 2026 value
     df = pair(pcs, TRI["NA"])
     est = {}
+    f26 = float(df.loc[2026, "fp"])
+    boot = []  # El Niño share of the gap below the neutral year, refitted on resampled seasons (all six fits pooled)
     for k, ix in INDICES.items():
         d = df.join(ix.rename("ix"))
         h = d.loc[1982:2025]
@@ -118,6 +146,13 @@ for u, pcs in UNITS.items():
                 e1[f"{key}{'_trend' if trend else ''}_neutral"] = round(float(x @ beta - beta[1] * x26), 1)
                 e1[f"{key}{'_trend' if trend else ''}_nino"] = round(float(beta[1] * x26), 1)
                 e1[f"{key}{'_trend' if trend else ''}_sd"] = round(float(resid.std(ddof=X.shape[1])), 1)
+                if key == "fc":
+                    yv = frame[col].values
+                    for ii in rng.integers(0, len(frame), size=(B_BOOT, len(frame))):
+                        bb, *_ = np.linalg.lstsq(X[ii], yv[ii], rcond=None)
+                        nino = bb[1] * x26
+                        gap = float(x @ bb) - nino - f26
+                        boot.append(min(1.0, max(0.0, -nino / gap)) if gap > 0 else (1.0 if nino < 0 else 0.0))
         # share of variation: squared correlation, raw and after removing a linear trend from both series
         def _r2(frame, col, detrend):
             a, b = frame[col].values, frame.ix.values
@@ -128,8 +163,10 @@ for u, pcs in UNITS.items():
             return float(np.corrcoef(a, b)[0, 1] ** 2)
         e1.update(r2_fc=round(_r2(h, "fp", False), 3), r2_fc_dt=round(_r2(h, "fp", True), 3),
                   r2_obs=round(_r2(ho, "op", False), 3), r2_obs_dt=round(_r2(ho, "op", True), 3),
-                  r_fc=round(r(h.fp, h.ix), 2), r_obs=round(r(ho.op, ho.ix), 2))
+                  r_fc=round(r(h.fp, h.ix), 2), r_obs=round(r(ho.op, ho.ix), 2),
+                  r_fc_dt_ci=r_ci(h, "fp"), r_obs_dt_ci=r_ci(ho, "op"))
         est[k] = e1
+    rec["share_ci"] = {q_: round(float(np.percentile(boot, p_)) * 100, 1) for q_, p_ in (("lo", 5), ("med", 50), ("hi", 95))}
     h = df.loc[1982:2025]
     rec["fc_trend_decade"] = round(float(np.polyfit(h.index.values, h.fp.values, 1)[0] * 10), 1)
     # observed rainfall that past forecasts of this size were followed by: fit of ERA5 % on forecast %, 1982-2025
@@ -139,11 +176,14 @@ for u, pcs in UNITS.items():
     x0 = float(df.loc[2026, "fp"])
     ex = float(ao + bo * x0)
     # 80% prediction interval including the fit's own uncertainty (2026 lies outside the range of past forecasts)
-    from scipy import stats
     nn = len(ho)
     se = sd * np.sqrt(1 + 1 / nn + (x0 - ho.fp.mean()) ** 2 / ((ho.fp - ho.fp.mean()) ** 2).sum())
     q = float(stats.t.ppf(0.9, nn - 2))
     rec["obs_equiv"] = {"exp": round(ex, 1), "lo": round(ex - q * se, 1), "hi": round(ex + q * se, 1), "slope": round(float(bo), 2)}
+    # where those values fall among the observed seasons 1981/82-2025/26 (rank driest first; return period = (n + 1) / rank)
+    obs_all = df.op.loc[:2025].dropna().values
+    for k_, v_ in (("exp", ex), ("lo", ex - q * se), ("hi", ex + q * se)):
+        rec["obs_equiv"][f"rank_{k_}"], rec["obs_equiv"]["n"] = rank_among(obs_all, v_)
     # observed rainfall vs other ENSO indices (r², Nov-Apr, 1982-2025)
     def _r2dt(a, b):
         yy = a.index.values.astype(float)
@@ -172,8 +212,10 @@ for u, pcs in UNITS.items():
         if key == "JASO":
             rec["jaso_pct"] = {int(y): round(float(v / cl * 100), 1) for y, v in o.items()}
     units[u] = rec
-    pd.DataFrame({"year": df.index, "obs_pct": df.op.round(1), "fc_pct": df.fp.round(1), "oct_n34_oisst": df.n34a}).to_csv(
-        OUTD + f"results/nov_apr_{u}.csv", index=False)
+    # dry-side return periods (Weibull, (n + 1) / rank): forecasts among the 46 November forecasts, observed among the 45 seasons
+    rp = lambda ser: (len(ser.dropna()) + 1) / ser.rank(method="max")  # noqa: E731
+    pd.DataFrame({"year": df.index, "obs_pct": df.op.round(1), "obs_rp_dry": rp(df.op).round(1), "fc_pct": df.fp.round(1),
+                  "fc_rp_dry": rp(df.fp).round(1), "oct_n34_oisst": df.n34a}).to_csv(OUTD + f"results/nov_apr_{u}.csv", index=False)
 
 # Niño3.4 index values for the scatter x axis
 n34 = {"years": [int(y) for y in octi.index], "oct": [round(float(v), 2) for v in octi.n34a],
@@ -228,8 +270,9 @@ def seas5_total(y):
         a = _open(f) * DAYS[m]
         tot = a if tot is None else tot + a
     return tot
-clim = sum(seas5_total(y) for y in range(1991, 2021)) / 30
-s26 = seas5_total(2026)
+S_TOT = {y: seas5_total(y) for y in range(1981, 2027)}
+clim = sum(S_TOT[y] for y in range(1991, 2021)) / 30
+s26 = S_TOT[2026]
 g_s = (s26 / clim * 100)
 
 def era5_month(y, m):
@@ -240,18 +283,29 @@ def era5_total(sy):
     if any(p is None for p in parts):
         return None
     return sum(parts)
-eclim = sum(era5_total(y) for y in range(1991, 2021)) / 30
+E_TOT = {y: era5_total(y) for y in range(1981, 2026)}  # seasons 1981/82-2025/26
+eclim = sum(E_TOT[y] for y in range(1991, 2021)) / 30
 grids = {"seas5_2026": g_s}
+# rank of each layer's season at each grid cell, driest first: the 2026 forecast among the 46 November forecasts
+# 1981-2026, each observed season among the 45 seasons 1981/82-2025/26 (return period = (n + 1) / rank)
+ranks = {"seas5_2026": ((xr.concat([S_TOT[y] for y in range(1981, 2026)], "yr") < s26).sum("yr") + 1, len(S_TOT))}
+e_stack = xr.concat(list(E_TOT.values()), "yr")
 for y in [1982, 1997, 2015, 2023]:
-    t = era5_total(y)
-    if t is not None:
-        grids[f"era5_{y}"] = t / eclim * 100
-def pack(da):
+    grids[f"era5_{y}"] = E_TOT[y] / eclim * 100
+    ranks[f"era5_{y}"] = ((e_stack < E_TOT[y]).sum("yr") + 1, len(E_TOT))
+def pack(da, rk=None):
     da = da.sortby("y", ascending=False).sortby("x")
-    return {"x0": float(da.x.min()), "dx": float(abs(da.x[1] - da.x[0])), "y0": float(da.y.max()), "dy": float(abs(da.y[1] - da.y[0])),
-            "nx": int(da.sizes["x"]), "ny": int(da.sizes["y"]),
-            "v": [None if not np.isfinite(v) else int(round(float(v))) for v in da.values.ravel()]}
-regional = {k: pack(v) for k, v in grids.items()}
+    out = {"x0": float(da.x.min()), "dx": float(abs(da.x[1] - da.x[0])), "y0": float(da.y.max()), "dy": float(abs(da.y[1] - da.y[0])),
+           "nx": int(da.sizes["x"]), "ny": int(da.sizes["y"]),
+           "v": [None if not np.isfinite(v) else int(round(float(v))) for v in da.values.ravel()]}
+    if rk is not None:
+        a, n = rk
+        a = a.where(np.isfinite(da)).sortby("y", ascending=False).sortby("x")
+        assert n <= 90
+        # one character per cell: chr(35 + rank), space where there is no value (keeps the page small)
+        out.update(n=n, rk="".join(" " if not np.isfinite(v) else chr(35 + int(v)) for v in a.values.ravel()))
+    return out
+regional = {k: pack(v, ranks[k]) for k, v in grids.items()}
 # average over the band from Vanuatu to Tonga (12-22°S, 165°E-175°W), each layer as % of its own 1991-2020 mean
 BAND = dict(y=slice(-12, -22), x=slice(165, 185))
 def _band(da):
@@ -259,9 +313,12 @@ def _band(da):
     w = np.cos(np.deg2rad(da.y))
     return float(da.sel(**BAND).weighted(w.sel(y=BAND["y"])).mean())
 band = {"seas5_2026": round(_band(s26) / _band(clim) * 100, 1)}
+sb = {y: _band(t_) for y, t_ in S_TOT.items()}
+band_rank = {"seas5_2026": rank_among([sb[y] for y in range(1981, 2026)], sb[2026])}
+eb = {y: _band(t_) for y, t_ in E_TOT.items()}
 for y in [1982, 1997, 2015, 2023]:
-    t_ = era5_total(y)
-    band[f"era5_{y}"] = round(_band(t_) / _band(eclim) * 100, 1)
+    band[f"era5_{y}"] = round(eb[y] / _band(eclim) * 100, 1)
+    band_rank[f"era5_{y}"] = rank_among([eb[k] for k in eb if k != y], eb[y])
 
 # Outlines (lon shifted to 0-360 so Fiji and Tonga sit east of 180)
 def shift(geom):
@@ -319,7 +376,7 @@ cerf_rows = [{"code": rw.application_code, "iso3": rw.country_iso3, "type": rw.e
                         if pd.notna(rw.valid_year_start) else None)} for rw in cerf.itertuples()]
 
 page = {"issued": "2026-11", "units": units, "n34": n34, "timing": timing, "provinces": prov, "regional": regional,
-        "outlines": outl, "gauges": gauges, "cerf": cerf_rows, "band": band,
+        "outlines": outl, "gauges": gauges, "cerf": cerf_rows, "band": band, "band_rank": band_rank,
         "indices_2026": {"oisst_oct": float(octi.loc[2026, "n34a"]), "oisst_oct_n3": float(octi.loc[2026, "n3a"]),
                          "oisst_oct_n4": float(octi.loc[2026, "n4a"]), "oisst_oct_n12": float(octi.loc[2026, "n12a"]),
                          "oni_aso": float(oni_aso.loc[2026]), "psl_oct": float(psl_oct.loc[2026])}}

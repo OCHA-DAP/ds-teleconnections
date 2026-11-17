@@ -57,6 +57,21 @@ def _to(xs) -> str:
     return f(min(xs)) if min(xs) == max(xs) else f"{f(min(xs))} to {f(max(xs))}"
 
 
+def _rp(rank: int, n: int) -> float:
+    """Return period (Weibull plotting position) of the rank-th driest of n values."""
+    return (n + 1) / rank
+
+
+def _rpw(rank: int, n: int) -> float:
+    """Return period on the wet side for the rank-th driest of n values."""
+    return (n + 1) / (n + 1 - rank)
+
+
+def _f(rp: float) -> str:
+    """Return period for text: whole years from 10, one decimal below."""
+    return str(_r(rp)) if rp >= 9.95 else f"{rp:.1f}"
+
+
 def _rng(xs, fmt: str = ".2f") -> str:
     lo, hi = format(min(xs), fmt), format(max(xs), fmt)
     return lo if lo == hi else f"{lo}–{hi}"
@@ -85,6 +100,23 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     U = d["units"]
     T: dict[str, str] = {"built": BUILT}
     problems: list[str] = []
+
+    def _rp_of(series: dict, key: str) -> tuple[float, str]:
+        """Return period of series[key] among all values of the series, on its side of the median."""
+        vals = list(series.values())
+        rank, n = sum(v < series[key] for v in vals) + 1, len(vals)
+        return (_rp(rank, n), "dry") if _rp(rank, n) >= _rpw(rank, n) else (_rpw(rank, n), "wet")
+
+    def _rp_word(rs: tuple[float, str]) -> str:
+        return f"1 in {_f(rs[0])}" + (" wet" if rs[1] == "wet" else "")
+
+    def _cell(rs: tuple[float, str], pct: float) -> str:
+        return f"{_rp_word(rs)}<br><small>{_r(pct)}%</small>"
+
+    def obs_rp(u: str, y: int) -> float:
+        """Dry-side return period of the observed November–April season y among the observed seasons since 1981."""
+        o = {yy: v for yy, v in zip(U[u]["years"], U[u]["obs"]) if v is not None}
+        return _rp(sum(v < o[y] for v in o.values()) + 1, len(o))
     ix = U["FJ"]["enso_est"]
     T["n34_oct"] = f"{ix['oisst_oct']['v2026']:.2f}"
     T["n34_oct_max"] = f"{ix['oisst_oct']['max_hind']:.2f}"
@@ -103,11 +135,44 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
         T[f"{u}_NDJ"] = str(_r(U[u]["tri"]["NDJ"]["fc"]))
         T[f"{u}_JASO"] = str(_r(U[u]["JASO"]["pct"]))
         T[f"{u}_JASO_rankw"] = _dry(U[u]["JASO"]["rank"])
+        T[f"{u}_NA_rp"] = _f(_rp(na["rank"], na["n"]))
+        T[f"{u}_JASO_rp"] = _f(_rp(U[u]["JASO"]["rank"], U[u]["JASO"]["n"]))
         oe = U[u]["obs_equiv"]
         T[f"{u}_oexp"], T[f"{u}_olo"], T[f"{u}_ohi"] = str(_r(oe["exp"])), str(_r(oe["lo"])), str(_r(oe["hi"]))
+        for k in ("exp", "lo", "hi"):
+            T[f"{u}_o{k}_rp"] = _f(_rp(oe[f"rank_{k}"], oe["n"]))
         o = dict(zip(U[u]["years"], U[u]["obs"]))
         T[f"{u}_o15"], T[f"{u}_o23"] = str(_r(o[2015])), str(_r(o[2023]))
+        for y in (1982, 1997, 2015):
+            T[f"{u}_o{y % 100:02d}_rp"] = _f(obs_rp(u, y))
     T["SB_NW_NA_rankw_wet"] = _wet(U["SB_NW"]["tri"]["NA"]["rank"], U["SB_NW"]["tri"]["NA"]["n"])
+    T["SB_NW_NA_rpw"] = _f(_rpw(U["SB_NW"]["tri"]["NA"]["rank"], U["SB_NW"]["tri"]["NA"]["n"]))
+    if T["FJ_NA_rp"] != T["TO_NA_rp"]:
+        problems.append("Fiji and Tonga forecast return periods differ (text gives one value for both)")
+    T["n_fc1"] = str(U["FJ"]["tri"]["NA"]["n"] + 1)
+    T["n_obs_na"] = str(sum(v is not None for v in U["FJ"]["obs"]))
+    T["n_obs_na1"] = str(int(T["n_obs_na"]) + 1)
+    if U["FJ"]["JASO"]["n"] != U["FJ"]["tri"]["NA"]["n"]:
+        problems.append("July–October and forecast records no longer the same length (tile caption gives one n)")
+    # observed-equivalent return periods: the dry end of the 80% range beyond the record, the wet end about 1 in 4-5
+    T["ohi_rp3"] = _span([_rp(U[u]["obs_equiv"]["rank_hi"], U[u]["obs_equiv"]["n"]) for u in ("FJ", "TO", "VU")])
+    for u in ("FJ", "TO", "VU"):
+        if U[u]["obs_equiv"]["rank_lo"] != 1:
+            problems.append(f"{u}: dry end of the observed-equivalent range no longer beyond the driest season since 1981")
+    rp8297 = [obs_rp(u, y) for u in ("FJ", "TO") for y in (1982, 1997)]
+    T["o8297_rp"] = f"{_f(min(rp8297))} to 1 in {_f(max(rp8297))}"
+    # correlations with October Niño3.4 (OISST) after removing trends, 90% confidence intervals
+    rci = lambda u, k: U[u]["enso_est"]["oisst_oct"][k]  # noqa: E731
+    T["r_fc3"] = _to([rci(u, "r_fc_dt_ci")[0] for u in ("FJ", "TO", "VU")])
+    T["r_obs3"] = _to([rci(u, "r_obs_dt_ci")[0] for u in ("FJ", "TO", "VU")])
+    for u in ("FJ", "TO", "VU"):
+        if rci(u, "r_fc_dt_ci")[0] > -0.8:
+            problems.append(f"{u}: forecast correlation with Niño3.4 no longer at least 0.8 ('closely')")
+        if abs(rci(u, "r_obs_dt_ci")[0]) >= abs(rci(u, "r_fc_dt_ci")[0]):
+            problems.append(f"{u}: observed rainfall no longer follows Niño3.4 less closely than the forecasts")
+        if abs(rci(u, "r_obs_dt_ci")[0] ** 2 - U[u]["enso_est"]["oisst_oct"]["r2_obs_dt"]) > 0.01:
+            problems.append(f"{u}: correlation and share of variation disagree")
+    T["r_series_diff"] = f"{max(abs(U[u]['enso_est'][k][c][0] - rci(u, c)[0]) for u in ('FJ', 'TO', 'VU', 'SB_SE', 'SB_NW') for k in ('oni_aso', 'psl_oct') for c in ('r_fc_dt_ci', 'r_obs_dt_ci')):.2f}"
     three = ["FJ", "TO", "VU"]
     T["skill3"] = f"{min(U[u]['tri']['NA']['skill'] for u in three):.2f}–{max(U[u]['tri']['NA']['skill'] for u in three):.2f}"
     oi_ = lambda u: U[u]["enso_est"]["oisst_oct"]  # noqa: E731
@@ -120,9 +185,14 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
         return [min(1.0, -e[f"{v}_nino"] / (e[f"{v}_neutral"] - f)) for e in U[u]["enso_est"].values() for v in VAR]
     for u in ["FJ", "TO", "VU", "SB_SE"]:
         T[f"{u}_share"] = _span([s * 100 for s in _shares(u)])
+        T[f"{u}_share_lo"] = str(_r(U[u]["share_ci"]["lo"]))
+        if U[u]["share_ci"]["hi"] < 99.95:
+            problems.append(f"{u}: El Niño share confidence interval no longer reaches 100%")
         T[f"{u}_neutral"] = _span([e[f"{v}_neutral"] for e in U[u]["enso_est"].values() for v in VAR])
     if not (min(min(_shares(u)) for u in three) >= 0.6):
         problems.append("El Niño share of the gap no longer at least about 60% in Fiji, Tonga and Vanuatu ('most')")
+    if not min(U[u]["share_ci"]["lo"] for u in three) >= 50:
+        problems.append("El Niño share confidence interval now reaches below half in Fiji, Tonga or Vanuatu ('most')")
     sd = [U[u]["enso_est"][k][f"{v}_sd"] for u in three for k in U[u]["enso_est"] for v in VAR]
     T["fit_sd"] = _span(sd)
     # index tile and method: OISST vs ERSST disagreement
@@ -184,6 +254,8 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     B = d["band"]
     for k, v in B.items():
         T[f"band_{k}"] = str(_r(v))
+        rk, n = d["band_rank"][k]
+        T[f"band_rp_{k}"] = _f(_rp(rk, n)) if _rp(rk, n) >= _rpw(rk, n) else _f(_rpw(rk, n)) + " wet"
     if not (B["era5_1982"] < 75 and B["era5_1997"] < 75 and B["era5_2015"] > B["era5_1997"] and B["era5_2023"] > 100 and B["seas5_2026"] < 65):
         problems.append(f"band averages no longer match the map caption: {B}")
     order = d["timing"]["order"]
@@ -216,7 +288,7 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     for u, nm in (("FJ", "Fiji"), ("TO", "Tonga"), ("VU", "Vanuatu")):
         o = obs_since(u)
         y = min(o, key=o.get)
-        parts.append(f"{_r(o[y])}% in {nm} ({y}/{(y + 1) % 100:02d})")
+        parts.append(f"{_r(o[y])}% in {nm} ({y}/{(y + 1) % 100:02d}, 1 in {_f(obs_rp(u, y))} years)")
         T[f"{u}_min06"] = f"{_r(o[y])}"
     for u in ("FJ", "TO"):
         fc06 = [v for yy, v in zip(U[u]["years"], U[u]["fc"]) if 2006 <= yy <= 2025 and v is not None]
@@ -224,9 +296,9 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
             problems.append(f"{u}: 2026 forecast no longer below every 2006–2025 forecast")
     T["cerf_note"] = (
         "Since 2006 the driest observed wet seasons (ERA5) were " + ", ".join(parts[:-1]) + " and " + parts[-1] +
-        ", with no CERF drought allocation. Past forecasts point to about "
-        f"{T['FJ_oexp']}% in Fiji (80% range {T['FJ_olo']}–{T['FJ_ohi']}%), {T['TO_oexp']}% in Tonga "
-        f"({T['TO_olo']}–{T['TO_ohi']}%) and {T['VU_oexp']}% in Vanuatu ({T['VU_olo']}–{T['VU_ohi']}%) this season. "
+        ", with no CERF drought allocation. This season, past forecasts point to an observed season of about 1 in "
+        f"{T['FJ_oexp_rp']} years in Fiji ({T['FJ_oexp']}%; 80% range {T['FJ_olo']}–{T['FJ_ohi']}%), 1 in {T['TO_oexp_rp']} in Tonga "
+        f"({T['TO_oexp']}%; {T['TO_olo']}–{T['TO_ohi']}%) and 1 in {T['VU_oexp_rp']} in Vanuatu ({T['VU_oexp']}%; {T['VU_olo']}–{T['VU_ohi']}%). "
         "Papua New Guinea's 2016 allocation covered a dry-season drought (April–November 2015).")
     for u in three:
         if not U[u]["obs_equiv"]["exp"] < float(T[f"{u}_min06"]):
@@ -238,6 +310,7 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     C = d["chirps_jaso"]["TO"]
     T["TO_chirps"], T["TO_chirps_r"] = str(_r(C["pct"]["2026"])), f"{C['r_era5']:.2f}"
     T["TO_chirps_rankw"] = _dry(C["rank2026"])
+    T["TO_chirps_rp"] = _f(_rp(C["rank2026"], C["n"]))
     if C["rank2026"] > 3 or C["r_era5"] < 0.7:
         problems.append("Tonga CHIRPS check no longer supports 'among the driest'")
 
@@ -246,11 +319,13 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     for u, nm in (("FJ", "Fiji"), ("TO", "Tonga"), ("VU", "Vanuatu"), ("SB_SE", "Solomon Is. south-east"), ("SB_NW", "Solomon Is. north-west")):
         j = U[u]["jaso_pct"]
         o15 = U[u]["obs"][U[u]["years"].index(2015)]
-        j15, j26 = f"{_r(j['2015'])}%", f"{_r(j['2026'])}%"
+        j15, j26 = _cell(_rp_of(j, "2015"), j["2015"]), _cell(_rp_of(j, "2026"), j["2026"])
         if u == "TO":
             cj = d["chirps_jaso"]["TO"]["pct"]
-            j15 += f"<br><small>CHIRPS {_r(cj['2015'])}%</small>"
-            j26 += f"<br><small>CHIRPS {_r(cj['2026'])}%</small>"
+            j15 += f"<br><small>CHIRPS {_r(cj['2015'])}% ({_rp_word(_rp_of(cj, '2015'))})</small>"
+            j26 += f"<br><small>CHIRPS {_r(cj['2026'])}% ({_rp_word(_rp_of(cj, '2026'))})</small>"
+            if _rp_of(cj, "2026") != (_rp(C["rank2026"], C["n"]), "dry"):
+                problems.append("TO: CHIRPS Jul–Oct 2026 rank differs between chc_units and the page")
             if not cj["2026"] < cj["2015"]:
                 problems.append("TO: CHIRPS no longer has Jul–Oct 2026 drier than 2015")
         if u == "FJ":
@@ -259,9 +334,11 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
             T["FJ_g15"] = _span(g15)
             if not max(g15) < j["2015"] - 15:
                 problems.append("Fiji gauges no longer much drier than ERA5 in Jul–Oct 2015")
+        fcs = {str(y): v for y, v in zip(U[u]["years"], U[u]["fc"]) if v is not None}
+        obs = {str(y): v for y, v in zip(U[u]["years"], U[u]["obs"]) if v is not None}
         rows.append(f'<tr><td>{nm}</td><td class="n">{j15}</td><td class="n">{j26}</td>'
-                    f'<td class="n">{_r(fc_at(u, 2015))}%</td><td class="n">{_r(U[u]["tri"]["NA"]["fc"])}%</td>'
-                    f'<td class="n">{_r(o15)}%</td>' + ("" if u == "SB_NW" else f'<td{" rowspan=2" if u == "SB_SE" else ""}>{RESP_2015[u[:2]]}</td>') + '</tr>')
+                    f'<td class="n">{_cell(_rp_of(fcs, "2015"), fcs["2015"])}</td><td class="n">{_cell(_rp_of(fcs, "2026"), fcs["2026"])}</td>'
+                    f'<td class="n">{_cell(_rp_of(obs, "2015"), o15)}</td>' + ("" if u == "SB_NW" else f'<td{" rowspan=2" if u == "SB_SE" else ""}>{RESP_2015[u[:2]]}</td>') + '</tr>')
     T["cmp2015_rows"] = "\n".join(rows)
     if not (U["TO"]["jaso_pct"]["2026"] < U["TO"]["jaso_pct"]["2015"]):
         problems.append("TO: Jul–Oct 2026 no longer drier than Jul–Oct 2015")
@@ -298,6 +375,9 @@ def render(spec: dict) -> str:
     for k in ("FJ_NA", "TO_NA", "VU_NA", "SB_SE_NA", "SB_NW_NA"):
         if f"{T[k]}%" not in spec["assessment"]["one_line"]:
             problems.append(f"card one_line misses {k} = {T[k]}%")
+    for k in ("FJ_NA_rp", "VU_NA_rp", "SB_SE_NA_rp"):
+        if f"1 in {T[k]}" not in spec["assessment"]["one_line"]:
+            problems.append(f"card one_line misses the return period {k} = 1 in {T[k]}")
     if problems:
         raise SystemExit("pacific: page text no longer matches the data: " + "; ".join(problems))
     page = tpl
