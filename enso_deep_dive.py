@@ -1801,6 +1801,7 @@ def render_index(specs: list[dict], end_year: int) -> str:
             continue  # encrypted page not built (no SITE_PASSWORD): no card, no dead link
         cat, ours = s["catalogue"], s["assessment"]
         foot = ("restricted · password shared internally" if s.get("restricted")
+                else html.escape(s["card_foot"]) if s.get("card_foot")
                 else f'catalogue {chip(cat["evidence"])} → reviewed {chip(ours["evidence"])}')
         out.append(f'<a class="k" href="{s["slug"]}/"><h2>{html.escape(s["name"])}</h2>'
                    f'<p>{html.escape(ours["one_line"])}</p>'
@@ -1894,9 +1895,9 @@ def main() -> None:
             hti_deep_dive.build(spec, publish=bool(os.environ.get("HTI_PUBLISH")))
             continue
         if spec.get("builder") == "ecd":
-            # eastern Chad + Darfur 2026 season (restricted); encrypted into docs/enso/eastern-chad-darfur/ only when SITE_PASSWORD is set
+            # eastern Chad + Darfur 2026 season: page filled from the committed analysis output; docs/ only with ECD_PUBLISH=1
             import ecd_deep_dive
-            ecd_deep_dive.build(spec, encrypt_page=bool(os.environ.get("SITE_PASSWORD")))
+            ecd_deep_dive.build(spec, publish=bool(os.environ.get("ECD_PUBLISH")))
             continue
         if spec.get("builder") == "extreme_nord":
             # one admin-1 region, read from gauge/satellite records rather than the ERA5 pixel stack

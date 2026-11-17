@@ -1,24 +1,22 @@
 """Eastern Chad and Darfur — the 2026 rainy season and the 2027 lean season (builder = "ecd").
 
-Restricted page (staticrypt, like the DRC page). The analysis was run on 17 November 2026 by the scripts in
+Public page (all inputs are public data). The analysis was run on 17 November 2026 by the scripts in
 deep_dives/data/eastern-chad-darfur/analysis/ (order and inputs in the README there); their one output, page_data.json,
 is committed next to them. This builder fills deep_dives/data/eastern-chad-darfur/template.html with it. Charts, tiles
 and the estimate box are computed in the browser from the data. The few sentences hard-written in the template are
 guarded by _check(): the build stops when the data no longer support them.
 
-    uv run python ecd_deep_dive.py                                   # build out/eastern-chad-darfur/ (gitignored)
-    SITE_PASSWORD=... uv run python ecd_deep_dive.py --encrypt       # + docs/enso/eastern-chad-darfur/ and the card
+    uv run python ecd_deep_dive.py              # build out/eastern-chad-darfur/ (gitignored) to review
+    uv run python ecd_deep_dive.py --publish    # + docs/enso/eastern-chad-darfur/ and the /enso/ card index
 
 Refresh: rerun the analysis scripts (they rewrite page_data.json), reword the template where the build complains, then
-build with --encrypt.
+build with --publish.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import os
-import subprocess
 import tomllib
 from datetime import date
 from pathlib import Path
@@ -222,40 +220,23 @@ def write_index() -> None:
     (ROOT / "docs" / "enso" / "index.html").write_text(edd.render_index(specs, 0), encoding="utf-8")
 
 
-def encrypt() -> None:
-    """staticrypt the page into docs/enso/eastern-chad-darfur/ and check no plaintext survives (SITE_PASSWORD)."""
-    pw = os.environ.get("SITE_PASSWORD")
-    if not pw:
-        raise SystemExit("set SITE_PASSWORD to encrypt")
-    DOCS.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["npx", "-y", "staticrypt@3.5.4", str(OUT / "index.html"), "-d", str(DOCS), "--short", "--remember", "30",
-                    "--template-title", "Eastern Chad and Darfur 2026: restricted",
-                    "--template-instructions", "OCHA Centre for Humanitarian Data. Password shared internally."],
-                   check=True, env=dict(os.environ, STATICRYPT_PASSWORD=pw), stdout=subprocess.DEVNULL)
-    enc = (DOCS / "index.html").read_text(encoding="utf-8")
-    if "staticrypt" not in enc:
-        raise SystemExit(f"{DOCS}/index.html is not a staticrypt page")
-    for marker in ('class="tile"', "CHIRPS", "Kimiti", "FEWS NET", "adm1_2026"):
-        if marker in enc:
-            raise SystemExit(f"{DOCS}/index.html contains plaintext ({marker})")
-    print(f"  encrypted -> {DOCS}/index.html")
-    write_index()
-
-
-def build(spec: dict | None = None, *_args, encrypt_page: bool = False) -> None:
+def build(spec: dict | None = None, *_args, publish: bool = False) -> None:
     spec = spec or tomllib.loads(SPEC.read_text(encoding="utf-8"))
     page = render(spec)
     OUT.mkdir(parents=True, exist_ok=True)
     (OUT / "index.html").write_text(page, encoding="utf-8")
     print(f"  wrote {OUT}/index.html")
-    if encrypt_page:
-        encrypt()
+    if publish:
+        DOCS.mkdir(parents=True, exist_ok=True)
+        (DOCS / "index.html").write_text(page, encoding="utf-8")
+        write_index()
+        print(f"  published -> {DOCS}/index.html and docs/enso/index.html")
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--encrypt", action="store_true", help="also staticrypt into docs/enso/eastern-chad-darfur/ (needs SITE_PASSWORD)")
-    build(encrypt_page=ap.parse_args().encrypt)
+    ap.add_argument("--publish", action="store_true", help="also write docs/enso/eastern-chad-darfur/ and the /enso/ card index")
+    build(publish=ap.parse_args().publish)
 
 
 if __name__ == "__main__":
