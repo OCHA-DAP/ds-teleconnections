@@ -138,6 +138,13 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
         r2u = U[u]["r2_obs_idx"]
         if max(r2u["n3a"], r2u["n3m4"]) > r2u["n34a"] + 0.01 or r2u["n4a"] > r2u["n34a"] + 0.03:
             problems.append(f"{u}: another index now explains observed rainfall clearly better than Niño3.4")
+    n4 = dict(zip(d["n34"]["years"], d["n34"]["n4"]))
+    T["n4_oct"] = f"{n4[2026]:.2f}"
+    if n4[2026] > max(v for y, v in n4.items() if y < 2026):
+        problems.append("October 2026 Niño4 no longer within its past range")
+    for u in ("FJ", "TO"):
+        if U[u]["r2_obs_idx"]["n4a"] > U[u]["r2_obs_idx"]["n34a"] - 0.03:
+            problems.append(f"{u}: Niño4 now about as good as Niño3.4 (method note says only Vanuatu)")
     r2v = U["VU"]["r2_obs_idx"]
     T["r2_vu_n4"] = f"{_r(r2v['n4a'] * 100)}% for Niño4 against {_r(r2v['n34a'] * 100)}% for Niño3.4"
 
