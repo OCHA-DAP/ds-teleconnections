@@ -172,13 +172,13 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     <div class="tile"><span class="hd">Vanuatu</span><span class="num">{{VU_NA}}%</span><span class="lbl">Nov–Apr forecast: {{VU_NA_rankw}} of {{n_fc}}. Jul–Oct 2026: {{VU_JASO}}% of normal.</span></div>
     <div class="tile"><span class="hd">Solomon Islands</span><span class="num">{{SB_SE_NA}}% · {{SB_NW_NA}}%</span><span class="lbl">Nov–Apr forecast in the south-east ({{SB_SE_NA_rankw}} of {{n_fc}}) and the north-west ({{SB_NW_NA_rankw_wet}} of {{n_fc}}, low skill).</span></div>
   </div>
-  <p class="caption">Rain so far is ERA5. For Tonga, CHIRPS agrees: {{TO_chirps}}% of normal, the {{TO_chirps_rankw}} July–October since 1981 (correlation with ERA5 {{TO_chirps_r}}). For Fiji the rain so far is uncertain: ERA5 is driest in the Northern and Western Divisions, while Fiji Met's 12 November rainfall watch has the driest August–October in the southern and eastern islands and around Suva and Nausori, and no extreme dryness in most of the north and west. ERA5 also missed Fiji's dry July–October 2015.</p>
+  <p class="caption">Rain so far: ERA5. CHIRPS agrees for Tonga ({{TO_chirps}}%, {{TO_chirps_rankw}} since 1981). For Fiji it is uncertain: Fiji Met's rainfall watch puts the driest August–October in the south and east, ERA5 in the north and west.</p>
   <div class="bottomline">
     <ul>
-      <li><b>Fiji, Tonga and Vanuatu.</b> SEAS5 forecasts a much drier wet season than usual, driest from November to January ({{FJ_NDJ}}%, {{TO_NDJ}}% and {{VU_NDJ}}% of the average forecast). These forecasts have moderate to high skill (correlation with ERA5 of {{skill3}} for November–April).</li>
-      <li><b>Most of the forecast comes from El Niño.</b> In past November forecasts for the three countries, October Niño3.4 accounts for {{r2fc3_dt}}% of the year-to-year variation, after removing an upward trend of {{trend3}}% per decade. Straight-line fits of those forecasts on Niño3.4 attribute {{FJ_share}}% of this year's gap below a neutral year to El Niño in Fiji, {{TO_share}}% in Tonga and {{VU_share}}% in Vanuatu, depending on the Niño3.4 series and on whether the trend is included. This year's Niño3.4 is outside the 1982–2025 range, so these are extrapolations.</li>
-      <li><b>Observed rainfall follows El Niño less closely</b> (Niño3.4 accounts for {{r2obs3_dt}}% of the variation after removing the trend). Of the four El Niño events with October Niño3.4 above +1.5 °C before this one, 1982/83 and 1997/98 brought some of the driest wet seasons on record in Fiji and Tonga, 2015/16 was drier than average (Fiji {{FJ_o15}}%, Tonga {{TO_o15}}%) and 2023/24 was wetter (Fiji {{FJ_o23}}%, Tonga {{TO_o23}}%).</li>
-      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu ({{SB_SE_NA}}%). The north-west (Choiseul, Western, Isabel) is forecast wet ({{SB_NW_NA}}%), with low skill. There are too few strong El Niño events on record to confirm or rule this out: January–March was wetter than average in {{nw_jfm_wet}}.</li>
+      <li><b>Fiji, Tonga and Vanuatu.</b> SEAS5 forecasts a much drier wet season than usual, driest from November to January ({{FJ_NDJ}}%, {{TO_NDJ}}% and {{VU_NDJ}}% of the average forecast), with moderate to high skill (r = {{skill3}}).</li>
+      <li><b>Most of the forecast comes from El Niño:</b> {{FJ_share}}% of this year's deficit in Fiji, {{TO_share}}% in Tonga and {{VU_share}}% in Vanuatu, depending on the Niño3.4 series and on the upward trend in the forecasts. This year's Niño3.4 is beyond the 1982–2025 range, so these are extrapolations.</li>
+      <li><b>Observed rainfall follows El Niño less closely</b> (Niño3.4 accounts for {{r2obs3_dt}}% of the year-to-year variation, against {{r2fc3_dt}}% for the forecasts). Of the four strong El Niño events before this one, 1982/83 and 1997/98 brought some of the driest wet seasons on record in Fiji and Tonga, 2015/16 was drier than average (Fiji {{FJ_o15}}%, Tonga {{TO_o15}}%) and 2023/24 wetter ({{FJ_o23}}%, {{TO_o23}}%).</li>
+      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu ({{SB_SE_NA}}%). The north-west (Choiseul, Western, Isabel) is forecast wet ({{SB_NW_NA}}%) with low skill; four strong El Niño events are too few to check this (January–March was wetter than average in {{nw_jfm_wet}}).</li>
       <li><b>CERF's records (2006–2026) show no drought allocation to any of the four countries.</b> The {{cerf_n}} allocations to these countries, all since 2014, were for cyclones ({{cerf_storm}}), a flood, a volcanic eruption and an earthquake. CERF's only drought allocations in the Pacific went to Papua New Guinea (2016, El Niño) and the Marshall Islands (2013). In Fiji and Tonga the 2026/27 forecast is drier than any November forecast since 1981, including those made in 1982, 1997 and 2015.</li>
     </ul>
   </div>
@@ -196,7 +196,7 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     <div class="controls"><div class="seg" role="group" aria-label="Map layer" id="mapbtns"></div></div>
     <div class="mapwrap"><canvas id="mapc" width="1000" height="560" role="img" aria-label="Map of rainfall as a percentage of average across the south-west Pacific"></canvas><svg id="mapsvg" viewBox="0 0 1000 560" aria-hidden="true"></svg></div>
     <div class="grad" id="mapleg"></div>
-    <p class="caption">Average over the band from Vanuatu to Tonga (12–22°S, 165°E–175°W): forecast {{band_seas5_2026}}% of the average forecast; observed {{band_era5_1982}}% in 1982/83, {{band_era5_1997}}% in 1997/98, {{band_era5_2015}}% in 2015/16 and {{band_era5_2023}}% in 2023/24. Each layer is a percentage of its own 1991–2020 average (SEAS5: the average November forecast; observed: ERA5). An ensemble-average forecast varies less than a single season.</p>
+    <p class="caption">Average over the band from Vanuatu to Tonga (12–22°S, 165°E–175°W): forecast {{band_seas5_2026}}%; observed {{band_era5_1982}}% (1982/83), {{band_era5_1997}}% (1997/98), {{band_era5_2015}}% (2015/16) and {{band_era5_2023}}% (2023/24). Each layer is a percentage of its own 1991–2020 average.</p>
   </div>
   <div class="panel">
     <h3>November–April forecast by province or division</h3>
@@ -214,11 +214,11 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     </div>
     <div id="scatter" class="scroll"></div>
     <div class="legend"><span><span class="dot" style="background:var(--series)"></span>one season, 1982–2025</span><span><span class="legline"></span>fitted line (OISST, no trend term)</span><span><span class="legline dash"></span>extended to October 2026</span><span><span class="dot" style="background:var(--dry);outline:2px solid var(--ink)"></span>2026/27 forecast</span></div>
-    <p class="caption">November–April rainfall against October Niño3.4 (NOAA OISST). SEAS5 forecasts are ensemble averages (25 members up to 2016, 51 since) and vary less from year to year than observed rainfall.</p>
+    <p class="caption">November–April rainfall against October Niño3.4 (NOAA OISST). Forecasts are ensemble averages and vary less than observed rainfall.</p>
   </div>
   <div class="panel">
     <div class="scroll"><table id="enstab"></table></div>
-    <p class="caption">Straight-line fits of past November forecasts (1982–2025) on three Niño3.4 series known at the start of November (OISST October, ERSST v6 October, the ONI for August–October), each with and without a linear trend term. Neutral year: the fits' value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term as a share of the gap between that neutral value and the forecast (capped at 100%). All three series put 2026 above their 1982–2025 range. Past forecasts scatter about these fits by {{fit_sd}} points (one standard deviation). Share of variation: squared correlation after removing a linear trend from both series.</p>
+    <p class="caption">Neutral year: the fits' value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term as a share of the gap between that value and the forecast. Ranges cover six fits (see Data and method). Share of variation: after removing the trend.</p>
   </div>
 </section>
 
@@ -228,7 +228,7 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     <div class="controls"><div class="seg" role="group" aria-label="Area" id="hunits"></div></div>
     <div id="hist" class="scroll"></div>
     <div class="legend" id="histleg"></div>
-    <p class="caption">Bars: observed November–April rainfall (ERA5), % of the 1991–2020 average, coloured by October Niño3.4. Dots: the November SEAS5 forecast for the same season, % of the average forecast; forecasts vary less than observed rainfall. Hollow bar for 2026/27: observed rainfall that past forecasts of this size point to (80% range of a fit of ERA5 on the forecast, 1982–2025). Shaded: seasons since CERF began (2006).</p>
+    <p class="caption">Bars: observed (ERA5), coloured by October Niño3.4. Dots: the November forecast, on its own scale (forecasts vary less). Hollow bar: observed rainfall that past forecasts this dry point to (80% range). Shaded: since CERF began (2006).</p>
   </div>
   <div class="panel">
     <h3>When El Niño changes rainfall</h3>
@@ -251,7 +251,7 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
       <tr><th></th><th class="n">Jul–Oct 2015</th><th class="n">Jul–Oct 2026</th><th class="n">Nov–Apr forecast 2015/16</th><th class="n">Nov–Apr forecast 2026/27</th><th class="n">Nov–Apr observed 2015/16</th><th>Response in 2015/16 (no CERF allocation)</th></tr>
 {{cmp2015_rows}}
     </table></div>
-    <p class="caption">Observed: ERA5, % of the 1991–2020 average. Forecast: SEAS5 from November, % of the average November forecast. 2015/16 had the highest October Niño3.4 before this year. Tonga starts the 2026/27 wet season drier than in 2015, and Fiji and Tonga have drier forecasts. In Fiji, ERA5 misses the dry July–October 2015 that the rain gauges recorded ({{FJ_g15}}% at six stations), so the Fiji comparison of rain so far is uncertain.</p>
+    <p class="caption">Observed: ERA5, % of the 1991–2020 average (Tonga also CHIRPS; Fiji also gauges, since ERA5 missed Fiji's dry 2015). Forecast: % of the average November forecast.</p>
   </div>
 </section>
 
@@ -261,7 +261,7 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     <div class="scroll"><table id="outlooks">
 __OUTLOOKS__
     </table></div>
-    <p class="caption">The national outlooks for Fiji, Tonga and Vanuatu agree with SEAS5 (the Early Action Rainfall Watch outlooks come from the Australian ACCESS-S2 model). For Solomon Islands, the Island Climate Update favours below normal rainfall for November–January, drier than SEAS5 in the north-west ({{SB_NW_NDJ}}%); the latest national outlook found covers September–November. Only Fiji's outlook covers February–April. Checked 17 November 2026.</p>
+    <p class="caption">The national outlooks for Fiji, Tonga and Vanuatu agree with SEAS5. For Solomon Islands, the Island Climate Update is drier than SEAS5 in the north-west ({{SB_NW_NDJ}}% for November–January). Only Fiji's outlook covers February–April. Checked 17 November 2026.</p>
   </div>
 </section>
 
@@ -270,7 +270,7 @@ __OUTLOOKS__
   <div class="prose note" style="display:grid;gap:10px;margin-top:10px">
     <p><b>Forecast.</b> ECMWF SEAS5 ensemble-mean monthly rainfall from the November starts 1981–2026, averaged over each country, province or division (team raster statistics). Values are percentages of the 1991–2020 average November forecast for the same months, without detrending. The seas5-skill viewer removes a linear trend first and ranks November–January to February–April 2026 as the driest on record in Fiji, Tonga and Vanuatu; without detrending some of these rank 2nd to 4th, because the forecasts have risen by {{trend3}}% per decade. Rank: among the {{n_fc}} November forecasts 1981–2026. Skill: correlation between forecast and ERA5 over 1982–2025.</p>
     <p><b>Observed rainfall.</b> ERA5 monthly rainfall over the same areas, 1981–October 2026, percentages of 1991–2020. ERA5 is a reanalysis; over small islands it largely reflects the surrounding ocean (Tonga's land covers less than one ERA5 cell). Solomon Islands groups are equal-weight averages of their provinces. Rain gauges (GHCN-Daily) were usable only in Fiji; records for Vanuatu, Tonga and Solomon Islands in that archive are too broken. For Tonga, July–October CHIRPS v2 (Climate Hazards Center) over the islands' land cells serves as a second record.</p>
-    <p><b>El Niño share.</b> Linear regression of each area's November–April forecast (or observed rainfall) on Niño3.4 known at the start of November, fitted on 1982–2025 and evaluated at the 2026 value. Three series: NOAA OISST October (+{{n34_oct}} °C; 1982–2025 maximum +{{n34_oct_max}}), NOAA ERSST v6 October (+{{psl_oct}}; maximum +{{psl_oct_max}}) and the ONI for August–October (+{{oni_aso}}; maximum +{{oni_aso_max}}). "Accounts for x% of the variation" is the squared correlation over 1982–2025 after removing a linear trend from both series. The fits are also run with a linear trend term. OISST and ERSST differ by {{oisst_ersst_gap}} °C for October 2026, far more than in any earlier October, which is one reason for the spread of El Niño-only values. The Niño3 and Niño4 indices and their difference did not explain observed rainfall better than Niño3.4: for Fiji the shares of variation are {{r2_fj_idx}}.</p>
+    <p><b>El Niño share.</b> Straight-line fits of each area's November–April forecast (and of ERA5) on Niño3.4 known at the start of November, 1982–2025, for three series: NOAA OISST October (+{{n34_oct}} °C in 2026; 1982–2025 maximum +{{n34_oct_max}}), NOAA ERSST v6 October (+{{psl_oct}}; maximum +{{psl_oct_max}}) and the ONI for August–October (+{{oni_aso}}; maximum +{{oni_aso_max}}). Each fit is run with and without a linear trend term, since the November forecasts rise by {{trend3}}% per decade. Neutral year: the fit's value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term at the 2026 value as a share of the gap between the neutral year and the forecast, capped at 100%. Past forecasts scatter about the fits by {{fit_sd}} points (one standard deviation). "Accounts for x% of the variation": squared correlation after removing a linear trend from both series. OISST and ERSST differ by {{oisst_ersst_gap}} °C for October 2026, far more than in any earlier October. Niño3 and the Niño3 − Niño4 difference did not explain observed rainfall better than Niño3.4, and Niño4 about as well (Fiji: {{r2_fj_idx}}; Vanuatu: {{r2_vu_n4}}). Observed rainfall that past forecasts point to: linear fit of ERA5 on the forecast, 1982–2025, with an 80% prediction interval.</p>
     <p><b>ENSO colours.</b> October Niño3.4 (OISST): La Niña ≤ −0.5 °C, El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C.</p>
     <p><b>Code.</b> Analysis scripts in <code>deep_dives/data/pacific/analysis/</code> of the ds-teleconnections repository; this page is built by <code>pac_deep_dive.py</code>.</p>
   </div>

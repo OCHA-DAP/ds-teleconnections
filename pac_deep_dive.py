@@ -64,16 +64,15 @@ def _rng(xs, fmt: str = ".2f") -> str:
 
 # Drought responses in 2015/16, none funded by CERF (sources opened 17 Nov 2026; not checked by the build: reread on refresh)
 RESP_2015 = {
-    "FJ": ('Drought warning; water deliveries targeting 67,000 people by late November 2015 '
+    "FJ": ('Drought warning; water deliveries for 67,000 people '
            '(<a href="https://reliefweb.int/report/myanmar/asia-and-pacific-weekly-regional-humanitarian-snapshot-24-30-november-2015">OCHA</a>).'),
-    "TO": ('Drought warning; water shipped to \'Eua and a desalination plant on standby in Ha\'apai, November 2015 '
+    "TO": ('Drought warning; water shipped to \'Eua '
            '(<a href="https://www.rnz.co.nz/international/pacific-news/288787/tonga-hoping-for-more-rain-as-it-considers-drought-options">RNZ</a>).'),
-    "VU": ('After Cyclone Pam: government-funded food for about 15,000 households in Shefa, Malampa and Tafea from September 2015 '
+    "VU": ('After Cyclone Pam: government food for about 15,000 households '
            '(<a href="https://www.rnz.co.nz/international/programmes/datelinepacific/audio/201771681/drought-aid-distribution-begins-in-vanuatu">RNZ</a>); '
-           '90,000 people targeted with food by late November '
+           '90,000 people targeted with food '
            '(<a href="https://reliefweb.int/report/myanmar/asia-and-pacific-weekly-regional-humanitarian-snapshot-24-30-november-2015">OCHA</a>).'),
-    "SB": ('Drought watch; the disaster office named Rennell-Bellona, Makira, Central and parts of Choiseul and Western as areas of '
-           'concern, with no relief funding yet in November 2015 '
+    "SB": ('Drought watch; five areas of concern, no relief funding yet in November '
            '(<a href="https://www.rnz.co.nz/international/programmes/datelinepacific/audio/201777766/drought-awareness-needed-in-solomons-ndmo">RNZ</a>).'),
 }
 
@@ -132,11 +131,15 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     if gap < 0.5:
         problems.append("OISST and ERSST no longer disagree by about 1 °C for October 2026")
     r2i = U["FJ"]["r2_obs_idx"]
-    T["r2_fj_idx"] = f"{r2i['n34a']:.2f} for Niño3.4, {r2i['n3a']:.2f} for Niño3, {r2i['n4a']:.2f} for Niño4 and {r2i['n3m4']:.2f} for their difference"
+    T["r2_fj_idx"] = f"{_r(r2i['n34a'] * 100)}% for Niño3.4, {_r(r2i['n3a'] * 100)}% for Niño3, {_r(r2i['n4a'] * 100)}% for Niño4 and {_r(r2i['n3m4'] * 100)}% for their difference"
+    if abs(r2i["n34a"] - oi_("FJ")["r2_obs_dt"]) > 0.005:
+        problems.append("Fiji observed share for Niño3.4 differs between the table and the method note")
     for u in three:
         r2u = U[u]["r2_obs_idx"]
-        if max(r2u["n3a"], r2u["n4a"], r2u["n3m4"]) > r2u["n34a"] + 0.01:
-            problems.append(f"{u}: another index now explains observed rainfall better than Niño3.4")
+        if max(r2u["n3a"], r2u["n3m4"]) > r2u["n34a"] + 0.01 or r2u["n4a"] > r2u["n34a"] + 0.03:
+            problems.append(f"{u}: another index now explains observed rainfall clearly better than Niño3.4")
+    r2v = U["VU"]["r2_obs_idx"]
+    T["r2_vu_n4"] = f"{_r(r2v['n4a'] * 100)}% for Niño4 against {_r(r2v['n34a'] * 100)}% for Niño3.4"
 
     # wording guards
     for u in ("FJ", "TO"):
@@ -214,12 +217,10 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
             problems.append(f"{u}: 2026 forecast no longer below every 2006–2025 forecast")
     T["cerf_note"] = (
         "Since 2006 the driest observed wet seasons (ERA5) were " + ", ".join(parts[:-1]) + " and " + parts[-1] +
-        "; none led to a CERF drought allocation. A fit of observed rainfall on past November forecasts (1982–2025) puts "
-        f"this season at about {T['FJ_oexp']}% in Fiji (80% range {T['FJ_olo']}–{T['FJ_ohi']}%), {T['TO_oexp']}% in Tonga "
-        f"({T['TO_olo']}–{T['TO_ohi']}%) and {T['VU_oexp']}% in Vanuatu ({T['VU_olo']}–{T['VU_ohi']}%). The central values are below "
-        "the driest of those seasons; the ranges reach above them. "
-        "Papua New Guinea's 2016 allocation responded to a drought from April to November 2015, in the dry season "
-        "before the wet season this page covers.")
+        ", with no CERF drought allocation. Past forecasts point to about "
+        f"{T['FJ_oexp']}% in Fiji (80% range {T['FJ_olo']}–{T['FJ_ohi']}%), {T['TO_oexp']}% in Tonga "
+        f"({T['TO_olo']}–{T['TO_ohi']}%) and {T['VU_oexp']}% in Vanuatu ({T['VU_olo']}–{T['VU_ohi']}%) this season. "
+        "Papua New Guinea's 2016 allocation covered a dry-season drought (April–November 2015).")
     for u in three:
         if not U[u]["obs_equiv"]["exp"] < float(T[f"{u}_min06"]):
             problems.append(f"{u}: observed equivalent no longer below the driest season since 2006")
@@ -268,14 +269,12 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     dry_side = [G[n] for n in ("Nadi", "Lautoka", "Labasa")]
     wet_side = [G[n] for n in ("Nausori", "Suva (Laucala Bay)")]
     T["gauge_note"] = (
-        f"Fiji's rain gauges (GHCN-Daily, {min(g['y0'] for g in d['gauges'])}–{max(g['y1'] for g in d['gauges'])}) follow ERA5's "
-        f"November–April totals (r = {_rng([g['r_era5'] for g in d['gauges']])}). El Niño matters more at Nadi, Lautoka and Labasa "
-        f"(r with October Niño3.4 {_to([g['r_n34'] for g in dry_side])}) than at Nausori and Suva ({_to([g['r_n34'] for g in wet_side])}). "
-        f"SEAS5 November forecasts match the gauges as well as ERA5 at Nadi, Lautoka and Labasa (r = {_rng([g['skill_gauge'] for g in dry_side])}) "
-        f"but poorly at Nausori and Suva ({_rng([g['skill_gauge'] for g in wet_side])}), so the Central Division forecast is less reliable "
-        f"than its ERA5 skill ({U_prov_skill(d, 'FJ4'):.2f}) suggests. In 1997/98 Nadi, Lautoka and Labasa recorded "
-        f"{_span([g['pct']['1997'] for g in dry_side])}% of their average, against {G['Nadi']['era5_div_1997']}% (Western) and "
-        f"{G['Labasa']['era5_div_1997']}% (Northern Division) in ERA5.").replace(" -", " −").replace("(-", "(−").replace("–-", "–−")
+        f"Fiji's rain gauges ({min(g['y0'] for g in d['gauges'])}–{max(g['y1'] for g in d['gauges'])}) follow ERA5 "
+        f"(r = {_rng([g['r_era5'] for g in d['gauges']])}). SEAS5 matches the gauges at Nadi, Lautoka and Labasa "
+        f"(r = {_rng([g['skill_gauge'] for g in dry_side])}) but not at Nausori and Suva ({_rng([g['skill_gauge'] for g in wet_side])}), "
+        f"so the Central Division forecast is less reliable than its ERA5 skill ({U_prov_skill(d, 'FJ4'):.2f}) suggests. In 1997/98 "
+        f"Nadi, Lautoka and Labasa recorded {_span([g['pct']['1997'] for g in dry_side])}% of average, against "
+        f"{_span([G['Nadi']['era5_div_1997'], G['Labasa']['era5_div_1997']])}% in ERA5.")
     if not all(g["r_n34"] < w["r_n34"] for g in dry_side for w in wet_side):
         problems.append("Fiji gauges: dry side no longer more El Niño-sensitive than wet side")
     if not (min(g["skill_gauge"] for g in dry_side) > 0.6 and max(g["skill_gauge"] for g in wet_side) < 0.4):

@@ -145,7 +145,12 @@ for u, pcs in UNITS.items():
     q = float(stats.t.ppf(0.9, nn - 2))
     rec["obs_equiv"] = {"exp": round(ex, 1), "lo": round(ex - q * se, 1), "hi": round(ex + q * se, 1), "slope": round(float(bo), 2)}
     # observed rainfall vs other ENSO indices (r², Nov-Apr, 1982-2025)
-    rec["r2_obs_idx"] = {k: round(float(r(ho.op, ho[k]) ** 2), 3) for k in ("n34a", "n3a", "n4a", "n3m4")}
+    def _r2dt(a, b):
+        yy = a.index.values.astype(float)
+        a = a.values - np.polyval(np.polyfit(yy, a.values, 1), yy)
+        b = b.values - np.polyval(np.polyfit(yy, b.values, 1), yy)
+        return float(np.corrcoef(a, b)[0, 1] ** 2)
+    rec["r2_obs_idx"] = {k: round(_r2dt(ho.op, ho[k]), 3) for k in ("n34a", "n3a", "n4a", "n3m4")}  # after removing trends
     # January-March observed rainfall in the strong El Niño seasons (October Niño3.4 >= 1.5 °C)
     jfm = pair(pcs, TRI["JFM"])
     strong = [int(y) for y in octi.index if 1982 <= y <= 2025 and octi.loc[y, "n34a"] >= 1.5]
