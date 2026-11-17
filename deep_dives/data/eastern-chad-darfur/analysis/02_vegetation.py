@@ -3,8 +3,10 @@
 Every year's value is computed the same way from the dekadal series, so 2026 (season
 not closed in the annual summaries yet) is comparable with the past:
 
-  asi    FAO ASIS Agricultural Stress Index, cropland: mean of the dekads 1 Jul - 21 Oct
-         (% of cropland with vegetation health below 35).
+  asi    FAO ASIS Agricultural Stress Index, cropland: the value at the 21 September dekad
+         (% of cropland whose vegetation health, averaged from the start of the season, is
+         below 35). This equals FAO's own annual ASI (season 1) in every unit and year
+         (checked, r = 1.00), and exists for 2026 before FAO's annual summary does.
   vhi    FAO ASIS Vegetation Health Index: mean of the dekads 1 Jul - 21 Oct (0-1).
   zfparc_crop / zfparc_range
          JRC ASAP cumulative-FPAR z-score ("biomass"), cropland / rangeland during the
@@ -114,6 +116,9 @@ def season_value(d, how):
         s = d[(md >= "07-01") & (md <= "10-21")]
         return s.groupby(["indicator", "unit", "year"])["value"].agg(["mean", "count"]) \
             .query("count >= 10")["mean"].rename("value").reset_index()
+    if how == "sep21":
+        s = d[md == "09-21"].dropna(subset=["value"])
+        return s[["indicator", "unit", "year", "value"]]
     # end of season: 21 Oct, else the last value between 21 Sep and 1 Nov
     d["md"] = md
     s = d[(md >= "09-21") & (md <= "11-01")].dropna(subset=["value"]).copy()
@@ -140,7 +145,8 @@ def main():
     w = belt_weights()
     asis = pd.concat([asis_dekadal("asi"), asis_dekadal("vhi")])
     asap = pd.concat([asap_dekadal("zfparc_crop"), asap_dekadal("zfparc_range")])
-    y_asis = season_value(asis, "mean_jul_oct")
+    y_asis = pd.concat([season_value(asis[asis["indicator"] == "vhi"], "mean_jul_oct"),
+                        season_value(asis[asis["indicator"] == "asi"], "sep21")])
     y_asap = season_value(asap, "eos")
     yu = pd.concat([y_asis, y_asap])
     yu.to_parquet(OUT / "yearly_unit.parquet", index=False)

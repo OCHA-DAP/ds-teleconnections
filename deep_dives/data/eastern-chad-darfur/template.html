@@ -134,7 +134,8 @@ footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
 
 <h2 id="points">One point per season</h2>
 <p class="note">Each dot is one season. Filled dots are seasons before 2023. Open rings are the war years (Darfur) and refugee-influx years (eastern Chad), when conflict drives the outcome. The grey band marks where 2026 sits on the x-axis. Correlations use the filled dots only.</p>
-<div class="ctl"><span>x-axis for the panels below</span><span class="seg" id="xSel"><button data-x="veg" aria-pressed="true">Vegetation greening (% of trend)</button><button data-x="rain" aria-pressed="false">Rainfall (% of trend)</button></span></div>
+<div class="ctl"><span>x-axis for the yield and food-insecurity panels</span><span class="seg" id="xSel"><button data-x="veg" aria-pressed="true">Greening (MODIS)</button><button data-x="bio" aria-pressed="false">Biomass (JRC)</button><button data-x="vhi" aria-pressed="false">Vegetation health (FAO VHI)</button><button data-x="asi" aria-pressed="false">Cropland under stress (FAO ASI)</button><button data-x="rain" aria-pressed="false">Rainfall</button></span></div>
+<p class="cap" id="xcap"></p>
 
 <div class="card">
   <h3 style="margin-top:0">Rainfall and vegetation</h3>
@@ -146,7 +147,7 @@ footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
 <div class="card">
   <h3 style="margin-top:0">Season and Darfur cereal yields</h3>
   <div id="sc_yield"></div>
-  <p class="cap">Sorghum and millet, traditional rainfed farming, summed over the Darfur states. Yield as % of the median of the surrounding years (five either side, same source: Ministry of Agriculture to 2015, FAO crop assessment from 2016), because the level of the series shifts several times. 2014–2015 and 2018–2019 are well above anything else and look unreliable; 2015 is reported high in a season FAO's index shows as one of the most stressed. No such series exists for eastern Chad.</p>
+  <p class="cap">Sorghum and millet, traditional rainfed farming, summed over the Darfur states. Yield as % of the median of the surrounding years (five either side, same source: Ministry of Agriculture to 2015, FAO crop assessment from 2016), because the level of the series shifts several times. Grey crosses: 2014–2015 and 2018–2019, well above anything else and unreliable, left out of r. No such series exists for eastern Chad.</p>
 </div>
 
 <div class="card">
@@ -158,6 +159,13 @@ footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
     <button data-o="ic3" aria-pressed="false">CH / IPC: people in Phase 3+</button></span></div>
   <div class="grid2" id="sc_out"></div>
   <p class="cap" id="outcap"></p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">How the indicators and outcomes move together, seasons before 2023</h3>
+  <div class="legend" id="corrleg"></div>
+  <div class="grid2" id="corr"></div>
+  <p class="cap">Pearson r between seasons. Outcomes of the lean season are matched to the season before it, and use seasons up to 2021 (lean season 2022); the rest use seasons up to 2022. Grey: fewer than 8 seasons in common. Vegetation and rain are detrended as above; FAO ASI is a share of cropland under stress, so its signs run opposite to the other indicators. Darfur yields leave out 2014–2015 and 2018–2019.</p>
 </div>
 
 <h2 id="ahead">What it points to for 2027</h2>
@@ -488,9 +496,20 @@ drawVegDekad("zfparc_crop");
 let XSEL = "veg";
 const XDEF = {
   veg:  {lab:"Vegetation greening, % of trend", get:(s,y) => { const v = vegBy[s].get(y); return v ? v.grn : null; },
-         band:s => { const v = V26(s).grn; return [v-1, v+1]; }, dom:[40, 160], fmt:v => fmt0(v)+"%"},
+         band:s => { const v = V26(s).grn; return [v-1, v+1]; }, dom:[40, 160], fmt:v => fmt0(v)+"%", tick:d => d+"%", ref:100,
+         cap:"MODIS NDVI greening, % of its 2001–2024 trend level (2001 on; no 2025)."},
+  bio:  {lab:"Biomass, detrended z (JRC ASAP)", get:(s,y) => { const v = vegBy[s].get(y); return v ? v.bio_d : null; },
+         band:s => { const v = V26(s).bio_d; return [v-0.02, v+0.02]; }, dom:[-2.6, 1.4], fmt:v => fmt2(v), tick:d => d, ref:0,
+         cap:"JRC ASAP cumulative FPAR z-score on cropland at 21 October, minus its 2001–2025 trend line (2001 on)."},
+  vhi:  {lab:"Vegetation health, detrended (FAO VHI)", get:(s,y) => { const v = vegBy[s].get(y); return v ? v.vhi_d : null; },
+         band:s => { const v = V26(s).vhi_d; return [v-0.003, v+0.003]; }, dom:[-0.22, 0.36], fmt:v => fmt2(v), tick:d => d, ref:0,
+         cap:"FAO vegetation health index, mean of July–October, minus its 1984–2025 trend line (1984 on)."},
+  asi:  {lab:"Cropland under stress, % (FAO ASI) — axis reversed", get:(s,y) => { const v = vegBy[s].get(y); return v ? v.asi : null; },
+         band:s => { const v = V26(s).asi; return [v-0.4, v+0.4]; }, dom:[75, 0], fmt:v => fmt0(v)+"%", tick:d => d+"%", ref:null,
+         cap:"FAO agricultural stress index: % of cropland under stress, FAO's season value (its 21 September dekad), 1984 on. Not detrended: a straight line through a share that sits near zero in recent years runs below zero by 2025. Axis reversed so that the worse end is on the left, as in the other panels."},
   rain: {lab:"June–September rainfall, % of trend", get:(s,y) => { const r = rainBy[s].get(y); return r ? r.pt : null; },
-         band:s => { const r = R26(s); return [Math.min(r.pt2,r.pt3), Math.max(r.pt2,r.pt3)]; }, dom:[45,160], fmt:v => fmt0(v)+"%"},
+         band:s => { const r = R26(s); return [Math.min(r.pt2,r.pt3), Math.max(r.pt2,r.pt3)]; }, dom:[45,160], fmt:v => fmt0(v)+"%", tick:d => d+"%", ref:100,
+         cap:"CHIRPS v2/v3 June–September rain, % of its 1981–2025 trend level (1981 on)."},
 };
 function scatter(node, cfg){
   const W = cfg.W || 520, H = cfg.H || 300, m = {t:24,r:14,b:38,l:46}, svg = svgEl(node, W, H);
@@ -505,7 +524,7 @@ function scatter(node, cfg){
   svg.append("text").attr("class","ptitle").attr("x", m.l).attr("y", 13).text(cfg.title);
   const clampY = v => Math.max(cfg.ydom[0], Math.min(cfg.ydom[1], v));
   if (cfg.ref != null) svg.append("line").attr("x1", x(cfg.ref)).attr("x2", x(cfg.ref)).attr("y1", m.t).attr("y2", H-m.b).attr("stroke","#8a9495").attr("stroke-dasharray","3 3");
-  if (cfg.band) { const [a,b] = cfg.band; svg.append("rect").attr("x", x(a)-2).attr("width", Math.max(4, x(b)-x(a)+4)).attr("y", m.t).attr("height", H-m.t-m.b).attr("fill","#c9ced0").attr("fill-opacity",.6);
+  if (cfg.band) { const [a,b] = cfg.band, xa = Math.min(x(a), x(b)), xb = Math.max(x(a), x(b)); svg.append("rect").attr("x", xa-2).attr("width", Math.max(4, xb-xa+4)).attr("y", m.t).attr("height", H-m.t-m.b).attr("fill","#c9ced0").attr("fill-opacity",.6);
     svg.append("text").attr("x", x((a+b)/2)).attr("y", m.t+11).attr("text-anchor","middle").style("font-weight","700").style("fill","#1f2324").text("2026"); }
   const pts = cfg.pts.filter(p => p.x != null && p.y != null);
   pts.sort((a,b) => (a.kind==="now") - (b.kind==="now"));
@@ -518,7 +537,8 @@ function scatter(node, cfg){
   pts.forEach(p => {
     const cx = x(p.x), cy = y(clampY(p.y)), c = cfg.color;
     const g = svg.append("g");
-    if (p.kind === "war") g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",4.5).attr("fill","#fff").attr("stroke",c).attr("stroke-width",2);
+    if (p.kind === "bad") { g.append("path").attr("d", `M${cx-4},${cy-4}L${cx+4},${cy+4}M${cx-4},${cy+4}L${cx+4},${cy-4}`).attr("stroke","#9aa3a4").attr("stroke-width",2); }
+    else if (p.kind === "war") g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",4.5).attr("fill","#fff").attr("stroke",c).attr("stroke-width",2);
     else if (p.kind === "now") g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",6.5).attr("fill",c).attr("stroke","#1f2324").attr("stroke-width",2);
     else g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",4.5).attr("fill",c).attr("fill-opacity",.85).attr("stroke","#fff").attr("stroke-width",1);
     if (p._lab) g.append("text").attr("x", cx+7).attr("y", cy-6).style("font-size","10.5px").style("fill","#1f2324").style("paint-order","stroke").style("stroke","#fff").style("stroke-width","3px").text(p.year);
@@ -555,10 +575,10 @@ function drawScVeg(){
 function drawScYield(){
   const X = XDEF[XSEL], node = document.getElementById("sc_yield");
   const pts = D.yield.map(d => { const xv = X.get("darfur", d.y);
-    return {x: xv, y: d.pct, year: d.y, kind: kindOf(d.y), label: D.analogues.darfur.veg.includes(d.y) || D.analogues.darfur.rain.includes(d.y) || [1984,2014,2018,2023].includes(d.y),
+    return {x: xv, y: d.pct, year: d.y, kind: BAD_YIELD.includes(d.y) ? "bad" : kindOf(d.y), label: D.analogues.darfur.veg.includes(d.y) || D.analogues.darfur.rain.includes(d.y) || [1984,2014,2018,2023].includes(d.y),
       tip: `<b>Darfur, ${d.y}</b><br>Yield ${d.tha} t/ha = <b>${d.pct}%</b> of the surrounding years (${d.src})<br>${X.lab}: ${xv==null?"–":X.fmt(xv)}<br><span class="m">${d.n} states reported</span>`}; });
-  scatter(node, {W: 1040, H: 300, title: "Darfur", color: COL.darfur, pts, xdom: X.dom, xfmt: d => d+"%",
-    ref: 100, band: X.band("darfur"), ydom: [20, 280], yfmt: d => d+"%", ylab: "Yield, % of surrounding years", xlab: X.lab});
+  scatter(node, {W: 1040, H: 300, title: "Darfur", color: COL.darfur, pts, xdom: X.dom, xfmt: X.tick,
+    ref: X.ref, band: X.band("darfur"), ydom: [20, 280], yfmt: d => d+"%", ylab: "Yield, % of surrounding years", xlab: X.lab});
 }
 
 let OY = "fn3";
@@ -578,18 +598,58 @@ function drawScOut(){
       return {x: xv, y: yv, year: y, kind: k, label: k === "pre" && (D.analogues[s].veg.includes(y) || D.analogues[s].rain.includes(y)),
         tip: `<b>${LBL[s]}: season ${y} → lean season ${y+1}</b><br>${X.lab}: ${xv==null?"–":X.fmt(xv)}<br>${O.lab}: <b>${yv==null?"–":O.fmt(yv)}</b>`}; });
     scatter(div, {title: LBL[s] + (OY==="ic3" ? (s==="chad" ? " (CH, residents)" : " (IPC)") : " (FEWS NET)"), color: COL[s], pts,
-      xdom: X.dom, xfmt: d => d+"%", ref: 100, band: X.band(s),
+      xdom: X.dom, xfmt: X.tick, ref: X.ref, band: X.band(s),
       ydom: O.dom, yfmt: OY==="fnm" ? null : (d => d+"%"), ylab: O.lab, xlab: X.lab + " (season)"});
   });
   document.getElementById("outcap").textContent = OY === "ic3"
     ? "CH covers eastern Chad's resident population from 2014. IPC covers Darfur from 2019 only: four lean seasons before the war and four during it. The June–September 2026 IPC projection classified 48% of Darfur's population."
     : "FEWS NET classifies areas, and a share here is the population living in areas classified at that phase (WorldPop 2018 weights), so whole zones switch at once. Lean season = FEWS NET's June–September projection (July–September before 2016), from 2011. Earlier maps used FEWS NET's own scale and are left out. No map exists for the 2025 lean season.";
 }
-function drawScatters(){ drawScVeg(); drawScYield(); drawScOut(); }
+function drawScatters(){ drawScVeg(); drawScYield(); drawScOut(); document.getElementById("xcap").textContent = XDEF[XSEL].cap; }
 drawScatters();
-seg("xSel", d => { XSEL = d.x; drawScYield(); drawScOut(); });
+seg("xSel", d => { XSEL = d.x; drawScYield(); drawScOut(); document.getElementById("xcap").textContent = XDEF[XSEL].cap; });
 seg("vySel", d => { VY = d.v; drawScVeg(); });
 seg("oySel", d => { OY = d.o; drawScOut(); });
+
+// ---------- correlation matrices ----------
+(function(){
+  const NAMES = {rain:["Rain","June–September rain, % of trend"], grn:["Greening","Vegetation greening, MODIS, % of trend"],
+    bio:["Biomass","JRC ASAP biomass, detrended"], vhi:["Veg. health","FAO vegetation health index, detrended"],
+    asi:["Crop stress","FAO ASI, % of cropland under stress"], yield:["Yield","Darfur cereal yield, % of surrounding years"],
+    fn3:["FEWS P3+","FEWS NET: % living in Phase 3+ areas, next lean season"], fnm:["FEWS phase","FEWS NET: average phase, next lean season"],
+    ic3:["CH/IPC P3+","CH (eastern Chad) / IPC (Darfur): % in Phase 3+, next lean season"]};
+  const OUTC = new Set(["yield","fn3","fnm","ic3"]);
+  const col = d3.scaleDiverging([-1, 0, 1], t => d3.interpolateRdBu(t));
+  const host = document.getElementById("corr");
+  SIDES.forEach(s => {
+    const C = D.corr[s], k = C.vars.length;
+    const div = host.appendChild(document.createElement("div"));
+    const cs = 44, m = {t:24, r:48, b:8, l:86}, W = m.l + k*cs + m.r, H = m.t + k*cs + 44;
+    const svg = svgEl(div, W, H);
+    svg.append("text").attr("class","ptitle").attr("x", 0).attr("y", 13).text(LBL[s]);
+    C.vars.forEach((v, i) => {
+      svg.append("text").attr("x", m.l-6).attr("y", m.t + i*cs + cs/2 + 4).attr("text-anchor","end").style("font-size","11px")
+         .style("font-weight", OUTC.has(v) ? 700 : 400).text(NAMES[v][0]);
+      svg.append("text").attr("transform", `translate(${m.l + i*cs + cs/2},${m.t + k*cs + 8}) rotate(35)`).style("font-size","10.5px")
+         .style("font-weight", OUTC.has(v) ? 700 : 400).text(NAMES[v][0]);
+      for (let j = 0; j <= i; j++) {
+        const r = C.r[i][j], n = C.n[i][j], few = n < 8 || r == null, diag = i === j;
+        const x0 = m.l + j*cs, y0 = m.t + i*cs;
+        svg.append("rect").attr("x", x0+1).attr("y", y0+1).attr("width", cs-2).attr("height", cs-2).attr("rx", 3)
+           .attr("fill", diag ? "#f3f4f4" : few ? "#e3e6e7" : col(r));
+        if (!diag) svg.append("text").attr("x", x0+cs/2).attr("y", y0+cs/2+4).attr("text-anchor","middle").style("font-size","11px")
+           .style("fill", !few && Math.abs(r) > 0.55 ? "#fff" : "#1f2324").text(few ? "–" : fmt2(r).replace("0.", ".").replace("-.", "−."));
+        if (!diag) svg.append("rect").attr("x", x0).attr("y", y0).attr("width", cs).attr("height", cs).attr("fill","transparent")
+           .on("mousemove", ev => showTip(ev, `<b>${NAMES[C.vars[i]][1]}</b><br>vs <b>${NAMES[C.vars[j]][1]}</b><br>r = <b>${few ? "–" : fmt2(r)}</b>, ${n} seasons${few ? " (too few)" : ""}`))
+           .on("mouseleave", hideTip);
+      }
+    });
+    const nOut = C.vars.filter(v => OUTC.has(v)).length, iO = k - nOut;
+    svg.append("line").attr("x1", m.l).attr("x2", m.l + k*cs).attr("y1", m.t + iO*cs).attr("y2", m.t + iO*cs).attr("stroke","#1f2324").attr("stroke-width",1.2);
+  });
+  const lg = document.getElementById("corrleg");
+  lg.innerHTML = [-1,-0.5,0,0.5,1].map(v => `<span><i class="sq" style="background:${col(v)}"></i>${v>0?"+":""}${v}</span>`).join("") + `<span><i class="sq" style="background:#e3e6e7"></i>too few seasons</span><span>bold = outcomes (below the line)</span>`;
+})();
 
 // ---------- estimate ----------
 (function(){
@@ -604,8 +664,10 @@ seg("oySel", d => { OY = d.o; drawScOut(); });
   const fdar = D.fews.find(d => d.side==="darfur" && d.map==="junproj" && d.y===2026);
   const lst = o => Object.entries(o).map(([y,v]) => `${fmt0(v)}% (${y})`).join(", ");
   const y84 = ad.yield_rain_full[1984], r84 = ad.rain_full[1984];
+  const CD = D.corr.darfur, iy = CD.vars.indexOf("yield");
+  const cy = v => CD.r[iy][CD.vars.indexOf(v)], cn = v => CD.n[iy][CD.vars.indexOf(v)];
   document.getElementById("estimate").innerHTML = `
-   <p><b>Harvest (Darfur).</b> No season since 2001 was as poor as 2026 in vegetation or rain (${fmt0(R26("darfur").pt)}% of trend). The five seasons with the least vegetation greening before 2023 (${ad.veg.join(", ")}; ${ad.veg_range[0]}–${ad.veg_range[1]}% of trend, against ${fmt0(V26("darfur").grn)}% in 2026) were all milder, with rain at ${d3.min(rr)}–${d3.max(rr)}% of trend. They gave cereal yields of ${d3.min(yl)}–${d3.max(yl)}% of normal${ylBad.length ? ", leaving out " + ylBad.map(([y,v]) => `${y} (reported ${v}%)`).join(" and ") + ", which look unreliable" : ""}. The one earlier season about as dry as 2026 was 1984 (${r84}% of trend), with yields at ${y84}% of normal. In 2023, with normal rain but at war, yields were ${ad.yield_2023}% (four of five states reported). "Normal" here means the median yield of the surrounding years (five either side, same source), because the series' level shifts several times. 2026 is drier than any of the milder seasons, and it comes on top of the war. Our reading is that yields will most likely be below about two-thirds of normal. The record is too noisy to give a firmer number, and this says nothing about how much land was planted. Eastern Chad has no yield series to check against; its rainfall and vegetation were as poor as Darfur's.</p>
+   <p><b>Harvest (Darfur).</b> No season since 2001 was as poor as 2026 in vegetation or rain (${fmt0(R26("darfur").pt)}% of trend). The five seasons with the least vegetation greening before 2023 (${ad.veg.join(", ")}; ${ad.veg_range[0]}–${ad.veg_range[1]}% of trend, against ${fmt0(V26("darfur").grn)}% in 2026) were all milder, with rain at ${d3.min(rr)}–${d3.max(rr)}% of trend. They gave cereal yields of ${d3.min(yl)}–${d3.max(yl)}% of normal${ylBad.length ? ", leaving out " + ylBad.map(([y,v]) => `${y} (reported ${v}%)`).join(" and ") + ", which look unreliable" : ""}. The one earlier season about as dry as 2026 was 1984 (${r84}% of trend), with yields at ${y84}% of normal. In 2023, with normal rain but at war, yields were ${ad.yield_2023}% (four of five states reported). "Normal" here means the median yield of the surrounding years (five either side, same source), because the series' level shifts several times. Across all seasons, leaving out the unreliable years, Darfur yields move with rain (r = ${fmt2(cy("rain"))}, ${cn("rain")} seasons) and with vegetation (r = ${fmt2(cy("grn"))}–${fmt2(cy("bio"))}, ${cn("grn")} seasons), so a season this poor points to a poor harvest. 2026 is drier than any of the milder seasons, and it comes on top of the war. Our reading is that yields will most likely be below about two-thirds of normal. The record is too noisy to give a firmer number, and this says nothing about how much land was planted. Eastern Chad has no yield series to check against; its rainfall and vegetation were as poor as Darfur's.</p>
    <p><b>Food insecurity.</b> Before 2023, poor seasons were not followed by a consistent rise on either side. After the seasons with the least greening, ${lst(ac.fn_lean_veg)} of people in eastern Chad lived in Phase 3+ areas in the following lean season, against ${fmt0(ac.fn_lean_veg_others_median)}% after other seasons. In Darfur it was ${lst(ad.fn_lean_veg)}, against ${fmt0(ad.fn_lean_veg_others_median)}%. Those seasons cannot give a number for 2027.</p>
    <p>FEWS NET's own maps have moved. For eastern Chad after the harvest, its June projection had ${fmt0(fjun.s3)}% of people in Phase 3+ areas; the October map has ${fmt0(foct.s3)}%, and its October projection for October–January ${fmt0(D.fews.find(d => d.side==="chad" && d.map==="outlook" && d.round==="202610" && d.layer==="ML1").s3)}%. That is a revision of ${sg(rev(2026))} points, against ${sg(rev(2023))} in 2023 and ${sg(rev(2024))} in 2024. Its Phase 4 (${fmt0(foct.s4)}% of people) is in Kimiti in Sila, the province that got the most rain. Wadi Fira, the driest, is in Phase 3. In Darfur the June projection already had ${fmt0(fdar.s3)}% in Phase 3+ areas and ${fmt0(fdar.s4)}% in Phase 4 for October–January. There is no map from after the harvest yet.</p>
    <p><b>Next checks:</b> the November 2026 Cadre Harmonisé (projections for June–August 2027), FEWS NET's October round for Sudan, and the next IPC Sudan analysis.</p>`;

@@ -124,9 +124,10 @@ def methods(D):
         det("Reading the scatter plots and the estimate", """<p>One point per season and side.
         Seasons from 2023 on are drawn as open rings and left out of the correlations: Darfur is at
         war and eastern Chad has taken in about a million refugees, so outcomes there are not set
-        by the rain. The correlations are weak (|r| up to about 0.5 for eastern Chad's FEWS NET
-        series, about zero for Darfur's), consistent with the team's cross-country finding that
-        indicators carry little skill at province scale. So the page does not fit a line to read
+        by the rain. The links to food insecurity are weak (|r| up to about 0.5 for eastern Chad's FEWS
+        NET series, about zero for Darfur's), consistent with the team's cross-country finding that
+        indicators carry little skill against outcomes at province scale. Darfur yields follow the
+        season more clearly once the four unreliable years are left out (the correlation matrix). So the page does not fit a line to read
         off a 2027 number. The estimate uses analogue seasons (the five pre-2023 seasons with the
         least vegetation greening against the trend on each side, all milder than 2026) and what followed them,
         plus FEWS NET's own projections, which already take the 2026 season into account. Darfur's
@@ -181,6 +182,11 @@ def _check(D: dict) -> None:
         bad.append("estimate: analogue seasons 'all milder' in rain")
     if not (min(yl) >= 60 and ad["yield_rain_full"]["1984"] < 70 and ad["yield_2023"] < 50):
         bad.append("estimate: 'below about two-thirds of normal' no longer follows")
+    cd = D["corr"]["darfur"]
+    iy = cd["vars"].index("yield")
+    ry = {v: cd["r"][iy][cd["vars"].index(v)] for v in ("rain", "grn", "bio")}
+    if not (ry["rain"] > 0.3 and min(ry["grn"], ry["bio"]) > 0.3 and ry["grn"] <= ry["bio"]):
+        bad.append(f"estimate: Darfur yields 'move with rain and vegetation' ({ry})")
     if next(d for d in D["yield"] if d["y"] == 2023)["n"] != 4:
         bad.append("estimate: 2023 'four of five states reported'")
     ipc26 = next(d for d in D["ipcch"] if d["side"] == "darfur" and d["y"] == 2026 and d["kind"] == "lean")

@@ -266,6 +266,50 @@ def vstat(veg):
     return out
 
 
+BAD_YIELD = (2014, 2015, 2018, 2019)  # reported far above any other year; left out of r and ranges
+
+
+def corr_matrices(rain, veg, fn, ic, yl):
+    """Pairwise Pearson r per side, seasons before the war: predictors and yields up to the 2022
+    season, next-lean-season outcomes up to the 2021 season (lean 2022). n kept per cell."""
+    out = {}
+    for s in SIDES:
+        t = pd.DataFrame(index=pd.Index(range(1981, 2027), name="y"))
+        t["rain"] = rain[rain["side"] == s].set_index("y")["pct_trend"]
+        vv = veg[veg["side"] == s].set_index("year")
+        # ASI stays undetrended: a straight line through a 0-100% share that sits near zero in
+        # most recent years runs below zero by 2025 and turns ordinary years into "stress"
+        for k, c in (("grn", "grn"), ("bio", "zfparc_crop_d"), ("vhi", "vhi_d"), ("asi", "asi")):
+            t[k] = vv[c]
+        if s == "darfur":
+            y = yl.set_index("year")
+            t["yield"] = y.loc[~y.index.isin(BAD_YIELD), "yield_pct_local"]
+        lean = fn[(fn["side"] == s) & (fn["map"] == "lean")].set_index("year")
+        t["fn3"] = (100 * lean["share3"]).rename(lambda z: z - 1)
+        t["fnm"] = lean["mean_phase"].rename(lambda z: z - 1)
+        grp = "residents" if s == "chad" else "all"
+        ii = ic[(ic["side"] == s) & (ic["kind"] == "lean") & (ic["group"] == grp)].set_index("year")
+        t["ic3"] = (100 * ii["share3"]).rename(lambda z: z - 1)
+        for c in t.columns:
+            last = 2021 if c in ("fn3", "fnm", "ic3") else 2022
+            t.loc[t.index > last, c] = np.nan
+        cols = list(t.columns)
+        R, N = [], []
+        for a in cols:
+            R.append([]), N.append([])
+            for b in cols:
+                if a == b:
+                    N[-1].append(int(t[a].notna().sum()))
+                    R[-1].append(1.0)
+                    continue
+                z = t[[a, b]].dropna()
+                N[-1].append(int(len(z)))
+                R[-1].append(r(z[a].corr(z[b]), 2) if len(z) >= 3 and z[a].std() > 0 and z[b].std() > 0
+                             else None)
+        out[s] = {"vars": cols, "r": R, "n": N}
+    return out
+
+
 def geometry():
     a2 = load_adm(2)
     a2["geometry"] = a2.geometry.simplify(0.01, preserve_topology=True)
@@ -338,6 +382,7 @@ def main():
                  "asi": r(x.asi, 1)} for x in veg.itertuples()],
         "veg_slopes": slopes,
         "vstat": vstat(veg),
+        "corr": corr_matrices(rain, veg, fn, ic, yl),
         "vmap": veg_map(),
         "veg_dekad": env,
         "yield": [{"y": int(x.year), "pct": r(x.yield_pct_local, 0),
