@@ -172,14 +172,14 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
     <div class="tile"><span class="hd">Vanuatu</span><span class="num">{{VU_NA}}%</span><span class="lbl">Nov–Apr forecast: {{VU_NA_rankw}} of {{n_fc}}. Jul–Oct 2026: {{VU_JASO}}% of normal.</span></div>
     <div class="tile"><span class="hd">Solomon Islands</span><span class="num">{{SB_SE_NA}}% · {{SB_NW_NA}}%</span><span class="lbl">Nov–Apr forecast in the south-east ({{SB_SE_NA_rankw}} of {{n_fc}}) and the north-west ({{SB_NW_NA_rankw_wet}} of {{n_fc}}, low skill).</span></div>
   </div>
-  <p class="caption">Rain so far is ERA5. For Tonga, CHIRPS agrees: {{TO_chirps}}% of normal, the {{TO_chirps_rankw}} July–October since 1981 (correlation with ERA5 {{TO_chirps_r}}). Over Fiji ERA5 can miss dry spells (it missed July–October 2015); Fiji Met reports Seriously Dry August–October rainfall in the southern and eastern islands and Very Dry around Suva and Nausori (12 November).</p>
+  <p class="caption">Rain so far is ERA5. For Tonga, CHIRPS agrees: {{TO_chirps}}% of normal, the {{TO_chirps_rankw}} July–October since 1981 (correlation with ERA5 {{TO_chirps_r}}). For Fiji the rain so far is uncertain: ERA5 is driest in the Northern and Western Divisions, while Fiji Met's 12 November rainfall watch has the driest August–October in the southern and eastern islands and around Suva and Nausori, and no extreme dryness in most of the north and west. ERA5 also missed Fiji's dry July–October 2015.</p>
   <div class="bottomline">
     <ul>
       <li><b>Fiji, Tonga and Vanuatu.</b> SEAS5 forecasts a much drier wet season than usual, driest from November to January ({{FJ_NDJ}}%, {{TO_NDJ}}% and {{VU_NDJ}}% of the average forecast). These forecasts have moderate to high skill (correlation with ERA5 of {{skill3}} for November–April).</li>
-      <li><b>Most of the forecast comes from El Niño.</b> In past November forecasts for the three countries, October Niño3.4 accounts for {{r2fc3_dt}}% of the year-to-year variation, after removing an upward trend of {{trend3}}% per decade. Straight-line fits on Niño3.4 give El Niño-only values for 2026 of {{FJ_est}}% in Fiji, {{TO_est}}% in Tonga and {{VU_est}}% in Vanuatu, depending on the Niño3.4 series and on whether the trend is included. That is between about half and all of the forecast deficit in Fiji and Tonga, and three quarters or more in Vanuatu. This year's Niño3.4 is outside the 1982–2025 range, so these are extrapolations.</li>
+      <li><b>Most of the forecast comes from El Niño.</b> In past November forecasts for the three countries, October Niño3.4 accounts for {{r2fc3_dt}}% of the year-to-year variation, after removing an upward trend of {{trend3}}% per decade. Straight-line fits of those forecasts on Niño3.4 attribute {{FJ_share}}% of this year's gap below a neutral year to El Niño in Fiji, {{TO_share}}% in Tonga and {{VU_share}}% in Vanuatu, depending on the Niño3.4 series and on whether the trend is included. This year's Niño3.4 is outside the 1982–2025 range, so these are extrapolations.</li>
       <li><b>Observed rainfall follows El Niño less closely</b> (Niño3.4 accounts for {{r2obs3_dt}}% of the variation after removing the trend). Of the four El Niño events with October Niño3.4 above +1.5 °C before this one, 1982/83 and 1997/98 brought some of the driest wet seasons on record in Fiji and Tonga, 2015/16 was drier than average (Fiji {{FJ_o15}}%, Tonga {{TO_o15}}%) and 2023/24 was wetter (Fiji {{FJ_o23}}%, Tonga {{TO_o23}}%).</li>
-      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu ({{SB_SE_NA}}%). The north-west (Choiseul, Western, Isabel) is forecast wet ({{SB_NW_NA}}%), with low skill. There are too few strong El Niño events on record to confirm or rule this out: January–March was wetter than average in {{nw_jfm_wet}} of the four.</li>
-      <li><b>CERF's records (2006–2026) show no drought allocation to any of the four countries.</b> Their {{cerf_n}} allocations there, all since 2014, were for cyclones ({{cerf_storm}}), a flood, a volcanic eruption and an earthquake. CERF's only drought allocations in the Pacific went to Papua New Guinea (2016, El Niño) and the Marshall Islands (2013). In Fiji and Tonga the 2026/27 forecast is drier than any November forecast since 1981, including those made in 1982, 1997 and 2015.</li>
+      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu ({{SB_SE_NA}}%). The north-west (Choiseul, Western, Isabel) is forecast wet ({{SB_NW_NA}}%), with low skill. There are too few strong El Niño events on record to confirm or rule this out: January–March was wetter than average in {{nw_jfm_wet}}.</li>
+      <li><b>CERF's records (2006–2026) show no drought allocation to any of the four countries.</b> The {{cerf_n}} allocations to these countries, all since 2014, were for cyclones ({{cerf_storm}}), a flood, a volcanic eruption and an earthquake. CERF's only drought allocations in the Pacific went to Papua New Guinea (2016, El Niño) and the Marshall Islands (2013). In Fiji and Tonga the 2026/27 forecast is drier than any November forecast since 1981, including those made in 1982, 1997 and 2015.</li>
     </ul>
   </div>
 </section>
@@ -213,12 +213,12 @@ table.heat td.u small { display: block; font-weight: 400; color: var(--muted); f
       <div class="seg" role="group" aria-label="Series" id="scseries"></div>
     </div>
     <div id="scatter" class="scroll"></div>
-    <div class="legend"><span><span class="dot" style="background:var(--series)"></span>one season, 1982–2025</span><span><span class="legline"></span>fitted line</span><span><span class="legline dash"></span>extended to October 2026</span><span><span class="dot" style="background:var(--dry);outline:2px solid var(--ink)"></span>2026/27 forecast</span></div>
+    <div class="legend"><span><span class="dot" style="background:var(--series)"></span>one season, 1982–2025</span><span><span class="legline"></span>fitted line (OISST, no trend term)</span><span><span class="legline dash"></span>extended to October 2026</span><span><span class="dot" style="background:var(--dry);outline:2px solid var(--ink)"></span>2026/27 forecast</span></div>
     <p class="caption">November–April rainfall against October Niño3.4 (NOAA OISST). SEAS5 forecasts are ensemble averages (25 members up to 2016, 51 since) and vary less from year to year than observed rainfall.</p>
   </div>
   <div class="panel">
     <div class="scroll"><table id="enstab"></table></div>
-    <p class="caption">El Niño alone: the value at 2026 of straight-line fits on three Niño3.4 series known at the start of November (OISST October, ERSST v6 October, the ONI for August–October), each with and without a linear trend term; all three series put 2026 above their 1982–2025 range. El Niño share of the deficit: how much of the gap between the forecast and 100% the El Niño-only value covers (capped at 100%; some fits put the El Niño-only value below the forecast). Past values scatter about these fits by {{fit_sd}} points (one standard deviation). Share of variation: squared correlation after removing a linear trend from both series.</p>
+    <p class="caption">Straight-line fits of past November forecasts (1982–2025) on three Niño3.4 series known at the start of November (OISST October, ERSST v6 October, the ONI for August–October), each with and without a linear trend term. Neutral year: the fits' value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term as a share of the gap between that neutral value and the forecast (capped at 100%). All three series put 2026 above their 1982–2025 range. Past forecasts scatter about these fits by {{fit_sd}} points (one standard deviation). Share of variation: squared correlation after removing a linear trend from both series.</p>
   </div>
 </section>
 
@@ -482,14 +482,13 @@ const DATA = __DATA__;
   function drawEnsTab() {
     const t = document.getElementById("enstab");
     const VARS = ["fc", "fc_trend"];
-    const ests = u => Object.values(U[u].enso_est).flatMap(e => VARS.map(v => e[v]));
-    const oests = u => Object.values(U[u].enso_est).flatMap(e => ["obs", "obs_trend"].map(v => e[v]));
+    const fits = u => Object.values(U[u].enso_est).flatMap(e => VARS.map(v => ({ neutral: e[v + "_neutral"], nino: e[v + "_nino"] })));
     const span = xs => { const lo = Math.round(Math.min(...xs)), hi = Math.round(Math.max(...xs)); return (lo === hi ? lo : lo + "–" + hi) + "%"; };
-    const share = u => { const f = U[u].tri.NA.fc, s = ests(u).map(e => Math.min(100, (100 - e) / (100 - f) * 100)), lo = Math.round(Math.min(...s)), hi = Math.round(Math.max(...s)); return (lo === hi ? lo : lo + "–" + hi) + "%"; };
-    t.innerHTML = `<tr><th></th><th class="n">2026/27 forecast</th><th class="n">El Niño alone</th><th class="n">El Niño share of the forecast deficit</th><th class="n">Share of variation in past forecasts</th><th class="n">Share of variation in observed rainfall</th></tr>` +
+    const share = u => { const f = U[u].tri.NA.fc; return span(fits(u).map(x => Math.min(100, -x.nino / (x.neutral - f) * 100))); };
+    t.innerHTML = `<tr><th></th><th class="n">2026/27 forecast</th><th class="n">Neutral year</th><th class="n">El Niño share of the gap</th><th class="n">Share of variation in past forecasts</th><th class="n">Share of variation in observed rainfall</th></tr>` +
       SC_UNITS.map(u => {
         const e = U[u].enso_est.oisst_oct, d = U[u].tri.NA, dry = d.fc < 100;
-        return `<tr><td>${SHORT[u]}</td><td class="n">${Math.round(d.fc)}%</td><td class="n">${span(ests(u))}</td><td class="n">${dry ? share(u) : "–"}</td><td class="n">${Math.round(e.r2_fc_dt * 100)}%</td><td class="n">${Math.round(e.r2_obs_dt * 100)}%</td></tr>`;
+        return `<tr><td>${SHORT[u]}</td><td class="n">${Math.round(d.fc)}%</td><td class="n">${span(fits(u).map(x => x.neutral))}</td><td class="n">${dry ? share(u) : "–"}</td><td class="n">${Math.round(e.r2_fc_dt * 100)}%</td><td class="n">${Math.round(e.r2_obs_dt * 100)}%</td></tr>`;
       }).join("");
   }
 

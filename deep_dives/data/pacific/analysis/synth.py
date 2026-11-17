@@ -114,6 +114,9 @@ for u, pcs in UNITS.items():
                 x = np.array([1.0, x26] + ([26.0] if trend else []))
                 resid = frame[col].values - X @ beta
                 e1[f"{key}{'_trend' if trend else ''}"] = round(float(x @ beta), 1)
+                # neutral-year value (same fit at Niño3.4 = 0, trend at 2026) and the Niño term at the 2026 value
+                e1[f"{key}{'_trend' if trend else ''}_neutral"] = round(float(x @ beta - beta[1] * x26), 1)
+                e1[f"{key}{'_trend' if trend else ''}_nino"] = round(float(beta[1] * x26), 1)
                 e1[f"{key}{'_trend' if trend else ''}_sd"] = round(float(resid.std(ddof=X.shape[1])), 1)
         # share of variation: squared correlation, raw and after removing a linear trend from both series
         def _r2(frame, col, detrend):
@@ -133,8 +136,14 @@ for u, pcs in UNITS.items():
     ho = h.dropna(subset=["op"])
     bo, ao = np.polyfit(ho.fp, ho.op, 1)
     sd = float((ho.op - (ao + bo * ho.fp)).std(ddof=2))
-    ex = float(ao + bo * df.loc[2026, "fp"])
-    rec["obs_equiv"] = {"exp": round(ex, 1), "lo": round(ex - 1.2816 * sd, 1), "hi": round(ex + 1.2816 * sd, 1), "slope": round(float(bo), 2)}
+    x0 = float(df.loc[2026, "fp"])
+    ex = float(ao + bo * x0)
+    # 80% prediction interval including the fit's own uncertainty (2026 lies outside the range of past forecasts)
+    from scipy import stats
+    nn = len(ho)
+    se = sd * np.sqrt(1 + 1 / nn + (x0 - ho.fp.mean()) ** 2 / ((ho.fp - ho.fp.mean()) ** 2).sum())
+    q = float(stats.t.ppf(0.9, nn - 2))
+    rec["obs_equiv"] = {"exp": round(ex, 1), "lo": round(ex - q * se, 1), "hi": round(ex + q * se, 1), "slope": round(float(bo), 2)}
     # observed rainfall vs other ENSO indices (r², Nov-Apr, 1982-2025)
     rec["r2_obs_idx"] = {k: round(float(r(ho.op, ho[k]) ** 2), 3) for k in ("n34a", "n3a", "n4a", "n3m4")}
     # January-March observed rainfall in the strong El Niño seasons (October Niño3.4 >= 1.5 °C)

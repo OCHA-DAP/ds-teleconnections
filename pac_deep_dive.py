@@ -104,8 +104,6 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
         T[f"{u}_NDJ"] = str(_r(U[u]["tri"]["NDJ"]["fc"]))
         T[f"{u}_JASO"] = str(_r(U[u]["JASO"]["pct"]))
         T[f"{u}_JASO_rankw"] = _dry(U[u]["JASO"]["rank"])
-        est = [e[v] for e in U[u]["enso_est"].values() for v in VAR]
-        T[f"{u}_est"] = _span(est)
         oe = U[u]["obs_equiv"]
         T[f"{u}_oexp"], T[f"{u}_olo"], T[f"{u}_ohi"] = str(_r(oe["exp"])), str(_r(oe["lo"])), str(_r(oe["hi"]))
         o = dict(zip(U[u]["years"], U[u]["obs"]))
@@ -117,13 +115,15 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     T["r2fc3_dt"] = _span([oi_(u)["r2_fc_dt"] * 100 for u in three])
     T["r2obs3_dt"] = _span([oi_(u)["r2_obs_dt"] * 100 for u in three])
     T["trend3"] = _span([U[u]["fc_trend_decade"] for u in three])
-    # share of the forecast deficit that El Niño alone gives, across the six fits
-    shares = {u: [(100 - e) / (100 - U[u]["tri"]["NA"]["fc"]) for e in
-                  [x[v] for x in U[u]["enso_est"].values() for v in VAR]] for u in three}
-    if not (0.45 <= min(min(shares["FJ"]), min(shares["TO"])) < 0.65 and min(max(s) for s in shares.values()) >= 0.95):
-        problems.append(f"El Niño share of the deficit no longer 'between about half and all' (Fiji, Tonga): {shares}")
-    if not 0.65 <= min(shares["VU"]) < 0.85:
-        problems.append("Vanuatu El Niño share no longer 'three quarters or more'")
+    # El Niño share: the Niño term over the gap between the neutral-year value and the forecast, six fits, capped at 100%
+    def _shares(u):
+        f = U[u]["tri"]["NA"]["fc"]
+        return [min(1.0, -e[f"{v}_nino"] / (e[f"{v}_neutral"] - f)) for e in U[u]["enso_est"].values() for v in VAR]
+    for u in ["FJ", "TO", "VU", "SB_SE"]:
+        T[f"{u}_share"] = _span([s * 100 for s in _shares(u)])
+        T[f"{u}_neutral"] = _span([e[f"{v}_neutral"] for e in U[u]["enso_est"].values() for v in VAR])
+    if not (min(min(_shares(u)) for u in three) >= 0.6):
+        problems.append("El Niño share of the gap no longer at least about 60% in Fiji, Tonga and Vanuatu ('most')")
     sd = [U[u]["enso_est"][k][f"{v}_sd"] for u in three for k in U[u]["enso_est"] for v in VAR]
     T["fit_sd"] = _span(sd)
     # index tile and method: OISST vs ERSST disagreement
@@ -165,7 +165,10 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     if U["SB_NW"]["tri"]["NA"]["skill"] >= 0.3:
         problems.append("SB north-west skill no longer low")
     nw_jfm = U["SB_NW"]["jfm_strong"]
-    T["nw_jfm_wet"] = ["none", "one", "two", "three", "all four"][sum(v > 100 for v in nw_jfm.values())]
+    vals = sorted(nw_jfm.values())
+    if not (sum(v > 105 for v in vals) == 3 and 95 <= vals[0] <= 105):
+        problems.append(f"SB north-west Jan–Mar in strong El Niño years no longer 'three wetter, one about average': {nw_jfm}")
+    T["nw_jfm_wet"] = "three of the four and about average in the other"
     T["nw_jfm_vals"] = ", ".join(f"{_r(v)}%" for v in nw_jfm.values())
     # band averages on the map
     B = d["band"]
@@ -212,13 +215,23 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
     T["cerf_note"] = (
         "Since 2006 the driest observed wet seasons (ERA5) were " + ", ".join(parts[:-1]) + " and " + parts[-1] +
         "; none led to a CERF drought allocation. A fit of observed rainfall on past November forecasts (1982–2025) puts "
-        f"this season at about {T['FJ_oexp']}% in Fiji, {T['TO_oexp']}% in Tonga and {T['VU_oexp']}% in Vanuatu, below the driest "
-        "of those seasons; the 80% ranges are in the season chart above. "
+        f"this season at about {T['FJ_oexp']}% in Fiji (80% range {T['FJ_olo']}–{T['FJ_ohi']}%), {T['TO_oexp']}% in Tonga "
+        f"({T['TO_olo']}–{T['TO_ohi']}%) and {T['VU_oexp']}% in Vanuatu ({T['VU_olo']}–{T['VU_ohi']}%). The central values are below "
+        "the driest of those seasons; the ranges reach above them. "
         "Papua New Guinea's 2016 allocation responded to a drought from April to November 2015, in the dry season "
         "before the wet season this page covers.")
     for u in three:
         if not U[u]["obs_equiv"]["exp"] < float(T[f"{u}_min06"]):
             problems.append(f"{u}: observed equivalent no longer below the driest season since 2006")
+
+    # Tonga CHIRPS check of the rain so far
+    if "chirps_jaso" not in d or "TO" not in d["chirps_jaso"]:
+        raise SystemExit("pacific: page_data.json has no Tonga CHIRPS check: run chc_window.py and chc_units.py, then synth.py")
+    C = d["chirps_jaso"]["TO"]
+    T["TO_chirps"], T["TO_chirps_r"] = str(_r(C["pct"]["2026"])), f"{C['r_era5']:.2f}"
+    T["TO_chirps_rankw"] = _dry(C["rank2026"])
+    if C["rank2026"] > 3 or C["r_era5"] < 0.7:
+        problems.append("Tonga CHIRPS check no longer supports 'among the driest'")
 
     # this season against 2015/16
     rows = []
@@ -249,13 +262,6 @@ def tokens(d: dict) -> tuple[dict, list[str]]:
             problems.append(f"{u}: 2026 forecast no longer drier than the 2015 forecast")
     if not U["VU"]["jaso_pct"]["2026"] > U["VU"]["jaso_pct"]["2015"]:
         problems.append("VU: Jul–Oct 2026 no longer wetter than Jul–Oct 2015")
-
-    # Tonga CHIRPS check of the rain so far
-    C = d["chirps_jaso"]["TO"]
-    T["TO_chirps"], T["TO_chirps_r"] = str(_r(C["pct"]["2026"])), f"{C['r_era5']:.2f}"
-    T["TO_chirps_rankw"] = _dry(C["rank2026"])
-    if C["rank2026"] > 3 or C["r_era5"] < 0.7:
-        problems.append("Tonga CHIRPS check no longer supports 'among the driest'")
 
     # Fiji gauges
     G = {g["name"]: g for g in d["gauges"]}
