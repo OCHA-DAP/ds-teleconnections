@@ -5,9 +5,13 @@ Choices made here (the page's Method block repeats them):
   Anomaly = % of the level the 1981-2025 linear trend gives for that year (the
   Sahel has wetted since the 1980s, so % of a fixed average flatters recent years);
   % of the 1991-2020 average is kept for tooltips.
-- Vegetation = JRC ASAP cumulative-FPAR z-score ("biomass") on cropland at the
-  dekad of 21 October; FAO ASIS VHI and ASI kept as alternates. Raw values, no
-  detrending (a 25-year line extrapolated to 2026 overstates the anomaly).
+- Vegetation comes first (it carries the timing of the rain, not just the total):
+  MODIS NDVI season greening (Jul-Oct minus Mar-May) as % of its 2001-2025 trend
+  level (09_greening.py) is the headline and the x-axis; JRC ASAP biomass (cumulative
+  FPAR z-score, cropland, 21 Oct) and FAO VHI (Jul-Oct mean) are shown detrended the
+  same way: the value minus the level a 2001-2025 straight line gives for that year
+  (FAO VHI fitted on 1984-2025). All three greened strongly over 2001-2025, so
+  undetrended anomalies flatter recent years.
 - Seasons from 2023 on are war seasons in Darfur and refugee-influx seasons in
   eastern Chad: plotted, but kept out of the analogue summaries.
 """
@@ -96,23 +100,66 @@ def by_adm1():
                "North Darfur": "SD02", "South Darfur": "SD03", "West Darfur": "SD04",
                "East Darfur": "SD05", "Central Darfur": "SD06"}
     bio = {name2pc[u]: v for u, v in zip(yu["unit"], yu["value"]) if u in name2pc}
+    grn = pd.read_parquet(PROC / "ndvi" / "adm1_2026.parquet").set_index("adm1_pcode")
     out = []
     for pc, row in p.iterrows():
         side = "chad" if pc.startswith("TCD") else "darfur"
         out.append({"pc": pc, "side": side, "v2": r(row["chirps_v2"], 0),
-                    "v3": r(row["chirps_v3"], 0), "bio": r(bio.get(pc), 2)})
+                    "v3": r(row["chirps_v3"], 0), "bio": r(bio.get(pc), 2),
+                    "grn": r(grn.loc[pc, "pct_detr_2026"], 0) if pc in grn.index else None})
     return out
+
+
+def veg_map():
+    """2026 detrended greening at 0.04 deg as base64 uint8 (value = % clipped 0-254, 255 = none)."""
+    import base64
+    z = np.load(PROC / "ndvi" / "map_2026.npz")
+    pct = z["pct"]
+    u8 = np.where(np.isfinite(pct), np.clip(np.round(pct), 0, 254), 255).astype(np.uint8)
+    return {"lat0": r(float(z["lat"][0]), 3), "lon0": r(float(z["lon"][0]), 3),
+            "res": r(float(z["lon"][1] - z["lon"][0]), 3), "ny": int(u8.shape[0]),
+            "nx": int(u8.shape[1]), "b64": base64.b64encode(u8.tobytes()).decode()}
+
+
+def detrend(years, vals, base):
+    """Value minus the level of a straight line fitted over the base years."""
+    years, vals = np.asarray(years, float), np.asarray(vals, float)
+    m = (years >= base[0]) & (years <= base[1]) & np.isfinite(vals)
+    b = np.polyfit(years[m], vals[m], 1)
+    return vals - np.polyval(b, years), b[0]
 
 
 def vegetation():
     ys = pd.read_parquet(PROC / "veg" / "yearly_side.parquet")
     v = ys.pivot_table(index=["side", "year"], columns="indicator", values="value").reset_index()
+    gr = pd.read_parquet(PROC / "ndvi" / "side_years.parquet").rename(columns={"year": "year"})
+    v = v.merge(gr[["side", "year", "pct_raw", "pct_detr"]], on=["side", "year"], how="outer")
+    v = v.rename(columns={"pct_raw": "grn_raw", "pct_detr": "grn"})
+    slopes = {"grn": gr.groupby("side")["slope_per_decade"].first().round(1).to_dict()}
+    for col, base in (("zfparc_crop", (2001, 2025)), ("zfparc_range", (2001, 2025)),
+                      ("vhi", (1984, 2025))):
+        v[col + "_d"] = np.nan
+        slopes[col] = {}
+        for s in SIDES:
+            m = (v["side"] == s) & v[col].notna()
+            d, b = detrend(v.loc[m, "year"], v.loc[m, col], base)
+            v.loc[m, col + "_d"] = d
+            slopes[col][s] = round(10 * b, 3)
+    v = v.sort_values(["side", "year"])
     dk = pd.read_parquet(PROC / "veg" / "dekadal_side.parquet")
-    dk = dk[dk["indicator"].isin(["zfparc_crop", "asi"])].copy()
+    dk = dk[dk["indicator"].isin(["zfparc_crop"])].copy()
     dk["date"] = pd.to_datetime(dk["date"])
     dk["year"] = dk["date"].dt.year
     dk["md"] = dk["date"].dt.strftime("%m-%d")
     dk = dk[(dk["md"] >= "05-01") & (dk["md"] <= "11-21")]
+    # detrend each dekad's series across years (same 2001-2025 straight line)
+    parts = []
+    for (ind, s, md), h in dk.groupby(["indicator", "side", "md"]):
+        h = h.copy()
+        if h["year"].between(2001, 2025).sum() >= 15:
+            h["value"], _ = detrend(h["year"], h["value"], (2001, 2025))
+            parts.append(h)
+    dk = pd.concat(parts)
     env = []
     for (ind, s), g in dk.groupby(["indicator", "side"]):
         past = g[g["year"].between(2001, 2025)]
@@ -123,7 +170,7 @@ def vegetation():
                         "med": r(h["value"].median(), 2), "p90": r(h["value"].quantile(.9), 2),
                         "max": r(h["value"].max(), 2),
                         "y2026": r(cur.iloc[0], 2) if len(cur) else None})
-    return v, env
+    return v, env, slopes
 
 
 def outcomes():
@@ -135,15 +182,16 @@ def outcomes():
 
 
 def analogues(rain, veg, fn, ic, yl):
-    """Pre-war seasons closest to 2026 (lowest biomass; driest), and what followed."""
+    """Pre-war seasons closest to 2026 (lowest detrended greening; driest), and what followed."""
     out = {}
     for s in SIDES:
-        v = veg[(veg["side"] == s) & (veg["year"] < WAR_FROM)].dropna(subset=["zfparc_crop"])
-        bio = v.nsmallest(N_ANALOGUE, "zfparc_crop")["year"].tolist()
+        v = veg[(veg["side"] == s) & (veg["year"] < WAR_FROM)].dropna(subset=["grn"])
+        low = v.nsmallest(N_ANALOGUE, "grn")
+        vg = low["year"].astype(int).tolist()
         rr = rain[(rain["side"] == s) & (rain["y"].between(2001, WAR_FROM - 1))]
         dry = rr.nsmallest(N_ANALOGUE, "pct_trend")["y"].tolist()
-        rec = {"biomass": sorted(bio), "rain": sorted(dry)}
-        for key, yrs in (("biomass", bio), ("rain", dry)):
+        rec = {"veg": sorted(vg), "rain": sorted(dry)}
+        for key, yrs in (("veg", vg), ("rain", dry)):
             lean = fn[(fn["side"] == s) & (fn["map"] == "lean")].set_index("year")
             rest = [yy for yy in lean.index if yy - 1 not in yrs and yy < WAR_FROM]
             rec[f"fn_lean_{key}"] = {int(yy + 1): r(100 * lean.loc[yy + 1, "share3"])
@@ -153,10 +201,9 @@ def analogues(rain, veg, fn, ic, yl):
                 yy_ = yl.set_index("year")
                 rec[f"yield_{key}"] = {int(a): r(yy_.loc[a, "yield_pct_local"], 0)
                                        for a in yrs if a in yy_.index}
-        rec["bio_range"] = [r(v.nsmallest(N_ANALOGUE, "zfparc_crop")["zfparc_crop"].min(), 2),
-                            r(v.nsmallest(N_ANALOGUE, "zfparc_crop")["zfparc_crop"].max(), 2)]
+        rec["veg_range"] = [r(low["grn"].min(), 0), r(low["grn"].max(), 0)]
         rb = rain[(rain["side"] == s)].set_index("y")["pct_trend"]
-        rec["rain_of_bio"] = {int(a): r(rb.get(a), 0) for a in bio}
+        rec["rain_of_veg"] = {int(a): r(rb.get(a), 0) for a in vg}
         # driest pre-war seasons on the full rainfall record (1981-)
         full = rain[(rain["side"] == s) & (rain["y"] < WAR_FROM)]
         rec["rain_full"] = {int(a): r(b, 0) for a, b in
@@ -179,7 +226,9 @@ def ranks(rain, veg):
         def rk(ser):
             ser = ser.dropna()
             return int((ser < ser.loc[2026]).sum() + 1)
-        out[s] = {"rain": rk(rr["pct_trend"]), "rain_v2": rk(rr["pct_trend_v2"]),
+        out[s] = {"grn": rk(vv["grn"]), "n_grn": int(vv["grn"].notna().sum()),
+                  "bio_d": rk(vv["zfparc_crop_d"]), "vhi_d": rk(vv["vhi_d"]),
+                  "rain": rk(rr["pct_trend"]), "rain_v2": rk(rr["pct_trend_v2"]),
                   "rain_v3": rk(rr["pct_trend_v3"]), "bio": rk(vv["zfparc_crop"]),
                   "vhi": rk(vv["vhi"]), "n": int(len(rr))}
     return out
@@ -229,7 +278,7 @@ def _round(geom):
 
 def main():
     rain, alt, mon = rainfall()
-    veg, env = vegetation()
+    veg, env, slopes = vegetation()
     fn, ic, yl = outcomes()
     ana = analogues(rain, veg, fn, ic, yl)
     hn = pd.read_parquet(PROC / "hnrp" / "adm2.parquet")
@@ -250,9 +299,12 @@ def main():
         "rain_alt": alt,
         "rain_month": mon,
         "adm1_2026": by_adm1(),
-        "veg": [{"side": x.side, "y": int(x.year), "bio": r(x.zfparc_crop, 2),
-                 "bior": r(x.zfparc_range, 2), "vhi": r(x.vhi, 2), "asi": r(x.asi, 1)}
-                for x in veg.itertuples()],
+        "veg": [{"side": x.side, "y": int(x.year), "grn": r(x.grn, 1), "grn_raw": r(x.grn_raw, 1),
+                 "bio": r(x.zfparc_crop, 2), "bio_d": r(x.zfparc_crop_d, 2),
+                 "bior_d": r(x.zfparc_range_d, 2), "vhi": r(x.vhi, 3), "vhi_d": r(x.vhi_d, 3),
+                 "asi": r(x.asi, 1)} for x in veg.itertuples()],
+        "veg_slopes": slopes,
+        "vmap": veg_map(),
         "veg_dekad": env,
         "yield": [{"y": int(x.year), "pct": r(x.yield_pct_local, 0),
                    "pct_src": r(x.yield_pct_src_median, 0),

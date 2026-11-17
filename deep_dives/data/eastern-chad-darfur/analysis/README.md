@@ -23,6 +23,9 @@ $R 03_yields.py       # FEWS NET Data Warehouse crop statistics, Darfur
 $R 04_fewsnet.py      # FEWS NET maps (regional archive to 2021, FDW packages after) -> population shares
 $R 05_ipc_ch.py       # CH (HDX consolidated file) + IPC (team mirror ipc.population)
 $R 06_hnrp.py         # HNRP severity + people in need (team mirror hpc.*)
+P="uv run --with rasterio --with pystac-client --with planetary-computer --with geopandas python"
+$P 08_ndvi.py         # MODIS NDVI greening 2001-2026 from Planetary Computer (~2,000 tile reads, cached)
+$R 09_greening.py     # detrended greening: per side/year, per state 2026, the 2026 map
 $R 07_build_data.py   # -> ../page_data.json
 ```
 
@@ -40,4 +43,8 @@ Each script's docstring states its choices. Gotchas found on the way:
   `country_id` 165, Chad 184.
 - Darfur yields: the level of the series shifts several times, so yields are % of the surrounding years
   (±5, same source). 2014–2015 and 2018–2019 look wrong.
-- d3-geo needs clockwise rings (07 orients them).
+- Planetary Computer MODIS: pick items by id (`MOD13A1.*`), not `platform`; overview level 1 of a
+  500 m tile = about 2 km. Detrended greening follows the Chad evaluation-villages recipe
+  (cell-normalised, trend fitted per unit over 2001–2025).
+- d3-geo needs clockwise rings (07 orients them); maps are equirectangular so the greening raster
+  lines up with the outlines.

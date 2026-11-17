@@ -87,52 +87,60 @@ footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
   <h1>How poor was the 2026 rainy season, and what follows from it</h1>
   <p class="lead" id="lead"></p>
   <div class="tiles" id="tiles"></div>
-  <p class="cap">Eastern Chad = Ouaddaï, Wadi Fira and Sila. Darfur = the five Darfur states. Averages leave out desert (map below). Ranks are within 2001–2026, the years all three indicators cover. Biomass is read at 21 October.</p>
+  <p class="cap">Eastern Chad = Ouaddaï, Wadi Fira and Sila. Darfur = the five Darfur states. Averages leave out desert (map below). Ranks are within 2001–2026; MODIS has no 2025 season on the Planetary Computer. Biomass is read at 21 October.</p>
 </header>
 
 <h2 id="season">The season</h2>
 <div class="grid2">
   <div class="card">
-    <h3 style="margin-top:0">June–September 2026 rainfall, % of the 1991–2020 average</h3>
-    <div id="map"></div>
-    <p class="cap">CHIRPS v2 and v3 averaged, 0.5° cells. Grey cells get under 100 mm in an average June–September and are left out of every average. The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.</p>
+    <h3 style="margin-top:0">Vegetation greening, July–October 2026, % of trend</h3>
+    <div id="vmap"></div>
+    <p class="cap">MODIS NDVI: rise from the dry season (March–May) to July–October, each pixel against the level its département/locality's 2001–2025 trend gives for 2026. About 4 km cells; grey = desert or bare ground, left out. The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.</p>
   </div>
   <div class="card">
-    <h3 style="margin-top:0">Month by month, 2026 against the 1991–2020 average</h3>
-    <div class="legend"><span><i class="sq" style="background:var(--chad)"></i>2026</span><span><i class="sq" style="background:none;border-top:2px solid var(--ink);border-radius:0;height:0;width:14px"></i>1991–2020 average</span><span>whisker = CHIRPS v2 to v3</span></div>
-    <div id="months"></div>
+    <h3 style="margin-top:0">June–September 2026 rainfall, % of the 1991–2020 average</h3>
+    <div id="map"></div>
+    <p class="cap">CHIRPS v2 and v3 averaged, 0.5° cells. Grey cells get under 100 mm in an average June–September and are left out of every average.</p>
   </div>
 </div>
 
 <div class="card">
   <h3 style="margin-top:0">By province and state, 2026</h3>
-  <div class="grid2"><div id="adm1rain"></div><div id="adm1bio"></div></div>
-  <p class="cap">Left: June–September rain as % of the 1991–2020 average (bar = mean of CHIRPS v2 and v3, whisker between them). Right: JRC ASAP biomass on cropland at 21 October (dotted line = ASAP's −1 warning level).</p>
+  <div class="grid2"><div id="adm1grn"></div><div id="adm1rain"></div></div>
+  <p class="cap">Left: vegetation greening, % of trend (MODIS). Right: June–September rain as % of the 1991–2020 average (bar = mean of CHIRPS v2 and v3, whisker between them).</p>
 </div>
 
 <div class="card">
-  <h3 style="margin-top:0">June–September rainfall, every year since 1981</h3>
-  <p class="note">% of what the 1981–2025 trend gives for each year (the region has become wetter since the 1980s drought). The whisker spans CHIRPS v2 to v3.</p>
+  <h3 style="margin-top:0">Every season: vegetation since 2001, rainfall since 1981</h3>
+  <p class="note">Both as % of what the long-term trend gives for each year: vegetation has greened and rainfall has risen since the 1980s drought, so a fixed average would flatter recent years.</p>
+  <div class="grid2" id="vegyears"></div>
   <div class="grid2" id="rainyears"></div>
+  <p class="cap">Rain whisker spans CHIRPS v2 to v3. No MODIS greening for 2025 (gap in the Planetary Computer archive). Vegetation greening trend 2001–2024: <span id="grnslope"></span>.</p>
 </div>
 
-<div class="card">
-  <h3 style="margin-top:0">Vegetation through the season, 2026 against 2001–2025</h3>
-  <div class="ctl"><span>Indicator</span><span class="seg" id="vegSel"><button data-v="zfparc_crop" aria-pressed="true">Biomass (JRC ASAP)</button><button data-v="asi" aria-pressed="false">Cropland under stress (FAO ASI)</button></span></div>
-  <div class="legend"><span><i class="sq" style="background:var(--chad)"></i>2026</span><span><i class="bandk"></i>10th–90th percentile, 2001–2025</span><span><i class="bandk" style="opacity:.25"></i>lowest–highest</span><span><i class="sq" style="background:none;border-top:2px dashed var(--muted);border-radius:0;height:0;width:14px"></i>median</span></div>
-  <div class="grid2" id="vegdk"></div>
-  <p class="cap" id="vegcap"></p>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">Biomass through the season, 2026 against 2001–2025, detrended</h3>
+    <div class="legend"><span><i class="sq" style="background:var(--chad)"></i>2026</span><span><i class="bandk"></i>10th–90th percentile</span><span><i class="bandk" style="opacity:.25"></i>lowest–highest</span></div>
+    <div id="vegdk"></div>
+    <p class="cap" id="vegcap"></p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">Rain month by month, 2026 against the 1991–2020 average</h3>
+    <div class="legend"><span><i class="sq" style="background:var(--chad)"></i>2026</span><span><i class="sq" style="background:none;border-top:2px solid var(--ink);border-radius:0;height:0;width:14px"></i>1991–2020 average</span><span>whisker = CHIRPS v2 to v3</span></div>
+    <div id="months"></div>
+  </div>
 </div>
 
 <h2 id="points">One point per season</h2>
 <p class="note">Each dot is one season. Filled dots are seasons before 2023. Open rings are the war years (Darfur) and refugee-influx years (eastern Chad), when conflict drives the outcome. The grey band marks where 2026 sits on the x-axis. Correlations use the filled dots only.</p>
-<div class="ctl"><span>x-axis for the panels below</span><span class="seg" id="xSel"><button data-x="rain" aria-pressed="true">Rainfall (% of trend)</button><button data-x="bio" aria-pressed="false">Biomass at season end (ASAP z-score)</button></span></div>
+<div class="ctl"><span>x-axis for the panels below</span><span class="seg" id="xSel"><button data-x="veg" aria-pressed="true">Vegetation greening (% of trend)</button><button data-x="rain" aria-pressed="false">Rainfall (% of trend)</button></span></div>
 
 <div class="card">
   <h3 style="margin-top:0">Rainfall and vegetation</h3>
-  <div class="ctl"><span>y-axis</span><span class="seg" id="vySel"><button data-v="bio" aria-pressed="true">Biomass (ASAP)</button><button data-v="vhi" aria-pressed="false">Vegetation health (FAO VHI)</button></span></div>
+  <div class="ctl"><span>y-axis (all detrended)</span><span class="seg" id="vySel"><button data-v="grn" aria-pressed="true">Greening (MODIS)</button><button data-v="bio_d" aria-pressed="false">Biomass (JRC ASAP)</button><button data-v="vhi_d" aria-pressed="false">Vegetation health (FAO VHI)</button></span></div>
   <div class="grid2" id="sc_veg"></div>
-  <p class="cap">The x-axis here is always rainfall, and every year to 2025 counts as filled (conflict does not change the satellite signal much). FAO VHI runs from 1984, ASAP biomass from 2001.</p>
+  <p class="cap">The x-axis here is always rainfall, and every year to 2025 counts as filled (conflict does not change the satellite signal much). MODIS and JRC ASAP run from 2001, FAO VHI from 1984.</p>
 </div>
 
 <div class="card">
@@ -189,6 +197,7 @@ footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
 const D = /*__DATA__*/null;
 const STAMP = "/*__STAMP__*/";
 const SIDES = ["chad","darfur"];
+const BAD_YIELD = [2014, 2015, 2018, 2019];  // reported far above any other year; see the Method
 const COL = {chad:"#2a78d6", darfur:"#eb6834"};
 const LBL = D.sides;
 const WAR = D.war_from;
@@ -228,27 +237,71 @@ function rankOf(arr, v, low=true){ return arr.filter(x => low ? x < v : x > v).l
   const t = document.getElementById("tiles");
   const RK = D.ranks;
   const rainRank = (s, k="pt") => RK[s][{pt:"rain", pt2:"rain_v2", pt3:"rain_v3"}[k]];
-  const vhiRank = s => RK[s].vhi;
-  const bioRank = s => RK[s].bio;
+  const ordL = n => n===1 ? "lowest" : ord(n)+" lowest";
+  const ord = n => n + (n===1?"st":n===2?"nd":n===3?"rd":"th");
   const fo = D.fews.find(d => d.map==="post" && d.y===2026 && d.side==="chad");
   const fj = D.fews.find(d => d.map==="junproj" && d.y===2026 && d.side==="chad");
-  const ord = n => n + (n===1?"st":n===2?"nd":n===3?"rd":"th");
   const tiles = [
+    {lbl:"Vegetation greening, Jul–Oct (MODIS), % of trend", rows: SIDES.map(s => ({s, v: fmt0(V26(s).grn)+"%", sub: `${ordL(RK[s].grn)} of ${RK[s].n_grn} seasons · ${fmt0(V26(s).grn_raw)}% of the 2001–2024 average`}))},
+    {lbl:"Other vegetation indices, detrended", rows: SIDES.map(s => ({s, v: "", sub: `JRC biomass ${ordL(RK[s].bio_d)} of 26 · FAO health ${ordL(RK[s].vhi_d)}`}))},
     {lbl:"June–September rain, % of trend", rows: SIDES.map(s => ({s, v: fmt0(R26(s).pt)+"%", sub: (rainRank(s,"pt3")===1 && rainRank(s,"pt2")===1 ? "driest of 26 in v2 and v3" : `${ord(rainRank(s,"pt3"))} (v3) / ${ord(rainRank(s,"pt2"))} (v2) driest of 26`) + ` · ${fmt0(R26(s).pn)}% of 1991–2020`}))},
-    {lbl:"Biomass at season end (JRC ASAP z-score)", rows: SIDES.map(s => ({s, v: fmt2(V26(s).bio), sub: (bioRank(s)===1?"lowest":ord(bioRank(s))+" lowest")+" of 26"}))},
-    {lbl:"Vegetation health, Jul–Oct (FAO VHI)", rows: SIDES.map(s => ({s, v: fmt2(V26(s).vhi), sub: ord(vhiRank(s))+" lowest of 26"}))},
     {lbl:"FEWS NET, eastern Chad, October 2026 map", rows: [{s:"chad", v: fmt0(fo.s3)+"%", sub:"live in Phase 3+ areas; FEWS NET's June projection for October–January had "+fmt0(fj.s3)+"%"}]},
   ];
   tiles.forEach(tl => { const d = document.createElement("div"); d.className = "tile";
     d.innerHTML = `<p class="lbl">${tl.lbl}</p>` + tl.rows.map(r => `<div class="row"><span class="sw" style="background:${COL[r.s]}"></span><span class="side">${LBL[r.s]}</span><span class="v">${r.v}</span></div><div class="sub" style="margin:-2px 0 4px 17px">${r.sub}</div>`).join("");
     t.appendChild(d); });
+  const yv = Object.entries(D.analogues.darfur.yield_veg).filter(([y]) => !BAD_YIELD.includes(+y)).map(([,v]) => v);
   document.getElementById("lead").textContent =
-    `June–September rain was the lowest since 2001 on both sides of the border relative to the long-term trend (in CHIRPS v2, 2008 comes close), with August the weakest month and the north hit hardest: North Darfur and Wadi Fira got about half their usual rain. JRC's biomass index ended the season at the lowest level in its 26-year record; FAO's vegetation health index rates it poor but not exceptional. No season since 2001 was this dry; in the poorest earlier seasons, all milder, Darfur's cereal yields were ${(() => { const v = Object.entries(D.analogues.darfur.yield_biomass).filter(([y]) => +y !== 2015).map(([,v]) => v); return d3.min(v) + '–' + d3.max(v); })()}% of normal. Past seasons say little about the next lean season, which since 2023 has been driven mainly by conflict.`;
+    `Vegetation greened less this season than in any year since 2001 against the trend: ${fmt0(V26("chad").grn)}% of the trend level in eastern Chad and ${fmt0(V26("darfur").grn)}% in Darfur, with the north worst hit. JRC's biomass index and FAO's vegetation health index, detrended the same way, also put 2026 lowest since 2001. June–September rain was the lowest since 2001 against its trend, with August the weakest month; North Darfur and Wadi Fira got about half their usual rain. In the poorest earlier seasons, all milder, Darfur's cereal yields were ${d3.min(yv)}–${d3.max(yv)}% of normal. Past seasons say little about the next lean season, which since 2023 has been driven mainly by conflict.`;
 })();
 
 // ---------- map helpers ----------
 const geoA2 = D.geo.adm2, geoA1 = D.geo.adm1, geoCtx = D.geo.ctx;
-function mapProj(W, H){ return d3.geoMercator().fitExtent([[6,6],[W-6,H-6]], geoA1); }
+function mapProj(W, H){ return d3.geoEquirectangular().fitExtent([[6,6],[W-6,H-6]], geoA1); }
+function mapFrame(svg, path){
+  svg.append("g").selectAll("path").data(geoCtx.features).join("path").attr("d", path).attr("fill", "#f3f4f4").attr("stroke", "#c4cacb").attr("stroke-width", .8);
+}
+function mapOutlines(svg, path, proj){
+  svg.append("g").selectAll("path").data(geoA2.features).join("path").attr("d", path).attr("fill","none").attr("stroke","#fff").attr("stroke-width",.4).attr("stroke-opacity",.7).style("pointer-events","none");
+  svg.append("g").selectAll("path").data(geoA1.features).join("path").attr("d", path).attr("fill","none").attr("stroke","#3a4344").attr("stroke-width",1).style("pointer-events","none");
+  geoA1.features.forEach(f => { const c = path.centroid(f);
+    svg.append("text").attr("x", c[0]).attr("y", c[1]).attr("text-anchor","middle").style("font-size","10.5px").style("fill","#1f2324").style("pointer-events","none")
+       .style("paint-order","stroke").style("stroke","#fff").style("stroke-width","3px").text(D.adm1[f.properties.adm1_pcode]); });
+}
+function mapLegend(svg, W, H, col, lo, hi, ticks){
+  const lg = svg.append("g").attr("transform", `translate(${W-190},${H-44})`);
+  const n = 12, st = (hi-lo)/n;
+  d3.range(n).forEach(i => lg.append("rect").attr("x", i*14).attr("y", 0).attr("width", 14).attr("height", 10).attr("fill", col(lo + (i+.5)*st)));
+  ticks.forEach(v => lg.append("text").attr("x", (v-lo)/st*14).attr("y", 24).attr("text-anchor","middle").text(v+"%"));
+}
+
+// vegetation map (MODIS greening, % of trend)
+(function(){
+  const W = 520, H = 560, svg = svgEl(document.getElementById("vmap"), W, H, "mapsvg");
+  const proj = mapProj(W, H), path = d3.geoPath(proj);
+  const col = d3.scaleDiverging([40, 100, 160], t => d3.interpolateBrBG(t));
+  mapFrame(svg, path);
+  const V = D.vmap, raw = Uint8Array.from(atob(V.b64), c => c.charCodeAt(0));
+  const cv = document.createElement("canvas"); cv.width = V.nx; cv.height = V.ny;
+  const cx = cv.getContext("2d"), img = cx.createImageData(V.nx, V.ny);
+  for (let i = 0; i < raw.length; i++) { const v = raw[i]; let c;
+    if (v === 255) { c = [0,0,0,0]; } else { const k = d3.rgb(col(Math.max(40, Math.min(160, v)))); c = [k.r, k.g, k.b, 255]; }
+    img.data.set(c, i*4); }
+  cx.putImageData(img, 0, 0);
+  // grid cell centres: lat0 is the northern row, lon0 the western column
+  const half = V.res/2, nw = proj([V.lon0-half, V.lat0+half]), se = proj([V.lon0+(V.nx-1)*V.res+half, V.lat0-(V.ny-1)*V.res-half]);
+  const clip = svg.append("clipPath").attr("id","vclip"); clip.selectAll("path").data(geoA1.features).join("path").attr("d", path);
+  svg.append("image").attr("href", cv.toDataURL()).attr("x", nw[0]).attr("y", nw[1]).attr("width", se[0]-nw[0]).attr("height", se[1]-nw[1])
+     .attr("preserveAspectRatio","none").style("image-rendering","pixelated").attr("clip-path","url(#vclip)");
+  svg.append("rect").attr("width", W).attr("height", H).attr("fill","transparent")
+     .on("mousemove", ev => { const [px,py] = d3.pointer(ev), ll = proj.invert([px,py]);
+        const j = Math.round((ll[0]-V.lon0)/V.res), i = Math.round((V.lat0-ll[1])/V.res);
+        if (i < 0 || j < 0 || i >= V.ny || j >= V.nx) return hideTip();
+        const v = raw[i*V.nx+j]; showTip(ev, v === 255 ? `<span class="m">No vegetation signal (desert or bare ground)</span>` : `<b>${v}%</b> of the trend level<br><span class="m">${ll[1].toFixed(2)}°N ${ll[0].toFixed(2)}°E</span>`); })
+     .on("mouseleave", hideTip);
+  mapOutlines(svg, path, proj);
+  mapLegend(svg, W, H, col, 40, 160, [40,70,100,130,160]);
+})();
 
 // rainfall map
 (function(){
@@ -308,6 +361,7 @@ function mapProj(W, H){ return d3.geoMercator().fitExtent([[6,6],[W-6,H-6]], geo
 })();
 
 // by province / state
+const RAINV = d => (d.v2+d.v3)/2;
 (function(){
   const order = ["TCD17","TCD14","TCD21","SD02","SD04","SD06","SD03","SD05"];
   const rows = order.map(pc => D.adm1_2026.find(d => d.pc === pc)).filter(Boolean);
@@ -326,14 +380,38 @@ function mapProj(W, H){ return d3.geoMercator().fitExtent([[6,6],[W-6,H-6]], geo
       svg.append("text").attr("x", m.l-8).attr("y", y0+b/2+4).attr("text-anchor","end").style("font-size","11.5px").text(D.adm1[d.pc]);
       const a = ref === 100 ? x(0) : x(0), e = x(v);
       svg.append("rect").attr("x", Math.min(a,e)).attr("y", y0).attr("width", Math.abs(e-a)).attr("height", b).attr("fill", COL[d.side]).attr("rx", 2);
-      if (ref === 100) svg.append("line").attr("x1", x(d.v2)).attr("x2", x(d.v3)).attr("y1", y0+b/2).attr("y2", y0+b/2).attr("stroke","#1f2324").attr("stroke-width",1.5);
-      svg.append("text").attr("x", ref===100 ? Math.max(x(d.v2), x(d.v3))+5 : (v < 0 ? e-5 : e+5)).attr("y", y0+b/2+4).attr("text-anchor", ref!==100 && v < 0 ? "end" : "start").style("font-size","11px").style("fill","#1f2324").text(fmtv(v));
+      if (d.v2 != null && val === RAINV) svg.append("line").attr("x1", x(d.v2)).attr("x2", x(d.v3)).attr("y1", y0+b/2).attr("y2", y0+b/2).attr("stroke","#1f2324").attr("stroke-width",1.5);
+      svg.append("text").attr("x", val === RAINV ? Math.max(x(d.v2), x(d.v3))+5 : (v < 0 ? e-5 : e+5)).attr("y", y0+b/2+4).attr("text-anchor", ref!==100 && v < 0 ? "end" : "start").style("font-size","11px").style("fill","#1f2324").text(fmtv(v));
       svg.append("rect").attr("x",0).attr("y",y0-4).attr("width",W).attr("height",b+8).attr("fill","transparent")
-        .on("mousemove", ev => showTip(ev, `<b>${D.adm1[d.pc]}</b><br>Rain Jun–Sep 2026: <b>${fmt0((d.v2+d.v3)/2)}%</b> of 1991–2020 (v2 ${d.v2}, v3 ${d.v3})<br>Biomass, 21 Oct: <b>${d.bio==null?"–":fmt2(d.bio)}</b>`)).on("mouseleave", hideTip);
+        .on("mousemove", ev => showTip(ev, `<b>${D.adm1[d.pc]}</b><br>Vegetation greening: <b>${d.grn==null?"–":fmt0(d.grn)+"%"}</b> of trend<br>Rain Jun–Sep 2026: <b>${fmt0((d.v2+d.v3)/2)}%</b> of 1991–2020 (v2 ${d.v2}, v3 ${d.v3})`)).on("mouseleave", hideTip);
     });
   };
-  mk("adm1rain", d => (d.v2+d.v3)/2, [0, 110], 100, d => fmt0(d)+"%", "Rain, % of 1991–2020 average");
-  mk("adm1bio", d => d.bio, [-2.5, 0.5], -1, d => fmt1(d), "Biomass, ASAP z-score");
+  mk("adm1grn", d => d.grn, [0, 130], 100, d => fmt0(d)+"%", "Vegetation greening, % of trend");
+  mk("adm1rain", RAINV, [0, 130], 100, d => fmt0(d)+"%", "Rain, % of 1991–2020 average");
+})();
+
+// vegetation greening by year
+(function(){
+  const host = document.getElementById("vegyears");
+  SIDES.forEach(s => {
+    const div = host.appendChild(document.createElement("div"));
+    const W = 520, H = 210, m = {t:22,r:34,b:24,l:40}, svg = svgEl(div, W, H);
+    const rows = D.veg.filter(d => d.side === s && d.grn != null);
+    const x = d3.scaleLinear([1980.5, 2026.5], [m.l, W-m.r]);
+    const y = d3.scaleLinear([40, 160], [H-m.b, m.t]);
+    svg.append("g").attr("class","gridl").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).tickValues([50,75,100,125,150]).tickSize(-(W-m.l-m.r)).tickFormat(""));
+    svg.append("g").attr("class","axis").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).tickValues([50,75,100,125,150]).tickFormat(d => d+"%"));
+    svg.append("g").attr("class","axis").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).tickValues([1985,1995,2005,2015,2025]).tickFormat(d3.format("d")));
+    svg.append("line").attr("x1", m.l).attr("x2", W-m.r).attr("y1", y(100)).attr("y2", y(100)).attr("stroke","#8a9495").attr("stroke-dasharray","3 3");
+    svg.append("text").attr("class","ptitle").attr("x", m.l).attr("y", 12).text(LBL[s] + ": vegetation greening");
+    rows.forEach(d => { const now = d.y === 2026, cy = y(Math.max(40, Math.min(160, d.grn)));
+      svg.append("rect").attr("x", x(d.y)-3).attr("width", 6).attr("y", Math.min(y(100), cy)).attr("height", Math.abs(cy - y(100))).attr("fill", COL[s]).attr("fill-opacity", now ? 1 : .55);
+      svg.append("rect").attr("x", x(d.y)-5).attr("width", 10).attr("y", m.t).attr("height", H-m.t-m.b).attr("fill","transparent")
+        .on("mousemove", ev => showTip(ev, `<b>${LBL[s]}, ${d.y}</b><br>Greening <b>${fmt0(d.grn)}%</b> of trend<br><span class="m">${fmt0(d.grn_raw)}% of the 2001–2024 average</span>`)).on("mouseleave", hideTip); });
+    const n = V26(s);
+    svg.append("text").attr("x", x(2026)-8).attr("y", y(n.grn)+12).attr("text-anchor","end").style("font-weight","700").style("fill","#1f2324").text("2026: "+fmt0(n.grn)+"%");
+  });
+  document.getElementById("grnslope").textContent = SIDES.map(s => `${LBL[s]} ${d3.format("+.0f")(D.veg_slopes.grn[s])} points per decade`).join(", ");
 })();
 
 // rainfall by year
@@ -349,7 +427,7 @@ function mapProj(W, H){ return d3.geoMercator().fitExtent([[6,6],[W-6,H-6]], geo
     svg.append("g").attr("class","axis").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).tickValues([50,75,100,125,150]).tickFormat(d => d+"%"));
     svg.append("g").attr("class","axis").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).tickValues([1985,1995,2005,2015,2025]).tickFormat(d3.format("d")));
     svg.append("line").attr("x1", m.l).attr("x2", W-m.r).attr("y1", y(100)).attr("y2", y(100)).attr("stroke","#8a9495").attr("stroke-dasharray","3 3");
-    svg.append("text").attr("class","ptitle").attr("x", m.l).attr("y", 12).text(LBL[s]);
+    svg.append("text").attr("class","ptitle").attr("x", m.l).attr("y", 12).text(LBL[s] + ": June–September rain");
     rows.forEach(d => {
       const now = d.y === 2026;
       svg.append("line").attr("x1", x(d.y)).attr("x2", x(d.y)).attr("y1", y(d.pt2)).attr("y2", y(d.pt3)).attr("stroke", COL[s]).attr("stroke-opacity", .55).attr("stroke-width", 2);
@@ -366,9 +444,10 @@ function mapProj(W, H){ return d3.geoMercator().fitExtent([[6,6],[W-6,H-6]], geo
 // vegetation through the season
 function drawVegDekad(ind){
   const host = document.getElementById("vegdk"); host.innerHTML = "";
+  host.className = "";
   SIDES.forEach(s => {
     const div = host.appendChild(document.createElement("div"));
-    const W = 520, H = 230, m = {t:22,r:10,b:24,l:40}, svg = svgEl(div, W, H);
+    const W = 520, H = 190, m = {t:22,r:10,b:24,l:40}, svg = svgEl(div, W, H);
     const rows = D.veg_dekad.filter(d => d.side === s && d.ind === ind).sort((a,b) => a.md < b.md ? -1 : 1);
     const dt = md => new Date("2026-" + md);
     const x = d3.scaleTime([new Date("2026-05-01"), new Date("2026-11-21")], [m.l, W-m.r]);
@@ -397,18 +476,17 @@ function drawVegDekad(ind){
   });
   document.getElementById("vegcap").textContent = ind === "asi"
     ? "FAO ASIS: share of cropland whose vegetation health, averaged from the start of the season, is below 35. Higher is worse. Satellite: METOP-AVHRR. Values drop to zero when a unit's season closes."
-    : "JRC ASAP: cumulative FPAR anomaly on cropland, in standard deviations from ASAP's long-term average for that point in the season (dotted line = ASAP's −1 warning level). JRC's FPAR record now joins MODIS with VIIRS, and a step at the switch cannot be ruled out. FAO's vegetation health index (a different satellite) rates 2026 poor, but not the worst since 2001.";
+    : "JRC ASAP cumulative FPAR anomaly on cropland (z-score), with the 2001–2025 trend for each point in the season taken out (a straight line per dekad; dotted line = −1). JRC's FPAR record now joins MODIS with VIIRS, and a step at the switch cannot be ruled out.";
 }
 drawVegDekad("zfparc_crop");
-seg("vegSel", d => drawVegDekad(d.v));
 
 // ---------- scatter ----------
-let XSEL = "rain";
+let XSEL = "veg";
 const XDEF = {
+  veg:  {lab:"Vegetation greening, % of trend", get:(s,y) => { const v = vegBy[s].get(y); return v ? v.grn : null; },
+         band:s => { const v = V26(s).grn; return [v-1, v+1]; }, dom:[40, 160], fmt:v => fmt0(v)+"%"},
   rain: {lab:"June–September rainfall, % of trend", get:(s,y) => { const r = rainBy[s].get(y); return r ? r.pt : null; },
          band:s => { const r = R26(s); return [Math.min(r.pt2,r.pt3), Math.max(r.pt2,r.pt3)]; }, dom:[45,160], fmt:v => fmt0(v)+"%"},
-  bio:  {lab:"Biomass at season end (ASAP z-score)", get:(s,y) => { const v = vegBy[s].get(y); return v ? v.bio : null; },
-         band:s => { const v = V26(s).bio; return [v-0.03, v+0.03]; }, dom:[-2, 1.6], fmt:v => fmt2(v)},
 };
 function scatter(node, cfg){
   const W = cfg.W || 520, H = cfg.H || 300, m = {t:24,r:14,b:38,l:46}, svg = svgEl(node, W, H);
@@ -450,7 +528,10 @@ function scatter(node, cfg){
 }
 function kindOf(year){ return year === 2026 ? "now" : (year >= WAR ? "war" : "pre"); }
 
-let VY = "bio";
+let VY = "grn";
+const VYDEF = {grn: {lab:"Greening, % of trend (MODIS)", dom:[40,160], f:v => fmt0(v)+"%"},
+               bio_d: {lab:"Biomass, detrended z (JRC ASAP)", dom:[-2.6,1.4], f:v => fmt2(v)},
+               vhi_d: {lab:"Vegetation health, detrended (FAO VHI)", dom:[-0.2,0.2], f:v => fmt2(v)}};
 function drawScVeg(){
   const host = document.getElementById("sc_veg"); host.innerHTML = "";
   SIDES.forEach(s => {
@@ -458,11 +539,11 @@ function drawScVeg(){
     const pts = D.veg.filter(d => d.side === s).map(d => {
       const xr = rainBy[s].get(d.y), yv = d[VY];
       return {x: xr ? xr.pt : null, y: yv, year: d.y, kind: d.y === 2026 ? "now" : "pre",
-        label: d.y === 2026 || D.analogues[s].biomass.includes(d.y),
-        tip: `<b>${LBL[s]}, ${d.y}</b><br>Rain ${xr ? fmt0(xr.pt)+"% of trend" : "–"}<br>${VY==="bio" ? "Biomass z "+fmt2(yv) : "VHI "+fmt2(yv)}`};
+        label: d.y === 2026 || D.analogues[s].veg.includes(d.y),
+        tip: `<b>${LBL[s]}, ${d.y}</b><br>Rain ${xr ? fmt0(xr.pt)+"% of trend" : "–"}<br>${VYDEF[VY].lab}: ${yv==null?"–":VYDEF[VY].f(yv)}`};
     });
     scatter(div, {title: LBL[s], color: COL[s], pts, xdom: XDEF.rain.dom, xfmt: d => d+"%", ref: 100,
-      ydom: VY==="bio" ? [-2, 1.6] : [0.35, 0.9], ylab: VY==="bio" ? "Biomass, ASAP z-score" : "Vegetation health, FAO VHI",
+      ydom: VYDEF[VY].dom, yfmt: VY==="grn" ? (d => d+"%") : null, ylab: VYDEF[VY].lab,
       xlab: XDEF.rain.lab, statLabel: "to 2025"});
   });
 }
@@ -470,10 +551,10 @@ function drawScVeg(){
 function drawScYield(){
   const X = XDEF[XSEL], node = document.getElementById("sc_yield");
   const pts = D.yield.map(d => { const xv = X.get("darfur", d.y);
-    return {x: xv, y: d.pct, year: d.y, kind: kindOf(d.y), label: D.analogues.darfur.biomass.includes(d.y) || D.analogues.darfur.rain.includes(d.y) || [2014,2018,2023].includes(d.y),
+    return {x: xv, y: d.pct, year: d.y, kind: kindOf(d.y), label: D.analogues.darfur.veg.includes(d.y) || D.analogues.darfur.rain.includes(d.y) || [1984,2014,2018,2023].includes(d.y),
       tip: `<b>Darfur, ${d.y}</b><br>Yield ${d.tha} t/ha = <b>${d.pct}%</b> of the surrounding years (${d.src})<br>${X.lab}: ${xv==null?"–":X.fmt(xv)}<br><span class="m">${d.n} states reported</span>`}; });
-  scatter(node, {W: 1040, H: 300, title: "Darfur", color: COL.darfur, pts, xdom: X.dom, xfmt: XSEL==="rain" ? (d => d+"%") : null,
-    ref: XSEL==="rain" ? 100 : 0, band: X.band("darfur"), ydom: [20, 280], yfmt: d => d+"%", ylab: "Yield, % of surrounding years", xlab: X.lab});
+  scatter(node, {W: 1040, H: 300, title: "Darfur", color: COL.darfur, pts, xdom: X.dom, xfmt: d => d+"%",
+    ref: 100, band: X.band("darfur"), ydom: [20, 280], yfmt: d => d+"%", ylab: "Yield, % of surrounding years", xlab: X.lab});
 }
 
 let OY = "fn3";
@@ -490,10 +571,10 @@ function drawScOut(){
     const years = d3.range(1995, 2026);
     const pts = years.map(y => { const xv = X.get(s, y), yv = O.get(s, y+1);
       const k = kindOf(y+1 >= WAR ? Math.max(y, WAR) : y);
-      return {x: xv, y: yv, year: y, kind: k, label: k === "pre" && (D.analogues[s].biomass.includes(y) || D.analogues[s].rain.includes(y)),
+      return {x: xv, y: yv, year: y, kind: k, label: k === "pre" && (D.analogues[s].veg.includes(y) || D.analogues[s].rain.includes(y)),
         tip: `<b>${LBL[s]}: season ${y} → lean season ${y+1}</b><br>${X.lab}: ${xv==null?"–":X.fmt(xv)}<br>${O.lab}: <b>${yv==null?"–":O.fmt(yv)}</b>`}; });
     scatter(div, {title: LBL[s] + (OY==="ic3" ? (s==="chad" ? " (CH, residents)" : " (IPC)") : " (FEWS NET)"), color: COL[s], pts,
-      xdom: X.dom, xfmt: XSEL==="rain" ? (d => d+"%") : null, ref: XSEL==="rain" ? 100 : 0, band: X.band(s),
+      xdom: X.dom, xfmt: d => d+"%", ref: 100, band: X.band(s),
       ydom: O.dom, yfmt: OY==="fnm" ? null : (d => d+"%"), ylab: O.lab, xlab: X.lab + " (season)"});
   });
   document.getElementById("outcap").textContent = OY === "ic3"
@@ -509,8 +590,9 @@ seg("oySel", d => { OY = d.o; drawScOut(); });
 // ---------- estimate ----------
 (function(){
   const A = D.analogues, ad = A.darfur, ac = A.chad;
-  const yl = Object.entries(ad.yield_biomass).filter(([y]) => +y !== 2015).map(([,v]) => v);
-  const rr = Object.values(ad.rain_of_bio);
+  const yl = Object.entries(ad.yield_veg).filter(([y]) => !BAD_YIELD.includes(+y)).map(([,v]) => v);
+  const ylBad = Object.entries(ad.yield_veg).filter(([y]) => BAD_YIELD.includes(+y));
+  const rr = Object.values(ad.rain_of_veg);
   const fjun = D.fews.find(d => d.side==="chad" && d.map==="junproj" && d.y===2026);
   const foct = D.fews.find(d => d.side==="chad" && d.map==="post" && d.y===2026);
   const rev = y => { const a = D.fews.find(d => d.side==="chad" && d.map==="junproj" && d.y===y), b = D.fews.find(d => d.side==="chad" && d.map==="post" && d.y===y); return a && b ? b.s3 - a.s3 : null; };
@@ -519,8 +601,8 @@ seg("oySel", d => { OY = d.o; drawScOut(); });
   const lst = o => Object.entries(o).map(([y,v]) => `${fmt0(v)}% (${y})`).join(", ");
   const y84 = ad.yield_rain_full[1984], r84 = ad.rain_full[1984];
   document.getElementById("estimate").innerHTML = `
-   <p><b>Harvest (Darfur).</b> No season since 2001 was as dry as 2026 (${fmt0(R26("darfur").pt)}% of trend). The five poorest seasons by biomass were all milder, with rain at ${d3.min(rr)}–${d3.max(rr)}% of trend. They gave cereal yields of ${d3.min(yl)}–${d3.max(yl)}% of normal, leaving out 2015's reported ${ad.yield_biomass[2015]}%. The one earlier season about as dry as 2026 was 1984 (${r84}% of trend), with yields at ${y84}% of normal. In 2023, with normal rain but at war, yields were ${ad.yield_2023}% (four of five states reported). "Normal" here means the median yield of the surrounding years (five either side, same source), because the series' level shifts several times. 2026 is drier than any of the milder seasons, and it comes on top of the war. Our reading is that yields will most likely be below about two-thirds of normal. The record is too noisy to give a firmer number, and this says nothing about how much land was planted. Eastern Chad has no yield series to check against; its rainfall and biomass were as poor as Darfur's.</p>
-   <p><b>Food insecurity.</b> Before 2023, poor seasons were not followed by a consistent rise on either side. In eastern Chad, ${lst(ac.fn_lean_biomass)} of people lived in Phase 3+ areas in the following lean season, against ${fmt0(ac.fn_lean_biomass_others_median)}% after other seasons. In Darfur it was ${lst(ad.fn_lean_biomass)}, against ${fmt0(ad.fn_lean_biomass_others_median)}%. Those seasons cannot give a number for 2027.</p>
+   <p><b>Harvest (Darfur).</b> No season since 2001 was as poor as 2026 in vegetation or rain (${fmt0(R26("darfur").pt)}% of trend). The five seasons with the least vegetation greening before 2023 (${ad.veg.join(", ")}; ${ad.veg_range[0]}–${ad.veg_range[1]}% of trend, against ${fmt0(V26("darfur").grn)}% in 2026) were all milder, with rain at ${d3.min(rr)}–${d3.max(rr)}% of trend. They gave cereal yields of ${d3.min(yl)}–${d3.max(yl)}% of normal${ylBad.length ? ", leaving out " + ylBad.map(([y,v]) => `${y} (reported ${v}%)`).join(" and ") + ", which look unreliable" : ""}. The one earlier season about as dry as 2026 was 1984 (${r84}% of trend), with yields at ${y84}% of normal. In 2023, with normal rain but at war, yields were ${ad.yield_2023}% (four of five states reported). "Normal" here means the median yield of the surrounding years (five either side, same source), because the series' level shifts several times. 2026 is drier than any of the milder seasons, and it comes on top of the war. Our reading is that yields will most likely be below about two-thirds of normal. The record is too noisy to give a firmer number, and this says nothing about how much land was planted. Eastern Chad has no yield series to check against; its rainfall and vegetation were as poor as Darfur's.</p>
+   <p><b>Food insecurity.</b> Before 2023, poor seasons were not followed by a consistent rise on either side. After the seasons with the least greening, ${lst(ac.fn_lean_veg)} of people in eastern Chad lived in Phase 3+ areas in the following lean season, against ${fmt0(ac.fn_lean_veg_others_median)}% after other seasons. In Darfur it was ${lst(ad.fn_lean_veg)}, against ${fmt0(ad.fn_lean_veg_others_median)}%. Those seasons cannot give a number for 2027.</p>
    <p>FEWS NET's own maps have moved. For eastern Chad after the harvest, its June projection had ${fmt0(fjun.s3)}% of people in Phase 3+ areas; the October map has ${fmt0(foct.s3)}%, and its October projection for October–January ${fmt0(D.fews.find(d => d.side==="chad" && d.map==="outlook" && d.round==="202610" && d.layer==="ML1").s3)}%. That is a revision of ${sg(rev(2026))} points, against ${sg(rev(2023))} in 2023 and ${sg(rev(2024))} in 2024. Its Phase 4 (${fmt0(foct.s4)}% of people) is in Kimiti in Sila, the province that got the most rain. Wadi Fira, the driest, is in Phase 3. In Darfur the June projection already had ${fmt0(fdar.s3)}% in Phase 3+ areas and ${fmt0(fdar.s4)}% in Phase 4 for October–January. There is no map from after the harvest yet.</p>
    <p><b>Next checks:</b> the November 2026 Cadre Harmonisé (projections for June–August 2027), FEWS NET's October round for Sudan, and the next IPC Sudan analysis.</p>`;
 })();
@@ -617,12 +699,12 @@ document.getElementById("methods").innerHTML = /*__METHODS__*/"";
 
 // ---------- CSV ----------
 document.getElementById("dl").addEventListener("click", () => {
-  const rows = [["side","season","rain_pct_trend","rain_pct_trend_v2","rain_pct_trend_v3","rain_pct_1991_2020","rain_mm_v2","rain_mm_v3","biomass_asap_z_crop","biomass_asap_z_range","vhi_fao","asi_fao_pct","darfur_yield_pct_src_median","fews_lean_next_phase3plus_area_pct","fews_lean_next_phase4plus_area_pct","fews_lean_next_mean_phase","ch_ipc_lean_next_phase3plus_pct"]];
+  const rows = [["side","season","greening_modis_pct_trend","greening_modis_pct_2001_2025_mean","biomass_asap_z_crop_detrended","vhi_fao_detrended","rain_pct_trend","rain_pct_trend_v2","rain_pct_trend_v3","rain_pct_1991_2020","rain_mm_v2","rain_mm_v3","biomass_asap_z_crop","vhi_fao","asi_fao_pct","darfur_yield_pct_src_median","fews_lean_next_phase3plus_area_pct","fews_lean_next_phase4plus_area_pct","fews_lean_next_mean_phase","ch_ipc_lean_next_phase3plus_pct"]];
   SIDES.forEach(s => d3.range(1981, 2027).forEach(y => {
     const r = rainBy[s].get(y) || {}, v = vegBy[s].get(y) || {}, yl = s==="darfur" ? D.yield.find(d => d.y===y) : null;
     const f = D.fews.find(d => d.side===s && d.map==="lean" && d.y===y+1) || {};
     const c = D.ipcch.find(d => d.side===s && d.kind==="lean" && d.y===y+1 && (d.grp==="residents"||d.grp==="all")) || {};
-    rows.push([s, y, r.pt, r.pt2, r.pt3, r.pn, r.mm2, r.mm3, v.bio, v.bior, v.vhi, v.asi, yl ? yl.pct : "", f.s3, f.s4, f.mp, c.s3].map(x => x == null ? "" : x));
+    rows.push([s, y, v.grn, v.grn_raw, v.bio_d, v.vhi_d, r.pt, r.pt2, r.pt3, r.pn, r.mm2, r.mm3, v.bio, v.vhi, v.asi, yl ? yl.pct : "", f.s3, f.s4, f.mp, c.s3].map(x => x == null ? "" : x));
   }));
   const blob = new Blob([rows.map(r => r.join(",")).join("\n")], {type:"text/csv"});
   const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "eastern_chad_darfur_seasons.csv"; a.click();
