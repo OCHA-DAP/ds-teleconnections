@@ -1,4 +1,4 @@
-"""Assemble everything the page needs into one JSON (../page_data.json, committed).
+"""Assemble everything the page needs into one JSON (<work>/processed/page_data.json; on blob, not committed).
 
 Choices made here (the page's Method block repeats them):
 - Rainfall = June-September total, CHIRPS v2 and v3 shown as a range, point = their mean.

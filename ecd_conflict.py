@@ -2,13 +2,14 @@
 
 Built from ACLED events, whose terms limit redistribution, so nothing derived from them is committed: the
 data (conflict_data.json) and the curated text (text.json: literature, forecasting models) live in the work
-folder, <ECD_WORK>/processed/conflict/, written by deep_dives/data/eastern-chad-darfur/analysis/10-12_*.py.
+folder, <ECD_WORK>/processed/conflict/ (mirrored on the dev blob; see analysis/blob_sync.py), written by
+deep_dives/data/eastern-chad-darfur/analysis/10-12_*.py; missing files are fetched from blob.
 Only this code, the generic template (deep_dives/data/eastern-chad-darfur/conflict_template.html, which
 words everything from the data in the browser) and the staticrypt-encrypted HTML are in the repo. Commit
 messages must not carry results either.
 
-    ECD_WORK=... uv run python ecd_conflict.py                       # build out/eastern-chad-darfur-conflict/ to review
-    ECD_WORK=... SITE_PASSWORD=... uv run python ecd_conflict.py --encrypt
+    uv run python ecd_conflict.py                                    # build out/eastern-chad-darfur-conflict/ to review
+    SITE_PASSWORD=... uv run python ecd_conflict.py --encrypt
                                        # + docs/enso/eastern-chad-darfur-conflict/ (encrypted) and the /enso/ card
 In a full `enso_deep_dive.py` run the page is built and encrypted only with SITE_PASSWORD and ECDC_PUBLISH=1.
 """
@@ -18,7 +19,6 @@ from __future__ import annotations
 import argparse
 import json
 import os
-import shutil
 import subprocess
 import tempfile
 import tomllib
@@ -29,8 +29,15 @@ ROOT = Path(__file__).resolve().parent
 SLUG = "eastern-chad-darfur-conflict"
 SPEC = ROOT / "deep_dives" / f"{SLUG}.toml"
 TPL = ROOT / "deep_dives" / "data" / "eastern-chad-darfur" / "conflict_template.html"
-PUBLIC = ROOT / "deep_dives" / "data" / "eastern-chad-darfur" / "page_data.json"  # geometry + season series (public)
-WORK = Path(os.environ.get("ECD_WORK", ROOT / "cache" / "eastern-chad-darfur")) / "processed" / "conflict"
+ANALYSIS = ROOT / "deep_dives" / "data" / "eastern-chad-darfur" / "analysis"
+
+
+def work(rel: str) -> Path:
+    """A work-folder file (ECD_WORK), fetched from the dev blob if it is not local."""
+    import sys
+    sys.path.insert(0, str(ANALYSIS))
+    from blob_sync import fetch
+    return fetch(rel)
 OUT = ROOT / "out" / SLUG
 DOCS = ROOT / "docs" / "enso" / SLUG
 
@@ -55,9 +62,9 @@ def _check(D: dict) -> None:
 
 
 def render(spec: dict) -> str:
-    D = json.loads((WORK / "conflict_data.json").read_text(encoding="utf-8"))
-    D["text"] = json.loads((WORK / "text.json").read_text(encoding="utf-8"))
-    P = json.loads(PUBLIC.read_text(encoding="utf-8"))
+    D = json.loads(work("processed/conflict/conflict_data.json").read_text(encoding="utf-8"))
+    D["text"] = json.loads(work("processed/conflict/text.json").read_text(encoding="utf-8"))
+    P = json.loads(work("processed/page_data.json").read_text(encoding="utf-8"))  # geometry + season series (public)
     D["geo"], D["adm1"], D["sides"] = P["geo"], P["adm1"], P["sides"]
     _check(D)
     tpl = TPL.read_text(encoding="utf-8")

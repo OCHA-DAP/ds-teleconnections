@@ -1903,8 +1903,10 @@ def main() -> None:
             # restricted: poor seasons and local violence (ACLED-based, data in ECD_WORK, never committed);
             # encrypted into docs/enso/eastern-chad-darfur-conflict/ only with SITE_PASSWORD and ECDC_PUBLISH=1
             import ecd_conflict
-            if not (ecd_conflict.WORK / "conflict_data.json").exists():
-                print("  skipped: no conflict_data.json in ECD_WORK")
+            try:
+                ecd_conflict.work("processed/conflict/conflict_data.json")
+            except Exception as e:  # noqa: BLE001  no local copy and no blob access
+                print(f"  skipped: conflict data not local and not fetched from blob ({type(e).__name__})")
                 continue
             ecd_conflict.build(spec, encrypt_page=bool(os.environ.get("SITE_PASSWORD") and os.environ.get("ECDC_PUBLISH")))
             continue

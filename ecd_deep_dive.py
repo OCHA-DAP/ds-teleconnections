@@ -1,15 +1,16 @@
 """Eastern Chad and Darfur — the 2026 rainy season and the 2027 lean season (builder = "ecd").
 
 Public page (all inputs are public data). The analysis was run on 17 November 2026 by the scripts in
-deep_dives/data/eastern-chad-darfur/analysis/ (order and inputs in the README there); their one output, page_data.json,
-is committed next to them. This builder fills deep_dives/data/eastern-chad-darfur/template.html with it. Charts, tiles
+deep_dives/data/eastern-chad-darfur/analysis/ (order and inputs in the README there); their one output,
+<ECD_WORK>/processed/page_data.json, lives in the work folder and on the dev blob (analysis/blob_sync.py), never in the
+repo, and is fetched from blob when it is not local. This builder fills deep_dives/data/eastern-chad-darfur/template.html with it. Charts, tiles
 and the estimate box are computed in the browser from the data. The few sentences hard-written in the template are
 guarded by _check(): the build stops when the data no longer support them.
 
     uv run python ecd_deep_dive.py              # build out/eastern-chad-darfur/ (gitignored) to review
     uv run python ecd_deep_dive.py --publish    # + docs/enso/eastern-chad-darfur/ and the /enso/ card index
 
-Refresh: rerun the analysis scripts (they rewrite page_data.json), reword the template where the build complains, then
+Refresh: rerun the analysis scripts (they rewrite page_data.json; then `blob_sync.py push`), reword the template where the build complains, then
 build with --publish.
 """
 
@@ -200,8 +201,16 @@ def _check(D: dict) -> None:
         raise SystemExit("ecd: the data no longer support:\n  " + "\n  ".join(bad))
 
 
+def page_data() -> Path:
+    """The page's data: <ECD_WORK>/processed/page_data.json, fetched from the dev blob if not local."""
+    import sys
+    sys.path.insert(0, str(DATA / "analysis"))
+    from blob_sync import fetch
+    return fetch("processed/page_data.json")
+
+
 def render(spec: dict) -> str:
-    D = json.loads((DATA / "page_data.json").read_text(encoding="utf-8"))
+    D = json.loads(page_data().read_text(encoding="utf-8"))
     _check(D)
     tpl = (DATA / "template.html").read_text(encoding="utf-8")
     for token in ("/*__DATA__*/null", '"/*__STAMP__*/"', '/*__METHODS__*/""'):

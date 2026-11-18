@@ -1,9 +1,12 @@
 # Eastern Chad and Darfur 2026 — analysis
 
-Produces `../page_data.json`, the only input of `ecd_deep_dive.py`. Run on 17 November 2026.
+Produces `processed/page_data.json` in the work folder, the only input of `ecd_deep_dive.py`. Run on 17 November 2026.
 
 Area: Chad's Ouaddaï, Wadi Fira and Sila; Sudan's five Darfur states (`aoi.py`, COD-AB from FieldMaps).
-Work files go to `cache/eastern-chad-darfur/` (gitignored; override with `ECD_WORK`).
+Work files go to `cache/eastern-chad-darfur/` (gitignored; override with `ECD_WORK`). **No data is committed**: the
+whole work folder is mirrored on the dev blob at `projects/ds-teleconnections/eastern-chad-darfur/` with the same
+relative paths. `uv run python blob_sync.py pull` restores it; `blob_sync.py push` after any rerun. The builders fetch
+the files they need from blob when they are not local.
 
 Needs: the dev DB tunnel (`~/bin/db-tunnel up`; `db.py` points stratus at it), dev blob access through
 `ocha-stratus`, and the packed 0.5° rainfall cubes of `ds-precip-intercomparison` (`cache/packed/*.npz`)
@@ -26,7 +29,8 @@ $R 06_hnrp.py         # HNRP severity + people in need (team mirror hpc.*)
 P="uv run --with rasterio --with pystac-client --with planetary-computer --with geopandas python"
 $P 08_ndvi.py         # MODIS NDVI greening 2001-2026 from Planetary Computer (~2,000 tile reads, cached)
 $R 09_greening.py     # detrended greening: per side/year, per state 2026, the 2026 map
-$R 07_build_data.py   # -> ../page_data.json
+$R 07_build_data.py   # -> $W/processed/page_data.json
+uv run python blob_sync.py push   # mirror the work folder on the dev blob
 ```
 
 Each script's docstring states its choices. Gotchas found on the way:
@@ -59,9 +63,10 @@ them is committed** (no data, no findings in the template or commit messages). E
 ```
 uv run python 10_acled.py      # ACLED Chad + Sudan, all years (ACLED_USERNAME/ACLED_PASSWORD) -> $W/raw/acled/
 uv run python 12_cast.py       # ACLED CAST forecasts, Chad + Sudan                         -> $W/raw/acled/
-# UCDP GED 25.1 csv (https://ucdp.uu.se/downloads/ged/ged251-csv.zip), unzipped     -> $W/raw/ucdp/
+# UCDP GED 25.1 (https://ucdp.uu.se/downloads/ged/ged251-csv.zip, read zipped)  -> $W/raw/ucdp/
 uv run python 11_conflict.py   # needs 09_greening outputs; -> $W/processed/conflict/conflict_data.json
 # $W/processed/conflict/text.json: curated text (hand-check, literature, forecasting models), by hand
+uv run python blob_sync.py push
 cd ../../../.. && ECD_WORK=$W SITE_PASSWORD=... uv run python ecd_conflict.py --encrypt
 ```
 
@@ -71,4 +76,4 @@ Gotchas:
   war parties (`conflict_classes.py`). Camels as transport ("riding camels") are not livestock.
 - Coverage, labelling and CAST notes that come from looking at the data are in `text.json` (`notes`),
   not here: this repo is public.
-- `$W` is the only copy of the conflict data and text: back it up before deleting the old local repo.
+- The conflict data and text exist only in the work folder and on blob: push after every change.

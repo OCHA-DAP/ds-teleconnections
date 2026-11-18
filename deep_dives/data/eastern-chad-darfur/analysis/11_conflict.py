@@ -355,7 +355,7 @@ def main():
               .join(ev.groupby(["side", "year"]).size().rename("all")))
     # UCDP GED (independent coding; only conflicts reaching 25 deaths in a year are included):
     # non-state events between communal groups (dyads of rebel factions or militias dropped)
-    ged = pd.read_csv(RAW / "ucdp" / "GEDEvent_v25_1.csv", low_memory=False,
+    ged = pd.read_csv(RAW / "ucdp" / "ged251-csv.zip", low_memory=False,
                       usecols=["year", "type_of_violence", "latitude", "longitude", "country", "dyad_name"])
     ged = ged[ged["country"].isin(["Chad", "Sudan"]) & (ged["type_of_violence"] == 2)
               & ~ged["dyad_name"].str.contains(r"SLM|JEM|SPLM|SRF|Janjaweed|PDF|RSF|Rapid Support|FACT|UFR",

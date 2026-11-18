@@ -12,12 +12,14 @@ import pandas as pd
 
 import os
 
-REPO = Path(__file__).resolve().parents[4]          # ds-teleconnections
-PAGE_DATA = Path(__file__).resolve().parents[1] / "page_data.json"  # committed, read by ecd_deep_dive.py
-# Raw downloads and intermediate tables (gitignored cache/; override with ECD_WORK)
-DATA = Path(os.environ.get("ECD_WORK", REPO / "cache" / "eastern-chad-darfur"))
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from blob_sync import DATA, REPO  # noqa: E402,F401  work folder (ECD_WORK, mirrored on dev blob)
+
 RAW = DATA / "raw"
 PROC = DATA / "processed"
+PAGE_DATA = PROC / "page_data.json"  # the public page's data; on blob, never committed
 
 SIDES = {
     "chad": {
