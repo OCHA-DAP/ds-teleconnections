@@ -16,6 +16,10 @@ Each item read is cached as .npy, so a rerun only fetches what is missing.
 
 Writes <work>/processed/ndvi/greening.npz  (years, lat, lon, greening[year, lat, lon],
 n_season[year, lat, lon], n_dry[...])
+
+`08_ndvi.py belt`: the same for the Sudano-Sahelian belt (BELT_BBOX) at 0.04 deg from the files'
+second overview (about 4 km), for the pooled conflict test -> <work>/processed/belt/greening.npz.
+The STAC search is split into longitude chunks (one wide search times out).
 """
 
 import sys
@@ -36,9 +40,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from aoi import BBOX, PROC, RAW  # noqa: E402
 
 RES = 0.02
-OVR = 1  # overview index: 0 = 1 km, 1 = 2 km for a 2400-px 500 m tile
+OVR = 1  # overview index: 0 = 1 km, 1 = 2 km, 2 = 4 km for a 2400-px 500 m tile
 CACHE = RAW / "ndvi_items"
 OUT = PROC / "ndvi"
+BELT_BBOX = (-17.6, 4.0, 38.0, 18.6)  # Senegal/Mauritania to Sudan/South Sudan
 DST_CRS = "EPSG:4326"
 
 
@@ -93,12 +98,27 @@ def main():
     dst_tr, shape = grid()
     cat = pystac_client.Client.open("https://planetarycomputer.microsoft.com/api/stac/v1")
     items = []
+    x0, y0, x1, y1 = BBOX
+    step = 10.0
+    chunks = [[a, y0, min(a + step, x1), y1] for a in np.arange(x0, x1, step)]
+    seen = set()
     for y in range(2001, 2027):
-        s = cat.search(collections=["modis-13A1-061"], bbox=list(BBOX),
-                       datetime=f"{y}-03-01/{y}-10-31")
-        for it in s.items():
-            if not it.id.startswith("MOD13A1"):
+        found = []
+        for bb in chunks:
+            for attempt in range(4):
+                try:
+                    found += list(cat.search(collections=["modis-13A1-061"], bbox=bb,
+                                             datetime=f"{y}-03-01/{y}-10-31").items())
+                    break
+                except Exception as e:  # noqa: BLE001  (upstream timeouts)
+                    if attempt == 3:
+                        raise
+                    print(f"  search retry {y} {bb}: {e}", flush=True)
+                    time.sleep(10 * (attempt + 1))
+        for it in found:
+            if not it.id.startswith("MOD13A1") or it.id in seen:
                 continue
+            seen.add(it.id)
             d = (it.datetime or it.properties.get("start_datetime"))
             d = d.date() if hasattr(d, "date") else date.fromisoformat(str(d)[:10])
             w = window_of(d)
@@ -149,4 +169,7 @@ def main():
 
 
 if __name__ == "__main__":
+    if len(sys.argv) > 1 and sys.argv[1] == "belt":
+        BBOX, RES, OVR = BELT_BBOX, 0.04, 2
+        CACHE, OUT = RAW / "belt" / "ndvi_items", PROC / "belt"
     main()

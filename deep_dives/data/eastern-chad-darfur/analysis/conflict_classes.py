@@ -9,9 +9,10 @@ in dry years, which would build the answer in).
              foreign/peacekeeping forces. Formal parties only: ACLED's militia labels for the
              same kind of attack can change over time, and a filter on them would put coding
              changes into the series.
-  war_broad  also pro-government militias (Janjaweed, "Militia (Pro-Government)", PDF,
-             Musa Hilal's militia): sensitivity check, since these labels can cover both
-             counterinsurgency and attacks on farmers' land.
+  war_broad  also pro-government, civil-war and self-defence militias (Janjaweed, "Militia
+             (Pro-Government)", PDF, Musa Hilal's militia; for the belt also Seleka, anti-Balaka,
+             Dan Na Ambassagou, GATIA, CMFPR, Koglweogo, VDP, CJTF): sensitivity check, since these
+             labels can cover both the wars and attacks over land and herds.
   resource   not war, and ACLED tags Farmers / Pastoralists / Herders as an actor, or the
              notes mention livestock, grazing, crops, farms or water points.   (headline)
   communal   not war, and an identity (communal/ethnic) militia is a party.  (second line;
@@ -28,8 +29,11 @@ A1 = {"Ouaddai": "chad", "Wadi Fira": "chad", "Sila": "chad", "North Darfur": "d
 EVENT_TYPES = ["Battles", "Violence against civilians"]
 WAR_INTER = {"State forces", "Rebel group", "External/Other forces"}
 WAR_NAME = re.compile(r"Military Forces|Police Forces|Government of|Rapid Support|UNAMID|AMIS:|UNMIS|"
-                      r"MINURCAT|EUFOR|Wagner")
-PROGOV = re.compile(r"Janjaweed|Militia \(Pro-Government\)|PDF: Popular Defence|Militia \(Musa Hilal\)")
+                      r"MINURCAT|EUFOR|Wagner|MINUSMA|MINUSCA|UNMISS|MNJTF|Barkhane|Takuba|Africa Corps|"
+                      r"G5 Sahel")
+PROGOV = re.compile(r"Janjaweed|Militia \(Pro-Government\)|PDF: Popular Defence|Militia \(Musa Hilal\)|"
+                    r"Seleka|Anti-Balaka|Dan Na Ambassagou|GATIA|CMFPR|Koglweogo|VDP|Volunteers for the Defen|"
+                    r"CJTF|Civilian JTF")  # strict filter: pro-government, civil-war and self-defence militias too
 FARM_HERD = re.compile(r"\b(Pastoralists|Farmers|Herders)\b")
 KW = re.compile(r"\b(?:cattle|cows?|camels?|livestock|goats?|sheep|herds?|herding|herders?|herdsm[ae]n|"
                 r"pastoral\w*|nomads?|nomadic|graz\w*|pastures?|farms?|farmers?|farmland|farming|crops?|"
@@ -40,10 +44,15 @@ TRANSPORT = re.compile(r"\b(?:riding|rode|on|mounted on|aboard)\b[^.;,]{0,25}?\b
                        r"|\bcamel\s*/\s*horse\w*|\bhorse\w* and camels?", re.I)
 
 
-def classify(ev: pd.DataFrame) -> pd.DataFrame:
-    """ACLED rows -> rows in the study area (Battles + Violence against civilians) with class flags."""
-    a = ev[ev["admin1"].isin(A1) & ev["event_type"].isin(EVENT_TYPES)].copy()
-    a["side"] = a["admin1"].map(A1)
+def classify(ev: pd.DataFrame, area: dict | None = A1) -> pd.DataFrame:
+    """ACLED rows -> Battles + Violence against civilians with class flags; in the study area by default,
+    everywhere with area=None (side = country)."""
+    a = ev[ev["event_type"].isin(EVENT_TYPES)].copy()
+    if area is not None:
+        a = a[a["admin1"].isin(area)]
+        a["side"] = a["admin1"].map(area)
+    else:
+        a["side"] = a["country"]
     a["date"] = pd.to_datetime(a["event_date"])
     actors = a[["actor1", "assoc_actor_1", "actor2", "assoc_actor_2"]].fillna("").agg(" ; ".join, axis=1)
     a["war"] = (a["inter1"].isin(WAR_INTER) | a["inter2"].isin(WAR_INTER)

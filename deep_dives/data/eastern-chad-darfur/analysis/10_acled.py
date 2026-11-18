@@ -4,8 +4,8 @@ Restricted data: ACLED limits redistribution, so the events stay in the work fol
 (<work>/raw/acled/) and only counts reach the (password-protected) page.
 
 Needs ACLED_USERNAME / ACLED_PASSWORD in the environment (the team's ds-acled-fetcher uses
-the same account). Writes <work>/raw/acled/acled_tcd_sdn.parquet (all fields as delivered,
-plus `download_date`).
+the same account). Writes <work>/raw/acled/acled_tcd_sdn.parquet, or with `belt` the other
+Sudano-Sahelian countries to acled_belt.parquet (all fields as delivered, plus `download_date`).
 """
 
 import os
@@ -62,14 +62,20 @@ def fetch(country: str, tok: str) -> pd.DataFrame:
         page += 1
 
 
-def main():
+# the wider Sudano-Sahelian belt (pooled test); Chad and Sudan are in acled_tcd_sdn.parquet
+BELT = ("Mauritania", "Senegal", "Gambia", "Mali", "Burkina Faso", "Niger", "Nigeria", "Cameroon",
+        "Central African Republic", "South Sudan")
+
+
+def main(which="tcd_sdn"):
     OUT.mkdir(parents=True, exist_ok=True)
     tok = token()
-    df = pd.concat([fetch(c, tok) for c in ("Chad", "Sudan")], ignore_index=True)
+    countries = ("Chad", "Sudan") if which == "tcd_sdn" else BELT
+    df = pd.concat([fetch(c, tok) for c in countries], ignore_index=True)
     df["download_date"] = date.today().isoformat()
-    df.to_parquet(OUT / "acled_tcd_sdn.parquet", index=False)
+    df.to_parquet(OUT / f"acled_{which}.parquet", index=False)
     print(f"[acled] {len(df)} events, {df['event_date'].min()} .. {df['event_date'].max()}")
 
 
 if __name__ == "__main__":
-    main()
+    main(sys.argv[1] if len(sys.argv) > 1 else "tcd_sdn")   # `belt` for the other belt countries

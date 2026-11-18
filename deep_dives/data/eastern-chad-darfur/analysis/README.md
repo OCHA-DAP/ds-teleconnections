@@ -77,3 +77,23 @@ Gotchas:
 - Coverage, labelling and CAST notes that come from looking at the data are in `text.json` (`notes`),
   not here: this repo is public.
 - The conflict data and text exist only in the work folder and on blob: push after every change.
+
+### Pooled Sudano-Sahelian test (section "The wider Sahel" on the restricted page)
+
+Design written first: `$W/processed/belt/prespec_2026-11-18.md` (with its amendments); hand-check in
+`$W/processed/belt/handcheck_2026-11-18.md`.
+
+```
+uv run python 10_acled.py belt                       # ACLED for the other belt countries -> $W/raw/acled/acled_belt.parquet
+P="uv run --with pystac-client --with planetary-computer --with rasterio --with geopandas python"
+$P 08_ndvi.py belt                                   # MODIS greening, 4 km, belt box (~3,700 reads, ~10 min)
+./fetch_belt_veg.sh $W                               # ASIS (ASI, VHI) + ASAP (cropland, rangeland) admin-1 series
+# provider boundaries -> $W/raw/belt/asap/gaul1_asap_v06.zip (ASAP download page), $W/raw/belt/gaul/g2015_2014_1.zip (FAO GAUL 2015)
+# CHIRPS v2 0.5 deg cube (projects/ds-precip-intercomparison/processed/grid05/chirps_v2.nc) -> $W/raw/belt/chirps_v2_grid05.nc
+uv run --with h5netcdf python 13_belt_cells.py       # cells, mask, rain, own + upstream greening
+uv run python 14_belt_conflict.py                    # tests, per country, matrix -> $W/processed/belt/belt_data.json (~10 min)
+uv run python blob_sync.py push
+```
+Gotchas: one belt-wide STAC search times out (08 searches in 10-degree chunks); FAO ASIS csvs are Latin-1;
+ASIS units are GAUL 2015 admin-1 codes (map them with the GAUL boundaries, not names); a cell's % of trend is
+meaningless where the line runs near zero (13 drops those series).

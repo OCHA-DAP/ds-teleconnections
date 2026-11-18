@@ -65,6 +65,10 @@ def render(spec: dict) -> str:
     D = json.loads(work("processed/conflict/conflict_data.json").read_text(encoding="utf-8"))
     D["text"] = json.loads(work("processed/conflict/text.json").read_text(encoding="utf-8"))
     P = json.loads(work("processed/page_data.json").read_text(encoding="utf-8"))  # geometry + season series (public)
+    try:  # pooled Sudano-Sahelian test (14_belt_conflict.py); the section stays hidden without it
+        D["belt"] = json.loads(work("processed/belt/belt_data.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        D["belt"] = None
     D["geo"], D["adm1"], D["sides"] = P["geo"], P["adm1"], P["sides"]
     _check(D)
     tpl = TPL.read_text(encoding="utf-8")
