@@ -31,8 +31,11 @@ def _container(write=False):
 
 
 def _remote(cc, prefix=""):
+    """Files under the prefix (the dev account has a hierarchical namespace: folder entries are skipped)."""
     root = f"{BLOB_PREFIX}/{prefix}".rstrip("/")
-    return {b.name[len(BLOB_PREFIX) + 1:]: b.size for b in cc.list_blobs(name_starts_with=root)}
+    return {b.name[len(BLOB_PREFIX) + 1:]: b.size
+            for b in cc.list_blobs(name_starts_with=root, include=["metadata"])
+            if (b.metadata or {}).get("hdi_isfolder") != "true" and b.name != BLOB_PREFIX}
 
 
 def fetch(rel: str) -> Path:
