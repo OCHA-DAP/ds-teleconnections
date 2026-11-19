@@ -22,7 +22,7 @@ DATA = Path(os.environ.get("ECD_WORK", REPO / "cache" / "eastern-chad-darfur"))
 BLOB_PREFIX = "ds-teleconnections/eastern-chad-darfur"
 # not mirrored: version-control folders inside downloaded repos, caches, logs, the UCDP csv
 # (the analysis reads the zip it came in)
-SKIP = re.compile(r"(^|/)(\.git|__pycache__)(/|$)|\.log$|\.DS_Store$|^raw/ucdp/GEDEvent_[^/]*\.csv$")
+SKIP = re.compile(r"(^|/)(\.git|__pycache__)(/|$)|\.log$|\.DS_Store$|^raw/ucdp/GEDEvent_[^/]*\.csv$|^raw/mcguirk_nunn/x/")
 
 
 def _container(write=False):

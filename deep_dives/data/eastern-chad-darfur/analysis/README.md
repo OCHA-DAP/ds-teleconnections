@@ -97,3 +97,21 @@ uv run python blob_sync.py push
 Gotchas: one belt-wide STAC search times out (08 searches in 10-degree chunks); FAO ASIS csvs are Latin-1;
 ASIS units are GAUL 2015 admin-1 codes (map them with the GAUL boundaries, not names); a cell's % of trend is
 meaningless where the line runs near zero (13 drops those series).
+
+### Contact-zone test (section "Where herders meet farmers" on the restricted page)
+
+McGuirk & Nunn's (2025) nearest-neighbour design, reproduced from their replication data and then carried to
+this page's data and outcome step by step. Design written first: `$W/processed/belt/prespec_2026-11-19_contact.md`.
+
+```
+# replication package (CC-BY 4.0), Zenodo record 13308366 -> $W/raw/mcguirk_nunn/replication_v2.1.zip,
+#   data + do-file + README unzipped (-j) into $W/raw/mcguirk_nunn/x/
+# UCDP Non-State 25.1 (ucdp-nonstate-251-csv.zip) -> $W/raw/ucdp/nonstate/
+# nearest neighbour per cell (15 builds $W/raw/mcguirk_nunn/n1_identity.parquet if missing): each cell's
+#   n1_g_prec_gpcc series (1989-2018) matched to the one territory with the same g_prec_gpcc series
+uv run python 15_contact.py --null     # permutation null only: the detectable effect, before any estimate
+uv run python 15_contact.py            # calibration, bridge, primary, variations -> $W/processed/belt/contact_data.json (~5 min)
+uv run python blob_sync.py push
+```
+Gotchas: the package has no South Sudan (its "Sudan" is pre-2011) and no neighbour names; the page shows herding
+scores only, never ethnic territory names (they stay in `$W/processed/belt/contact_neighbours.csv`).

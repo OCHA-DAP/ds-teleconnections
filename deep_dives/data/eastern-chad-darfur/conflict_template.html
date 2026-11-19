@@ -192,6 +192,24 @@ footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
 <div class="est" id="belt2026"></div>
 </section>
 
+<section id="contactsec" hidden>
+<h2 id="contact">Where herders meet farmers: the published design</h2>
+<p class="lead" id="ctlead"></p>
+<div class="tiles" id="cttiles"></div>
+<div class="card">
+  <h3 style="margin-top:0">From the published result to this page's question, step by step</h3>
+  <div id="ctbridge"></div>
+  <p class="cap" id="ctbridgecap"></p>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">Belt cells next to a herding group, by how much that group lived from moving herds</h3>
+  <div id="ctmap"></div>
+  <div class="legend" id="ctleg"></div>
+  <p class="cap" id="ctmapcap"></p>
+</div>
+<div class="est" id="ct2026"></div>
+</section>
+
 <h2 id="models">Conflict forecasting models</h2>
 <p class="note" id="modnote"></p>
 <div class="card"><div class="tablewrap"><table class="t" id="modtab"></table></div></div>
@@ -628,6 +646,116 @@ drawMonthly("resource"); seg("mSel", d => drawMonthly(d.c));
     : `<p><b>2026.</b> The written plan allowed a statement about 2026 only if a primary test showed a link, the extreme-season test was positive, and the sign held without Sudan and without each large country in turn. ${[!L.p1 && !L.p2 ? "Neither primary test showed a link" : "", !L.extreme ? "the extreme-season test was not positive at p < 0.05" : ""].filter(Boolean).join("; ")}. So this page gives no number for 2026.</p>`;
 })();
 
+// ---------- contact zones: McGuirk & Nunn's nearest-neighbour design ----------
+(function(){
+  const C = D.contact; if (!C || !D.belt) return;
+  document.getElementById("contactsec").hidden = false;
+  const NM = D.belt.names, cal = C.calibration, P = C.primary, cov = C.coverage, fmtc = d3.format(","), HALF = 0.5;
+  const A = (sc, o) => cal[sc].find(r => r.outcome === o);
+  // one unit for every row: % of the outcome's average for a season one typical swing drier next door (within-cell SD of
+  // rain next door, in the rows whose neighbour herds), neighbour scoring 0.5 against a farming one; + = more events
+  const rel = (g, r) => -100 * g * HALF * r.sd_nc / r.rate;
+  const ncdf = z => { const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2),
+    q = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - q : q; };
+  const fp = p => p < 0.01 ? "p < 0.01" : p < 0.1 ? `p = ${d3.format(".3f")(p)}` : `p = ${fmt2(p)}`;
+  const OL = {ucdp_all_10: "UCDP, any conflict", acled_all_10: "ACLED, any conflict", acled_nonstate_10: "ACLED, non-state conflict"};
+  const row = (grp, lab, r, unit) => ({grp, lab, r, unit, v: rel(r.gamma1, r), lo: rel(r.null_hi, r), hi: rel(r.null_lo, r), p: r.p, mde: r.mde80_rel});
+  const G1 = "Their data, all Africa (published)", G2 = "Their data, this belt's cells only";
+  const rows = [];
+  Object.keys(OL).forEach(o => rows.push(row(G1, OL[o], A("africa", o), "cell-years")));
+  Object.keys(OL).forEach(o => rows.push(row(G2, OL[o], A("belt", o), "cell-years")));
+  const BL = {B1: "Switch to this page's data: ACLED any conflict, 1997–2019", B2: "… seasons 2010–2024", B3: "… June–September rain, events July–October"};
+  C.bridge.forEach(r => rows.push(row("This page's data", BL[r.key] || r.label, r, "cell-seasons")));
+  rows.push(row("This page's question", "Resource-type events, July–October (primary)", P, "cell-seasons"));
+  const SL = {S_nonstate: "ACLED non-state conflict", S_ucdp: "UCDP communal conflict", S_broad: "Broader herding score",
+              S_noSDN: "Without Sudan", S_octjan: "Events October–January", S_greening: "Greening instead of rain"};
+  C.secondary.forEach(r => rows.push(row("Variations on the primary", SL[r.key] || r.label, r, "cell-seasons")));
+  const R = Object.fromEntries(rows.map(r => [r.grp + "|" + r.lab, r])), at = (g, o) => R[g + "|" + OL[o]];
+  const half = r => (r.hi - r.lo) / 2, pr = r => `${sgn1(r.v)}%`;
+  const cr = r => `${pr(r)} (chance ±${fmt0(half(r))}, ${fp(r.p)}${r.p >= 0.025 && r.p < 0.05 ? ", borderline" : ""})`;
+  const PR = R["This page's question|Resource-type events, July–October (primary)"];
+  const a1 = at(G1, "acled_all_10"), a2 = at(G2, "acled_all_10");
+  const out1 = Object.keys(OL).map(o => at(G1, o)).filter(r => r.p < 0.05), in1 = Object.keys(OL).map(o => at(G1, o)).filter(r => r.p >= 0.05);
+  const out2 = Object.keys(OL).map(o => at(G2, o)).filter(r => r.p < 0.05);
+  const evc = Object.entries(P.iso_events_contact).filter(([k, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const top2 = evc.slice(0, 2), top2n = d3.sum(top2, d => d[1]);
+  const looTop = C.loo.find(r => r.key === `LOO_${evc[0][0]}`);
+  const pub = Object.keys(OL).map(o => `${fmt1(Math.abs(A("africa", o).published_pct))}%`);
+  document.getElementById("ctlead").textContent =
+    `McGuirk & Nunn found, across Africa, that a drier year in the territory of a neighbouring group living from moving herds brings more conflict to a cell, and a drier year next to a farming group does not. ` +
+    `Their coefficients reproduce exactly from their replication data (their table: ${pub[0]}, ${pub[1]} and ${pub[2]} of the average per standard deviation of rain, for UCDP, ACLED and ACLED non-state conflict). ` +
+    `Judged as everything on this page is, by reshuffling whole years of rain, ${out1.length ? `${out1.map(r => `the ${r.lab.replace(", any conflict", "").replace(", non-state conflict", " non-state")} result (${fp(r.p)})`).join(" and ")} stand${out1.length === 1 ? "s" : ""} out from chance (p < 0.05) across Africa` : "none of them stands out from chance (p < 0.05) across Africa"}${in1.length ? `; ${in1.map(r => `${r.lab} (${fp(r.p)})`).join(" and ")} do${in1.length === 1 ? "es" : ""} not` : ""}. ` +
+    `${D.text.notes.contact_biomass || ""} ` +
+    `From here on, every effect is in one unit: % of the average for a typical drier season next to the median herding neighbour. ` +
+    `In this belt's ${fmtc(a2.r.cells)} cells alone, ${out2.length ? `only ${out2.map(r => r.lab).join(" and ")} stands out from chance` : "none of the three stands out from chance"}: ACLED any conflict gives ${cr(a2)}, where about ${fmt0(a2.mde)}% would be needed. ` +
+    `This page's primary test, resource-type events in July–October, fixed in writing before any event was joined, gives ${cr(PR)}; it could only pick out about ${fmt0(PR.mde)}%, ${fmt0(PR.mde / a1.v)} times the all-Africa ACLED rain estimate in the same unit. ` +
+    (() => { const g = R["Variations on the primary|Greening instead of rain"]; return g ? `With greening next door instead of rain, the nearest analogue to their plant biomass, it gives ${cr(g)}, with about ${fmt0(g.mde)}% detectable. ` : ""; })() +
+    `The primary test rests on ${top2.map(([k, n]) => `${NM[k]} (${n})`).join(" and ")}, ${fmtc(top2n)} of the ${fmtc(P.events_contact)} cell-seasons with an event next to herders; ${evc.slice(2).map(([k, n]) => `${NM[k]} ${n}`).join(", ") || "no other country"}.`;
+  const tiles = [
+    {lbl: "Their data, all Africa", v: pr(a1), sub: `ACLED any conflict, ${fp(a1.p)} · UCDP ${pr(at(G1, "ucdp_all_10"))} (${fp(at(G1, "ucdp_all_10").p)}) · non-state ${pr(at(G1, "acled_nonstate_10"))} (${fp(at(G1, "acled_nonstate_10").p)}) · coefficients match their table to four decimals`},
+    {lbl: "Their data, this belt only", v: pr(a2), sub: `ACLED any conflict · chance ±${fmt0(half(a2))} · ${fp(a2.p)} · UCDP ${pr(at(G2, "ucdp_all_10"))} (${fp(at(G2, "ucdp_all_10").p)}) · non-state ${pr(at(G2, "acled_nonstate_10"))} (${fp(at(G2, "acled_nonstate_10").p)})`},
+    {lbl: "This page's question: resource-type, July–October", v: pr(PR), sub: `${sgn2(P.pp_half)} points of probability · chance ±${fmt0(half(PR))}% · ${fp(PR.p)} · detectable ≈ ${fmt0(PR.mde)}% · base rate ${fmt1(100*P.rate)}% · seasons ${P.seasons[0]}–${P.seasons[1]}`},
+    {lbl: "Cells next to herders in the test", v: fmtc(P.contact_cells), sub: `of ${fmtc(cov.contact)} in the belt · cell-seasons with an event next to herders: ${evc.map(([k, n]) => `${NM[k]} ${n}`).join(", ")} · without ${NM[evc[0][0]]}: ${looTop ? `${sgn1(rel(looTop.gamma1, looTop))}% (${fp(looTop.p)})` : "–"}`},
+  ];
+  const t = document.getElementById("cttiles");
+  tiles.forEach(tl => { const d = document.createElement("div"); d.className = "tile";
+    d.innerHTML = `<p class="lbl">${tl.lbl}</p><div class="row"><span class="v">${tl.v}</span></div><div class="sub">${tl.sub}</div>`; t.appendChild(d); });
+
+  // bridge chart
+  const Wf = 1040, rh = 26, gh = 22, m = {t:10, r:20, b:34, l:380};
+  const groups = [...new Set(rows.map(r => r.grp))];
+  const Hf = m.t + m.b + rh*rows.length + gh*groups.length, svg = svgEl(document.getElementById("ctbridge"), Wf, Hf);
+  const ext = Math.min(150, d3.max(rows, r => Math.max(Math.abs(r.v), Math.abs(r.lo), Math.abs(r.hi))));
+  const x = d3.scaleLinear([-ext*1.08, ext*1.08], [m.l, Wf-m.r]).nice().clamp(true);
+  svg.append("g").attr("class","gridl").attr("transform",`translate(0,${Hf-m.b})`).call(d3.axisBottom(x).ticks(8).tickSize(-(Hf-m.t-m.b)).tickFormat(""));
+  svg.append("g").attr("class","axis").attr("transform",`translate(0,${Hf-m.b})`).call(d3.axisBottom(x).ticks(8).tickFormat(d => (d > 0 ? "+" : "") + d + "%"));
+  svg.append("text").attr("x", (m.l+Wf-m.r)/2).attr("y", Hf-4).attr("text-anchor","middle").style("font-size","11.5px").text("% of the average, a typical drier season next to a herding neighbour (+ = more events after drier seasons)");
+  svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.t).attr("y2", Hf-m.b).attr("stroke","#8a9495");
+  let yy = m.t;
+  groups.forEach(g => {
+    svg.append("text").attr("x", 0).attr("y", yy + gh - 6).style("font-size","11px").style("fill","#6b7576").style("font-weight","700").text(g.toUpperCase());
+    svg.append("line").attr("x1", 0).attr("x2", Wf).attr("y1", yy + 2).attr("y2", yy + 2).attr("stroke","#eceff0");
+    yy += gh;
+    rows.filter(r => r.grp === g).forEach(r => { const cy = yy + rh/2, o = r.r;
+      svg.append("text").attr("x", 12).attr("y", cy+4).style("font-size","12px").style("fill","#1f2324").style("font-weight", g === "This page's question" ? "700" : "400").text(r.lab);
+      svg.append("rect").attr("x", x(r.lo)).attr("width", Math.max(1, x(r.hi)-x(r.lo))).attr("y", cy-6).attr("height", 12).attr("fill","#d6dbdc").attr("rx",2);
+      svg.append("circle").attr("cx", x(r.v)).attr("cy", cy).attr("r", 5).attr("fill","#1f2324");
+      const cg = o.se_cgm != null ? `<br>clustered standard errors, as in their paper: ${fp(2 * (1 - ncdf(Math.abs(o.gamma1 / o.se_cgm))))}${o.published_pct != null ? ` · their table: ${sgn1(-o.published_pct)}% in their unit` : ""}` : "";
+      svg.append("rect").attr("x", m.l).attr("width", Wf-m.l-m.r).attr("y", cy-rh/2).attr("height", rh).attr("fill","transparent")
+        .on("mousemove", ev => showTip(ev, `<b>${g}</b><br>${r.lab}: <b>${pr(r)}</b> of the average (chance ${sgn1(r.lo)}% to ${sgn1(r.hi)}%, ${fp(r.p)})<br>detectable four times in five: about ${fmt0(r.mde)}%${cg}<br><span class="m">${fmtc(o.n)} ${r.unit} · ${fmtc(o.cells)} cells, ${fmtc(o.contact_cells)} next to herders · ${fmt1(100*o.rate)}% with an event</span>`)).on("mouseleave", hideTip);
+      yy += rh; });
+  });
+  const sec = rows.filter(r => r.grp === "Variations on the primary"), sh = sec.filter(r => r.p < 0.05);
+  const lv = C.loo.map(r => rel(r.gamma1, r));
+  const ctry = C.countries.map(r => { const v = rel(r.gamma1, r), b = D.belt.per_country.find(x => x.iso3 === r.key.slice(5) && x.base === "P1");
+    return `${r.label} ${sgn1(v)}% (${fp(r.p)}${v < 0 && r.p < 0.05 ? ": more events after wetter seasons next door, which no design here predicted and which is not explained" : ""}${v < 0 && r.p < 0.05 && b ? `; the pooled upstream-greening test above pointed the other way there, ${sgn2(b.pp)} points, ${fp(b.p)}` : ""})`; });
+  const pr2 = C.post_review || [], dC = pr2.find(r => r.key === "D_C1"), dB = pr2.find(r => r.key === "D_B2");
+  document.getElementById("ctbridgecap").textContent = `Each row is McGuirk & Nunn's specification: rain next door, in the cell's own territory and in the cell itself, each also multiplied by the relevant herding score, with each cell's own average and each country's average for that year (season) taken out. The dot is the term for rain next door × herding score, as % of the outcome's average, for a season one typical swing drier next door (the within-cell standard deviation of rain next door, where the neighbour herds) and a neighbour scoring 0.5, the median herding neighbour, against a farming one. Their table uses a different unit (a standard deviation of rain in any cell, neighbour scoring 1). Grey bar, every row: 95% of the estimates from reshuffling whole years or seasons of the rain map ${fmtc(P.nperm)} times; hover for the clustered standard errors their paper uses, on which the all-Africa estimates look sharper. Their rows use their GPCC rain and conflict indicators (UCDP 1989–2018, ACLED 1997–2019). This page's rows use CHIRPS rain, its own ACLED download with events placed within about 25 km, its own country map and the belt cells, all changed at once in the first step; Sudan runs to 2022; for resource-type events, country-years where the war filter removes most farmer- and herder-tagged events are dropped, as in the pooled test. Leaving one country out at a time (${C.loo.length} countries with resource-type events next to herders), the primary ranges from ${sgn1(d3.min(lv))}% to ${sgn1(d3.max(lv))}%. ` +
+    `${sh.length ? `Of the ${sec.length} variations, ${sh.length} pass${sh.length === 1 ? "es" : ""} p < 0.05 (about ${fmt1(0.05*sec.length)} expected by chance): ${sh.map(r => `${r.lab} ${cr(r)}, ${r.v < 0 ? "fewer" : "more"} events after drier seasons next door, from ${fmtc(r.r.events)} cell-seasons with an event (${fmtc(r.r.events_contact)} next to herders)`).join("; ")}. ` : `None of the ${sec.length} variations passes p < 0.05. `}` +
+    `${ctry.length ? `Country by country (the ${ctry.length} with at least ${D.belt.design.min_events_country} resource-type events next to herders): ${ctry.join("; ")}. ` : ""}` +
+    `${dC && dB ? `Added after review, not in the plan: with each cell's own ${P.seasons[0]}–${P.seasons[1]} rain trend removed, the primary gives ${sgn1(rel(dC.gamma1, dC))}% (${fp(dC.p)}) and the ${P.seasons[0]}–${P.seasons[1]} step ${sgn1(rel(dB.gamma1, dB))}% (${fp(dB.p)})${dC.p >= 0.05 && dB.p >= 0.05 ? ": neither stands out from chance, so the small differences between steps are not signals" : ""}. ` : ""}` +
+    `${D.text.notes.contact_data || ""}`;
+
+  // map
+  const g0 = D.belt.adm0, W = 1040, H = 380, msvg = svgEl(document.getElementById("ctmap"), W, H, "mapsvg");
+  const proj = d3.geoEquirectangular().fitExtent([[4,4],[W-4,H-4]], g0), path = d3.geoPath(proj);
+  const tc = d3.scaleThreshold([0.0001, 0.3, 0.5, 0.7], ["#e4e8e9", "#fde0c5", "#f5a66f", "#d9622f", "#8c3410"]);
+  msvg.append("g").selectAll("path").data(g0.features).join("path").attr("d", path).attr("fill","#f3f4f4").attr("stroke","none");
+  msvg.append("g").selectAll("rect").data(C.cells.filter(c => c.thp_n != null)).join("rect")
+    .attr("x", c => proj([c.lon-.25, c.lat+.25])[0]).attr("y", c => proj([c.lon-.25, c.lat+.25])[1])
+    .attr("width", c => proj([c.lon+.25, c.lat])[0] - proj([c.lon-.25, c.lat])[0] + .3)
+    .attr("height", c => proj([c.lon, c.lat-.25])[1] - proj([c.lon, c.lat+.25])[1] + .3)
+    .attr("fill", c => tc(c.thp_n))
+    .on("mousemove", (ev, c) => showTip(ev, `<b>${NM[c.iso3]}</b> <span class="m">${fmt2(c.lat)}°N ${fmt2(c.lon)}°E</span><br>Nearest neighbouring group's herding score: <b>${fmt2(c.thp_n)}</b><br>Own group's score: ${c.thp_g != null ? fmt2(c.thp_g) : "– (not in the test)"}`)).on("mouseleave", hideTip);
+  msvg.append("g").selectAll("path").data(g0.features).join("path").attr("d", path).attr("fill","none").attr("stroke","#3a4344").attr("stroke-width",.8).style("pointer-events","none");
+  const tl = ["0: farming or settled neighbour", "under 0.3", "0.3–0.5", "0.5–0.7", "0.7 or more"];
+  document.getElementById("ctleg").innerHTML = tc.range().map((c, i) => `<span><i class="sq" style="background:${c}"></i>${tl[i]} · ${C.cells.filter(x => x.thp_n != null && tc(x.thp_n) === c).length}</span>`).join("");
+  document.getElementById("ctmapcap").textContent = `Each belt cell's nearest neighbouring ethnic territory on Murdock's 1959 map, as matched in McGuirk & Nunn's replication data. Colour: their score for the share of that group's traditional subsistence that came from herding on the move (narrow definition, 0–1). Blank: no score. Cells whose own group has no score are shown but not tested. Group names are not shown. The map is old and coarse, and herds now range further south than it shows; Nigeria, where ACLED records the most farmer–herder violence, has only ${cov.contact_by_country.NGA || 0} cells next to a herding group on it. The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.`;
+  document.getElementById("ct2026").innerHTML = C.licence.granted
+    ? `<p><b>2026.</b> ${D.text.notes.contact_2026 || ""}</p>`
+    : `<p><b>2026.</b> The written plan allowed a statement about 2026 only if the primary test showed a link and its sign held without Sudan and without each country with at least 50 resource-type events next to herders. ${[!C.licence.c1_link ? "The primary test showed no link" : "", C.licence.c1_link && !C.licence.noSDN_sign ? "The sign did not hold without Sudan" : "", C.licence.c1_link && !C.licence.loo_sign_all ? "The sign did not hold without each large country" : ""].filter(Boolean).join("; ")}, so this section gives no number for 2026.</p>`;
+})();
+
 // ---------- models ----------
 (function(){
   const M = D.text.models;
@@ -685,6 +813,8 @@ drawMonthly("resource"); seg("mSel", d => drawMonthly(d.c));
         .filter(([iso, y]) => +y >= DB.seasons[0] && +y <= DB.seasons[1] + 1);
       const byIso = d3.rollup(dropped, v => v.map(d => d[1]).sort().join(", "), d => d[0]);
       return `<p>Written plan first (18 November 2026, before any event was joined to an indicator; kept with the data): two primary tests, the units, the effects, the checks, the extreme-season test and the conditions for any 2026 statement. ${D.text.notes.belt_amend || ""} ${D.text.notes.belt_scope} ${D.text.notes.belt_attr} Years dropped: ${[...byIso].map(([iso, ys]) => `${B.names[iso]} ${ys}`).join("; ") || "none"}. Sudan: seasons to ${DB.sdn_last}. ${D.text.notes.belt_handcheck}</p><p>Indicators per cell: MODIS greening at about 4 km (own cell, and upstream: vegetated land 0.5–2.5° north within 1° of longitude), CHIRPS June–September rain (own and upstream), and four admin-1 indicators mapped to cells through the providers' own boundaries: JRC ASAP cumulated FPAR z-score for cropland and rangeland at 21 October, FAO ASI (cropland) at its 21 September dekad, FAO VHI July–October mean; JRC and VHI minus their own 2001–2024 line, ASI raw. All in units of each cell's own 2001–2024 standard deviation.</p>`; })()) : "",
+    D.contact ? det("The contact-zone test", (() => { const C = D.contact, cov = C.coverage;
+      return `<p>A third design, after the Darfur and pooled tests had found nothing; the written plan (19 November 2026, kept with the data) came after both results and after McGuirk & Nunn's published table were known, and before any event was joined to the contact measures. It fixed one primary test (bar: p &lt; 0.025, as for each primary before), the bridge, the variations and the conditions for a 2026 statement. The detectable effect was computed from the reshuffled estimates before the real one was read: ${D.text.notes.contact_mde_pre || ""} In the unit used on this page, the final run gives about ${fmt0(C.primary.mde80_rel)}%. After an independent review, the published rows were also judged by reshuffling, the unit was changed, and a check with each cell's rain trend removed was added; none of this is in the plan.</p><p>Data: McGuirk & Nunn's replication package (Zenodo record 13308366, CC-BY 4.0), which gives each half-degree cell's own ethnic territory on Murdock's 1959 map and herding scores for its own group and its nearest neighbouring group (Ethnographic Atlas: nomadic or semi-nomadic, times the share of subsistence from herded animals). The package does not name the neighbour; it is recovered by matching each cell's neighbour-rain series (1989–2018) to the one territory whose own series is identical: no two territories share a series, and ${d3.format(",")(cov.pkg_matched)} of the package's ${d3.format(",")(cov.pkg_cells)} cells find their neighbour this way. ${d3.format(",")(cov.matched)} of the ${d3.format(",")(cov.belt_cells)} belt cells match a cell in the package, ${d3.format(",")(cov.with_score)} have a neighbour score and ${d3.format(",")(cov.contact)} a neighbour scoring above 0. Left out of this page's rows: ${cov.no_identity} cells whose neighbour could not be identified (${cov.no_identity_contact} of them next to a herding group), and ${cov.no_own_score} whose own group has no score, as in their regression. Rain for this page's rows: CHIRPS, June–September (or calendar-year) totals, averaged over each territory's cells. Greening variation: MODIS, % of each territory's own 2001–2024 trend, for the ${cov.greening_territories} territories with at least 100 vegetated pixels inside the belt box. UCDP communal events: non-state events in conflicts between informally organised groups (UCDP Non-State 25.1, organisation level 3), located within 25 km.</p><p>Calibration: their Table 2 was rerun from their data with the same fixed effects and two-way clustered standard errors; the coefficients, standard errors and their percentage effects match to the stated precision. The chart uses another unit, the year-to-year swing of rain next door where the neighbour herds and the median herding neighbour, because that is the variable being tested and the cells it matters for; and it judges every row by reshuffling whole years, the test used throughout this page, which is wider than their clustered standard errors.</p>`; })()) : "",
     det("What this cannot show", `<ul><li>Effects of the size seen in 2026: every tested season was much milder, so a link that only appears in extreme seasons would not show up here, and none of these numbers can be stretched to 2026.</li><li>Violence that is not reported, or reported without location or actor detail; rural eastern Chad above all.</li><li>Effects through displacement, prices or herd losses that take longer than the windows tested, or play out outside Darfur (herds moving into South Sudan, the Central African Republic or Chad).</li><li>${D.text.notes.rsf} The post-2023 counts cannot test or verify anything.</li><li>Which locality an event lands in, when ACLED places it only near a town (see Seasons and windows).</li></ul>`),
   ].join("");
 })();

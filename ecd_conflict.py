@@ -54,6 +54,18 @@ def _check(D: dict) -> None:
         bad.append("'2026 poorer than any season in the test' (Darfur or pastoral-zone greening)")
     if max(r["m"] for r in D["cast"]) >= "2026-10":
         bad.append("'no CAST forecast covers the months after this season'")
+    C = D.get("contact")
+    if C:
+        cal = {(sc, r["outcome"]): r for sc, rows in C["calibration"].items() for r in rows}
+        rel = lambda g, r: -100 * g * 0.5 * r["sd_nc"] / r["rate"]
+        if any(abs(r["gamma1"] - r["published"]) > 5e-5 or abs(r["se_cgm"] - r["published_se"]) > 5e-5
+               or abs(r["pct_paper"] - r["published_pct"]) > 0.01 for (sc, _), r in cal.items() if sc == "africa"):
+            bad.append("'coefficients reproduce exactly ... (their table: ...)' (contact calibration)")
+        P, a1 = C["primary"], cal[("africa", "acled_all_10")]
+        if rel(a1["gamma1"], a1) <= 0 or P["mde80_rel"] < 2 * rel(a1["gamma1"], a1):
+            bad.append("'could only pick out about X%, N times the all-Africa ACLED rain estimate' (N < 2)")
+        if any(k not in D["text"]["notes"] for k in ("contact_data", "contact_mde_pre", "contact_biomass")):
+            bad.append("text.json notes for the contact section")
     for k in ("lit", "models", "notes", "handcheck", "sources"):
         if not D["text"].get(k):
             bad.append(f"text.json has no '{k}'")
@@ -69,6 +81,13 @@ def render(spec: dict) -> str:
         D["belt"] = json.loads(work("processed/belt/belt_data.json").read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         D["belt"] = None
+    try:  # contact-zone test (15_contact.py); needs the belt section's outlines
+        D["contact"] = json.loads(work("processed/belt/contact_data.json").read_text(encoding="utf-8"))
+        D["contact"].pop("neighbours", None)            # ethnic territory names never go on the page
+        for c in D["contact"]["cells"]:
+            c.pop("n1", None), c.pop("own", None)
+    except Exception:  # noqa: BLE001
+        D["contact"] = None
     D["geo"], D["adm1"], D["sides"] = P["geo"], P["adm1"], P["sides"]
     _check(D)
     tpl = TPL.read_text(encoding="utf-8")
@@ -102,7 +121,7 @@ def encrypt() -> None:
         if "staticrypt" not in enc:
             raise SystemExit("the encrypted page is not a staticrypt page; nothing written")
         # strings that occur in the plaintext page (checked) and must not survive encryption
-        for marker in ("const D =", "greening", "ACLED", "adm2_pcode", "resource-type", "McGuirk", "share_res"):
+        for marker in ("const D =", "greening", "ACLED", "adm2_pcode", "resource-type", "McGuirk", "share_res", "thp_n"):
             if marker in enc:
                 raise SystemExit(f"the encrypted page contains plaintext ({marker}); nothing written")
         enc = enc.replace("<head>", '<head>\n<meta name="robots" content="noindex">', 1)
