@@ -1,0 +1,1383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ENSO and seasonal rainfall, season by season — Teleconnections</title>
+<meta name="description" content="Interactive global map of how closely each three-month season's rainfall has followed ENSO (Niño3.4), 1981–2025, for every 0.25° land cell.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+/* HDX v2 tokens, as in ../assets/site.css */
+:root{--b5:#269777;--b6:#1e795f;--b7:#18614c;--b05:#e9f5f1;--b1:#d4eae4;
+      --n9:#1f2324;--n8:#3f4748;--n7:#5e6a6b;--n3:#c5cccc;--n1:#e8ecec;--n05:#f5f7f7;
+      --wet2:#0D40B0;--wet1:#71B3E5;--dry1:#C8844A;--dry2:#7B3A1A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--n05);color:var(--n9);
+  font-family:'Roboto',system-ui,-apple-system,'Segoe UI','Helvetica Neue',Arial,sans-serif;line-height:1.5}
+.wrap{max-width:1480px;margin:0 auto;background:#fff;min-height:100vh;box-shadow:0 0 40px rgba(31,35,36,.06)}
+header.top{padding:14px 24px 10px;display:flex;flex-wrap:wrap;align-items:flex-start;gap:6px 22px}
+.home-link{display:inline-block;margin-top:4px;padding:6px 12px;font:500 13px/1 'Roboto',system-ui,sans-serif;color:var(--b6);
+  background:var(--b05);border:1px solid var(--b1);border-radius:4px;text-decoration:none;white-space:nowrap}
+.home-link:hover{background:var(--b1)}
+header h1{font-family:'Merriweather',Georgia,serif;font-size:22px;line-height:1.25;margin:0 0 3px}
+header .sub{margin:0;font-size:14px;color:var(--n8);max-width:92ch}
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:8px 24px 10px;border-top:1px solid var(--n1);
+  border-bottom:1px solid var(--n1);background:#fbfcfc}
+.ctl-label{font-size:11px;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--n7);margin-right:6px}
+.seasons{display:flex;flex-wrap:wrap;align-items:center;gap:3px}
+.seasons button,.seg button,.play{font:500 13px/1 'Roboto',system-ui,sans-serif;border:1px solid var(--n3);background:#fff;color:var(--n8);
+  padding:7px 8px;border-radius:4px;cursor:pointer;min-width:42px}
+.seasons button:hover,.seg button:hover,.play:hover{border-color:var(--b5);color:var(--b7)}
+.seasons button[aria-pressed="true"],.seg button[aria-pressed="true"]{background:var(--b6);border-color:var(--b6);color:#fff}
+.seasons button.loading{color:var(--n3)}
+.play{min-width:36px;margin-left:6px}
+.seg{display:flex}
+.seg button{border-radius:0;min-width:0;padding:7px 10px}
+.seg button:first-child{border-radius:4px 0 0 4px}
+.seg button:last-child{border-radius:0 4px 4px 0;margin-left:-1px}
+.spacer{flex:1}
+#search{font:14px 'Roboto',system-ui,sans-serif;padding:6px 10px;border:1px solid var(--n3);border-radius:4px;width:220px}
+#search:focus,.seasons button:focus-visible,.seg button:focus-visible,.play:focus-visible{outline:2px solid var(--b5);outline-offset:1px}
+.mapwrap{position:relative;height:max(460px,calc(100vh - 150px))}
+#map{position:absolute;inset:0;background:#f7f8f8;overflow:hidden}
+#gl,#ov{position:absolute;inset:0;width:100%;height:100%;display:block}
+#ov{touch-action:none;cursor:grab}
+#ov.dragging{cursor:grabbing}
+.zoom-ctl{position:absolute;top:10px;right:10px;z-index:800;display:flex;flex-direction:column;border-radius:6px;
+  overflow:hidden;box-shadow:0 1px 6px rgba(31,35,36,.18)}
+.zoom-ctl button{width:32px;height:32px;border:0;background:#fff;font:500 18px/1 'Roboto',system-ui,sans-serif;
+  color:var(--n8);cursor:pointer}
+.zoom-ctl button+button{border-top:1px solid var(--n1)}
+.zoom-ctl button:hover:not(:disabled){color:var(--b7);background:var(--b05)}
+.zoom-ctl button:disabled{color:var(--n3);cursor:default}
+.zoom-ctl button:focus-visible{outline:2px solid var(--b5);outline-offset:-2px}
+.scale{position:absolute;right:10px;bottom:22px;z-index:800;font-size:11px;line-height:1.2;color:var(--n8);
+  background:rgba(255,255,255,.85);padding:1px 5px 2px;border:1.5px solid var(--n8);border-top:0;pointer-events:none;
+  white-space:nowrap;text-align:left}
+.attrib{position:absolute;right:0;bottom:0;z-index:800;font-size:10.5px;color:var(--n7);background:rgba(255,255,255,.82);
+  padding:1px 6px}
+.attrib a{color:var(--n7)}
+.season-badge{position:absolute;top:10px;left:10px;z-index:800;background:rgba(255,255,255,.94);border-radius:6px;
+  padding:8px 12px 7px;box-shadow:0 1px 6px rgba(31,35,36,.18);pointer-events:none}
+.season-badge .big{font:700 18px/1.15 'Merriweather',Georgia,serif}
+.season-badge .small{font-size:12px;color:var(--n7)}
+.legend{position:absolute;left:10px;bottom:22px;z-index:800;background:rgba(255,255,255,.95);border-radius:6px;
+  padding:9px 12px 8px;box-shadow:0 1px 6px rgba(31,35,36,.18);font-size:12.5px;max-width:300px}
+.legend h3{font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--n7);margin:0 0 6px}
+.legend .row{display:flex;align-items:center;gap:8px;margin:3px 0}
+.legend .sw{width:18px;height:12px;border-radius:2px;flex:none;border:1px solid rgba(0,0,0,.08)}
+.legend .sw.dry{background:repeating-linear-gradient(135deg,#f4f1ea 0 3px,#d9cfbb 3px 4px)}
+.legend .sw.dryc{background:repeating-linear-gradient(135deg,#C8844A 0 3px,#e8cdb5 3px 4px)}
+.legend .ramp{height:12px;border-radius:2px;margin:4px 0 2px;
+  background:linear-gradient(90deg,#7B3A1A 0%,#C8844A 35%,#F5F0EC 50%,#71B3E5 65%,#0D40B0 100%)}
+.legend .ticks{position:relative;height:14px;font-size:10.5px;color:var(--n7)}
+.legend .ticks span{position:absolute;transform:translateX(-50%)}
+.legend .ends{display:flex;justify-content:space-between;font-size:11.5px;color:var(--n8)}
+.legend .note{font-size:11.5px;color:var(--n7);margin-top:5px}
+.status{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:900;background:var(--n9);color:#fff;
+  font-size:13px;padding:6px 12px;border-radius:4px;display:none}
+.tip{position:absolute;z-index:850;background:#fff;border-radius:6px;box-shadow:0 2px 14px rgba(31,35,36,.25);
+  padding:9px 12px 8px;font-size:12.5px;width:308px;pointer-events:none;display:none}
+.tip.pinned{pointer-events:auto}
+.tip .hd{display:flex;justify-content:space-between;gap:8px;color:var(--n7);font-size:11.5px}
+.tip .close{display:none;border:0;background:none;font-size:16px;line-height:1;color:var(--n7);cursor:pointer;padding:0 0 0 6px}
+.tip.pinned .close{display:inline}
+.tip .rv{font-size:15px;font-weight:700;margin:3px 0 1px}
+.tip .cls{display:inline-block;font-size:11.5px;font-weight:500;padding:1px 6px;border-radius:3px;margin-left:4px;vertical-align:1px}
+.tip .ln{color:var(--n8);margin:1px 0}
+.tip .muted{color:var(--n7)}
+.tip svg{display:block;margin-top:6px}
+.tip svg .bar{cursor:default}
+.tip.pinned svg .hit{cursor:pointer}
+.tip .hint{font-size:10.5px;color:var(--n7);margin-top:2px}
+.about{padding:22px 24px 36px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:4px 40px;font-size:14.5px}
+.about h2{font-size:16px;margin:14px 0 6px;color:var(--n9)}
+.about p,.about li{color:var(--n8);margin:0 0 8px}
+.about ul{padding-left:18px;margin:0 0 8px}
+.about a{color:var(--b6)}
+.about .foot{grid-column:1/-1;font-size:12.5px;color:var(--n7);border-top:1px solid var(--n1);padding-top:12px;margin-top:8px}
+@media (max-width:760px){
+  header.top{padding:10px 14px 8px}
+  header h1{font-size:18px}
+  .controls{padding:8px 14px}
+  #search{width:100%}
+  .spacer{display:none}
+  .legend{font-size:11.5px;max-width:210px;padding:7px 9px}
+  .mapwrap{height:max(420px,calc(100vh - 230px))}
+  .about{padding:16px 14px 28px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <a class="home-link" href="../">&larr; Teleconnections</a>
+  <div>
+    <h1>ENSO and seasonal rainfall, season by season</h1>
+    <p class="sub">How closely each three-month season’s rainfall has followed ENSO (the Niño3.4 index)
+      from 1981 to 2025, for every 0.25° land cell. <strong style="color:var(--wet2)">Blue</strong>: wetter in El Niño years,
+      drier in La Niña years. <strong style="color:var(--dry2)">Brown</strong>: drier in El Niño years, wetter in La Niña years.
+      Hover a cell for its values; click to keep the box open. Drag to turn the globe; scroll or pinch to zoom.</p>
+  </div>
+</header>
+
+<div class="controls">
+  <div class="seasons" role="group" aria-label="Season">
+    <span class="ctl-label">Season</span>
+    <span id="season-buttons" style="display:contents"></span>
+    <button type="button" class="play" id="play" aria-label="Play through the seasons" title="Play through the seasons">&#9654;</button>
+  </div>
+  <div class="spacer"></div>
+  <div style="display:flex;align-items:center">
+    <span class="ctl-label">Colours</span>
+    <div class="seg" role="group" aria-label="Colours">
+      <button type="button" data-mode="classes" aria-pressed="true" title="The survey's four classes">Classes</button>
+      <button type="button" data-mode="ramp" aria-pressed="false" title="Every value of r on a continuous scale">All values</button>
+    </div>
+  </div>
+  <div style="display:flex;align-items:center">
+    <span class="ctl-label">Drier months</span>
+    <div class="seg" role="group" aria-label="Drier part of the year">
+      <button type="button" data-dry="0" aria-pressed="true" title="As in the survey: only seasons with at least 25% of the year's rain">Hide</button>
+      <button type="button" data-dry="1" aria-pressed="false" title="Also colour seasons with less than 25% of the year's rain (hatched)">Show</button>
+    </div>
+  </div>
+  <input id="search" type="search" list="countrylist" placeholder="Zoom to a country" aria-label="Zoom to a country" autocomplete="off">
+  <datalist id="countrylist"></datalist>
+</div>
+
+<div class="mapwrap">
+  <div id="map" role="region" aria-label="Map of ENSO correlation with seasonal rainfall">
+    <canvas id="gl"></canvas><canvas id="ov"></canvas>
+    <div class="zoom-ctl"><button type="button" id="zin" aria-label="Zoom in">+</button><button type="button" id="zout" aria-label="Zoom out">&minus;</button></div>
+    <div class="scale" id="scale"></div>
+    <div class="attrib">Equal Earth &rarr; Lambert azimuthal equal-area &middot; <a href="https://www.naturalearthdata.com/">Natural Earth</a></div>
+  </div>
+  <div class="season-badge" aria-live="polite"><div class="big" id="badge-big">…</div><div class="small" id="badge-small">Loading data…</div></div>
+  <div class="legend" id="legend"></div>
+  <div class="status" id="status"></div>
+  <div class="tip" id="tip" role="dialog" aria-live="polite"></div>
+</div>
+
+<section class="about">
+  <div>
+    <h2>What the map shows</h2>
+    <p>For each land cell (0.25°, about 28 km) and each three-month season, the correlation <em>r</em>
+      between that season’s rainfall and the Niño3.4 index, 1981–2025 (44 or 45 years, depending on the
+      season and the lead time). Positive <em>r</em>
+      (blue) means the season has tended to be wetter in El Niño years and drier in La Niña years; negative
+      <em>r</em> (brown) the reverse.</p>
+    <p>The darker shades (|<em>r</em>| ≥ 0.5) mark places where ENSO accounts for at least a quarter of the
+      year-to-year variation in that season’s rain; the lighter ones (0.3 to 0.5) for roughly a tenth to a
+      quarter. Grey: no clear relationship (|<em>r</em>| below 0.3, or not significant at <em>p</em> &lt; 0.05).
+      Hatched: these three months bring less than a quarter of the year’s rain in that cell (or under
+      0.25 mm a day), so the season is not assessed.</p>
+    <p>The box for a cell also shows its 12 seasons side by side, so the seasons when ENSO matters there are
+      visible at a glance.</p>
+  </div>
+  <div>
+    <h2>How it is computed</h2>
+    <ul>
+      <li><strong>Rain:</strong> ERA5 monthly precipitation, averaged over the three months of the season, one
+        value per year and cell.</li>
+      <li><strong>ENSO:</strong> NOAA’s monthly Niño3.4 anomaly (ERSST v5, 1991–2020 base), averaged over three
+        months, either the same three months or a window ending one, two or three months earlier. The map uses
+        whichever of these four gives the largest |<em>r</em>|; the box says which.</li>
+      <li><strong>Which seasons count:</strong> a season is assessed in a cell only if it brings at least 25%
+        of the year’s rain there (at least its share if rain were spread evenly over the year) and averages
+        at least 0.25 mm a day. Where rain falls all year, as in much of Indonesia, this skips some seasons that
+        are still wet. <em>Drier months: Show</em> colours those seasons too, hatched, wherever they average at
+        least 0.25 mm a day; the box always gives their <em>r</em>.</li>
+      <li><strong>Colour:</strong> Pearson <em>r</em>, two-tailed <em>p</em> &lt; 0.05 and |<em>r</em>| ≥ 0.3.
+        “All values” shows every <em>r</em> in assessed seasons, significant or not.</li>
+    </ul>
+    <p>This is the method of the <a href="../survey/">global teleconnection survey</a>. The survey’s pixel ENSO
+      map shows each cell’s strongest season; this map shows every season. On the cells both maps cover,
+      taking the strongest season here reproduces the survey’s map exactly.</p>
+  </div>
+  <div>
+    <h2>Reading it with care</h2>
+    <ul>
+      <li>Each cell is computed on its own, without smoothing. Even with no ENSO effect, about one cell in
+        twenty would pass <em>p</em> &lt; 0.05 by chance (somewhat more, because the best of four lead times is
+        kept), so trust patches of the same colour, not isolated cells.</li>
+      <li>Choosing the best of four lead times makes <em>r</em> slightly larger than a single fixed lead would.</li>
+      <li>The correlation describes 1981–2025. It is not a forecast, and it says nothing about how large a
+        particular El Niño’s effect will be.</li>
+      <li>ERA5 rainfall comes from a weather model constrained by observations. Where gauges are few it can
+        differ from satellite and station records; check CHIRPS or station data before relying on one area.</li>
+      <li>Coverage: all land between 60°S and 84°N. The survey’s maps stop at 100°W, 36°S and 56°N. Coastlines are
+        Natural Earth 1:10m with minor islands, so small islands have cells; coastal cells mix land and sea.</li>
+      <li>Projection: with the whole world in view the map is in Equal Earth, which shows every region at its
+        true relative size (the projection the UN General Assembly encouraged in September 2026). Dragging turns
+        the globe, so any place, including those across 180° such as Fiji, can be brought to the middle. Zooming
+        in changes the projection gradually to a Lambert azimuthal equal-area projection centred on the middle of
+        the view, which keeps the area you look at true to shape, with north up. Both are equal-area. In
+        between, the map is a blend of the two: areas are close to true in the middle of the view but can be
+        off by up to about a third towards the corners, most at high latitudes.</li>
+    </ul>
+  </div>
+  <p class="foot" id="foot">Data: ERA5 (Copernicus Climate Change Service), NOAA CPC Niño3.4, Natural Earth.
+    Map: Equal Earth for the whole world, Lambert azimuthal equal-area centred on the view when zoomed in, blended
+    in between; boundaries, coastlines and names from Natural Earth. The boundaries and names
+    shown and the designations used on this map do not imply official endorsement or acceptance by the United
+    Nations. Built by <code>enso_season_map.py</code> in
+    <a href="https://github.com/OCHA-DAP/ds-teleconnections">OCHA-DAP/ds-teleconnections</a>.</p>
+</section>
+
+</div>
+
+<script>
+"use strict";
+(function () {
+  // ---------------------------------------------------------------- constants
+  // flags byte per land cell and season, written by enso_season_map.py
+  const F_LAG = 0b11, F_RAINY = 1 << 2, F_SIG = 1 << 3, F_VALID = 1 << 4, CLASS_SHIFT = 5;
+  const R_NAN = -128;
+  const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const LONG_MONTHS = ["January","February","March","April","May","June","July","August",
+                       "September","October","November","December"];
+  // the survey's colours (teleconnection_survey.py _R_LEGEND / _PX_*)
+  const CLASS_INFO = [
+    {col: "#E3E3DF", label: "No clear ENSO signal"},
+    {col: "#71B3E5", label: "El Niño wetter, moderate"},
+    {col: "#0D40B0", label: "El Niño wetter, strong"},
+    {col: "#C8844A", label: "El Niño drier, moderate"},
+    {col: "#7B3A1A", label: "El Niño drier, strong"},
+  ];
+  const DRY_BG = "#F4F1EA", DRY_LINE = "#D9CFBB";
+  const RAMP_STOPS = [[0, "#7B3A1A"], [0.35, "#C8844A"], [0.5, "#F5F0EC"], [0.65, "#71B3E5"], [1, "#0D40B0"]];
+
+  const $ = (id) => document.getElementById(id);
+  const statusEl = $("status"), tipEl = $("tip");
+
+  function hexRgb(h) { h = h.replace("#", ""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  function rgba32(rgb, a = 255) { return ((a << 24) | (rgb[2] << 16) | (rgb[1] << 8) | rgb[0]) >>> 0; }
+  const CLASS32 = CLASS_INFO.map(c => rgba32(hexRgb(c.col)));
+  const DRY32 = rgba32(hexRgb(DRY_BG)), DRYLINE32 = rgba32(hexRgb(DRY_LINE));
+  // r*100 + 100 -> colour, the survey's drought/flood ramp
+  const RAMP32 = new Uint32Array(201), RAMP_HEX = new Array(201);
+  for (let k = 0; k <= 200; k++) {
+    const t = k / 200;
+    let i = 0; while (i < RAMP_STOPS.length - 2 && t > RAMP_STOPS[i + 1][0]) i++;
+    const [t0, c0] = RAMP_STOPS[i], [t1, c1] = RAMP_STOPS[i + 1];
+    const f = Math.min(1, Math.max(0, (t - t0) / (t1 - t0)));
+    const a = hexRgb(c0), b = hexRgb(c1);
+    const rgb = a.map((v, j) => Math.round(v + (b[j] - v) * f));
+    RAMP32[k] = rgba32(rgb);
+    RAMP_HEX[k] = "#" + rgb.map(v => v.toString(16).padStart(2, "0")).join("");
+  }
+
+  function light32(c32) {   // mix a packed colour 55% towards white, for hatch lines
+    const ch = k => (c32 >>> (8 * k)) & 255, m = v => Math.round(v + (255 - v) * 0.55);
+    return rgba32([m(ch(0)), m(ch(1)), m(ch(2))]);
+  }
+  const CLASS32_L = CLASS32.map(light32), RAMP32_L = RAMP32.map(light32);
+
+  // a fatal message (no WebGL, graphics lost, basemap missing) stays until it is resolved: routine
+  // messages ("Loading JAS…") never wipe it
+  let fatalMsg = "";
+  function showStatus(msg) {
+    const m = msg || fatalMsg;
+    statusEl.textContent = m; statusEl.style.display = m ? "block" : "none";
+  }
+  function setFatal(msg) { fatalMsg = msg; showStatus(""); }
+
+  // ---------------------------------------------------------------- data
+  let META = null, G = null, LANDPOS = null, ANNUAL = null, N = 0;
+  const SEASON = {};          // code -> {clim, r, flags}
+  const PENDING = {};         // code -> promise
+
+  async function fetchBuf(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes[0] === 0x1f && bytes[1] === 0x8b) {   // gzip, unless the server already undid it
+      if (typeof DecompressionStream === "undefined")
+        throw new Error("this browser is too old for this page (it needs Chrome 80, Firefox 113, Safari 16.4 or later)");
+      const ds = new DecompressionStream("gzip");
+      return await new Response(new Blob([bytes]).stream().pipeThrough(ds)).arrayBuffer();
+    }
+    return bytes.buffer;
+  }
+  const v = () => `?v=${META.version}`;
+
+  function loadSeason(code) {
+    if (SEASON[code]) return Promise.resolve(SEASON[code]);
+    if (PENDING[code]) return PENDING[code];
+    PENDING[code] = fetchBuf(`data/${code}.bin.gz${v()}`).then(buf => {
+      if (buf.byteLength !== 4 * N) throw new Error(`${code}: ${buf.byteLength} bytes, expected ${4 * N}`);
+      SEASON[code] = {clim: new Uint16Array(buf, 0, N), r: new Int8Array(buf, 2 * N, N),
+                      flags: new Uint8Array(buf, 3 * N, N)};
+      delete PENDING[code];
+      const b = seasonButtons[code]; if (b) b.classList.remove("loading");
+      if (pinned) renderTip();               // the 12-season strip fills in as seasons arrive
+      return SEASON[code];
+    }).catch(err => { delete PENDING[code]; throw err; });
+    return PENDING[code];
+  }
+
+  // ---------------------------------------------------------------- state
+  const state = {season: "JAS", mode: "classes", dry: false};
+  let CODES = [];
+  const seasonButtons = {};
+  let COLORS = null, HATCH = null;      // per land cell, for the current season + settings
+  const minClim = () => Math.round(100 * META.thresholds.min_mm_day);   // clim is stored in 0.01 mm/day
+
+  // shown in colour: the survey's rainy seasons, plus (on request) the drier part of the year
+  // wherever it still averages at least the survey's 0.25 mm a day
+  function shown(s, p) {
+    const f = s.flags[p];
+    return (f & F_RAINY) ? 1 : (state.dry && (f & F_VALID) && s.clim[p] >= minClim()) ? 2 : 0;
+  }
+
+  function recolor() {
+    const s = SEASON[state.season];
+    if (!s) return;              // still loading: selectSeason repaints when it arrives
+    if (!COLORS) { COLORS = new Uint32Array(N); HATCH = new Uint32Array(N); }
+    const ramp = state.mode === "ramp";
+    for (let p = 0; p < N; p++) {
+      const f = s.flags[p], how = shown(s, p);
+      if (!how) { COLORS[p] = DRY32; HATCH[p] = DRYLINE32; continue; }
+      let base, lite;
+      if (ramp && (f & F_VALID)) { base = RAMP32[s.r[p] + 100]; lite = RAMP32_L[s.r[p] + 100]; }
+      else { const c = ramp ? 0 : f >> CLASS_SHIFT; base = CLASS32[c]; lite = CLASS32_L[c]; }
+      COLORS[p] = base; HATCH[p] = how === 2 ? lite : 0;
+    }
+  }
+
+  // ---------------------------------------------------------------- projection
+  // Adaptive equal-area projection. With the whole world in view: Equal Earth (Šavrič, Patterson &
+  // Jenny 2018), the projection the UN General Assembly encouraged in September 2026, with its
+  // central meridian on the view centre, so dragging east-west turns the globe, across 180° too.
+  // Zoomed in: Lambert azimuthal equal-area centred on the view, true to shape at the centre
+  // (north up, the meridian through the centre straight). In between, the two are blended by the
+  // share of the world's width in view (after Jenny 2012, "Adaptive composite map projections");
+  // the blend is close to, not exactly, equal-area. projCore() is the one implementation: the
+  // WebGL shader below is a line-for-line port, and everything else (hover, zoom anchor, labels,
+  // borders, fitting a country) goes through it.
+  const D2R = Math.PI / 180, R2D = 180 / Math.PI, PI = Math.PI;
+  const A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796, EM = Math.sqrt(3) / 2;
+  const eeY = t => { const t2 = t * t, t6 = t2 * t2 * t2; return t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)); };
+  const eeDY = t => { const t2 = t * t, t6 = t2 * t2 * t2; return A1 + 3 * A2 * t2 + t6 * (7 * A3 + 9 * A4 * t2); };
+  const eeK = t => Math.cos(t) / (EM * eeDY(t));         // Equal Earth: x = lambda * eeK(theta)
+  const T_MAX = PI / 3, YMAX = eeY(T_MAX), XMAX = PI * eeK(0);
+  function eeTheta(Y) {                                    // Equal Earth y -> parametric latitude (Newton)
+    if (Y >= YMAX) return T_MAX;
+    if (Y <= -YMAX) return -T_MAX;
+    let t = Y / A1;
+    for (let i = 0; i < 10; i++) { const dt = (eeY(t) - Y) / eeDY(t); t -= dt; if (Math.abs(dt) < 1e-12) break; }
+    return t;
+  }
+  const PX0 = 256 / (2 * XMAX);      // CSS px per projected unit at zoom 0: the world is 256 px wide, as in
+                                     // web maps, so Natural Earth's label zoom levels carry over
+  const MAXZ = 8, COS_CULL = Math.cos(170 * D2R);
+  const BLEND_FROM = 0.55, BLEND_TO = 0.15;    // share of the world's width in view: Equal Earth above, LAEA below
+  const wrapPi = a => a - 2 * PI * Math.floor((a + PI) / (2 * PI));
+  const wrap180 = d => d - 360 * Math.floor((d + 180) / 360);
+  const clampN = (v, a, b) => Math.max(a, Math.min(b, v));
+
+  const view = {lon: 0, lat: 0, z: 2, W: 0, H: 0};          // centre (degrees), zoom, frame (CSS px)
+  function blendAt(S) {                                       // 0: Equal Earth ... 1: azimuthal
+    // share of the world in view: by width, or by height while the poles are still in the frame
+    // (on tall frames), so the azimuthal part never starts with a pole in view
+    const share = Math.max(view.W / S / (2 * XMAX), BLEND_FROM * view.H / S / (2 * YMAX));
+    const u = clampN((share - BLEND_FROM) / (BLEND_TO - BLEND_FROM), 0, 1);
+    return u * u * (3 - 2 * u);
+  }
+  function derive() {                                         // the terms every projection call reuses
+    view.S = Math.pow(2, view.z) * PX0;
+    view.lam0 = view.lon * D2R;
+    const p0 = view.lat * D2R;
+    view.sP0 = Math.sin(p0); view.cP0 = Math.cos(p0);
+    view.sL0 = Math.sin(view.lam0); view.cL0 = Math.cos(view.lam0);
+    view.th0 = Math.asin(EM * view.sP0); view.yE0 = eeY(view.th0);
+    view.t = blendAt(view.S);
+  }
+
+  // dl: longitude minus the centre's, in [-pi, pi], with its cosine and sine; sP, cP: sine and cosine
+  // of the latitude; K, Y: its Equal Earth terms. Writes view-centred units (y up) to out; false when
+  // the point is too near the far side of the globe (the azimuthal part is singular there).
+  function projCore(dl, cdl, sdl, sP, cP, K, Y, out) {
+    let x = dl * K, y = Y - view.yE0;
+    const t = view.t;
+    if (t > 0) {
+      const cosc = view.sP0 * sP + view.cP0 * cP * cdl;
+      if (cosc < COS_CULL) return false;
+      const k = Math.sqrt(2 / (1 + cosc));
+      x = (1 - t) * x + t * k * cP * sdl;
+      y = (1 - t) * y + t * k * (view.cP0 * sP - view.sP0 * cP * cdl);
+    }
+    out[0] = x; out[1] = y;
+    return true;
+  }
+  function projDL(dl, phi, out) {                           // radians; dl already relative to the centre
+    const sP = Math.sin(phi), cP = Math.cos(phi), th = Math.asin(EM * sP);
+    return projCore(dl, Math.cos(dl), Math.sin(dl), sP, cP, eeK(th), eeY(th), out);
+  }
+  const TMP = [0, 0];
+  function projectLL(lat, lon) {                            // degrees -> view-centred units, or null
+    return projDL(wrapPi(lon * D2R - view.lam0), clampN(lat, -90, 90) * D2R, TMP) ? TMP : null;
+  }
+  const scrX = x => view.W / 2 + x * view.S, scrY = y => view.H / 2 - y * view.S;
+
+  // view-centred units -> [lat, lon] in degrees, or null (off the world). Exact at either end;
+  // in between, Newton's method on the blend, seeded from whichever projection dominates and, if
+  // that fails (e.g. a seed beyond Equal Earth's pole line at the frame's edge), from the other.
+  function seedEE(x, y) {
+    const Y = y + view.yE0, th = eeTheta(Y);
+    return [clampN(x / eeK(th), -PI, PI), Math.asin(clampN(Math.sin(th) / EM, -1, 1)), Math.abs(Y) <= YMAX];
+  }
+  function seedLAEA(x, y) {
+    const rho = Math.hypot(x, y);
+    if (rho < 1e-12) return [0, view.lat * D2R, true];
+    const c = 2 * Math.asin(Math.min(1, rho / 2)), sc = Math.sin(c), cc = Math.cos(c);
+    return [Math.atan2(x * sc, rho * view.cP0 * cc - y * view.sP0 * sc),
+            Math.asin(clampN(cc * view.sP0 + y * sc * view.cP0 / rho, -1, 1)), rho < 2];
+  }
+  function unproject(x, y) {
+    const t = view.t;
+    if (t === 0) {
+      const Y = y + view.yE0;
+      if (Math.abs(Y) > YMAX) return null;
+      const th = eeTheta(Y), dl = x / eeK(th);
+      return Math.abs(dl) <= PI ? [Math.asin(clampN(Math.sin(th) / EM, -1, 1)) * R2D, wrap180(view.lon + dl * R2D)] : null;
+    }
+    if (t === 1) {
+      const [dl, phi, ok] = seedLAEA(x, y);
+      return ok ? [phi * R2D, wrap180(view.lon + dl * R2D)] : null;
+    }
+    const seeds = t < 0.5 ? [seedEE, seedLAEA] : [seedLAEA, seedEE];
+    for (const seed of seeds) {
+      const [dl, phi] = seed(x, y);
+      const r = newtonInverse(x, y, dl, phi);
+      if (r) return r;
+    }
+    return null;
+  }
+  function newtonInverse(x, y, dl, phi) {
+    const f = [0, 0], g = [0, 0], h = 1e-7;
+    for (let i = 0; i < 30; i++) {
+      if (!projDL(dl, phi, f)) return null;
+      const ex = f[0] - x, ey = f[1] - y;
+      if (Math.abs(ex) + Math.abs(ey) < 1e-11) return [phi * R2D, wrap180(view.lon + dl * R2D)];
+      if (!projDL(dl + h, phi, g)) return null;
+      const a = (g[0] - f[0]) / h, c = (g[1] - f[1]) / h;
+      if (!projDL(dl, phi + h, g)) return null;
+      const b = (g[0] - f[0]) / h, d = (g[1] - f[1]) / h, det = a * d - b * c;
+      if (Math.abs(det) < 1e-14) return null;
+      let sx = (d * ex - b * ey) / det, sy = (a * ey - c * ex) / det;
+      const m = Math.max(Math.abs(sx), Math.abs(sy));
+      if (m > 0.3) { sx *= 0.3 / m; sy *= 0.3 / m; }           // damped: no leaps across the globe
+      dl -= sx; phi = clampN(phi - sy, -PI / 2, PI / 2);
+      if (Math.abs(dl) > PI) return null;
+    }
+    return null;
+  }
+  const screenToLL = (X, Y) => unproject((X - view.W / 2) / view.S, (view.H / 2 - Y) / view.S);
+  // ?debug exposes the projection for checks in the console
+  if (/[?&]debug\b/.test(location.search)) window.ENSO_MAP = {view, projectLL, unproject, screenToLL, derive, clampView,
+                                                                   render: () => render()};
+
+  // zoom limits: never smaller than the whole world in the frame
+  const minZoom = () => Math.log2(Math.max(1e-6, Math.min((view.W - 16) / (2 * XMAX * PX0),
+                                                          (view.H - 16) / (2 * YMAX * PX0))));
+  function clampView() {
+    view.z = clampN(view.z, minZoom(), MAXZ);
+    view.lon = wrap180(view.lon);
+    // vertically: keep Equal Earth's pole line at or beyond the top/bottom of the frame (the whole
+    // world: centred on the equator). The blended map's pole is always further out than Equal
+    // Earth's, so nothing beyond a pole is ever in view; without this, the Equal Earth seam at the
+    // back of the globe opens into a blank gap over the pole at mid zooms. High latitudes can be
+    // centred once zoomed in (70 degrees from about zoom 6).
+    const bound = latBound();
+    view.lat = clampN(view.lat, -bound, bound);
+    derive();
+  }
+  function latBound() {
+    const lim = YMAX - view.H / 2 / (Math.pow(2, view.z) * PX0);
+    return lim <= 0 ? 0 : Math.min(85, Math.asin(clampN(Math.sin(eeTheta(lim)) / EM, -1, 1)) * R2D);
+  }
+  // move the centre so that (lat, lon) sits at screen point (X, Y): steps with the local scale at
+  // the centre, each kept only if it brings the place closer to the point (halved up to 5 times,
+  // else undone). Where the place cannot follow (it has reached the world's edge, or the latitude
+  // is held by clampView) it stops there instead of oscillating.
+  function anchor(lat, lon, X, Y) {
+    const err = () => {
+      derive();
+      const p = projectLL(lat, lon);
+      return p ? [(X - view.W / 2) / view.S - p[0], (view.H / 2 - Y) / view.S - p[1]] : null;
+    };
+    // with the latitude held at its limit only the east-west error can be removed: judge steps on
+    // that alone, or the turning chases the vertical error and the map slides past the pointer
+    const size = e => Math.abs(view.lat) >= latBound() - 1e-9 ? Math.abs(e[0]) : Math.hypot(e[0], e[1]);
+    let e = err();
+    if (!e) return;
+    for (let i = 0; i < 8; i++) {
+      const n0 = size(e);
+      if (n0 < 1e-10) break;
+      const t = view.t;
+      const sx = Math.max((1 - t) * eeK(view.th0) + t * view.cP0, 0.05);
+      const sy = Math.max((1 - t) * eeDY(view.th0) * EM * view.cP0 / Math.cos(view.th0) + t, 0.05);
+      const lat0 = view.lat, lon0 = view.lon;
+      let ok = false;
+      for (let k = 0, f = 1; k < 5; k++, f *= 0.5) {
+        view.lon = lon0 - f * e[0] / sx * R2D;
+        view.lat = lat0 - f * e[1] / sy * R2D;
+        clampView();
+        const e2 = err();
+        if (e2 && size(e2) < n0) { e = e2; ok = true; break; }
+      }
+      if (!ok) { view.lat = lat0; view.lon = lon0; clampView(); break; }
+    }
+    derive();
+  }
+
+  // drag/pinch step: keep the grabbed place under the pointer; where the map cannot follow (a
+  // latitude limit, the world's edge), take whatever is now under the pointer as the grabbed place,
+  // so no error builds up to be released later as a jump
+  function follow(ll, X, Y) {
+    anchor(ll[0], ll[1], X, Y);
+    const p = projectLL(ll[0], ll[1]);
+    if (p && Math.hypot(scrX(p[0]) - X, scrY(p[1]) - Y) < 0.5) return ll;
+    return screenToLL(X, Y) || ll;
+  }
+  if (window.ENSO_MAP) window.ENSO_MAP.follow = follow;
+
+  // ---------------------------------------------------------------- WebGL: ocean, graticule, land, cells
+  const glCanvas = $("gl"), ov = $("ov"), octx = ov.getContext("2d");
+  const DPR = Math.min(window.devicePixelRatio || 1, 2);
+  const gl = glCanvas.getContext("webgl2", {antialias: false, alpha: false});
+  const OCEAN = "#dde3e6", LAND = "#f1f1ee", BORDER = "#8e979a", EDGE = "#b9c2c6", BG = "#f7f8f8";
+  const rgbaF = hex => hexRgb(hex).map(v => v / 255).concat(1);
+
+  const GLSL_HEAD = `#version 300 es
+precision highp float;
+uniform float uLon0, uSP0, uCP0, uYE0, uT, uS, uCosCull;
+uniform vec2 uHalf;
+const float PI = 3.141592653589793;
+const float EM = 0.8660254037844386;
+const float A1 = 1.340264, A2 = -0.081106, A3 = 0.000893, A4 = 0.003796;
+float wrap180(float d) { return d - 360.0 * floor((d + 180.0) / 360.0); }
+// a vertex's longitude relative to the view centre, in degrees. ref: the primitive's own reference
+// point. The vertex is computed from exact degree values (cell edges are multiples of 0.125), so
+// neighbouring cells get bit-identical shared edges; a vertex that wrapped to the other side of the
+// seam is cut at the edge on its reference's side.
+float relLon(float lonDeg, float refDeg) {
+  float r = wrap180(refDeg - uLon0), d = wrap180(lonDeg - uLon0);
+  return abs(d - r) > 90.0 ? sign(r) * 180.0 : d;
+}
+float eeY(float t) { float t2 = t * t, t6 = t2 * t2 * t2; return t * (A1 + A2 * t2 + t6 * (A3 + A4 * t2)); }
+float eeDY(float t) { float t2 = t * t, t6 = t2 * t2 * t2; return A1 + 3.0 * A2 * t2 + t6 * (7.0 * A3 + 9.0 * A4 * t2); }
+// port of projCore() in the page script
+vec2 proj(float dl, float phi) {
+  float sP = sin(phi), cP = cos(phi), th = asin(EM * sP);
+  vec2 e = vec2(dl * cos(th) / (EM * eeDY(th)), eeY(th) - uYE0);
+  if (uT <= 0.0) return e;
+  float cdl = cos(dl), sdl = sin(dl);
+  float cosc = uSP0 * sP + uCP0 * cP * cdl;
+  float k = sqrt(2.0 / max(1.0 + cosc, 1e-6));
+  return mix(e, vec2(k * cP * sdl, k * (uCP0 * sP - uSP0 * cP * cdl)), uT);
+}
+bool culled(float dl, float phi) { return uT > 0.0 && uSP0 * sin(phi) + uCP0 * cos(phi) * cos(dl) < uCosCull; }
+vec4 clipPos(vec2 p) { return vec4(p.x * uS / uHalf.x, p.y * uS / uHalf.y, 0.0, 1.0); }
+`;
+  // one instanced quad per cell; corners are offsets from the cell's own centre and clamped at the
+  // seam, so a cell on the far edge is cut there instead of stretching across the map
+  const QUAD_VS = GLSL_HEAD + `
+uniform float uHalfDeg;
+layout(location = 0) in vec2 aCorner;
+layout(location = 1) in vec2 aCenter;
+layout(location = 2) in vec4 aColor;
+layout(location = 3) in vec4 aHatch;
+out vec4 vColor; out vec4 vHatch;
+void main() {
+  vColor = aColor; vHatch = aHatch;
+  if (culled(radians(wrap180(aCenter.x - uLon0)), radians(aCenter.y))) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  float dl = radians(relLon(aCenter.x + aCorner.x * uHalfDeg, aCenter.x));
+  float ph = radians(clamp(aCenter.y + aCorner.y * uHalfDeg, -90.0, 90.0));
+  gl_Position = clipPos(proj(dl, ph));
+}`;
+  const QUAD_FS = `#version 300 es
+precision highp float;
+uniform float uDpr;
+in vec4 vColor; in vec4 vHatch;
+out vec4 o;
+void main() {
+  o = vColor;
+  if (vHatch.a > 0.0 && mod(floor(gl_FragCoord.x / uDpr) - floor(gl_FragCoord.y / uDpr), 6.0) < 0.5) o = vHatch;
+}`;
+  // graticule segments: both ends share the segment's midpoint as reference (same seam rule)
+  const LINE_VS = GLSL_HEAD + `
+layout(location = 0) in vec2 aLL;
+layout(location = 1) in vec2 aRef;
+void main() {
+  if (culled(radians(wrap180(aRef.x - uLon0)), radians(aRef.y))) { gl_Position = vec4(2.0, 2.0, 2.0, 1.0); return; }
+  gl_Position = clipPos(proj(radians(relLon(aLL.x, aRef.x)), radians(aLL.y)));
+}`;
+  const LINE_FS = `#version 300 es
+precision highp float;
+uniform vec4 uColor;
+out vec4 o;
+void main() { o = uColor; }`;
+
+  function makeProgram(vs, fs) {
+    const sh = (type, src) => {
+      const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s);
+      if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s));
+      return s;
+    };
+    const p = gl.createProgram();
+    gl.attachShader(p, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(p, sh(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(p);
+    if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p));
+    const u = {};
+    for (let i = 0, n = gl.getProgramParameter(p, gl.ACTIVE_UNIFORMS); i < n; i++) {
+      const name = gl.getActiveUniform(p, i).name; u[name] = gl.getUniformLocation(p, name);
+    }
+    return {p, u};
+  }
+  let QP = null, LP = null, CORNERS = null, OCEAN_L = null, GRAT_L = null, POLAR_L = null, DATA_L = null;
+  let CENTRES = null, POLAR_CENTRES = null;
+  function buildDataLayers() {
+    if (!gl || !QP || !CENTRES) return;
+    DATA_L = quadLayer(CENTRES, true);
+    POLAR_L = quadLayer(POLAR_CENTRES, false);
+  }
+  function quadLayer(centers, perInstanceColours) {
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    gl.bindBuffer(gl.ARRAY_BUFFER, CORNERS);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+    const cb = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, cb); gl.bufferData(gl.ARRAY_BUFFER, centers, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 0, 0); gl.vertexAttribDivisor(1, 1);
+    const L = {vao, n: centers.length / 2, col: null, hat: null};
+    if (perInstanceColours) {
+      for (const [loc, key] of [[2, "col"], [3, "hat"]]) {
+        L[key] = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, L[key]);
+        gl.bufferData(gl.ARRAY_BUFFER, L.n * 4, gl.DYNAMIC_DRAW);
+        gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 4, gl.UNSIGNED_BYTE, true, 0, 0);
+        gl.vertexAttribDivisor(loc, 1);
+      }
+    }
+    gl.bindVertexArray(null);
+    return L;
+  }
+  function initGL() {
+    QP = makeProgram(QUAD_VS, QUAD_FS); LP = makeProgram(LINE_VS, LINE_FS);
+    CORNERS = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, CORNERS);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    const oc = [];                                            // the sphere as 2-degree quads: the ocean
+    for (let la = -89; la <= 89; la += 2) for (let lo = -179; lo <= 179; lo += 2) oc.push(lo, la);
+    OCEAN_L = quadLayer(new Float32Array(oc), false);
+    const gv = [];                                            // 30-degree graticule
+    const seg = (lo1, la1, lo2, la2) => { const rl = (lo1 + lo2) / 2, ra = (la1 + la2) / 2; gv.push(lo1, la1, rl, ra, lo2, la2, rl, ra); };
+    for (let lo = -180; lo < 180; lo += 30) for (let la = -80; la < 80; la += 2) seg(lo, la, lo, la + 2);
+    for (let la = -60; la <= 60; la += 30) for (let lo = -180; lo < 180; lo += 2) seg(lo, la, lo + 2, la);
+    const vao = gl.createVertexArray(); gl.bindVertexArray(vao);
+    const b = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, b); gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(gv), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 16, 0);
+    gl.enableVertexAttribArray(1); gl.vertexAttribPointer(1, 2, gl.FLOAT, false, 16, 8);
+    gl.bindVertexArray(null);
+    GRAT_L = {vao, n: gv.length / 4};
+  }
+  function uploadColors() {
+    if (!gl || !QP || !DATA_L || !COLORS) return;
+    gl.bindBuffer(gl.ARRAY_BUFFER, DATA_L.col); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Uint8Array(COLORS.buffer));
+    gl.bindBuffer(gl.ARRAY_BUFFER, DATA_L.hat); gl.bufferSubData(gl.ARRAY_BUFFER, 0, new Uint8Array(HATCH.buffer));
+  }
+  function repaint() { recolor(); uploadColors(); requestRender(); }
+
+  function renderGL() {
+    gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+    const bg = rgbaF(BG); gl.clearColor(bg[0], bg[1], bg[2], 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    const use = pr => {
+      gl.useProgram(pr.p); const u = pr.u;
+      gl.uniform1f(u.uLon0, view.lon); gl.uniform1f(u.uSP0, view.sP0); gl.uniform1f(u.uCP0, view.cP0);
+      gl.uniform1f(u.uYE0, view.yE0); gl.uniform1f(u.uT, view.t); gl.uniform1f(u.uS, view.S);
+      gl.uniform1f(u.uCosCull, COS_CULL); gl.uniform2f(u.uHalf, view.W / 2, view.H / 2);
+    };
+    const draw = (L, halfDeg, colour) => {
+      gl.uniform1f(QP.u.uHalfDeg, halfDeg);
+      if (colour) { gl.vertexAttrib4f(2, ...colour); gl.vertexAttrib4f(3, 0, 0, 0, 0); }
+      gl.bindVertexArray(L.vao); gl.drawArraysInstanced(gl.TRIANGLE_STRIP, 0, 4, L.n);
+    };
+    use(QP); gl.uniform1f(QP.u.uDpr, DPR);
+    // the ocean: the sphere's outline does not depend on the turn, so draw it unturned, where no
+    // 2-degree quad straddles the seam (turned, a sliver at the edge flickered while dragging)
+    gl.uniform1f(QP.u.uLon0, 0.0);
+    draw(OCEAN_L, 1.0, rgbaF(OCEAN));
+    gl.uniform1f(QP.u.uLon0, view.lon);
+    use(LP);
+    gl.enable(gl.BLEND); gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+    gl.uniform4f(LP.u.uColor, 1, 1, 1, 0.75);
+    gl.bindVertexArray(GRAT_L.vao); gl.drawArrays(gl.LINES, 0, GRAT_L.n);
+    gl.disable(gl.BLEND);
+    use(QP);
+    if (POLAR_L) draw(POLAR_L, G.d / 2, rgbaF(LAND));
+    if (DATA_L && COLORS) draw(DATA_L, G.d / 2, null);
+    gl.bindVertexArray(null);
+  }
+
+  // ---------------------------------------------------------------- overlay: borders, outline, names
+  // Natural Earth 1:50m borders, projected in the page each frame. Per vertex the trigonometry is
+  // precomputed (the longitude's sine/cosine, the latitude's and its Equal Earth terms), so a frame
+  // costs multiplications and one square root per vertex.
+  let RINGS = [], LABELS = [], FONTS_READY = false;
+  const FONT_C = "500 10.5px Roboto, system-ui, sans-serif", FONT_P = "400 11px Roboto, system-ui, sans-serif";
+  function prepBasemap(bm) {
+    for (const f of bm.countries.features) {
+      const g = f.geometry, polys = g.type === "Polygon" ? [g.coordinates] : g.coordinates;
+      for (const poly of polys) for (const ring of poly) {
+        const n = ring.length, v = new Float64Array(n * 7);
+        let cx = 0, cy = 0, cz = 0;
+        for (let i = 0; i < n; i++) {
+          const lam = ring[i][0] * D2R, phi = ring[i][1] * D2R, sP = Math.sin(phi), cP = Math.cos(phi);
+          const th = Math.asin(EM * sP), o = i * 7;
+          v[o] = lam; v[o + 1] = sP; v[o + 2] = cP; v[o + 3] = eeK(th); v[o + 4] = eeY(th);
+          v[o + 5] = Math.sin(lam); v[o + 6] = Math.cos(lam);
+          cx += cP * v[o + 6]; cy += cP * v[o + 5]; cz += sP;
+        }
+        const m = Math.hypot(cx, cy, cz) || 1; cx /= m; cy /= m; cz /= m;
+        let minDot = 1;
+        for (let i = 0; i < n; i++) {
+          const o = i * 7; minDot = Math.min(minDot, v[o + 2] * (v[o + 6] * cx + v[o + 5] * cy) + v[o + 1] * cz);
+        }
+        // edges that are not borders: Natural Earth cuts polygons along 180 degrees (Chukotka,
+        // Wrangel, Fiji, Antarctica) and closes Antarctica along the pole; once the globe turns,
+        // those would show as lines, so the pen lifts there
+        const cut = new Uint8Array(n);
+        for (let i = 1; i < n; i++) {
+          const a = ring[i - 1], b = ring[i];
+          if ((Math.abs(Math.abs(a[0]) - 180) < 1e-9 && Math.abs(Math.abs(b[0]) - 180) < 1e-9) ||
+              (a[1] <= -89.9 && b[1] <= -89.9)) cut[i] = 1;
+        }
+        RINGS.push({v, n, cut, c: [cx, cy, cz], rad: Math.acos(clampN(minDot, -1, 1))});
+      }
+    }
+    // one priority order: the zoom each name appears at, countries first on ties
+    LABELS = bm.labels.countries.map(([name, lat, lon, z]) => ({text: name.toUpperCase(), lat, lon, z, k: 0}))
+      .concat(bm.labels.cities.map(([name, lat, lon, z, cap]) => ({text: name, lat, lon, z, k: 1, cap: !!cap})))
+      .sort((a, b) => a.z - b.z || a.k - b.k);
+  }
+  // angular radius of the frame around its centre (pi when part of it is off the world)
+  function frameRadius() {
+    if (view.t <= 0) return PI;
+    const W = view.W, H = view.H;
+    let r = 0;
+    for (const [X, Y] of [[0, 0], [W, 0], [0, H], [W, H], [W / 2, 0], [W / 2, H], [0, H / 2], [W, H / 2]]) {
+      const ll = screenToLL(X, Y);
+      if (!ll) return PI;
+      const p = ll[0] * D2R, dl = ll[1] * D2R - view.lam0;
+      r = Math.max(r, Math.acos(clampN(view.sP0 * Math.sin(p) + view.cP0 * Math.cos(p) * Math.cos(dl), -1, 1)));
+    }
+    return r;
+  }
+  function drawBorders(c) {
+    const W2 = view.W / 2, H2 = view.H / 2, S = view.S, out = [0, 0], R = frameRadius() + 0.02;
+    const vx = view.cP0 * view.cL0, vy = view.cP0 * view.sL0, vz = view.sP0;
+    c.beginPath();
+    for (const ring of RINGS) {
+      if (R < PI && Math.acos(clampN(ring.c[0] * vx + ring.c[1] * vy + ring.c[2] * vz, -1, 1)) - ring.rad > R) continue;
+      const v = ring.v;
+      let pen = false, pdl = 0;
+      for (let i = 0; i < ring.n; i++) {
+        if (ring.cut[i]) pen = false;
+        const o = i * 7;
+        let dl = v[o] - view.lam0; dl -= 2 * PI * Math.floor((dl + PI) / (2 * PI));
+        const cdl = v[o + 6] * view.cL0 + v[o + 5] * view.sL0, sdl = v[o + 5] * view.cL0 - v[o + 6] * view.sL0;
+        if (!projCore(dl, cdl, sdl, v[o + 1], v[o + 2], v[o + 3], v[o + 4], out)) { pen = false; continue; }
+        const X = W2 + out[0] * S, Y = H2 - out[1] * S;
+        if (pen && Math.abs(dl - pdl) > PI) pen = false;   // crossed the seam at the back of the globe
+        if (pen) c.lineTo(X, Y); else c.moveTo(X, Y);
+        pen = true; pdl = dl;
+      }
+    }
+    c.strokeStyle = BORDER; c.lineWidth = 0.7; c.stroke();
+  }
+  function drawOutline(c) {                                 // the world's edge while it is in view
+    if (view.t >= 0.3) return;
+    const out = [0, 0];
+    c.beginPath();
+    for (const side of [PI, -PI]) {
+      let pen = false;
+      for (let la = -90; la <= 90; la += 1) {
+        if (!projDL(side, la * D2R, out)) { pen = false; continue; }
+        if (pen) c.lineTo(scrX(out[0]), scrY(out[1])); else c.moveTo(scrX(out[0]), scrY(out[1]));
+        pen = true;
+      }
+    }
+    c.strokeStyle = EDGE; c.lineWidth = 1; c.stroke();
+  }
+  function drawHighlight(c) {
+    if (hoverCell < 0 || !LANDPOS || LANDPOS[hoverCell] < 0) return;
+    const [lat, lon] = cellCentre(hoverCell), h = G.d / 2, out = [0, 0];
+    const dlc = wrapPi(lon * D2R - view.lam0);
+    c.beginPath();
+    let k = 0;
+    for (const [dx, dy] of [[-h, -h], [h, -h], [h, h], [-h, h]]) {
+      if (!projDL(clampN(dlc + dx * D2R, -PI, PI), (lat + dy) * D2R, out)) return;
+      if (k++) c.lineTo(scrX(out[0]), scrY(out[1])); else c.moveTo(scrX(out[0]), scrY(out[1]));
+    }
+    c.closePath(); c.strokeStyle = "#1f2324"; c.lineWidth = 1.5; c.stroke();
+  }
+  // greedy placement in priority order: a name is skipped if its box would overlap one already placed
+  function drawLabels(c) {
+    if (!LABELS.length) return;
+    const W = view.W, H = view.H, boxes = [];
+    c.textBaseline = "middle"; c.lineJoin = "round";
+    for (const lb of LABELS) {
+      if (lb.z > view.z + 0.3) continue;
+      const p = projectLL(lb.lat, lb.lon);
+      if (!p) continue;
+      const X = scrX(p[0]), Y = scrY(p[1]);
+      if (X < -80 || Y < -20 || X > W + 80 || Y > H + 20) continue;
+      const country = lb.k === 0;
+      c.font = country ? FONT_C : FONT_P;
+      if ("letterSpacing" in c) c.letterSpacing = country ? "0.8px" : "0px";
+      if (lb.w === undefined || lb.wf !== FONTS_READY) { lb.w = c.measureText(lb.text).width; lb.wf = FONTS_READY; }
+      const w = lb.w + (country ? 0 : 9), h = country ? 13 : 14;
+      const bx = country ? X - w / 2 : X - 3, by = Y - h / 2;
+      let hit = false;
+      for (const b of boxes) if (bx < b[2] && bx + w > b[0] && by < b[3] && by + h > b[1]) { hit = true; break; }
+      if (hit) continue;
+      boxes.push([bx - 3, by - 2, bx + w + 3, by + h + 2]);
+      c.textAlign = country ? "center" : "left";
+      const tx = country ? X : X + 6;
+      c.strokeStyle = "rgba(255,255,255,0.92)"; c.lineWidth = 3; c.strokeText(lb.text, tx, Y);
+      c.fillStyle = country ? "#4a5354" : "#2c3233"; c.fillText(lb.text, tx, Y);
+      if (!country) {
+        c.beginPath();
+        if (lb.cap) c.rect(X - 2.5, Y - 2.5, 5, 5); else c.arc(X, Y, 2, 0, 2 * PI);
+        c.fillStyle = "#2c3233"; c.fill(); c.lineWidth = 1; c.strokeStyle = "#fff"; c.stroke();
+      }
+    }
+  }
+  function renderOverlay() {
+    const c = octx;
+    c.setTransform(DPR, 0, 0, DPR, 0, 0);
+    c.clearRect(0, 0, view.W, view.H);
+    drawOutline(c);
+    if (RINGS.length) drawBorders(c);
+    drawHighlight(c);
+    drawLabels(c);
+  }
+  function updateScale() {                                  // approximate: the scale at the centre, east-west
+    const kx = (1 - view.t) * eeK(view.th0) / Math.max(view.cP0, 1e-6) + view.t;
+    const kmPerPx = 6371 / (view.S * kx), target = 90 * kmPerPx;
+    const pow = Math.pow(10, Math.floor(Math.log10(target)));
+    const nice = [1, 2, 5, 10].map(m => m * pow).filter(v => v <= target).pop() || pow;
+    const el = $("scale");
+    el.style.width = Math.round(nice / kmPerPx) + "px";
+    el.textContent = `${nice.toLocaleString("en")} km`;
+  }
+
+  let renderQueued = false;
+  function requestRender() { if (!renderQueued) { renderQueued = true; requestAnimationFrame(render); } }
+  function render() {
+    renderQueued = false;
+    if (!view.W) return;
+    derive();
+    if (gl && QP && LP) renderGL();
+    renderOverlay();
+    updateScale();
+    $("zout").disabled = view.z <= minZoom() + 1e-3;
+    $("zin").disabled = view.z >= MAXZ - 1e-3;
+    if (tipEl.style.display === "block" || (tipCulled && hoverCell >= 0)) placeTip();
+  }
+  function resize() {
+    const W = ov.clientWidth, H = ov.clientHeight;
+    if (!W || !H) return;
+    view.W = W; view.H = H;
+    for (const cv of [glCanvas, ov]) { cv.width = Math.round(W * DPR); cv.height = Math.round(H * DPR); }
+    clampView(); requestRender();
+  }
+
+  // ---------------------------------------------------------------- hover / pin
+  let hoverCell = -1, pinned = false, tipLatLng = null;
+
+  function cellAt(ll) {
+    if (!G || !ll) return -1;
+    let col = Math.floor((ll.lng - (G.lon0 - G.d / 2)) / G.d);
+    if (col >= G.nx) col -= G.nx;                   // 179.875..180 is the cell centred on -180
+    if (col < 0) col += G.nx;
+    const row = Math.floor((G.lat0 + G.d / 2 - ll.lat) / G.d);
+    if (row < 0 || row >= G.ny) return -1;
+    return row * G.nx + col;
+  }
+  function cellCentre(cell) {
+    const row = Math.floor(cell / G.nx), col = cell % G.nx;
+    return [G.lat0 - row * G.d, G.lon0 + col * G.d];
+  }
+
+  function fmtLat(v) { return `${Math.abs(v).toFixed(2)}°${v >= 0 ? "N" : "S"}`; }
+  function fmtLon(v) { v = ((v + 180) % 360 + 360) % 360 - 180; return `${Math.abs(v).toFixed(2)}°${v >= 0 ? "E" : "W"}`; }
+  function rStr(r) { return (r < 0 ? "−" : "+") + Math.abs(r).toFixed(2); }
+
+  // Niño3.4 window that ends `lag` months before the season ends
+  function ninoWindow(code, lag) {
+    const end = META.seasons.find(s => s.code === code).end_month;
+    const e = ((end - 1 - lag) % 12 + 12) % 12;
+    const ms = [e - 2, e - 1, e].map(m => MONTHS[((m % 12) + 12) % 12]);
+    return `${ms[0]}–${ms[2]}`;
+  }
+
+  function seasonInfo(code) { return META.seasons.find(s => s.code === code); }
+
+  function renderTip() {
+    if (hoverCell < 0) { tipEl.style.display = "none"; return; }
+    const p = LANDPOS[hoverCell];
+    const [lat, lon] = cellCentre(hoverCell);
+    const where = `${fmtLat(lat)}, ${fmtLon(lon)}`;
+    const close = `<button class="close" type="button" aria-label="Close">&times;</button>`;
+    if (p < 0) {
+      if (!pinned) { tipEl.style.display = "none"; return; }
+      tipEl.innerHTML = `<div class="hd"><span>${where}</span>${close}</div><div class="ln muted">Sea, or outside the land mask.</div>`;
+      return placeTip();
+    }
+    const s = SEASON[state.season], si = seasonInfo(state.season);
+    let body = "";
+    if (!s) body = `<div class="ln muted">Loading ${state.season}…</div>`;
+    else {
+      const f = s.flags[p], valid = f & F_VALID, r = s.r[p] / 100, lag = f & F_LAG;
+      const clim = s.clim[p] / 100, ann = ANNUAL[p] / 100;
+      const how = shown(s, p);
+      const share = ann > 0 ? 100 * clim / ann : 0;
+      // stored season rain is rounded down and the year's rain up, so `share` never exceeds the true
+      // share: rainy seasons (>= 25% by definition) print at least 25%; others one decimal, rounded down
+      const shareTxt = (s.flags[p] & F_RAINY) ? `${Math.max(25, Math.round(share))}%`
+                                               : `${(Math.floor(share * 10) / 10).toFixed(1)}%`;
+      const mmMonth = Math.round(clim * 30.4);
+      const rainLine = `<div class="ln">Rain in ${si.months}: about ${mmMonth} mm a month, ${shareTxt} of the year’s rain</div>`;
+      if (!how) {
+        const why = s.clim[p] < minClim()
+          ? `it averages under ${META.thresholds.min_mm_day} mm a day`
+          : `the map needs at least ${Math.round(100 * META.thresholds.rainy_share)}% of the year’s rain`;
+        body = `<div class="rv" style="color:var(--n7)">Not assessed: drier part of the year</div>${rainLine}
+          <div class="ln muted">Skipped because ${why}.${valid ? ` For reference, r = ${rStr(r)}.` : ""}</div>`;
+      } else if (!valid) {
+        body = `<div class="rv" style="color:var(--n7)">No correlation</div>${rainLine}`;
+      } else {
+        const cls = f >> CLASS_SHIFT, ci = CLASS_INFO[cls];
+        const chip = cls ? `<span class="cls" style="background:${ci.col};color:${cls === 1 ? "#0b2a5c" : "#fff"}">${ci.label}</span>`
+                         : `<span class="cls" style="background:#eceeee;color:var(--n8)">${ci.label}</span>`;
+        const n = (si.n_by_lag[lag] || []).join("/") || "?";
+        const sig = (f & F_SIG) ? "p &lt; 0.05" : "not significant (p ≥ 0.05)";
+        const lead = lag === 0 ? "same three months" : `${lag} month${lag > 1 ? "s" : ""} earlier`;
+        body = `<div class="rv">r = ${rStr(r)} ${chip}</div>
+          <div class="ln">Niño3.4 in ${ninoWindow(state.season, lag)} (${lead})</div>
+          <div class="ln muted">${n} years, ${sig}</div>${rainLine}`;
+        if (how === 2) body += `<div class="ln muted">Drier part of the year here (under
+          ${Math.round(100 * META.thresholds.rainy_share)}% of the year’s rain): not on the survey’s maps.</div>`;
+      }
+    }
+    tipEl.innerHTML = `<div class="hd"><span>${where} · <strong style="color:var(--n9)">${state.season}</strong> (${si.months})</span>${close}</div>
+      ${body}${strip(p)}<div class="hint">Faded: drier part of the year here.${pinned ? " Click a season to show it on the map." : ""}</div>`;
+    placeTip();
+  }
+
+  // the cell's 12 seasons as small bars (above the line: El Niño wetter)
+  function strip(p) {
+    const W = 284, H = 62, mid = 26, h = 22, bw = W / 12;
+    let s = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-label="r in each of the 12 seasons">`;
+    const k0 = CODES.indexOf(state.season);
+    s += `<rect x="${k0 * bw + 0.5}" y="0.5" width="${bw - 1}" height="${H - 1}" fill="#e9f5f1" stroke="#269777" rx="2"/>`;
+    // dashed guides at |r| = 0.3 and 0.5, under the bars
+    [0.3, 0.5].forEach(t => [mid - t * h, mid + t * h].forEach(y =>
+      s += `<line x1="0" x2="${W}" y1="${y}" y2="${y}" stroke="#e1e5e5" stroke-dasharray="2 2"/>`));
+    s += `<line x1="0" x2="${W}" y1="${mid}" y2="${mid}" stroke="#c5cccc" stroke-width="1"/>`;
+    CODES.forEach((code, k) => {
+      const x = k * bw, d = SEASON[code];
+      const cur = code === state.season;
+      if (d) {
+        const f = d.flags[p], rainy = f & F_RAINY;
+        if ((f & F_VALID) && (rainy || d.clim[p] >= minClim())) {
+          const r = d.r[p] / 100, cls = f >> CLASS_SHIFT;
+          const col = state.mode === "ramp" ? RAMP_HEX[d.r[p] + 100] : (cls ? CLASS_INFO[cls].col : "#b9bebe");
+          const bh = Math.max(1.5, Math.abs(r) * h);
+          s += `<rect class="bar" x="${x + 4}" y="${r >= 0 ? mid - bh : mid}" width="${bw - 8}" height="${bh}" fill="${col}"${rainy ? "" : ' fill-opacity="0.4"'}/>`;
+        } else if (!rainy) {
+          s += `<rect x="${x + 4}" y="${mid - 1.5}" width="${bw - 8}" height="3" fill="${DRY_LINE}"/>`;
+        }
+      } else {
+        s += `<text x="${x + bw / 2}" y="${mid + 3}" font-size="9" text-anchor="middle" fill="#c5cccc">…</text>`;
+      }
+      s += `<text x="${x + bw / 2}" y="${H - 5}" font-size="8.5" text-anchor="middle" fill="${cur ? "#18614c" : "#5e6a6b"}" font-weight="${cur ? 700 : 400}">${code}</text>`;
+      s += `<rect class="hit" data-code="${code}" x="${x}" y="0" width="${bw}" height="${H}" fill="transparent"/>`;
+    });
+    return s + `</svg>`;
+  }
+
+  let tipCulled = false;                 // the box's cell is on the far side of the globe just now
+  function placeTip() {
+    const p = tipLatLng ? projectLL(tipLatLng.lat, tipLatLng.lng) : null;
+    tipCulled = !!tipLatLng && !p;
+    tipEl.style.display = tipCulled ? "none" : "block";
+    if (!p) return;
+    const px = scrX(p[0]), py = scrY(p[1]);
+    const w = tipEl.offsetWidth, hgt = tipEl.offsetHeight;
+    let x = px + 16, y = py + 16;
+    if (x + w > view.W - 8) x = px - w - 16;
+    if (y + hgt > view.H - 8) y = py - hgt - 16;
+    tipEl.style.left = Math.max(8, x) + "px";
+    tipEl.style.top = Math.max(8, y) + "px";
+  }
+
+  function setCell(ll) {
+    const cell = cellAt(ll);
+    tipLatLng = ll;
+    if (cell !== hoverCell) { hoverCell = cell; renderTip(); requestRender(); }
+    else placeTip();
+  }
+  function clearCell() {
+    hoverCell = -1; pinned = false; tipCulled = false; tipEl.classList.remove("pinned"); tipEl.style.display = "none";
+    requestRender();
+  }
+  const llAt = (x, y) => { const ll = screenToLL(x, y); return ll ? {lat: ll[0], lng: ll[1]} : null; };
+
+  // ---------------------------------------------------------------- pan and zoom
+  // Dragging keeps the grabbed place under the pointer, which turns the globe east-west and moves
+  // it north-south; zooming keeps the place under the pointer fixed.
+  const pointers = new Map();
+  let gesture = null, anim = null;
+  const localXY = e => { const r = ov.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  function stopAnim() { if (anim) { cancelAnimationFrame(anim); anim = null; } }
+  function startDrag(x, y) {
+    gesture = {type: "drag", x0: x, y0: y, ll: screenToLL(x, y), lon0: view.lon, moved: false};
+  }
+  function zoomAround(x, y, z) {
+    const ll = screenToLL(x, y);
+    view.z = z; clampView();
+    if (ll) anchor(ll[0], ll[1], x, y);
+    requestRender();
+  }
+  function animateZoom(x, y, dz) {
+    stopAnim();
+    const ll = screenToLL(x, y), z0 = view.z, z1 = clampN(z0 + dz, minZoom(), MAXZ), t0 = performance.now();
+    const step = now => {
+      const u = Math.min(1, (now - t0) / 220), e = 1 - (1 - u) * (1 - u);
+      view.z = z0 + (z1 - z0) * e; clampView();
+      if (ll) anchor(ll[0], ll[1], x, y);
+      requestRender();
+      if (u < 1) anim = requestAnimationFrame(step); else { anim = null; writeHash(); }
+    };
+    anim = requestAnimationFrame(step);
+  }
+  ov.addEventListener("pointerdown", e => {
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    ov.setPointerCapture(e.pointerId);
+    const [x, y] = localXY(e);
+    pointers.set(e.pointerId, [x, y]);
+    stopAnim();
+    if (pointers.size === 1) startDrag(x, y);
+    else if (pointers.size === 2) startPinch();
+    else gesture = {type: "none", moved: true};   // three fingers or more: wait until two remain
+  });
+  function startPinch() {
+    const [a, b] = [...pointers.values()];
+    gesture = {type: "pinch", d0: Math.hypot(a[0] - b[0], a[1] - b[1]) || 1, z0: view.z,
+               ll: screenToLL((a[0] + b[0]) / 2, (a[1] + b[1]) / 2), moved: true};
+  }
+  ov.addEventListener("pointermove", e => {
+    const [x, y] = localXY(e);
+    if (pointers.has(e.pointerId)) pointers.set(e.pointerId, [x, y]);
+    if (gesture && gesture.type === "drag" && pointers.size === 1) {
+      if (!gesture.moved && Math.hypot(x - gesture.x0, y - gesture.y0) < 4) return;
+      gesture.moved = true; ov.classList.add("dragging");
+      if (gesture.ll) gesture.ll = follow(gesture.ll, x, y);
+      else { view.lon = gesture.lon0 - (x - gesture.x0) / (view.S * eeK(0)) * R2D; clampView(); }   // grabbed off the world
+      requestRender();
+      return;
+    }
+    if (gesture && gesture.type === "pinch" && pointers.size === 2) {
+      const [a, b] = [...pointers.values()];
+      view.z = gesture.z0 + Math.log2(Math.hypot(a[0] - b[0], a[1] - b[1]) / gesture.d0); clampView();
+      if (gesture.ll) gesture.ll = follow(gesture.ll, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2);
+      requestRender();
+      return;
+    }
+    if (!gesture && e.pointerType === "mouse" && !pinned && LANDPOS) setCell(llAt(x, y));
+  });
+  function endPointer(e) {
+    if (!pointers.delete(e.pointerId)) return;
+    const [x, y] = localXY(e);
+    if (gesture && gesture.type === "drag" && !gesture.moved && e.type === "pointerup" && LANDPOS) {
+      // a click or tap: pin the box on the cell, or close it on sea
+      pinned = false; hoverCell = -1;
+      setCell(llAt(x, y));
+      if (hoverCell >= 0 && LANDPOS[hoverCell] >= 0) { pinned = true; tipEl.classList.add("pinned"); renderTip(); }
+      else clearCell();
+    }
+    if (pointers.size === 2) startPinch();
+    else if (pointers.size === 1) { const [p] = [...pointers.values()]; startDrag(p[0], p[1]); gesture.moved = true; }
+    else if (pointers.size === 0) { gesture = null; ov.classList.remove("dragging"); writeHash(); }
+  }
+  ov.addEventListener("pointerup", endPointer);
+  ov.addEventListener("pointercancel", endPointer);
+  ov.addEventListener("pointerleave", e => { if (e.pointerType === "mouse" && !gesture && !pinned) clearCell(); });
+  let wheelHash = null;
+  ov.addEventListener("wheel", e => {
+    e.preventDefault(); stopAnim();
+    const [x, y] = localXY(e);
+    const dy = e.deltaMode === 1 ? e.deltaY * 33 : e.deltaMode === 2 ? e.deltaY * 400 : e.deltaY;
+    zoomAround(x, y, view.z - clampN(dy, -200, 200) / 250);
+    clearTimeout(wheelHash); wheelHash = setTimeout(writeHash, 250);
+  }, {passive: false});
+  ov.addEventListener("dblclick", e => { const [x, y] = localXY(e); clearCell(); animateZoom(x, y, e.shiftKey ? -1 : 1); });
+  $("zin").addEventListener("click", () => animateZoom(view.W / 2, view.H / 2, 1));
+  $("zout").addEventListener("click", () => animateZoom(view.W / 2, view.H / 2, -1));
+  new ResizeObserver(resize).observe($("map"));
+
+  tipEl.addEventListener("click", e => {
+    if (e.target.closest(".close")) { clearCell(); return; }
+    const hit = e.target.closest(".hit");
+    if (hit) { stopPlay(); selectSeason(hit.dataset.code); }
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") { clearCell(); stopPlay(); return; }
+    if (e.target.closest && e.target.closest("input")) return;
+    if (e.key === "ArrowLeft" || e.key === "ArrowRight") {
+      if (!CODES.length) return;
+      const k = CODES.indexOf(state.season), dk = e.key === "ArrowRight" ? 1 : -1;
+      stopPlay(); selectSeason(CODES[(k + dk + 12) % 12]); e.preventDefault();
+    }
+  });
+
+  // ---------------------------------------------------------------- controls
+  function updateBadge() {
+    const si = seasonInfo(state.season);
+    const m = META.seasons.find(s => s.code === state.season);
+    const end = m.end_month - 1, start = (end + 10) % 12;
+    $("badge-big").textContent = `${LONG_MONTHS[start]} – ${LONG_MONTHS[end]}`;
+    $("badge-small").textContent = `${si.code} · ERA5 rain vs Niño3.4, ${META.period[0]}–${META.period[1]}`;
+  }
+
+  function legendHtml() {
+    const dry = state.dry
+      ? `<div class="row"><span class="sw dryc"></span>Drier part of the year here (hatched)</div>
+         <div class="row"><span class="sw dry"></span>Too dry to assess (under ${META.thresholds.min_mm_day} mm a day)</div>`
+      : `<div class="row"><span class="sw dry"></span>Not assessed: drier part of the year here</div>`;
+    if (state.mode === "ramp") {
+      const ticks = [-1, -0.5, -0.3, 0, 0.3, 0.5, 1].map(t =>
+        `<span style="left:${(t + 1) * 50}%">${t === 0 ? "0" : (t < 0 ? "−" : "") + Math.abs(t)}</span>`).join("");
+      return `<h3>Correlation r</h3><div class="ends"><span>El Niño drier</span><span>El Niño wetter</span></div>
+        <div class="ramp"></div><div class="ticks">${ticks}</div>${dry}
+        <div class="note">Every r, significant or not. |r| below about 0.3 is not significant.</div>`;
+    }
+    const rows = [[2, "r ≥ 0.5"], [1, "r 0.3 to 0.5"], [3, "r −0.3 to −0.5"], [4, "r ≤ −0.5"]].map(([c, t]) =>
+      `<div class="row"><span class="sw" style="background:${CLASS_INFO[c].col}"></span>${CLASS_INFO[c].label} <span style="color:var(--n7)">(${t})</span></div>`).join("");
+    return `<h3>Correlation with Niño3.4</h3>${rows}
+      <div class="row"><span class="sw" style="background:${CLASS_INFO[0].col}"></span>No clear signal (|r| &lt; 0.3 or p ≥ 0.05)</div>${dry}`;
+  }
+
+  async function selectSeason(code) {
+    state.season = code;
+    Object.entries(seasonButtons).forEach(([c, b]) => b.setAttribute("aria-pressed", String(c === code)));
+    updateBadge(); writeHash();
+    if (!SEASON[code]) showStatus(`Loading ${code}…`);
+    try { await loadSeason(code); } catch (err) {
+      if (state.season !== code) return;
+      COLORS = null; requestRender();            // blank rather than the previous season under this label
+      showStatus(`Could not load ${code}: ${err.message}. Click the season to try again.`);
+      return;
+    }
+    if (state.season !== code) return;          // a later click won
+    showStatus("");
+    repaint(); renderTip();
+  }
+
+  function setMode(mode) {
+    state.mode = mode;
+    document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === mode)));
+    $("legend").innerHTML = legendHtml();
+    writeHash(); repaint(); renderTip();
+  }
+  document.querySelectorAll(".seg button[data-mode]").forEach(b => b.addEventListener("click", () => setMode(b.dataset.mode)));
+
+  function setDry(on) {
+    state.dry = on;
+    document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === on)));
+    $("legend").innerHTML = legendHtml();
+    writeHash(); repaint(); renderTip();
+  }
+  document.querySelectorAll(".seg button[data-dry]").forEach(b => b.addEventListener("click", () => setDry(b.dataset.dry === "1")));
+
+  // playGen tags each play run, so a step still waiting on a download from an earlier
+  // run (pause, then play again) cannot start a second chain
+  let playTimer = null, playGen = 0, playing = false;
+  function stopPlay() {
+    playing = false; playGen++;
+    if (playTimer) { clearTimeout(playTimer); playTimer = null; }
+    $("play").innerHTML = "&#9654;"; $("play").setAttribute("aria-label", "Play through the seasons");
+  }
+  function playStep(gen) {
+    if (gen !== playGen) return;
+    const next = CODES[(CODES.indexOf(state.season) + 1) % 12];
+    selectSeason(next).then(() => { if (gen === playGen) playTimer = setTimeout(() => playStep(gen), 1300); });
+  }
+  $("play").addEventListener("click", () => {
+    if (playing) { stopPlay(); return; }
+    playing = true; const gen = ++playGen;
+    $("play").innerHTML = "&#10074;&#10074;"; $("play").setAttribute("aria-label", "Pause");
+    playTimer = setTimeout(() => playStep(gen), 0);
+  });
+
+  // ---------------------------------------------------------------- country search
+  let COUNTRIES = [];
+  function zoomTo(text) {
+    const q = text.trim().toLowerCase();
+    if (!q) return;
+    const label = c => `${c.name} (${c.iso3})`;
+    const hit = COUNTRIES.find(c => label(c).toLowerCase() === q)
+      || COUNTRIES.find(c => c.iso3.toLowerCase() === q || c.name.toLowerCase() === q || (c.alt || "").toLowerCase() === q)
+      || COUNTRIES.find(c => c.name.toLowerCase().startsWith(q) || (c.alt || "").toLowerCase().startsWith(q));
+    if (!hit) { showStatus(`No country matches “${text}”`); setTimeout(() => showStatus(""), 1800); return; }
+    const [s, w, n, e] = hit.bbox;          // a box across 180 degrees has e > 180: the globe turns to it
+    fitBox(s, w, n, e, 7);
+  }
+  // centre the view on the box, then the largest zoom at which its projected outline fits the frame
+  function fitBox(s, w, n, e, maxZoom) {
+    if (e < w) e += 360;
+    stopAnim();
+    view.lon = wrap180((w + e) / 2); view.lat = (s + n) / 2;
+    const pts = [];
+    for (let k = 0; k <= 16; k++) {
+      const la = s + (n - s) * k / 16, lo = w + (e - w) * k / 16;
+      pts.push([la, w], [la, e], [s, lo], [n, lo]);
+    }
+    const fits = () => {
+      view.lat = (s + n) / 2; view.lon = wrap180((w + e) / 2); clampView();   // the centre that will be used
+      const mx = (view.W / 2 - 24) / view.S, my = (view.H / 2 - 24) / view.S;
+      for (const [la, lo] of pts) {
+        const p = projectLL(la, lo);
+        if (!p || Math.abs(p[0]) > mx || Math.abs(p[1]) > my) return false;
+      }
+      return true;
+    };
+    let lo = minZoom(), hi = Math.max(lo, maxZoom);
+    view.z = lo;
+    if (fits()) for (let i = 0; i < 16; i++) { view.z = (lo + hi) / 2; if (fits()) lo = view.z; else hi = view.z; }
+    view.z = lo; clampView(); requestRender(); writeHash();
+  }
+  $("search").addEventListener("change", e => zoomTo(e.target.value));
+  $("search").addEventListener("keydown", e => { if (e.key === "Enter") zoomTo(e.target.value); });
+
+  // ---------------------------------------------------------------- URL hash
+  function writeHash() {
+    if (!META) return;
+    const h = `s=${state.season}&c=${state.mode}${state.dry ? "&d=1" : ""}` +
+              `&m=${view.z.toFixed(2)}/${view.lat.toFixed(2)}/${view.lon.toFixed(2)}`;
+    history.replaceState(null, "", "#" + h);
+  }
+  function readHash() {
+    const q = new URLSearchParams(location.hash.slice(1));
+    const out = {};
+    if (q.get("s")) out.season = q.get("s").toUpperCase();
+    if (q.get("c") === "ramp" || q.get("c") === "classes") out.mode = q.get("c");
+    out.dry = q.get("d") === "1";
+    const m = (q.get("m") || "").split("/").map(Number);
+    if (m.length === 3 && m.every(Number.isFinite)) out.view = {z: m[0], lat: m[1], lng: m[2]};
+    return out;
+  }
+  // any longitude works now (links from earlier versions too): the globe turns to it
+  function setViewTo(v) { stopAnim(); view.lat = v.lat; view.lon = wrap180(v.lng); view.z = v.z; clampView(); requestRender(); }
+  // a pasted link that differs only after "#" does not reload the page
+  window.addEventListener("hashchange", () => {
+    if (!META) return;
+    const h = readHash();
+    if (h.view) setViewTo(h.view);
+    if (h.mode && h.mode !== state.mode) setMode(h.mode);
+    if (h.dry !== state.dry) setDry(h.dry);
+    if (h.season && CODES.includes(h.season) && h.season !== state.season) { stopPlay(); selectSeason(h.season); }
+  });
+
+  // ---------------------------------------------------------------- boot
+  async function boot() {
+    const res = await fetch("data/meta.json", {cache: "no-cache"});
+    if (!res.ok) throw new Error(`meta.json: HTTP ${res.status}`);
+    META = await res.json();
+    G = META.grid; N = META.n_land;
+    CODES = META.seasons.map(s => s.code);
+    META.seasons.forEach(s => {
+      const b = document.createElement("button");
+      b.type = "button"; b.textContent = s.code; b.title = s.months; b.className = "loading";
+      b.setAttribute("aria-pressed", "false");
+      b.addEventListener("click", () => { stopPlay(); selectSeason(s.code); });
+      $("season-buttons").appendChild(b);
+      seasonButtons[s.code] = b;
+    });
+
+    const h = readHash();
+    if (h.season && CODES.includes(h.season)) state.season = h.season;
+    if (h.mode) state.mode = h.mode;
+    state.dry = h.dry;
+    resize();
+    if (h.view) setViewTo(h.view);
+    else { view.lon = 0; view.lat = 0; view.z = minZoom(); clampView(); }   // the whole world, Greenwich in the middle
+    document.querySelectorAll(".seg button[data-mode]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.mode === state.mode)));
+    document.querySelectorAll(".seg button[data-dry]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.dry === "1") === state.dry)));
+    $("legend").innerHTML = legendHtml();
+    updateBadge();
+    showStatus("Loading data…");
+
+    if (gl) {
+      try { initGL(); } catch (err) { console.error(err); QP = LP = null; setFatal(`Could not start the map graphics: ${err.message}`); }
+      glCanvas.addEventListener("webglcontextlost", e => { e.preventDefault(); QP = LP = null; setFatal("The map's graphics were interrupted; restoring…"); });
+      glCanvas.addEventListener("webglcontextrestored", () => {
+        try { initGL(); buildDataLayers(); uploadColors(); setFatal(""); }
+        catch (err) { console.error(err); QP = LP = null; setFatal("The map's graphics were lost: reload the page."); }
+        requestRender();
+      });
+    } else {
+      setFatal("This map needs WebGL 2 (Chrome 56, Firefox 51, Safari 15 or later).");
+    }
+    requestRender();
+    fetch(`data/basemap.json${v()}`).then(r => r.json()).then(bm => { prepBasemap(bm); requestRender(); })
+      .catch(err => { console.error(err); setFatal(`Could not load the borders and names: ${err.message}`); });
+    if (document.fonts) Promise.all([document.fonts.load(FONT_C), document.fonts.load(FONT_P)])
+      .then(() => { FONTS_READY = true; requestRender(); }).catch(() => {});
+    const [landBuf, annBuf, polarBuf, countries] = await Promise.all([
+      fetchBuf(`data/land.bin.gz${v()}`), fetchBuf(`data/annual.bin.gz${v()}`), fetchBuf(`data/polar.bin.gz${v()}`),
+      fetch(`data/countries.json${v()}`).then(r => r.json()),
+      loadSeason(state.season),
+    ]);
+    const bits = new Uint8Array(landBuf), cells = G.nx * G.ny;
+    LANDPOS = new Int32Array(cells).fill(-1);
+    let k = 0;
+    for (let i = 0; i < cells; i++) if ((bits[i >> 3] >> (7 - (i & 7))) & 1) LANDPOS[i] = k++;
+    if (k !== N) throw new Error(`land mask has ${k} cells, expected ${N}`);
+    ANNUAL = new Uint16Array(annBuf);
+    CENTRES = new Float32Array(2 * N);                       // cell centres, in land-cell order
+    for (let i = 0; i < cells; i++) {
+      const q = LANDPOS[i];
+      if (q >= 0) { CENTRES[2 * q] = G.lon0 + (i % G.nx) * G.d; CENTRES[2 * q + 1] = G.lat0 - Math.floor(i / G.nx) * G.d; }
+    }
+    const pb = new Uint8Array(polarBuf), pc = [];               // land beyond the data grid
+    let bit = 0;
+    for (const cap of ["north", "south"]) {
+      const [lat0, rows] = META.polar[cap];
+      for (let r = 0; r < rows; r++) for (let c = 0; c < G.nx; c++, bit++)
+        if ((pb[bit >> 3] >> (7 - (bit & 7))) & 1) pc.push(G.lon0 + c * G.d, lat0 - r * G.d);
+    }
+    POLAR_CENTRES = new Float32Array(pc);
+    buildDataLayers();
+    uploadColors();          // a season loaded before the layer existed: give it its colours now
+    COUNTRIES = countries;
+    $("countrylist").innerHTML = countries.map(c => `<option value="${c.name} (${c.iso3})"></option>`).join("");
+    $("foot").insertAdjacentHTML("beforeend",
+      ` Data version ${META.version}, built ${META.built}; Niño3.4 series to ${META.nino34_last_month}.`);
+
+    await selectSeason(state.season);
+    // fetch the other seasons in the background, nearest first, so play and the 12-season strip work
+    const i0 = CODES.indexOf(state.season);
+    const order = [];
+    for (let d = 1; d < 12; d++) order.push(CODES[(i0 + d) % 12]);
+    for (const code of order) { try { await loadSeason(code); } catch (e) { /* retried on click */ } }
+  }
+  boot().catch(err => { console.error(err); showStatus(`Could not load the map data: ${err.message}`); });
+})();
+</script>
+</body>
+</html>

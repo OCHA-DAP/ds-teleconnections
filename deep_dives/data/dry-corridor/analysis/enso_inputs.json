@@ -1,0 +1,2 @@
+{"n34_mjj": [0.68, 0.40], "tna_mjj": [1.00, 0.33], "n34_son": [0.02, 0.66], "n34_mjj_raw": 1.11,
+ "_note": "NMME November 2026 starts, 4-model mean (CanESM5, GEM5.2-NEMO, CESM1, CCSM4), calibrated by regressing the observed index on the forecast over 1991-2026 targets; all on a 1991-2020 base. Sep-Oct Nino3.4 stands in for Sep-Nov. n34_mjj_raw = the 4-model mean before calibration."}

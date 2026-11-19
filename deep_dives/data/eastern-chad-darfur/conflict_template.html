@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Seasons and local violence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root { color-scheme: light;
+  --ink:#1f2324; --ink2:#4f5859; --muted:#6b7576; --line:#d9dfdf; --grid:#eceff0; --bg:#f6f8f8; --card:#fff;
+  --accent:#1f69b3; --accent-bg:#e8f1fa; --chad:#2a78d6; --darfur:#eb6834; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body { margin:0; background:var(--bg); color:var(--ink); font:400 15px/1.55 'Roboto', system-ui, sans-serif; }
+a { color:var(--accent); }
+.home-link { display:inline-block; margin:10px 16px 0; padding:6px 12px; font:500 13px/1 'Roboto',system-ui,sans-serif;
+  color:var(--accent); background:var(--accent-bg); border:1px solid #cfe0f2; border-radius:4px; text-decoration:none; }
+main { max-width:1080px; margin:0 auto; padding:8px 16px 64px; }
+header { padding:18px 0 6px; }
+.kicker { font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin:0 0 6px; }
+.restricted { display:inline-block; font-size:11px; letter-spacing:.06em; text-transform:uppercase; color:#8a2d12; background:#fbe9e2; border:1px solid #f1c6b6; border-radius:4px; padding:2px 7px; margin-left:6px; }
+h1 { font-family:'Merriweather',Georgia,serif; font-size:28px; line-height:1.25; margin:0 0 10px; }
+h2 { font-family:'Merriweather',Georgia,serif; font-size:20px; line-height:1.3; margin:40px 0 6px; }
+h3 { font-size:15px; font-weight:700; margin:22px 0 4px; }
+.lead { font-size:16.5px; max-width:800px; margin:0 0 10px; }
+.note { color:var(--ink2); font-size:13.5px; max-width:800px; margin:4px 0 10px; }
+.cap { color:var(--muted); font-size:12.5px; margin:6px 0 0; max-width:840px; }
+.tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(230px,1fr)); gap:12px; margin:18px 0 6px; }
+.tile { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 14px; }
+.tile .lbl { font-size:12.5px; color:var(--muted); margin:0 0 6px; }
+.tile .row { display:flex; align-items:baseline; gap:8px; margin:2px 0; }
+.tile .sw { width:9px; height:9px; border-radius:50%; flex:none; transform:translateY(-1px); }
+.tile .side { font-size:13px; color:var(--ink2); min-width:92px; }
+.tile .v { font-size:22px; font-weight:700; font-variant-numeric:tabular-nums; }
+.tile .sub { font-size:12.5px; color:var(--ink2); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:14px 14px 10px; margin:12px 0; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+@media (max-width:760px){ .grid2 { grid-template-columns:1fr; } h1{font-size:23px;} }
+.ctl { display:flex; flex-wrap:wrap; gap:6px 14px; align-items:center; margin:2px 0 8px; font-size:13px; color:var(--ink2); }
+.seg { display:inline-flex; flex-wrap:wrap; border:1px solid var(--line); border-radius:6px; overflow:hidden; }
+.seg button { font:inherit; font-size:13px; border:0; background:#fff; color:var(--ink2); padding:5px 10px; cursor:pointer; }
+.seg button + button { border-left:1px solid var(--line); }
+.seg button[aria-pressed="true"] { background:var(--accent); color:#fff; }
+.legend { display:flex; flex-wrap:wrap; gap:4px 16px; font-size:12.5px; color:var(--ink2); margin:2px 0 4px; }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.legend i { display:inline-block; width:12px; height:12px; border-radius:50%; }
+.legend i.sq { border-radius:2px; }
+.legend i.ring { background:transparent !important; border:2px solid; }
+svg { display:block; width:100%; height:auto; overflow:visible; }
+svg.mapsvg { overflow:hidden; }
+svg text { font-family:'Roboto',system-ui,sans-serif; fill:var(--ink2); font-size:11px; }
+.axis path, .axis line { stroke:var(--line); }
+.axis text { fill:var(--muted); font-size:11px; }
+.gridl line { stroke:var(--grid); }
+.gridl path { display:none; }
+.ptitle { font-size:13px; font-weight:700; fill:var(--ink); }
+.stat { font-size:11px; fill:var(--muted); }
+#tip { position:fixed; pointer-events:none; z-index:20; background:#fff; border:1px solid var(--line); border-radius:6px;
+  box-shadow:0 2px 8px rgba(0,0,0,.12); padding:7px 9px; font-size:12.5px; line-height:1.4; max-width:300px; color:var(--ink); }
+#tip b { font-weight:700; }
+#tip .m { color:var(--muted); }
+.tablewrap { overflow-x:auto; }
+table.t { border-collapse:collapse; font-size:13px; width:100%; }
+table.t th, table.t td { padding:5px 8px; border-bottom:1px solid var(--grid); text-align:left; vertical-align:top; }
+table.t th { color:var(--muted); font-weight:500; font-size:12px; }
+table.t td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+.est { border-left:4px solid var(--accent); background:var(--accent-bg); padding:10px 14px; border-radius:0 6px 6px 0; margin:12px 0; max-width:860px; }
+.est p { margin:4px 0; }
+ol.refs { padding-left:20px; font-size:13.5px; color:var(--ink2); }
+ol.refs li { margin:0 0 8px; }
+ol.refs li.key::marker { color:var(--darfur); font-weight:700; }
+details.m { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 14px; margin:8px 0; }
+details.m summary { cursor:pointer; font-weight:500; }
+details.m p, details.m li { font-size:13.5px; color:var(--ink2); }
+footer { margin-top:40px; font-size:12.5px; color:var(--muted); }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<a class="home-link" href="../">← ENSO country deep dives</a>
+<main>
+<header>
+  <p class="kicker">Eastern Chad and Darfur · OCHA Centre for Humanitarian Data · <span id="stamp"></span><span class="restricted">Restricted</span></p>
+  <h1>Do poor rainy seasons lead to more local violence?</h1>
+  <p class="lead" id="lead"></p>
+  <div class="tiles" id="tiles"></div>
+  <p class="cap" id="tilecap"></p>
+</header>
+
+<h2 id="counted">What is counted</h2>
+<div class="card">
+  <div class="ctl">Events: <div class="seg" id="ySel">
+    <button data-c="resource" aria-pressed="true">Resource-type</button><button data-c="communal" aria-pressed="false">Communal</button><button data-c="war" aria-pressed="false">Wider wars</button><button data-c="ucdp_nonstate" aria-pressed="false">UCDP communal</button></div></div>
+  <div class="grid2"><div id="yearDar"></div><div id="yearChad"></div></div>
+  <p class="cap" id="yearcap"></p>
+</div>
+
+<div class="card">
+  <h3 style="margin-top:0">When in the year, Darfur <span id="cycyears"></span></h3>
+  <div class="ctl"><div class="seg" id="cSel">
+    <button data-c="resource" aria-pressed="true">Resource-type</button><button data-c="communal" aria-pressed="false">Communal</button><button data-c="war" aria-pressed="false">Wider wars</button></div></div>
+  <div id="cycle"></div>
+  <p class="cap" id="cyccap"></p>
+</div>
+
+<h2 id="seasons">One point per season</h2>
+<div class="card">
+  <div class="ctl">Season: <div class="seg" id="xSel">
+    <button data-x="grn" aria-pressed="true">Greening, Darfur</button><button data-x="grn_pastoral" aria-pressed="false">Greening, pastoral zone</button><button data-x="bio_d" aria-pressed="false">Biomass (JRC)</button><button data-x="vhi_d" aria-pressed="false">Vegetation health (FAO)</button><button data-x="rain" aria-pressed="false">Rain</button></div></div>
+  <div class="ctl">Events after it: <div class="seg" id="ySel2">
+    <button data-y="resource_oct_jan" aria-pressed="true">Resource-type, Oct–Jan</button><button data-y="share_res_oct_jan" aria-pressed="false">% of all events</button><button data-y="res_detr" aria-pressed="false">Minus its trend</button><button data-y="units_res_oct_jan" aria-pressed="false">Localities hit</button><button data-y="communal_oct_jan" aria-pressed="false">Communal</button><button data-y="war_oct_jan" aria-pressed="false">Wider wars (check)</button><button data-y="resource_mar_jun" aria-pressed="false">Resource, Mar–Jun</button><button data-y="resource_jun_jul" aria-pressed="false">Resource, Jun–Jul</button></div></div>
+  <div class="legend" id="scleg"></div>
+  <div id="sc"></div>
+  <p class="cap" id="sccap"></p>
+</div>
+
+<h2 id="localities">Locality by locality</h2>
+<div class="card">
+  <h3 style="margin-top:0">Change in the chance that a Darfur locality records an event, per 10 points of greening lost</h3>
+  <div class="legend"><span><i style="background:#1f2324"></i>estimate</span><span><i class="sq" style="background:#d6dbdc"></i>range that chance alone gives (95%)</span><span><i class="ring" style="border-color:#1f2324"></i>without season effects</span></div>
+  <div id="forest"></div>
+  <p class="cap" id="forestcap"></p>
+  <div class="tablewrap"><table class="t" id="ttab"></table></div>
+</div>
+<div class="est" id="skill"></div>
+
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">How often a locality had a resource-type event in October–January, 2014–2022</h3>
+    <div id="pmap"></div>
+    <div class="legend" id="pleg"></div>
+    <p class="cap">Share of the nine seasons with at least one event placed in the locality (events located only to the state are left out). <span id="chadmap"></span> The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.</p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">2026 greening by locality, % of trend</h3>
+    <div id="gmap"></div>
+    <div class="legend" id="gleg"></div>
+    <p class="cap" id="gcap"></p>
+  </div>
+</div>
+
+<h2 id="since">Since the war began</h2>
+<div class="card">
+  <div class="ctl"><div class="seg" id="mSel">
+    <button data-c="resource" aria-pressed="true">Resource-type</button><button data-c="communal" aria-pressed="false">Communal</button><button data-c="war" aria-pressed="false">Wider wars</button></div></div>
+  <div class="grid2"><div id="monDar"></div><div id="monChad"></div></div>
+  <p class="cap" id="moncap"></p>
+</div>
+
+<section id="beltsec" hidden>
+<h2 id="belt">The wider Sahel: the same test across the belt</h2>
+<p class="lead" id="beltlead"></p>
+<div class="tiles" id="belttiles"></div>
+<p class="cap" id="belttilecap"></p>
+<div class="grid2">
+  <div class="card">
+    <h3 style="margin-top:0">How often a cell had a resource-type event in October–January</h3>
+    <div id="bmap"></div>
+    <div class="legend" id="bmapleg"></div>
+    <p class="cap" id="bmapcap"></p>
+  </div>
+  <div class="card">
+    <h3 style="margin-top:0">2026 greening by cell, % of trend</h3>
+    <div id="bgmap"></div>
+    <div class="legend" id="bgleg"></div>
+    <p class="cap" id="bgcap"></p>
+  </div>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">Pooled tests: change in the chance that a cell records an event, per standard deviation of poorer conditions</h3>
+  <div class="legend"><span><i style="background:#1f2324"></i>estimate</span><span><i class="sq" style="background:#d6dbdc"></i>range that chance alone gives (95%)</span></div>
+  <div id="bforest"></div>
+  <p class="cap" id="bforestcap"></p>
+  <div class="tablewrap"><table class="t" id="btab"></table></div>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">The two primary tests, country by country</h3>
+  <div class="legend"><span><i style="background:#1f2324"></i>upstream greening, July–October (P1)</span><span><i class="ring" style="border-color:#1f2324"></i>own greening, October–January (P2)</span><span><i class="sq" style="background:#cfd5d6"></i>chance range, P1 (upper bar)</span><span><i class="sq" style="background:#e6eaeb"></i>chance range, P2 (lower bar)</span></div>
+  <div id="bcountry"></div>
+  <p class="cap" id="bcountrycap"></p>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">How the indicators move together, and with events</h3>
+  <div class="ctl">Countries: <div class="seg" id="mSet"></div></div>
+  <div id="bmatrix"></div>
+  <p class="cap" id="bmatrixcap"></p>
+</div>
+<div class="est" id="belt2026"></div>
+</section>
+
+<section id="contactsec" hidden>
+<h2 id="contact">Where herders meet farmers: the published design</h2>
+<p class="lead" id="ctlead"></p>
+<div class="tiles" id="cttiles"></div>
+<div class="card">
+  <h3 style="margin-top:0">From the published result to this page's question, step by step</h3>
+  <div id="ctbridge"></div>
+  <p class="cap" id="ctbridgecap"></p>
+</div>
+<div class="card">
+  <h3 style="margin-top:0">Belt cells next to a herding group, by how much that group lived from moving herds</h3>
+  <div id="ctmap"></div>
+  <div class="legend" id="ctleg"></div>
+  <p class="cap" id="ctmapcap"></p>
+</div>
+<div class="est" id="ct2026"></div>
+</section>
+
+<h2 id="models">Conflict forecasting models</h2>
+<p class="note" id="modnote"></p>
+<div class="card"><div class="tablewrap"><table class="t" id="modtab"></table></div></div>
+<div class="card">
+  <h3 style="margin-top:0">ACLED CAST: forecast and recorded political violence events per month</h3>
+  <div class="legend"><span><i class="sq" style="background:#9aa3a4"></i>forecast</span><span><i style="background:#1f2324"></i>recorded</span></div>
+  <div class="grid2"><div id="castDar"></div><div id="castChad"></div></div>
+  <p class="cap" id="castcap"></p>
+</div>
+
+<h2 id="lit">What the literature says</h2>
+<p class="note" id="litsyn"></p>
+<div class="card"><ol class="refs" id="refs"></ol><p class="cap" id="refcap"></p></div>
+
+<h2 id="method">Method</h2>
+<div id="methods"></div>
+
+<footer>Built <span id="stamp2"></span> · restricted: built from ACLED event data, which may not be redistributed · <span id="srcs"></span> · OCHA Centre for Humanitarian Data</footer>
+</main>
+<div id="tip" hidden></div>
+<script>
+const D = /*__DATA__*/null;
+const STAMP = "/*__STAMP__*/";
+const COL = {chad:"#2a78d6", darfur:"#eb6834"};
+const CC = {resource:"#c4521f", communal:"#7a5bbf", war:"#6b7576", ucdp_nonstate:"#1f8a7a"};
+const CLAB = {resource:"Resource-type", communal:"Communal", war:"Wider wars", ucdp_nonstate:"UCDP communal (non-state)"};
+const fmt0 = d3.format(".0f"), fmt1 = d3.format(".1f"), fmt2 = d3.format(".2f");
+const sgn1 = v => (v > 0 ? "+" : v < 0 ? "−" : "") + fmt1(Math.abs(v));
+const sgn2 = v => (v > 0 ? "+" : v < 0 ? "−" : "") + fmt2(Math.abs(v));
+const PD = d3.timeParse("%Y-%m-%d");  // local dates (new Date("YYYY-MM-DD") is UTC: a day early west of Greenwich)
+const MON = ["","Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const DS = D.design, S0 = DS.seasons[0], S1 = DS.seasons[1];
+document.getElementById("stamp").textContent = STAMP;
+document.getElementById("stamp2").textContent = STAMP;
+document.getElementById("srcs").textContent = "Sources: " + D.text.sources;
+
+// ---------- helpers ----------
+const tip = document.getElementById("tip");
+function showTip(ev, html){ tip.innerHTML = html; tip.hidden = false;
+  const w = tip.offsetWidth, h = tip.offsetHeight;
+  let x = ev.clientX + 14, y = ev.clientY + 14;
+  if (x + w > window.innerWidth - 8) x = ev.clientX - w - 14;
+  if (y + h > window.innerHeight - 8) y = ev.clientY - h - 14;
+  tip.style.left = x + "px"; tip.style.top = y + "px"; }
+function hideTip(){ tip.hidden = true; }
+function seg(id, cb){ const el = document.getElementById(id);
+  el.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    el.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", x === b ? "true" : "false"));
+    cb(b.dataset); })); }
+function svgEl(node, W, H, cls){ d3.select(node).selectAll("*").remove();
+  return d3.select(node).append("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("class", cls || null); }
+function ranks(v){ const idx = v.map((x,i) => [x,i]).sort((a,b) => a[0]-b[0]), r = new Array(v.length);
+  for (let i = 0; i < idx.length;) { let j = i; while (j+1 < idx.length && idx[j+1][0] === idx[i][0]) j++;
+    for (let k = i; k <= j; k++) r[idx[k][1]] = (i + j) / 2 + 1; i = j + 1; } return r; }
+function pearson(a){ const n = a.length; if (n < 4) return null;
+  const mx = d3.mean(a, d => d[0]), my = d3.mean(a, d => d[1]);
+  let sxy = 0, sx = 0, sy = 0; a.forEach(([x,y]) => { sxy += (x-mx)*(y-my); sx += (x-mx)**2; sy += (y-my)**2; });
+  return sxy / Math.sqrt(sx*sy); }
+function spearman(a){ if (a.length < 4) return null; const rx = ranks(a.map(d => d[0])), ry = ranks(a.map(d => d[1]));
+  return pearson(rx.map((x,i) => [x, ry[i]])); }
+const T = Object.fromEntries(D.tests.map(t => [t.key, t]));
+const SEA = D.season, sea = y => SEA.find(r => r.y === y);
+const TEST = SEA.filter(r => r.kind === "test");
+// count minus its own linear trend over the test seasons
+(function(){ const xs = TEST.map(r => r.y), ys = TEST.map(r => r.resource_oct_jan);
+  const mx = d3.mean(xs), my = d3.mean(ys), b = d3.sum(xs, (x,i) => (x-mx)*(ys[i]-my)) / d3.sum(xs, x => (x-mx)**2);
+  TEST.forEach(r => { r.res_detr = r.resource_oct_jan - (my + b*(r.y - mx)); }); })();
+// windows in the year after the season end before the war only up to seasons_late
+const LATE = new Set(["resource_mar_jun", "resource_jun_jul"]);
+const testFor = yk => TEST.filter(r => !LATE.has(yk) || r.y <= DS.seasons_late[1]);
+const rhoOf = (xk, yk) => spearman(testFor(yk).filter(r => r[xk] != null && r[yk] != null).map(r => [r[xk], r[yk]]));
+function resid(rows, k){ const xs = rows.map(r => r.y), ys = rows.map(r => r[k]), mx = d3.mean(xs), my = d3.mean(ys);
+  const b = d3.sum(xs, (x,i) => (x-mx)*(ys[i]-my)) / d3.sum(xs, x => (x-mx)**2); return ys.map((v,i) => v - (my + b*(xs[i]-mx))); }
+function rhoBothDetr(xk, yk){ const rows = testFor(yk).filter(r => r[xk] != null && r[yk] != null);
+  const rx = resid(rows, xk), ry = resid(rows, yk); return spearman(rx.map((v,i) => [v, ry[i]])); }
+const minBy = (arr, k) => arr.reduce((a, b) => (b[k] != null && (a == null || b[k] < a[k])) ? b : a, null);
+
+// ---------- lead + tiles ----------
+(function(){
+  const P = T.res_octjan, tw = P.two_way, half = (tw.null_hi - tw.null_lo) / 2, sk = D.skill;
+  const effect = tw.p < 0.1 && tw.pp_per_10 > 0;
+  const g26 = sea(2026), gl = minBy(TEST, "grn"), pl = minBy(TEST, "grn_pastoral");
+  const rRes = rhoOf("grn", "resource_oct_jan"), rWar = rhoOf("grn", "war_oct_jan"), rDet = rhoBothDetr("grn", "resource_oct_jan");
+  const rYear = spearman(TEST.map(r => [r.y, r.grn])), rWarYear = spearman(TEST.map(r => [r.y, r.war_oct_jan])),
+        rAllYear = spearman(TEST.map(r => [r.y, r.all_oct_jan]));
+  const sinceM = D.monthly.filter(r => r.ym >= "2026-10");
+  const since = (s, c) => d3.sum(sinceM.filter(r => r.side === s), r => r[c]);
+  const lastEv = d3.timeFormat("%-d %B %Y")(PD(D.acled_last_event));
+  const locSent = effect
+    ? `In Darfur's pre-war seasons (${S0}–${S1}), localities whose vegetation greened poorly were more likely to record farmer–herder or other resource-type violence in the following October–January: ${sgn1(tw.pp_per_10)} points of probability per 10 points of greening lost (chance alone gives ±${fmt1(half)}).`
+    : `In Darfur's pre-war seasons (${S0}–${S1}), there is no detectable link between a poor season in a locality and farmer–herder or other resource-type violence there in the following October–January: ${sgn1(tw.pp_per_10)} points of probability per 10 points of greening lost, inside the ±${fmt1(half)} that chance alone gives. That is too imprecise to rule out a modest effect: anything from about ${sgn1(tw.pp_per_10 - half)} to ${sgn1(tw.pp_per_10 + half)} fits, against a base rate of ${fmt0(100*P.rate)}%.`;
+  const skillSent = sk.bss > Math.max(0, sk.null_q90) ? ` Adding greening improved predictions for left-out seasons (Brier skill ${sgn1(100*sk.bss)}%).`
+    : ` Adding greening did not improve predictions for left-out seasons.`;
+  const added = D.tests.filter(t => t.kind === "added"), addedHit = added.filter(t => t.two_way.p < 0.1 && t.two_way.pp_per_10 > 0);
+  const addSent = !added.length ? "" : addedHit.length
+    ? ` Of the tests added afterwards from the literature, ${addedHit.map(t => t.label.toLowerCase()).join(" and ")} ${addedHit.length > 1 ? "show" : "shows"} a link (see below).`
+    : ` Tests added afterwards from the literature (violence during the season itself; greening in the areas to the north that the herds come from) found no detectable link either.`;
+  const seasSent = (rRes != null && rRes < -0.3 && rWar != null && rWar < -0.3)
+    ? ` Across the nine seasons, the poorer ones tended to see more such events (rank correlation ${sgn2(rRes)}, which nine seasons cannot tell from chance), but war events show the same tendency (${sgn2(rWar)}): ${D.text.notes.season_trend} (rank correlation with the year: greening ${sgn2(rYear)}, war events ${sgn2(rWarYear)}, all events ${sgn2(rAllYear)}). With both trends taken out, the rank correlation is ${sgn2(rDet)}.`
+    : ` Across the nine seasons there is no clear pattern either (rank correlation ${sgn2(rRes)}).`;
+  document.getElementById("lead").textContent = locSent + skillSent + addSent + seasSent +
+    ` 2026 is far poorer than any of these seasons (Darfur greening ${fmt0(g26.grn)}% of trend; the lowest in the test, ${gl.y}, was ${fmt0(gl.grn)}%), so this record cannot say how it will play out. ${D.text.notes.chad_lead}` + (D.belt ? (() => {
+      const bt = Object.fromEntries(D.belt.tests.map(t => [t.key, t])), lk = t => t.pp > 0 && t.p < 0.025;
+      const nc = `about ${d3.format(",")(Math.round(Math.min(bt.P1.cells, bt.P2.cells) / 100) * 100)}`;
+      return lk(bt.P1) || lk(bt.P2) ? ` Pooled across ${nc} cells of the wider Sudano-Sahelian belt, a pre-specified test does show a link (see The wider Sahel).`
+        : ` Pooled across ${nc} cells of the wider Sudano-Sahelian belt, with the tests written down first, there is no detectable link either (see The wider Sahel).`; })() : "");
+  const tiles = [
+    {lbl:`Locality test, Darfur ${S0}–${S1}, October–January`, rows:[{s:"darfur", v: sgn1(tw.pp_per_10)+" pts", sub:`change in the chance of a resource-type event per 10 points of greening lost · chance alone ±${fmt1(half)} · p = ${fmt2(tw.p)} · base rate ${fmt0(100*P.rate)}%`}]},
+    {lbl:"Predictions for left-out seasons", rows:[{s:"darfur", v: sgn1(100*sk.bss)+"%", sub:`Brier skill of the baseline plus greening over the baseline alone (a locality's own record, its events in the previous 12 months, war events); chance alone reaches ${sgn1(100*sk.null_q90)}% in 1 of 10 reshuffles`}]},
+    {lbl:"2026 against the tested seasons", rows:[
+      {s:"darfur", v: fmt0(g26.grn)+"%", sub:`Darfur greening, % of trend · lowest tested ${fmt0(gl.grn)}% (${gl.y})`},
+      {s:"darfur", v: fmt0(g26.grn_pastoral)+"%", sub:`pastoral zone (both sides) · lowest tested ${fmt0(pl.grn_pastoral)}% (${pl.y})`}]},
+    {lbl:`Recorded since 1 October 2026 (to ${lastEv})`, rows:[
+      {s:"darfur", v: fmt0(since("darfur","resource")), sub:`resource-type · ${fmt0(since("darfur","communal"))} communal · ${fmt0(since("darfur","war"))} wider wars`},
+      {s:"chad", v: fmt0(since("chad","resource")), sub:`resource-type · ${fmt0(since("chad","communal"))} communal · ${fmt0(since("chad","war"))} wider wars`}]},
+  ];
+  const t = document.getElementById("tiles");
+  tiles.forEach(tl => { const d = document.createElement("div"); d.className = "tile";
+    d.innerHTML = `<p class="lbl">${tl.lbl}</p>` + tl.rows.map(r => `<div class="row"><span class="sw" style="background:${COL[r.s]}"></span><span class="side">${D.sides[r.s]}</span><span class="v">${r.v}</span></div><div class="sub" style="margin:-2px 0 4px 17px">${r.sub}</div>`).join("");
+    t.appendChild(d); });
+  document.getElementById("tilecap").textContent = `Resource-type = ACLED battles and violence against civilians with no party to the wider wars, where farmers, pastoralists or herders are named as actors or the event notes mention livestock, grazing, crops, farms or water points. Greening = MODIS vegetation rise from the dry season to July–October, % of the level each area's 2001–2024 trend gives. Recent counts are incomplete: ACLED adds events for weeks after they happen. ${D.text.notes.rsf}`;
+})();
+
+// ---------- yearly bars ----------
+function bars(node, rows, cfg){
+  const W = cfg.W || 520, H = cfg.H || 230, m = {t:24,r:10,b:26,l:40}, svg = svgEl(node, W, H);
+  const x = d3.scaleBand(rows.map(r => r.k), [m.l, W-m.r]).padding(0.18);
+  const ymax = d3.max(rows, r => r.v) || 1, y = d3.scaleLinear([0, ymax*1.08], [H-m.b, m.t]).nice();
+  if (cfg.shade) cfg.shade.forEach(([a, b, col, lab]) => { const xa = x(a), xb = x(b); if (xa == null || xb == null) return;
+    svg.append("rect").attr("x", xa - x.step()*x.paddingInner()/2).attr("width", xb - xa + x.step()).attr("y", m.t).attr("height", H-m.t-m.b).attr("fill", col);
+    if (lab) svg.append("text").attr("x", xa + 2).attr("y", m.t + 10).style("font-size","10px").style("fill","#6b7576").text(lab); });
+  const nt = cfg.yfmt ? 4 : Math.min(4, Math.ceil(y.domain()[1]));  // counts: whole-number ticks only
+  svg.append("g").attr("class","gridl").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(nt).tickSize(-(W-m.l-m.r)).tickFormat(""));
+  svg.append("g").attr("class","axis").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(nt).tickFormat(cfg.yfmt || (d => Number.isInteger(d) ? d : "")));
+  svg.append("g").attr("class","axis").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).tickValues(rows.map(r => r.k).filter(cfg.tickf || (() => true))).tickFormat(cfg.xfmt || (d => d)));
+  svg.append("text").attr("class","ptitle").attr("x", m.l).attr("y", 13).text(cfg.title);
+  svg.selectAll("rect.b").data(rows.filter(r => r.v != null)).join("rect").attr("class","b")
+    .attr("x", r => x(r.k)).attr("width", x.bandwidth()).attr("y", r => y(r.v)).attr("height", r => y(0) - y(r.v))
+    .attr("fill", r => r.col || cfg.color).attr("rx", 1.5)
+    .on("mousemove", (ev, r) => showTip(ev, r.tip)).on("mouseleave", hideTip);
+  rows.filter(r => r.v == null && cfg.nullMark).forEach(r => svg.append("text").attr("x", x(r.k) + x.bandwidth()/2).attr("y", H-m.b-3).attr("text-anchor","middle").style("font-size","9px").style("fill","#9aa3a4").text("–"));
+}
+function drawYearly(c){
+  [["darfur","yearDar"],["chad","yearChad"]].forEach(([s, id]) => {
+    const rows = d3.range(2005, 2027).map(y => { const r = D.yearly.find(d => d.side === s && d.year === y) || {};
+      const v = r[c] == null ? (c === "ucdp_nonstate" && y > 2024 ? null : 0) : r[c];
+      return {k: y, v, tip: `<b>${D.sides[s]}, ${y}</b><br>${CLAB[c]}: <b>${v == null ? "no data yet" : fmt0(v)}</b>${r.all != null ? `<br><span class="m">all ACLED battles and violence against civilians: ${fmt0(r.all)}</span>` : ""}`}; });
+    bars(document.getElementById(id), rows, {title: `${D.sides[s]}: ${CLAB[c].toLowerCase()} events a year`, color: CC[c], nullMark: true,
+      tickf: y => y % 3 === 2, shade: [[S0, S1, "#eef3f8", "tested"], [2023, 2026, "#f6efe9", "war"]]});
+  });
+  document.getElementById("yearcap").textContent = c === "ucdp_nonstate"
+    ? "UCDP GED 25.1 (to 2024): non-state events between communal groups (dyads of rebel factions or militias left out). UCDP counts only conflicts that reach 25 deaths in a year, so small clashes are missing; it is an independent check on the ACLED counts, not a replacement."
+    : `ACLED battles and violence against civilians, by the state or province ACLED records. 2026 to ${d3.timeFormat("%-d %B")(PD(D.acled_last_event))}. Scales differ between the two panels. ${c === "communal" ? "Communal = an ethnic or communal militia is a party and no party to the wider wars is. " + D.text.notes.labels : c === "war" ? "Wider wars = state forces, rebel groups (including the RSF) or foreign forces are a party." : "Hand-checked: " + D.text.handcheck}`;
+}
+drawYearly("resource"); seg("ySel", d => drawYearly(d.c));
+
+// ---------- seasonal cycle ----------
+function drawCycle(c){
+  const tot = d3.sum(D.cycle, r => r[c]);
+  const rows = d3.range(1, 13).map(mo => { const r = D.cycle.find(d => d.m === mo) || {}; const v = 100 * (r[c] || 0) / tot;
+    return {k: mo, v, tip: `<b>${MON[mo]}</b><br>${CLAB[c]}: <b>${fmt0(v)}%</b> of the year's events <span class="m">(${fmt0(r[c] || 0)} events, ${S0}–${S1})</span>`}; });
+  bars(document.getElementById("cycle"), rows, {W: 1040, H: 220, title: `${CLAB[c]}, % of the year's events`, color: CC[c], xfmt: mo => MON[mo], yfmt: d => d + "%",
+    shade: [[10, 12, "#f8e9df", "Oct–Jan"], [1, 1, "#f8e9df", null], [3, 5, "#eef3f8", "Mar–Jun"], [6, 7, "#efeaf7", "Jun–Jul"]]});
+}
+document.getElementById("cycyears").textContent = `${S0}–${S1}`;
+document.getElementById("cyccap").textContent = `Share of each kind of event falling in each month, ${S0}–${S1}. Shaded: the windows tested after a season: ${D.text.notes.windows}. June falls in both of the later windows, and October in both October–January and the July–October window added later.`;
+document.getElementById("chadmap").textContent = D.text.notes.chad_map;
+drawCycle("resource"); seg("cSel", d => drawCycle(d.c));
+
+// ---------- one point per season ----------
+const XDEF = {
+  grn: {lab:"Greening, Darfur, % of trend (MODIS)", dom:[45,150], f:v => fmt0(v)+"%", ref:100, cap:"MODIS greening averaged over Darfur's rainfall belt, % of its 2001–2024 trend level (as on the public season page)."},
+  grn_pastoral: {lab:"Greening, pastoral zone, % of trend (MODIS)", dom:[25,190], f:v => fmt0(v)+"%", ref:100, cap:`MODIS greening over the pastoral zone on both sides of the border (rainfall-belt cells with under ${fmt0(DS.pastoral_max_mm)} mm in an average June–September), where camel herds spend the rainy season before moving south. Set before looking at any relationship.`},
+  bio_d: {lab:"Biomass, detrended z (JRC ASAP)", dom:[-2.4,1], f:v => fmt2(v), ref:0, cap:"JRC ASAP cropland biomass index at 21 October, minus its 2001–2025 line."},
+  vhi_d: {lab:"Vegetation health, detrended (FAO VHI)", dom:[-0.2,0.15], f:v => fmt2(v), ref:0, cap:"FAO vegetation health index, July–October mean, minus its 1984–2025 line."},
+  rain: {lab:"June–September rain, % of trend (CHIRPS)", dom:[60,120], f:v => fmt0(v)+"%", ref:100, cap:"CHIRPS v2/v3 June–September rain, % of its 1981–2025 trend level."},
+};
+const YDEF = {
+  resource_oct_jan: {lab:"Resource-type events, Oct–Jan", f: fmt0},
+  share_res_oct_jan: {lab:"Resource-type, % of all events, Oct–Jan", f: v => fmt0(v)+"%"},
+  res_detr: {lab:"Resource-type events, Oct–Jan, minus trend", f: v => sgn1(v), testOnly: true},
+  units_res_oct_jan: {lab:"Localities with a resource-type event, Oct–Jan", f: fmt0},
+  communal_oct_jan: {lab:"Communal events, Oct–Jan", f: fmt0},
+  war_oct_jan: {lab:"Wider-war events, Oct–Jan", f: fmt0},
+  resource_mar_jun: {lab:"Resource-type events, Mar–Jun after", f: fmt0},
+  resource_jun_jul: {lab:"Resource-type events, Jun–Jul after", f: fmt0},
+};
+let XS = "grn", YS = "resource_oct_jan";
+function drawSeasons(){
+  const X = XDEF[XS], Y = YDEF[YS], W = 1040, H = 380, m = {t:26,r:16,b:40,l:52}, svg = svgEl(document.getElementById("sc"), W, H);
+  const kindY = r => (r.kind === "test" && LATE.has(YS) && r.y > DS.seasons_late[1]) ? "war" : r.kind;
+  const pts = SEA.filter(r => r.y !== 2026 && r[XS] != null && r[YS] != null && (!Y.testOnly || r.kind === "test")).map(r => ({...r, kind: kindY(r)}));
+  const x = d3.scaleLinear(X.dom, [m.l, W-m.r]);
+  const yv = pts.map(r => r[YS]), y = d3.scaleLinear([Math.min(0, d3.min(yv)), d3.max(yv)*1.1], [H-m.b, m.t]).nice();
+  svg.append("g").attr("class","gridl").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W-m.l-m.r)).tickFormat(""));
+  svg.append("g").attr("class","axis").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5));
+  svg.append("g").attr("class","axis").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).ticks(8));
+  svg.append("text").attr("x", (m.l+W-m.r)/2).attr("y", H-4).attr("text-anchor","middle").style("font-size","11.5px").text(X.lab);
+  svg.append("text").attr("transform", `translate(12,${(m.t+H-m.b)/2}) rotate(-90)`).attr("text-anchor","middle").style("font-size","11.5px").text(Y.lab);
+  if (X.ref != null) svg.append("line").attr("x1", x(X.ref)).attr("x2", x(X.ref)).attr("y1", m.t).attr("y2", H-m.b).attr("stroke","#8a9495").attr("stroke-dasharray","3 3");
+  const now = sea(2026)[XS];
+  if (now != null) { const cx = x(Math.max(X.dom[0], Math.min(X.dom[1], now)));
+    svg.append("rect").attr("x", cx-3).attr("width", 6).attr("y", m.t).attr("height", H-m.t-m.b).attr("fill","#c9ced0").attr("fill-opacity",.8);
+    svg.append("text").attr("x", cx+6).attr("y", m.t+11).style("font-weight","700").style("fill","#1f2324").text(`2026: ${X.f(now)}${now < X.dom[0] ? " (off the scale)" : ""}`); }
+  // labels: first free spot of four around the point (no overlap with labels or points already placed)
+  const boxes = pts.map(r => { const cx = x(Math.max(X.dom[0], Math.min(X.dom[1], r[XS]))), cy = y(r[YS]); return [cx-5, cy-5, cx+5, cy+5]; });
+  const hit = (b) => boxes.some(o => b[0] < o[2] && b[2] > o[0] && b[1] < o[3] && b[3] > o[1]);
+  pts.forEach(r => { const cx = x(Math.max(X.dom[0], Math.min(X.dom[1], r[XS]))), cy = y(r[YS]), g = svg.append("g"), c = COL.darfur;
+    if (r.kind === "early") g.append("path").attr("d", `M${cx-4},${cy-4}L${cx+4},${cy+4}M${cx-4},${cy+4}L${cx+4},${cy-4}`).attr("stroke","#9aa3a4").attr("stroke-width",2);
+    else if (r.kind === "war") g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",4.5).attr("fill","#fff").attr("stroke",c).attr("stroke-width",2);
+    else g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",5).attr("fill",c).attr("stroke","#fff");
+    const spots = [[7,-6,"start"], [7,13,"start"], [-7,-6,"end"], [-7,13,"end"]];
+    for (const [dx, dy, anc] of spots) { const lx = cx + dx, ly = cy + dy, b = anc === "start" ? [lx, ly-9, lx+25, ly+1] : [lx-25, ly-9, lx, ly+1];
+      if (hit(b)) continue; boxes.push(b);
+      g.append("text").attr("x", lx).attr("y", ly).attr("text-anchor", anc).style("font-size","10.5px").style("fill","#1f2324").style("paint-order","stroke").style("stroke","#fff").style("stroke-width","3px").text(r.y); break; }
+    g.append("circle").attr("cx",cx).attr("cy",cy).attr("r",10).attr("fill","transparent")
+      .on("mousemove", ev => showTip(ev, `<b>Season ${r.y}</b> <span class="m">${r.kind === "test" ? "tested" : r.kind === "war" ? "war: not comparable" : "before the tested seasons"}</span><br>${X.lab}: <b>${X.f(r[XS])}</b><br>${Y.lab}: <b>${Y.f(r[YS])}</b><br><span class="m">all events Oct–Jan: ${r.all_oct_jan ?? "–"} · wider wars: ${r.war_oct_jan ?? "–"}</span>`)).on("mouseleave", hideTip); });
+  const rr = rhoOf(XS, YS), n = testFor(YS).filter(r => r[XS] != null && r[YS] != null).length, rb = rhoBothDetr(XS, YS === "res_detr" ? "resource_oct_jan" : YS);
+  svg.append("text").attr("class","stat").attr("x", W-m.r).attr("y", 14).attr("text-anchor","end").text(`rank correlation ${rr == null ? "–" : sgn2(rr)} (both detrended ${rb == null ? "–" : sgn2(rb)}), n = ${n} tested seasons`);
+  document.getElementById("scleg").innerHTML = `<span><i style="background:${COL.darfur}"></i>tested · ${n}</span><span><i class="ring" style="border-color:${COL.darfur}"></i>window in the war: not comparable · ${pts.filter(r => r.kind === "war").length}</span><span><i style="background:#9aa3a4;border-radius:0;width:10px;height:2px"></i>before the tested seasons</span><span><i class="sq" style="background:#c9ced0"></i>2026 (events still to come)</span>`;
+  document.getElementById("sccap").textContent = X.cap + " Events: Darfur, ACLED. A negative rank correlation means more events after poorer seasons. With nine seasons, a rank correlation has to be beyond about ±0.7 to be unlikely by chance (p < 0.05). Over every panel here, as plotted and with both series detrended, " + D.panels.pass05 + " of " + D.panels.n_stats + " rank correlations pass that, against about " + Math.round(0.05 * D.panels.n_stats) + " expected by chance alone. 'Both detrended': greening and the count each minus their own line over the tested seasons. The wider-war panel is the check: the literature links dry spells to rebel violence too, so it need not be flat, but a link there as strong as for resource-type events points to something else moving both. For March–June and June–July the tested seasons stop at " + DS.seasons_late[1] + ": the next one's windows fall in the war.";
+}
+drawSeasons();
+seg("xSel", d => { XS = d.x; drawSeasons(); });
+seg("ySel2", d => { YS = d.y; drawSeasons(); });
+
+// ---------- forest ----------
+(function(){
+  const rows = D.tests, W = 1040, rowH = 30, m = {t:22,r:20,b:34,l:330}, H = m.t + m.b + rowH*rows.length, svg = svgEl(document.getElementById("forest"), W, H);
+  const ext = d3.max(rows, t => Math.max(Math.abs(t.two_way.pp_per_10), Math.abs(t.unit_only.pp_per_10), Math.abs(t.two_way.null_lo), t.two_way.null_hi, Math.abs(t.unit_only.null_lo), t.unit_only.null_hi));
+  const x = d3.scaleLinear([-ext*1.15, ext*1.15], [m.l, W-m.r]).nice();
+  svg.append("g").attr("class","gridl").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).ticks(8).tickSize(-(H-m.t-m.b)).tickFormat(""));
+  svg.append("g").attr("class","axis").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).ticks(8).tickFormat(d => (d > 0 ? "+" : "") + d));
+  svg.append("text").attr("x", (m.l+W-m.r)/2).attr("y", H-4).attr("text-anchor","middle").style("font-size","11.5px").text("points of probability per 10 points of greening lost (+ = more events after poorer seasons)");
+  svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.t-6).attr("y2", H-m.b).attr("stroke","#8a9495");
+  const kindLab = {test:"", second:"second outcome", sensitivity:"sensitivity", falsification:"check", added:"added later"};
+  rows.forEach((t, i) => { const cy = m.t + rowH*i + rowH/2, tw = t.two_way, uo = t.unit_only;
+    if (i && t.kind !== rows[i-1].kind) svg.append("line").attr("x1", 0).attr("x2", W).attr("y1", cy - rowH/2).attr("y2", cy - rowH/2).attr("stroke","#eceff0");
+    svg.append("text").attr("x", 0).attr("y", cy+4).style("font-size","12px").style("fill","#1f2324").text(t.label);
+    if (kindLab[t.kind]) svg.append("text").attr("x", m.l-8).attr("y", cy+4).attr("text-anchor","end").style("font-size","10.5px").style("fill","#6b7576").text(kindLab[t.kind]);
+    svg.append("rect").attr("x", x(tw.null_lo)).attr("width", x(tw.null_hi)-x(tw.null_lo)).attr("y", cy-6).attr("height", 12).attr("fill","#d6dbdc").attr("rx",2);
+    svg.append("circle").attr("cx", x(uo.pp_per_10)).attr("cy", cy).attr("r", 4.5).attr("fill","#fff").attr("stroke","#1f2324").attr("stroke-width",1.5);
+    svg.append("circle").attr("cx", x(tw.pp_per_10)).attr("cy", cy).attr("r", 5).attr("fill","#1f2324");
+    svg.append("rect").attr("x", m.l).attr("width", W-m.l-m.r).attr("y", cy-rowH/2).attr("height", rowH).attr("fill","transparent")
+      .on("mousemove", ev => showTip(ev, `<b>${t.label}</b><br>With season effects: <b>${sgn1(tw.pp_per_10)}</b> (chance alone ${sgn1(tw.null_lo)} to ${sgn1(tw.null_hi)}, p = ${fmt2(tw.p)})<br>Without: ${sgn1(uo.pp_per_10)} (chance ${sgn1(uo.null_lo)} to ${sgn1(uo.null_hi)}, p = ${fmt2(uo.p)})<br><span class="m">seasons ${t.seasons[0]}–${t.seasons[1]} · ${t.n_units} localities · ${fmt0(100*t.rate)}% of locality-seasons had an event${t.xlag ? " · predictor: the NEXT season's greening" : ""}</span>`)).on("mouseleave", hideTip); });
+  document.getElementById("forestcap").textContent = `Each Darfur locality (${DS.n_units_test} of ${DS.n_units_darfur}) in each season: did it record at least one event in the window? The slope is on the locality's greening, with each locality's own average taken out (so a locality is compared with itself) and, for the filled dot, each season's average too (so a region-wide swing in reporting or violence cannot drive it; the open dot keeps it). Grey bar: 95% of the slopes obtained by reshuffling whole seasons of greening ${d3.format(",")(DS.nperm)} times, keeping each season's map intact; the ${DS.n_units_test} × ${T.res_octjan.n_seasons} locality-seasons are not independent, so this is the test. The checks should show less: the next season's greening cannot drive events that come before it, and war events should respond less to a season than violence over land and herds (the literature links dry spells to rebel violence too, so not necessarily nothing). "Added later": tests added after the first results, from the literature (McGuirk & Nunn 2025, below): violence during the season itself, and greening upstream, in the vegetated land ${DS.up_lat[0]}–${DS.up_lat[1]}° north of each locality (within ${DS.up_lon}° of its longitude), where the herds that arrive after the rains come from (${DS.n_units_up} localities with enough vegetation there). During the season, poor greening and violence can also run the other way: fields abandoned after attacks green less. ${D.text.notes.weights}; in units of each locality's own year-to-year spread the main estimate is ${sgn1(T.res_octjan.per_sd.pp)} points per standard deviation (chance alone ${sgn1(T.res_octjan.per_sd.lo)} to ${sgn1(T.res_octjan.per_sd.hi)}), and the "larger vegetated localities" row leaves the sparsest out.`;
+  const th = `<tr><th>Test</th><th>Seasons</th><th class="n">Base rate</th><th class="n">With season effects</th><th class="n">p</th><th class="n">Without</th><th class="n">p</th></tr>`;
+  document.getElementById("ttab").innerHTML = th + rows.map(t => `<tr><td>${t.label}</td><td>${t.seasons[0]}–${t.seasons[1]}</td><td class="n">${fmt0(100*t.rate)}%</td><td class="n">${sgn1(t.two_way.pp_per_10)} <span style="color:#6b7576">(±${fmt1((t.two_way.null_hi - t.two_way.null_lo)/2)})</span></td><td class="n">${fmt2(t.two_way.p)}</td><td class="n">${sgn1(t.unit_only.pp_per_10)} <span style="color:#6b7576">(±${fmt1((t.unit_only.null_hi - t.unit_only.null_lo)/2)})</span></td><td class="n">${fmt2(t.unit_only.p)}</td></tr>`).join("");
+  const sk = D.skill;
+  document.getElementById("skill").innerHTML = `<p><b>Prediction for left-out seasons.</b> A model fitted on eight of the nine seasons predicts, for each locality in the ninth, the chance of a resource-type event in October–January, from what would be known in October: the locality's own record, whether it had one in the previous 12 months, and its war events in those 12 months. Adding the locality's greening ${sk.bss > Math.max(0, sk.null_q90) ? "improved" : "did not improve"} these predictions: mean squared error ${fmt2(100*sk.brier_base)} without and ${fmt2(100*sk.brier_full)} with greening (×100), a Brier skill of ${sgn1(100*sk.bss)}%. Reshuffling whole seasons of greening ${d3.format(",")(DS.nperm_skill)} times gives a skill above ${sgn1(100*sk.null_q90)}% one time in ten (p = ${fmt2(sk.p)}).</p>`;
+})();
+
+// ---------- maps ----------
+const geoA2 = D.geo.adm2, geoA1 = D.geo.adm1, geoCtx = D.geo.ctx;
+const U = new Map(D.units.map(u => [u.adm2_pcode, u]));
+function mapBase(id, fill, tipf){
+  const W = 520, H = 560, svg = svgEl(document.getElementById(id), W, H, "mapsvg");
+  const proj = d3.geoEquirectangular().fitExtent([[6,6],[W-6,H-6]], geoA1), path = d3.geoPath(proj);
+  svg.append("g").selectAll("path").data(geoCtx.features).join("path").attr("d", path).attr("fill","#f3f4f4").attr("stroke","#c4cacb").attr("stroke-width",.8);
+  svg.append("g").selectAll("path").data(geoA2.features).join("path").attr("d", path)
+    .attr("fill", f => fill(U.get(f.properties.adm2_pcode) || {})).attr("stroke","#fff").attr("stroke-width",.6)
+    .on("mousemove", (ev, f) => showTip(ev, tipf(U.get(f.properties.adm2_pcode) || {adm2_name: f.properties.adm2_name}))).on("mouseleave", hideTip);
+  svg.append("g").selectAll("path").data(geoA1.features).join("path").attr("d", path).attr("fill","none").attr("stroke","#1f2324").attr("stroke-width",1.1).style("pointer-events","none");
+  geoA1.features.forEach(f => { const c = path.centroid(f);
+    svg.append("text").attr("x", c[0]).attr("y", c[1]).attr("text-anchor","middle").style("font-size","10.5px").style("fill","#1f2324").style("pointer-events","none")
+      .style("paint-order","stroke").style("stroke","#fff").style("stroke-width","3px").text(D.adm1[f.properties.adm1_pcode]); });
+}
+const utip = u => `<b>${u.adm2_name}</b> <span class="m">${u.adm1_name || ""}</span><br>` +
+  (u.side === "darfur" ? `Resource-type event in Oct–Jan: <b>${u.share_res != null ? fmt0(9*u.share_res) : "–"} of 9</b> seasons (${u.n_res ?? 0} events)<br>` : "") +
+  `2026 greening: <b>${u.grn_2026 != null ? fmt0(u.grn_2026)+"%" : "too little vegetation"}</b>${u.grn_min_2001_2024 != null ? ` <span class="m">(lowest 2001–2024: ${fmt0(u.grn_min_2001_2024)}%)</span>` : ""}<br><span class="m">resource-type events since 1 Oct 2026: ${u.res_since_oct26 ?? 0}</span>`;
+(function(){
+  const pc = d3.scaleThreshold([0.01, 0.2, 0.4, 0.6, 0.8], ["#f4f1ee", "#fbd9c4", "#f4a77c", "#e0703f", "#b8461a", "#7a2a0c"]);
+  mapBase("pmap", u => u.side === "darfur" ? pc(u.share_res || 0) : "#e6e9ea", utip);
+  const lab = ["0", "1 of 9", "2–3", "4–5", "6–7", "8–9"];
+  const cnt = [0,0,0,0,0,0]; D.units.filter(u => u.side === "darfur").forEach(u => { const k = pc.range().indexOf(pc(u.share_res || 0)); cnt[k]++; });
+  document.getElementById("pleg").innerHTML = pc.range().map((c, i) => `<span><i class="sq" style="background:${c}"></i>${lab[i]} · ${cnt[i]}</span>`).join("") + `<span><i class="sq" style="background:#e6e9ea"></i>eastern Chad</span>`;
+  const gc = d3.scaleDiverging([30, 100, 170], t => d3.interpolateBrBG(t));
+  mapBase("gmap", u => u.grn_2026 != null ? gc(Math.max(30, Math.min(170, u.grn_2026))) : "#e6e9ea", utip);
+  document.getElementById("gleg").innerHTML = [40, 70, 100, 130, 160].map(v => `<span><i class="sq" style="background:${gc(v)}"></i>${v}%</span>`).join("") + `<span><i class="sq" style="background:#e6e9ea"></i>too little vegetation</span>`;
+  const darU = D.units.filter(u => u.side === "darfur" && u.grn_2026 != null);
+  const below = darU.filter(u => u.grn_min_2001_2024 != null && u.grn_2026 < u.grn_min_2001_2024).length;
+  document.getElementById("gcap").textContent = `MODIS greening per locality (department in Chad), against the locality's own 2001–2024 trend; localities with fewer than ${DS.min_pix} vegetated 2 km pixels are left grey. ${below} of ${darU.length} Darfur localities greened less in 2026 than in any season of 2001–2024.`;
+})();
+
+// ---------- since the war ----------
+function drawMonthly(c){
+  const months = d3.timeMonths(new Date(2023, 0, 1), PD(D.acled_last_event)).map(d3.timeFormat("%Y-%m"));
+  [["darfur","monDar"],["chad","monChad"]].forEach(([s, id]) => {
+    const rows = months.map(ym => { const r = D.monthly.find(d => d.side === s && d.ym === ym) || {}; const v = r[c] || 0;
+      return {k: ym, v, tip: `<b>${D.sides[s]}, ${d3.timeFormat("%B %Y")(d3.timeParse("%Y-%m")(ym))}</b><br>${CLAB[c]}: <b>${v}</b><br><span class="m">all: ${r.all || 0}</span>`}; });
+    bars(document.getElementById(id), rows, {title: `${D.sides[s]}: ${CLAB[c].toLowerCase()} events a month`, color: CC[c], tickf: ym => ym.endsWith("-01") || ym.endsWith("-07"), xfmt: ym => d3.timeFormat("%b %Y")(d3.timeParse("%Y-%m")(ym))});
+  });
+  document.getElementById("moncap").textContent = `ACLED, January 2023 to ${d3.timeFormat("%-d %B %Y")(PD(D.acled_last_event))}; the last month is partial and recent weeks fill in as ACLED adds events. ${D.text.notes.rsf} Attention has also moved to the war, so these counts are not comparable with the years before 2023, and a rise or fall in them is not evidence either way.`;
+}
+drawMonthly("resource"); seg("mSel", d => drawMonthly(d.c));
+
+// ---------- the wider Sahel (pooled test) ----------
+(function(){
+  const B = D.belt; if (!B) return;
+  document.getElementById("beltsec").hidden = false;
+  const BT = Object.fromEntries(B.tests.map(t => [t.key, t])), DB = B.design, NM = B.names;
+  const P1 = BT.P1, P2 = BT.P2, EX = BT.E_extreme, L = B.licence;
+  const half = t => (t.hi - t.lo) / 2, sig = t => t.pp > 0 && t.p < 0.025;
+  const nC = DB.countries.length, nEv = d3.sum(Object.values(B.ev_country));
+  const [mlo, mhi] = D.text.lit.mn_rel;
+  const say = (t, what) => sig(t)
+    ? `${what}: ${sgn2(t.pp)} points of probability per standard deviation of poorer conditions (chance alone ±${fmt2(half(t))}, p = ${fmt2(t.p)}), a link.`
+    : `${what}: ${sgn2(t.pp)} points per standard deviation of poorer conditions, inside the ±${fmt2(half(t))} that chance alone gives (p = ${fmt2(t.p)}).`;
+  document.getElementById("beltlead").textContent =
+    `Pooling ${d3.format(",")(DB.n_cells)} half-degree cells in ${nC} countries of the Sudano-Sahelian belt (${d3.format(",")(Math.min(P1.cells, P2.cells))}–${d3.format(",")(Math.max(P1.cells, P2.cells))} with a complete greening series; seasons ${DB.seasons[0]}–${DB.seasons[1]}, Sudan to ${DB.sdn_last}), with the tests fixed in writing before any event was joined to an indicator. ` +
+    say(P1, "Greening in the areas herds come from and violence during the season (the published mechanism)") + " " +
+    say(P2, "A cell's own greening and violence in the October–January after") + " " +
+    (() => { const ie = Object.entries(P1.iso_events).sort((a, b) => b[1] - a[1]), tot = d3.sum(ie, d => d[1]), top = ie.slice(0, 3);
+      return `${top.map(d => NM[d[0]]).join(", ").replace(/, ([^,]*)$/, " and $1")} supply ${fmt0(100*d3.sum(top, d => d[1])/tot)}% of the cell-seasons with an event in P1. `; })() +
+    (() => { const a = 100*P1.rate*mlo, b = 100*P1.rate*mhi, d = P1.mde80;
+      return `The test would find an effect of about ${fmt2(d)} points per standard deviation (${fmt0(100*d/(100*P1.rate))}% of the base rate) four times in five at the plan's bar of p < 0.025; McGuirk & Nunn's effects (${fmt0(100*mlo)}–${fmt0(100*mhi)}% of the average per standard deviation, for places with a transhumant herding neighbour) would be ${fmt2(a)}–${fmt2(b)} points at this ${fmt1(100*P1.rate)}% base rate, ` +
+        (d < a ? "so effects across that range would likely show. " : d < b ? "so only the top of that range would likely show. " : "so even the larger would likely be missed. ") +
+        "The two are not directly comparable: their figure is likely high for an average over all belt cells, while counting only violence outside the wars could cut either way. "; })() +
+    (() => { const oth = B.tests.filter(t => t.unit === "sd" && ["secondary", "sensitivity", "check"].includes(t.kind)), h = oth.filter(t => t.p < 0.05);
+      return `Of the ${oth.length} other pooled tests, ${h.length ? `${h.length} pass${h.length === 1 ? "es" : ""} p < 0.05 (about ${fmt0(0.05*oth.length)} expected by chance): ${h.map(t => `${t.label} ${sgn2(t.pp)} (p = ${fmt2(t.p)})${t.pp < 0 ? ", more events after greener seasons" : ""}`).join("; ")}. ` : "none passes p < 0.05. "}`; })() +
+    (() => { const N = B.per_country.length, hits = B.per_country.filter(r => r.p < 0.1).sort((a, b) => a.p - b.p);
+      return hits.length ? `Country by country the estimates scatter both ways: ${hits.map(r => `${NM[r.iso3]} ${sgn2(r.pp)} (${r.base}, p = ${fmt2(r.p)})`).join(", ")}; with ${N} country tests, about ${fmt0(0.1*N)} below p = 0.1 would be expected by chance and ${hits.length} ${hits.length === 1 ? "is" : "are"} seen (in ${new Set(hits.map(r => r.iso3)).size} countries), in ${new Set(hits.map(r => Math.sign(r.pp))).size > 1 ? "opposite directions" : "the same direction"}` +
+        (hits.length >= 2 * 0.1 * N + 1 ? ": more than chance alone usually gives, so countries may differ, but not evidence of a common link. " : ". ") : ""; })() +
+    (L.license ? "The pre-specified conditions for a 2026 statement are met (below)." : "The pre-specified conditions for any statement about 2026 are not met.");
+  const tiles = [
+    {lbl:"Cells and events tested", v: `${d3.format(",")(Math.min(P1.cells, P2.cells))}–${d3.format(",")(Math.max(P1.cells, P2.cells))}`, sub:`cells in ${nC} countries · P1 rests on ${d3.format(",")(P1.n_events)} resource-type events (${d3.format(",")(P1.events)} cell-seasons with one), P2 on ${d3.format(",")(P2.n_events)} (${d3.format(",")(P2.events)})`},
+    {lbl:"P1 · upstream greening, July–October", v: sgn2(P1.pp)+" pts", sub:`per SD poorer · chance ±${fmt2(half(P1))} · p = ${fmt2(P1.p)} · base rate ${fmt1(100*P1.rate)}%`},
+    {lbl:"P2 · own greening, October–January", v: sgn2(P2.pp)+" pts", sub:`per SD poorer · chance ±${fmt2(half(P2))} · p = ${fmt2(P2.p)} · base rate ${fmt1(100*P2.rate)}%`},
+    {lbl:`Extreme seasons (below ${fmt0(DB.extreme)}% of trend)`, v: sgn2(EX.pp)+" pts", sub:`difference in the chance of an event, October–January · chance ±${fmt2(half(EX))} · p = ${fmt2(EX.p)}`},
+  ];
+  const t = document.getElementById("belttiles");
+  tiles.forEach(tl => { const d = document.createElement("div"); d.className = "tile";
+    d.innerHTML = `<p class="lbl">${tl.lbl}</p><div class="row"><span class="v">${tl.v}</span></div><div class="sub">${tl.sub}</div>`; t.appendChild(d); });
+  const gaps = Object.entries(B.coverage).filter(([iso, c]) => c.events >= 100 && c.in_own / c.events < 0.6)
+    .map(([iso, c]) => `${NM[iso]} ${fmt0(100*(1 - c.in_own/c.events))}%`);
+  document.getElementById("belttilecap").textContent = (D.text.notes.belt_scope || "") +
+    (gaps.length ? ` Share of a country's resource-type events in cells with no own-greening series: ${gaps.join(", ")}. ${D.text.notes.belt_cloud || ""}` : "");
+
+  // maps
+  const g0 = B.adm0, W = 520, H = 300;
+  function bmap(id, val, col, tipf){
+    const svg = svgEl(document.getElementById(id), W, H, "mapsvg");
+    const proj = d3.geoEquirectangular().fitExtent([[4,4],[W-4,H-4]], g0), path = d3.geoPath(proj);
+    svg.append("g").selectAll("path").data(g0.features).join("path").attr("d", path).attr("fill","#f3f4f4").attr("stroke","none");
+    svg.append("g").selectAll("rect").data(B.cells.filter(c => val(c) != null)).join("rect")
+      .attr("x", c => proj([c.lon-.25, c.lat+.25])[0]).attr("y", c => proj([c.lon-.25, c.lat+.25])[1])
+      .attr("width", c => proj([c.lon+.25, c.lat])[0] - proj([c.lon-.25, c.lat])[0] + .3)
+      .attr("height", c => proj([c.lon, c.lat-.25])[1] - proj([c.lon, c.lat+.25])[1] + .3)
+      .attr("fill", c => col(val(c))).on("mousemove", (ev, c) => showTip(ev, tipf(c))).on("mouseleave", hideTip);
+    svg.append("g").selectAll("path").data(g0.features).join("path").attr("d", path).attr("fill","none").attr("stroke","#3a4344").attr("stroke-width",.8).style("pointer-events","none");
+  }
+  const ctip = c => `<b>${NM[c.iso3]}</b> <span class="m">${fmt2(c.lat)}°N ${fmt2(c.lon)}°E</span><br>Resource-type event in Oct–Jan: <b>${c.share != null ? fmt0(100*c.share)+"%" : "–"}</b> of ${c.nseas} tested seasons<br>2026 greening: <b>${c.grn26 != null ? fmt0(c.grn26)+"%" : "no series"}</b>`;
+  const pc = d3.scaleThreshold([0.01, 0.1, 0.25, 0.5], ["#f4f1ee", "#fbd9c4", "#f4a77c", "#d9622f", "#8c3410"]);
+  bmap("bmap", c => c.nseas > 0 ? c.share : null, pc, ctip);
+  const plab = ["none", "under 10%", "10–25%", "25–50%", "50% or more"];
+  document.getElementById("bmapleg").innerHTML = pc.range().map((c, i) => `<span><i class="sq" style="background:${c}"></i>${plab[i]} · ${B.cells.filter(x => x.nseas > 0 && pc(x.share) === c).length}</span>`).join("");
+  document.getElementById("bmapcap").textContent = `Share of tested seasons in which a cell had at least one resource-type event placed in it (ACLED, October–January). Cells outside the single-rainy-season belt, or in country-years dropped by the attribution rule, are left blank. The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.`;
+  const gc = d3.scaleDiverging([30, 100, 170], t => d3.interpolateBrBG(t));
+  bmap("bgmap", c => c.grn26, v => gc(Math.max(30, Math.min(170, v))), ctip);
+  document.getElementById("bgleg").innerHTML = [40, 70, 100, 130, 160].map(v => `<span><i class="sq" style="background:${gc(v)}"></i>${v}%</span>`).join("");
+  document.getElementById("bgcap").textContent = "MODIS greening per cell (about 4 km pixels), % of the cell's own 2001–2024 trend. Blank: no series (too few cloud-free observations or too little vegetation), or the single-season calendar does not hold.";
+
+  // forest (per-SD tests)
+  const order = ["primary", "secondary", "sensitivity", "check"], kl = {primary:"primary", secondary:"secondary", sensitivity:"sensitivity", check:"check"};
+  const rows = B.tests.filter(t => t.unit === "sd" && order.includes(t.kind)).sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind));
+  const Wf = 1040, rh = 26, m = {t:18, r:20, b:34, l:360}, Hf = m.t + m.b + rh*rows.length, svg = svgEl(document.getElementById("bforest"), Wf, Hf);
+  const ext = d3.max(rows, t => Math.max(Math.abs(t.pp), Math.abs(t.lo), Math.abs(t.hi)));
+  const x = d3.scaleLinear([-ext*1.15, ext*1.15], [m.l, Wf-m.r]).nice();
+  svg.append("g").attr("class","gridl").attr("transform",`translate(0,${Hf-m.b})`).call(d3.axisBottom(x).ticks(8).tickSize(-(Hf-m.t-m.b)).tickFormat(""));
+  svg.append("g").attr("class","axis").attr("transform",`translate(0,${Hf-m.b})`).call(d3.axisBottom(x).ticks(8).tickFormat(d => (d > 0 ? "+" : "") + d));
+  svg.append("text").attr("x", (m.l+Wf-m.r)/2).attr("y", Hf-4).attr("text-anchor","middle").style("font-size","11.5px").text("points of probability per standard deviation of poorer conditions (+ = more events after poorer seasons)");
+  svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.t-6).attr("y2", Hf-m.b).attr("stroke","#8a9495");
+  rows.forEach((t, i) => { const cy = m.t + rh*i + rh/2;
+    if (i && t.kind !== rows[i-1].kind) svg.append("line").attr("x1", 0).attr("x2", Wf).attr("y1", cy - rh/2).attr("y2", cy - rh/2).attr("stroke","#eceff0");
+    svg.append("text").attr("x", 0).attr("y", cy+4).style("font-size","12px").style("fill","#1f2324").style("font-weight", t.kind === "primary" ? "700" : "400").text(t.label);
+    svg.append("text").attr("x", m.l-8).attr("y", cy+4).attr("text-anchor","end").style("font-size","10.5px").style("fill","#6b7576").text(kl[t.kind]);
+    svg.append("rect").attr("x", x(t.lo)).attr("width", x(t.hi)-x(t.lo)).attr("y", cy-6).attr("height", 12).attr("fill","#d6dbdc").attr("rx",2);
+    svg.append("circle").attr("cx", x(t.pp)).attr("cy", cy).attr("r", 5).attr("fill","#1f2324");
+    svg.append("rect").attr("x", m.l).attr("width", Wf-m.l-m.r).attr("y", cy-rh/2).attr("height", rh).attr("fill","transparent")
+      .on("mousemove", ev => showTip(ev, `<b>${t.label}</b><br>${sgn2(t.pp)} points per SD (chance ${sgn2(t.lo)} to ${sgn2(t.hi)}, p = ${fmt2(t.p)})<br><span class="m">${d3.format(",")(t.n)} cell-seasons · ${d3.format(",")(t.cells)} cells · ${d3.format(",")(t.events)} with an event (${fmt1(100*t.rate)}%) · seasons ${t.seasons[0]}–${t.seasons[1]} · ${t.nperm} reshuffles</span>`)).on("mouseleave", hideTip); });
+  const extra = B.tests.filter(t => t.unit !== "sd" && t.kind !== "loo" && t.kind !== "country");
+  document.getElementById("btab").innerHTML = `<tr><th>Test</th><th>Unit</th><th class="n">Estimate</th><th class="n">Chance range</th><th class="n">p</th><th class="n">Cell-seasons</th></tr>` +
+    extra.map(t => `<tr><td>${t.label}</td><td>${t.unit === "10pts" ? "points per 10 points of greening lost" : "difference in points, extreme vs other seasons"}</td><td class="n">${sgn2(t.pp)}</td><td class="n">${sgn2(t.lo)} to ${sgn2(t.hi)}</td><td class="n">${fmt2(t.p)}</td><td class="n">${d3.format(",")(t.n)}</td></tr>`).join("");
+  document.getElementById("bforestcap").textContent = `Each cell in each tested season: did it record at least one event in the window? Slopes after removing each cell's own average and each country's average for that season, in units of the cell's own year-to-year spread (2001–2024), signed so that + means more events after poorer conditions. Grey bar: 95% of the slopes from reshuffling whole seasons of the predictor ${d3.format(",")(DB.nperm_s)} times, keeping each season's map. A primary counts as a link only if positive with p < 0.025 (two primaries). Admin-1 indicators (JRC, FAO) are mapped to cells through the providers' own unit boundaries, so their effective sample is admin-1 units × seasons.`;
+
+  // by country
+  const pc2 = B.per_country, isos = [...new Set(pc2.map(r => r.iso3))];
+  const Wc = 1040, rc = 30, mc = {t:14, r:20, b:34, l:200}, Hc = mc.t + mc.b + rc*isos.length, sv = svgEl(document.getElementById("bcountry"), Wc, Hc);
+  const ec = d3.max(pc2, r => Math.max(Math.abs(r.pp), Math.abs(r.lo), Math.abs(r.hi)));
+  const xc = d3.scaleLinear([-ec*1.1, ec*1.1], [mc.l, Wc-mc.r]).nice();
+  sv.append("g").attr("class","gridl").attr("transform",`translate(0,${Hc-mc.b})`).call(d3.axisBottom(xc).ticks(8).tickSize(-(Hc-mc.t-mc.b)).tickFormat(""));
+  sv.append("g").attr("class","axis").attr("transform",`translate(0,${Hc-mc.b})`).call(d3.axisBottom(xc).ticks(8).tickFormat(d => (d > 0 ? "+" : "") + d));
+  sv.append("text").attr("x", (mc.l+Wc-mc.r)/2).attr("y", Hc-4).attr("text-anchor","middle").style("font-size","11.5px").text("points of probability per standard deviation of poorer conditions");
+  sv.append("line").attr("x1", xc(0)).attr("x2", xc(0)).attr("y1", mc.t-6).attr("y2", Hc-mc.b).attr("stroke","#8a9495");
+  isos.forEach((iso, i) => { const cy = mc.t + rc*i + rc/2, a = pc2.find(r => r.iso3 === iso && r.base === "P1"), b = pc2.find(r => r.iso3 === iso && r.base === "P2");
+    sv.append("text").attr("x", 0).attr("y", cy+4).style("font-size","12px").style("fill","#1f2324").text(`${NM[iso]} · ${a ? d3.format(",")(a.n_events) : "–"} / ${b ? d3.format(",")(b.n_events) : "–"} events`);
+    if (a) sv.append("rect").attr("x", xc(a.lo)).attr("width", xc(a.hi)-xc(a.lo)).attr("y", cy-7).attr("height", 6).attr("fill","#cfd5d6").attr("rx",2);
+    if (b) sv.append("rect").attr("x", xc(b.lo)).attr("width", xc(b.hi)-xc(b.lo)).attr("y", cy+1).attr("height", 6).attr("fill","#e6eaeb").attr("rx",2);
+    if (a) sv.append("circle").attr("cx", xc(a.pp)).attr("cy", cy-4).attr("r", 5).attr("fill","#1f2324");
+    if (b) sv.append("circle").attr("cx", xc(b.pp)).attr("cy", cy+4).attr("r", 4.5).attr("fill","#fff").attr("stroke","#1f2324").attr("stroke-width",1.5);
+    sv.append("rect").attr("x", mc.l).attr("width", Wc-mc.l-mc.r).attr("y", cy-rc/2).attr("height", rc).attr("fill","transparent")
+      .on("mousemove", ev => showTip(ev, `<b>${NM[iso]}</b><br>P1: ${a ? `${sgn2(a.pp)} (chance ${sgn2(a.lo)} to ${sgn2(a.hi)}, p = ${fmt2(a.p)}, ${a.cells} cells)` : "–"}<br>P2: ${b ? `${sgn2(b.pp)} (chance ${sgn2(b.lo)} to ${sgn2(b.hi)}, p = ${fmt2(b.p)}, ${b.cells} cells)` : "–"}`)).on("mouseleave", hideTip); });
+  const loo = B.loo;
+  const outside = loo.filter(r => r.pp < r.lo || r.pp > r.hi).length;
+  document.getElementById("bcountrycap").textContent = `Countries with at least ${DB.min_events_country} resource-type events in the tested rows (label: events in P1 / P2); each tested on its own (season effects within the country). Leaving one country out at a time (${loo.length / 2} countries with events), ${outside ? outside + " of the " + loo.length + " results fall" : "none of the " + loo.length + " results falls"} outside its chance range; P1 ranges from ${sgn2(d3.min(loo.filter(r => r.base === "P1"), r => r.pp))} to ${sgn2(d3.max(loo.filter(r => r.base === "P1"), r => r.pp))} and P2 from ${sgn2(d3.min(loo.filter(r => r.base === "P2"), r => r.pp))} to ${sgn2(d3.max(loo.filter(r => r.base === "P2"), r => r.pp))} points per SD. ${D.text.notes.belt_mechanisms || ""}`;
+
+  // correlation matrix
+  const MX = B.matrix, sets = Object.keys(MX.sets), setLab = k => k === "all" ? "All" : k === "noSDN" ? "Without Sudan" : NM[k];
+  document.getElementById("mSet").innerHTML = sets.map((k, i) => `<button data-s="${k}" aria-pressed="${i === 0}">${setLab(k)}</button>`).join("");
+  function drawMatrix(k){
+    const S = MX.sets[k], n = MX.names.length, cell = 46, ml = 220, mt = 150, Wm = ml + cell*n + 110, Hm = mt + cell*n + 10;
+    const svm = svgEl(document.getElementById("bmatrix"), Wm, Hm);
+    const col = d3.scaleDiverging([-0.6, 0, 0.6], t => d3.interpolateRdBu(1 - t));
+    MX.names.forEach((nm, i) => {
+      svm.append("text").attr("x", ml - 8).attr("y", mt + cell*i + cell/2 + 4).attr("text-anchor","end").style("font-size","11.5px").style("fill","#1f2324").style("font-weight", i >= MX.n_pred ? "700" : "400").text(nm);
+      svm.append("text").attr("transform", `translate(${ml + cell*i + cell/2 + 4},${mt - 8}) rotate(-55)`).style("font-size","11.5px").style("fill","#1f2324").style("font-weight", i >= MX.n_pred ? "700" : "400").text(nm);
+    });
+    for (let i = 0; i < n; i++) for (let j = 0; j < n; j++) {
+      const r = S.r[i][j], g = svm.append("g");
+      g.append("rect").attr("x", ml + cell*j + 1).attr("y", mt + cell*i + 1).attr("width", cell-2).attr("height", cell-2).attr("rx", 3)
+        .attr("fill", i === j ? "#eceff0" : r == null ? "#f6f8f8" : col(Math.max(-0.6, Math.min(0.6, r))));
+      if (i !== j && r != null) g.append("text").attr("x", ml + cell*j + cell/2).attr("y", mt + cell*i + cell/2 + 4).attr("text-anchor","middle").style("font-size","11px").style("fill", Math.abs(r) > 0.35 ? "#fff" : "#1f2324").text(fmt2(r));
+      g.append("rect").attr("x", ml + cell*j).attr("y", mt + cell*i).attr("width", cell).attr("height", cell).attr("fill","transparent")
+        .on("mousemove", ev => showTip(ev, `<b>${MX.names[i]}</b> × <b>${MX.names[j]}</b><br>rank correlation ${r == null ? "–" : fmt2(r)}<br><span class="m">${d3.format(",")(S.n[i][j])} cell-seasons</span>`)).on("mouseleave", hideTip);
+    }
+    svm.append("line").attr("x1", ml).attr("x2", ml + cell*n).attr("y1", mt + cell*MX.n_pred).attr("y2", mt + cell*MX.n_pred).attr("stroke","#1f2324");
+    svm.append("line").attr("x1", ml + cell*MX.n_pred).attr("x2", ml + cell*MX.n_pred).attr("y1", mt).attr("y2", mt + cell*n).attr("stroke","#1f2324");
+  }
+  drawMatrix("all"); seg("mSet", d => drawMatrix(d.s));
+  document.getElementById("bmatrixcap").textContent = `Spearman rank correlations between season indicators (as measured: higher = greener, wetter, healthier; for FAO's ASI, higher = more cropland under stress) and event presence (bold), on values with each cell's own average and each country's average for that season taken out, so that the north–south gradient and region-wide swings do not show. Indicator × event entries are the tests above in another form, not extra evidence; with tens of thousands of cell-seasons, small numbers can still be noise, so no significance is marked in the cells. Admin-1 indicators are constant within their unit, so their correlations rest on fewer independent values than the counts suggest. Reshuffling whole seasons of each indicator (${d3.format(",")(DB.nperm_tally)} times), ${MX.sets.all.tally.pass05} of the ${MX.sets.all.tally.n} indicator × event entries pass p < 0.05 for all countries (about ${fmt0(0.05*MX.sets.all.tally.n)} expected by chance) and ${MX.sets.noSDN.tally.pass05} without Sudan.`;
+  const lic = document.getElementById("belt2026");
+  lic.innerHTML = L.license
+    ? `<p><b>2026.</b> ${D.text.notes.belt_2026 || ""}</p>`
+    : `<p><b>2026.</b> The written plan allowed a statement about 2026 only if a primary test showed a link, the extreme-season test was positive, and the sign held without Sudan and without each large country in turn. ${[!L.p1 && !L.p2 ? "Neither primary test showed a link" : "", !L.extreme ? "the extreme-season test was not positive at p < 0.05" : ""].filter(Boolean).join("; ")}. So this page gives no number for 2026.</p>`;
+})();
+
+// ---------- contact zones: McGuirk & Nunn's nearest-neighbour design ----------
+(function(){
+  const C = D.contact; if (!C || !D.belt) return;
+  document.getElementById("contactsec").hidden = false;
+  const NM = D.belt.names, cal = C.calibration, P = C.primary, cov = C.coverage, fmtc = d3.format(","), HALF = 0.5;
+  const A = (sc, o) => cal[sc].find(r => r.outcome === o);
+  // one unit for every row: % of the outcome's average for a season one typical swing drier next door (within-cell SD of
+  // rain next door, in the rows whose neighbour herds), neighbour scoring 0.5 against a farming one; + = more events
+  const rel = (g, r) => -100 * g * HALF * r.sd_nc / r.rate;
+  const ncdf = z => { const t = 1 / (1 + 0.2316419 * Math.abs(z)), d = 0.3989423 * Math.exp(-z * z / 2),
+    q = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274)))); return z > 0 ? 1 - q : q; };
+  const fp = p => p < 0.01 ? "p < 0.01" : p < 0.1 ? `p = ${d3.format(".3f")(p)}` : `p = ${fmt2(p)}`;
+  const OL = {ucdp_all_10: "UCDP, any conflict", acled_all_10: "ACLED, any conflict", acled_nonstate_10: "ACLED, non-state conflict"};
+  const row = (grp, lab, r, unit) => ({grp, lab, r, unit, v: rel(r.gamma1, r), lo: rel(r.null_hi, r), hi: rel(r.null_lo, r), p: r.p, mde: r.mde80_rel});
+  const G1 = "Their data, all Africa (published)", G2 = "Their data, this belt's cells only";
+  const rows = [];
+  Object.keys(OL).forEach(o => rows.push(row(G1, OL[o], A("africa", o), "cell-years")));
+  Object.keys(OL).forEach(o => rows.push(row(G2, OL[o], A("belt", o), "cell-years")));
+  const BL = {B1: "Switch to this page's data: ACLED any conflict, 1997–2019", B2: "… seasons 2010–2024", B3: "… June–September rain, events July–October"};
+  C.bridge.forEach(r => rows.push(row("This page's data", BL[r.key] || r.label, r, "cell-seasons")));
+  rows.push(row("This page's question", "Resource-type events, July–October (primary)", P, "cell-seasons"));
+  const SL = {S_nonstate: "ACLED non-state conflict", S_ucdp: "UCDP communal conflict", S_broad: "Broader herding score",
+              S_noSDN: "Without Sudan", S_octjan: "Events October–January", S_greening: "Greening instead of rain"};
+  C.secondary.forEach(r => rows.push(row("Variations on the primary", SL[r.key] || r.label, r, "cell-seasons")));
+  const R = Object.fromEntries(rows.map(r => [r.grp + "|" + r.lab, r])), at = (g, o) => R[g + "|" + OL[o]];
+  const half = r => (r.hi - r.lo) / 2, pr = r => `${sgn1(r.v)}%`;
+  const cr = r => `${pr(r)} (chance ±${fmt0(half(r))}, ${fp(r.p)}${r.p >= 0.025 && r.p < 0.05 ? ", borderline" : ""})`;
+  const PR = R["This page's question|Resource-type events, July–October (primary)"];
+  const a1 = at(G1, "acled_all_10"), a2 = at(G2, "acled_all_10");
+  const out1 = Object.keys(OL).map(o => at(G1, o)).filter(r => r.p < 0.05), in1 = Object.keys(OL).map(o => at(G1, o)).filter(r => r.p >= 0.05);
+  const out2 = Object.keys(OL).map(o => at(G2, o)).filter(r => r.p < 0.05);
+  const evc = Object.entries(P.iso_events_contact).filter(([k, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const top2 = evc.slice(0, 2), top2n = d3.sum(top2, d => d[1]);
+  const looTop = C.loo.find(r => r.key === `LOO_${evc[0][0]}`);
+  const pub = Object.keys(OL).map(o => `${fmt1(Math.abs(A("africa", o).published_pct))}%`);
+  document.getElementById("ctlead").textContent =
+    `McGuirk & Nunn found, across Africa, that a drier year in the territory of a neighbouring group living from moving herds brings more conflict to a cell, and a drier year next to a farming group does not. ` +
+    `Their coefficients reproduce exactly from their replication data (their table: ${pub[0]}, ${pub[1]} and ${pub[2]} of the average per standard deviation of rain, for UCDP, ACLED and ACLED non-state conflict). ` +
+    `Judged as everything on this page is, by reshuffling whole years of rain, ${out1.length ? `${out1.map(r => `the ${r.lab.replace(", any conflict", "").replace(", non-state conflict", " non-state")} result (${fp(r.p)})`).join(" and ")} stand${out1.length === 1 ? "s" : ""} out from chance (p < 0.05) across Africa` : "none of them stands out from chance (p < 0.05) across Africa"}${in1.length ? `; ${in1.map(r => `${r.lab} (${fp(r.p)})`).join(" and ")} do${in1.length === 1 ? "es" : ""} not` : ""}. ` +
+    `${D.text.notes.contact_biomass || ""} ` +
+    `From here on, every effect is in one unit: % of the average for a typical drier season next to the median herding neighbour. ` +
+    `In this belt's ${fmtc(a2.r.cells)} cells alone, ${out2.length ? `only ${out2.map(r => r.lab).join(" and ")} stands out from chance` : "none of the three stands out from chance"}: ACLED any conflict gives ${cr(a2)}, where about ${fmt0(a2.mde)}% would be needed. ` +
+    `This page's primary test, resource-type events in July–October, fixed in writing before any event was joined, gives ${cr(PR)}; it could only pick out about ${fmt0(PR.mde)}%, ${fmt0(PR.mde / a1.v)} times the all-Africa ACLED rain estimate in the same unit. ` +
+    (() => { const g = R["Variations on the primary|Greening instead of rain"]; return g ? `With greening next door instead of rain, the nearest analogue to their plant biomass, it gives ${cr(g)}, with about ${fmt0(g.mde)}% detectable. ` : ""; })() +
+    `The primary test rests on ${top2.map(([k, n]) => `${NM[k]} (${n})`).join(" and ")}, ${fmtc(top2n)} of the ${fmtc(P.events_contact)} cell-seasons with an event next to herders; ${evc.slice(2).map(([k, n]) => `${NM[k]} ${n}`).join(", ") || "no other country"}.`;
+  const tiles = [
+    {lbl: "Their data, all Africa", v: pr(a1), sub: `ACLED any conflict, ${fp(a1.p)} · UCDP ${pr(at(G1, "ucdp_all_10"))} (${fp(at(G1, "ucdp_all_10").p)}) · non-state ${pr(at(G1, "acled_nonstate_10"))} (${fp(at(G1, "acled_nonstate_10").p)}) · coefficients match their table to four decimals`},
+    {lbl: "Their data, this belt only", v: pr(a2), sub: `ACLED any conflict · chance ±${fmt0(half(a2))} · ${fp(a2.p)} · UCDP ${pr(at(G2, "ucdp_all_10"))} (${fp(at(G2, "ucdp_all_10").p)}) · non-state ${pr(at(G2, "acled_nonstate_10"))} (${fp(at(G2, "acled_nonstate_10").p)})`},
+    {lbl: "This page's question: resource-type, July–October", v: pr(PR), sub: `${sgn2(P.pp_half)} points of probability · chance ±${fmt0(half(PR))}% · ${fp(PR.p)} · detectable ≈ ${fmt0(PR.mde)}% · base rate ${fmt1(100*P.rate)}% · seasons ${P.seasons[0]}–${P.seasons[1]}`},
+    {lbl: "Cells next to herders in the test", v: fmtc(P.contact_cells), sub: `of ${fmtc(cov.contact)} in the belt · cell-seasons with an event next to herders: ${evc.map(([k, n]) => `${NM[k]} ${n}`).join(", ")} · without ${NM[evc[0][0]]}: ${looTop ? `${sgn1(rel(looTop.gamma1, looTop))}% (${fp(looTop.p)})` : "–"}`},
+  ];
+  const t = document.getElementById("cttiles");
+  tiles.forEach(tl => { const d = document.createElement("div"); d.className = "tile";
+    d.innerHTML = `<p class="lbl">${tl.lbl}</p><div class="row"><span class="v">${tl.v}</span></div><div class="sub">${tl.sub}</div>`; t.appendChild(d); });
+
+  // bridge chart
+  const Wf = 1040, rh = 26, gh = 22, m = {t:10, r:20, b:34, l:380};
+  const groups = [...new Set(rows.map(r => r.grp))];
+  const Hf = m.t + m.b + rh*rows.length + gh*groups.length, svg = svgEl(document.getElementById("ctbridge"), Wf, Hf);
+  const ext = Math.min(150, d3.max(rows, r => Math.max(Math.abs(r.v), Math.abs(r.lo), Math.abs(r.hi))));
+  const x = d3.scaleLinear([-ext*1.08, ext*1.08], [m.l, Wf-m.r]).nice().clamp(true);
+  svg.append("g").attr("class","gridl").attr("transform",`translate(0,${Hf-m.b})`).call(d3.axisBottom(x).ticks(8).tickSize(-(Hf-m.t-m.b)).tickFormat(""));
+  svg.append("g").attr("class","axis").attr("transform",`translate(0,${Hf-m.b})`).call(d3.axisBottom(x).ticks(8).tickFormat(d => (d > 0 ? "+" : "") + d + "%"));
+  svg.append("text").attr("x", (m.l+Wf-m.r)/2).attr("y", Hf-4).attr("text-anchor","middle").style("font-size","11.5px").text("% of the average, a typical drier season next to a herding neighbour (+ = more events after drier seasons)");
+  svg.append("line").attr("x1", x(0)).attr("x2", x(0)).attr("y1", m.t).attr("y2", Hf-m.b).attr("stroke","#8a9495");
+  let yy = m.t;
+  groups.forEach(g => {
+    svg.append("text").attr("x", 0).attr("y", yy + gh - 6).style("font-size","11px").style("fill","#6b7576").style("font-weight","700").text(g.toUpperCase());
+    svg.append("line").attr("x1", 0).attr("x2", Wf).attr("y1", yy + 2).attr("y2", yy + 2).attr("stroke","#eceff0");
+    yy += gh;
+    rows.filter(r => r.grp === g).forEach(r => { const cy = yy + rh/2, o = r.r;
+      svg.append("text").attr("x", 12).attr("y", cy+4).style("font-size","12px").style("fill","#1f2324").style("font-weight", g === "This page's question" ? "700" : "400").text(r.lab);
+      svg.append("rect").attr("x", x(r.lo)).attr("width", Math.max(1, x(r.hi)-x(r.lo))).attr("y", cy-6).attr("height", 12).attr("fill","#d6dbdc").attr("rx",2);
+      svg.append("circle").attr("cx", x(r.v)).attr("cy", cy).attr("r", 5).attr("fill","#1f2324");
+      const cg = o.se_cgm != null ? `<br>clustered standard errors, as in their paper: ${fp(2 * (1 - ncdf(Math.abs(o.gamma1 / o.se_cgm))))}${o.published_pct != null ? ` · their table: ${sgn1(-o.published_pct)}% in their unit` : ""}` : "";
+      svg.append("rect").attr("x", m.l).attr("width", Wf-m.l-m.r).attr("y", cy-rh/2).attr("height", rh).attr("fill","transparent")
+        .on("mousemove", ev => showTip(ev, `<b>${g}</b><br>${r.lab}: <b>${pr(r)}</b> of the average (chance ${sgn1(r.lo)}% to ${sgn1(r.hi)}%, ${fp(r.p)})<br>detectable four times in five: about ${fmt0(r.mde)}%${cg}<br><span class="m">${fmtc(o.n)} ${r.unit} · ${fmtc(o.cells)} cells, ${fmtc(o.contact_cells)} next to herders · ${fmt1(100*o.rate)}% with an event</span>`)).on("mouseleave", hideTip);
+      yy += rh; });
+  });
+  const sec = rows.filter(r => r.grp === "Variations on the primary"), sh = sec.filter(r => r.p < 0.05);
+  const lv = C.loo.map(r => rel(r.gamma1, r));
+  const ctry = C.countries.map(r => { const v = rel(r.gamma1, r), b = D.belt.per_country.find(x => x.iso3 === r.key.slice(5) && x.base === "P1");
+    return `${r.label} ${sgn1(v)}% (${fp(r.p)}${v < 0 && r.p < 0.05 ? ": more events after wetter seasons next door, which no design here predicted and which is not explained" : ""}${v < 0 && r.p < 0.05 && b ? `; the pooled upstream-greening test above pointed the other way there, ${sgn2(b.pp)} points, ${fp(b.p)}` : ""})`; });
+  const pr2 = C.post_review || [], dC = pr2.find(r => r.key === "D_C1"), dB = pr2.find(r => r.key === "D_B2");
+  document.getElementById("ctbridgecap").textContent = `Each row is McGuirk & Nunn's specification: rain next door, in the cell's own territory and in the cell itself, each also multiplied by the relevant herding score, with each cell's own average and each country's average for that year (season) taken out. The dot is the term for rain next door × herding score, as % of the outcome's average, for a season one typical swing drier next door (the within-cell standard deviation of rain next door, where the neighbour herds) and a neighbour scoring 0.5, the median herding neighbour, against a farming one. Their table uses a different unit (a standard deviation of rain in any cell, neighbour scoring 1). Grey bar, every row: 95% of the estimates from reshuffling whole years or seasons of the rain map ${fmtc(P.nperm)} times; hover for the clustered standard errors their paper uses, on which the all-Africa estimates look sharper. Their rows use their GPCC rain and conflict indicators (UCDP 1989–2018, ACLED 1997–2019). This page's rows use CHIRPS rain, its own ACLED download with events placed within about 25 km, its own country map and the belt cells, all changed at once in the first step; Sudan runs to 2022; for resource-type events, country-years where the war filter removes most farmer- and herder-tagged events are dropped, as in the pooled test. Leaving one country out at a time (${C.loo.length} countries with resource-type events next to herders), the primary ranges from ${sgn1(d3.min(lv))}% to ${sgn1(d3.max(lv))}%. ` +
+    `${sh.length ? `Of the ${sec.length} variations, ${sh.length} pass${sh.length === 1 ? "es" : ""} p < 0.05 (about ${fmt1(0.05*sec.length)} expected by chance): ${sh.map(r => `${r.lab} ${cr(r)}, ${r.v < 0 ? "fewer" : "more"} events after drier seasons next door, from ${fmtc(r.r.events)} cell-seasons with an event (${fmtc(r.r.events_contact)} next to herders)`).join("; ")}. ` : `None of the ${sec.length} variations passes p < 0.05. `}` +
+    `${ctry.length ? `Country by country (the ${ctry.length} with at least ${D.belt.design.min_events_country} resource-type events next to herders): ${ctry.join("; ")}. ` : ""}` +
+    `${dC && dB ? `Added after review, not in the plan: with each cell's own ${P.seasons[0]}–${P.seasons[1]} rain trend removed, the primary gives ${sgn1(rel(dC.gamma1, dC))}% (${fp(dC.p)}) and the ${P.seasons[0]}–${P.seasons[1]} step ${sgn1(rel(dB.gamma1, dB))}% (${fp(dB.p)})${dC.p >= 0.05 && dB.p >= 0.05 ? ": neither stands out from chance, so the small differences between steps are not signals" : ""}. ` : ""}` +
+    `${D.text.notes.contact_data || ""}`;
+
+  // map
+  const g0 = D.belt.adm0, W = 1040, H = 380, msvg = svgEl(document.getElementById("ctmap"), W, H, "mapsvg");
+  const proj = d3.geoEquirectangular().fitExtent([[4,4],[W-4,H-4]], g0), path = d3.geoPath(proj);
+  const tc = d3.scaleThreshold([0.0001, 0.3, 0.5, 0.7], ["#e4e8e9", "#fde0c5", "#f5a66f", "#d9622f", "#8c3410"]);
+  msvg.append("g").selectAll("path").data(g0.features).join("path").attr("d", path).attr("fill","#f3f4f4").attr("stroke","none");
+  msvg.append("g").selectAll("rect").data(C.cells.filter(c => c.thp_n != null)).join("rect")
+    .attr("x", c => proj([c.lon-.25, c.lat+.25])[0]).attr("y", c => proj([c.lon-.25, c.lat+.25])[1])
+    .attr("width", c => proj([c.lon+.25, c.lat])[0] - proj([c.lon-.25, c.lat])[0] + .3)
+    .attr("height", c => proj([c.lon, c.lat-.25])[1] - proj([c.lon, c.lat+.25])[1] + .3)
+    .attr("fill", c => tc(c.thp_n))
+    .on("mousemove", (ev, c) => showTip(ev, `<b>${NM[c.iso3]}</b> <span class="m">${fmt2(c.lat)}°N ${fmt2(c.lon)}°E</span><br>Nearest neighbouring group's herding score: <b>${fmt2(c.thp_n)}</b><br>Own group's score: ${c.thp_g != null ? fmt2(c.thp_g) : "– (not in the test)"}`)).on("mouseleave", hideTip);
+  msvg.append("g").selectAll("path").data(g0.features).join("path").attr("d", path).attr("fill","none").attr("stroke","#3a4344").attr("stroke-width",.8).style("pointer-events","none");
+  const tl = ["0: farming or settled neighbour", "under 0.3", "0.3–0.5", "0.5–0.7", "0.7 or more"];
+  document.getElementById("ctleg").innerHTML = tc.range().map((c, i) => `<span><i class="sq" style="background:${c}"></i>${tl[i]} · ${C.cells.filter(x => x.thp_n != null && tc(x.thp_n) === c).length}</span>`).join("");
+  document.getElementById("ctmapcap").textContent = `Each belt cell's nearest neighbouring ethnic territory on Murdock's 1959 map, as matched in McGuirk & Nunn's replication data. Colour: their score for the share of that group's traditional subsistence that came from herding on the move (narrow definition, 0–1). Blank: no score. Cells whose own group has no score are shown but not tested. Group names are not shown. The map is old and coarse, and herds now range further south than it shows; Nigeria, where ACLED records the most farmer–herder violence, has only ${cov.contact_by_country.NGA || 0} cells next to a herding group on it. The boundaries and names shown and the designations used on this map do not imply official endorsement or acceptance by the United Nations.`;
+  document.getElementById("ct2026").innerHTML = C.licence.granted
+    ? `<p><b>2026.</b> ${D.text.notes.contact_2026 || ""}</p>`
+    : `<p><b>2026.</b> The written plan allowed a statement about 2026 only if the primary test showed a link and its sign held without Sudan and without each country with at least 50 resource-type events next to herders. ${[!C.licence.c1_link ? "The primary test showed no link" : "", C.licence.c1_link && !C.licence.noSDN_sign ? "The sign did not hold without Sudan" : "", C.licence.c1_link && !C.licence.loo_sign_all ? "The sign did not hold without each large country" : ""].filter(Boolean).join("; ")}, so this section gives no number for 2026.</p>`;
+})();
+
+// ---------- models ----------
+(function(){
+  const M = D.text.models;
+  document.getElementById("modnote").innerHTML = M.note;
+  const cols = M.cols;
+  document.getElementById("modtab").innerHTML = `<tr>${cols.map(c => `<th>${c[1]}</th>`).join("")}</tr>` +
+    M.rows.map(r => `<tr>${cols.map(c => `<td>${c[0] === "name" && r.url ? `<a href="${r.url}" target="_blank" rel="noopener">${r.name}</a>` : (r[c[0]] ?? "")}</td>`).join("")}</tr>`).join("");
+  const issued = d3.timeFormat("%-d %B %Y")(PD(D.cast_last_issue));
+  [["darfur","castDar"],["chad","castChad"]].forEach(([s, id]) => {
+    const rows = D.cast.filter(r => r.side === s), W = 520, H = 230, m = {t:24,r:10,b:26,l:40}, svg = svgEl(document.getElementById(id), W, H);
+    const x = d3.scaleTime(d3.extent(rows, r => d3.timeParse("%Y-%m")(r.m)), [m.l, W-m.r]);
+    const y = d3.scaleLinear([0, d3.max(rows, r => Math.max(r.fc, r.obs || 0))*1.08], [H-m.b, m.t]).nice();
+    svg.append("g").attr("class","gridl").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4).tickSize(-(W-m.l-m.r)).tickFormat(""));
+    svg.append("g").attr("class","axis").attr("transform",`translate(${m.l},0)`).call(d3.axisLeft(y).ticks(4));
+    svg.append("g").attr("class","axis").attr("transform",`translate(0,${H-m.b})`).call(d3.axisBottom(x).ticks(6).tickFormat(d3.timeFormat("%b %Y")));
+    svg.append("text").attr("class","ptitle").attr("x", m.l).attr("y", 13).text(D.sides[s]);
+    const line = k => d3.line().defined(r => r[k] != null).x(r => x(d3.timeParse("%Y-%m")(r.m))).y(r => y(r[k]));
+    svg.append("path").attr("d", line("fc")(rows)).attr("fill","none").attr("stroke","#9aa3a4").attr("stroke-width",2);
+    svg.append("path").attr("d", line("obs")(rows.filter(r => r.obs != null && r.m < D.cast_last_issue.slice(0, 7)))).attr("fill","none").attr("stroke","#1f2324").attr("stroke-width",2);
+    rows.forEach(r => svg.append("circle").attr("cx", x(d3.timeParse("%Y-%m")(r.m))).attr("cy", y(r.fc)).attr("r", 7).attr("fill","transparent")
+      .on("mousemove", ev => showTip(ev, `<b>${D.sides[s]}, ${d3.timeFormat("%B %Y")(d3.timeParse("%Y-%m")(r.m))}</b><br>CAST forecast: <b>${r.fc}</b><br>Recorded: ${r.m < D.cast_last_issue.slice(0, 7) ? r.obs : "–"}<br><span class="m">row last updated ${r.issued}</span>`)).on("mouseleave", hideTip));
+  });
+  document.getElementById("castcap").textContent = `CAST totals summed over Darfur's five states and eastern Chad's three provinces: all political violence (battles, explosions and remote violence, violence against civilians), with no split for communal or resource violence. The newest forecast the ACLED API returns was last updated on ${issued} and runs to ${d3.timeFormat("%B %Y")(d3.timeParse("%Y-%m")(d3.max(D.cast, r => r.m)))}. ${D.text.notes.cast} Each month's stored forecast was last updated a month or so after it, so this is a record of what is stored, not a test of what CAST forecast in advance.`;
+})();
+
+// ---------- literature ----------
+(function(){
+  const L = D.text.lit;
+  document.getElementById("litsyn").innerHTML = L.synthesis;
+  // published effects are per standard deviation: compare with the matching test (upstream greening, July–October) in the same unit
+  const U = T.up_juloct, ps = U.per_sd, [lo, hi] = L.mn_rel, hw = (ps.hi - ps.lo) / 2;
+  const relA = 100 * U.rate * lo, relB = 100 * U.rate * hi, absA = 100 * L.mn_base * lo, absB = 100 * L.mn_base * hi;
+  const el = document.getElementById("mnsize");
+  if (el) el.textContent = `McGuirk & Nunn's effects with ACLED (${fmt0(100*lo)}–${fmt0(100*hi)}% of the average per standard deviation of drier conditions in herders' areas) would be about ${fmt1(relA)}–${fmt1(relB)} points of probability per standard deviation of upstream greening here, if they scale with this page's ${fmt0(100*U.rate)}% base rate, or ${fmt1(absA)}–${fmt1(absB)} if they carry over in absolute terms (their base is ${fmt1(100*L.mn_base)}%). The matching test here (upstream greening, July–October) estimates ${sgn1(ps.pp)} with chance alone giving ±${fmt1(hw)}: it cannot rule out effects of that size; it would probably miss the smaller ones and could miss the larger.`;
+  document.getElementById("refs").innerHTML = L.sources.map(s => `<li class="${s.key ? "key" : ""}">${s.cite}${s.url ? ` <a href="${s.url}" target="_blank" rel="noopener">link</a>` : ""}<br><span style="color:#4f5859">${s.finding}</span></li>`).join("");
+  document.getElementById("refcap").textContent = L.cap;
+})();
+
+// ---------- method ----------
+(function(){
+  const det = (s, b) => `<details class="m"><summary>${s}</summary>${b}</details>`;
+  const hc = D.text.handcheck;
+  const yr = s => D.yearly.filter(r => r.side === s && r.year >= S0 && r.year <= S1);
+  const rng = (rows, k) => { const v = rows.map(r => r[k] || 0); return `${d3.min(v)}–${d3.max(v)}`; };
+  const chadR = rng(yr("chad"), "resource"), chadC = rng(yr("chad"), "communal"), darR = rng(yr("darfur"), "resource");
+  const chadU = d3.sum(D.yearly.filter(r => r.side === "chad"), r => r.ucdp_nonstate || 0);
+  document.getElementById("methods").innerHTML = [
+    det("Events and what counts as resource-type", `<p>ACLED battles and violence against civilians in Chad's Ouaddaï, Wadi Fira and Sila and in the five Darfur states (downloaded ${D.acled_download}; last event ${D.acled_last_event}). An event belongs to the <b>wider wars</b> when state forces (Sudan, Chad or another state, including the RSF while it was part of Sudan's forces), a rebel group (including the RSF since April 2023) or a foreign or peacekeeping force is a party. Only these formal parties are excluded: ${D.text.notes.labels.replace(/, which lifts.*$/, "")}, and a filter on militia labels would put that coding change into the series. <b>Resource-type</b>: not wider-war, and ACLED names farmers, pastoralists or herders as actors, or the event notes mention livestock, grazing, crops, farms, harvest or water points (camels as the attackers' transport do not count). Words such as drought or scarcity are never used: reports blame drought more often in dry years, which would build the answer in. Sensitivity: the same with pro-government militias (Janjaweed, "Militia (Pro-Government)", PDF) also excluded. <b>Communal</b>: not wider-war, and an ethnic or communal militia is a party. Hand-check: ${hc}</p>`),
+    det("Seasons and windows", `<p>Seasons ${S0}–${S1}. ${D.text.notes.coverage} From 15 April 2023 the war changes who gets coded as what. Windows after season Y: October–January (main), March–June of Y+1 (set before looking: the late dry season) and June–July of Y+1 (picked from the seasonal chart, not from any relationship with the season). The later two stop at season ${DS.seasons_late[1]}, in the per-season panels too: March–June 2023 straddles the start of the war. Events that ACLED places only at state level are left out of the locality test and kept in the per-season counts.</p>`),
+    det("Greening", `<p>MODIS NDVI (MOD13A1, Planetary Computer, about 2 km): mean of the composites starting 12 July–30 September minus the mean of those starting March–May, each pixel divided by its 2001–2024 mean, averaged over the locality's pixels in the rainfall belt (0.5° cells with ≥100 mm in an average June–September), then expressed as % of the level the locality's own 2001–2024 line gives for that year: the recipe of the public season page, per locality. Localities need at least ${DS.min_pix} vegetated pixels. Pastoral zone: belt cells with under ${fmt0(DS.pastoral_max_mm)} mm in an average June–September (CHIRPS v2, 1991–2020), both sides of the border; fixed before looking at any relationship. It is one number per season, so it appears only in the per-season comparison.</p>`),
+    det("Tests", `<p>Locality test: the slope of event presence (0/1) on greening across Darfur locality-seasons, after removing each locality's mean and (filled dots) each season's mean. Inference by reshuffling whole seasons of greening across seasons (${d3.format(",")(DS.nperm)} times), which keeps the spatial pattern of each season and the persistence of each locality; the locality-seasons are not independent draws. Prediction for left-out seasons: a logistic model (small ridge penalty) with the locality's propensity (from the training seasons, leaving each training row's own season out), event presence and log war events in the previous 12 months (all known in October), with and without greening, fitted on eight seasons and scored on the ninth, by mean squared error (Brier); "improved" needs a skill above zero and above 9 in 10 reshuffles. Checks: the same test with the next season's greening as the predictor (should show nothing) and with war events as the outcome (should show less). Sensitivity: the larger vegetated localities only (at least 400 pixels), the strict war filter, and greening in units of each locality's own 2001–2024 standard deviation. Added after the first results, from the literature: a window during the season itself (July–October) and upstream greening (vegetated belt pixels ${DS.up_lat[0]}–${DS.up_lat[1]}° north of the locality's centre and within ${DS.up_lon}° of its longitude, % of their own 2001–2024 trend). Per season: Spearman rank correlations, n = 9, computed in the browser. ${D.tests.length} locality tests and many per-season panels: at p &lt; 0.1, one or two would pass by chance alone.</p>`),
+    det("Eastern Chad", `<p>ACLED records ${chadR} resource-type and ${chadC} communal events a year in eastern Chad over ${S0}–${S1}, against ${darR} resource-type events a year in Darfur; UCDP has ${chadU} communal events there in all its years. ${D.text.notes.chad}</p>`),
+    D.belt ? det("The pooled Sahel test", (() => { const B = D.belt, DB = B.design;
+      const dropped = Object.entries(B.attr).filter(([k, v]) => v > DB.attr_max).map(([k]) => k.split("_"))
+        .filter(([iso, y]) => +y >= DB.seasons[0] && +y <= DB.seasons[1] + 1);
+      const byIso = d3.rollup(dropped, v => v.map(d => d[1]).sort().join(", "), d => d[0]);
+      return `<p>Written plan first (18 November 2026, before any event was joined to an indicator; kept with the data): two primary tests, the units, the effects, the checks, the extreme-season test and the conditions for any 2026 statement. ${D.text.notes.belt_amend || ""} ${D.text.notes.belt_scope} ${D.text.notes.belt_attr} Years dropped: ${[...byIso].map(([iso, ys]) => `${B.names[iso]} ${ys}`).join("; ") || "none"}. Sudan: seasons to ${DB.sdn_last}. ${D.text.notes.belt_handcheck}</p><p>Indicators per cell: MODIS greening at about 4 km (own cell, and upstream: vegetated land 0.5–2.5° north within 1° of longitude), CHIRPS June–September rain (own and upstream), and four admin-1 indicators mapped to cells through the providers' own boundaries: JRC ASAP cumulated FPAR z-score for cropland and rangeland at 21 October, FAO ASI (cropland) at its 21 September dekad, FAO VHI July–October mean; JRC and VHI minus their own 2001–2024 line, ASI raw. All in units of each cell's own 2001–2024 standard deviation.</p>`; })()) : "",
+    D.contact ? det("The contact-zone test", (() => { const C = D.contact, cov = C.coverage;
+      return `<p>A third design, after the Darfur and pooled tests had found nothing; the written plan (19 November 2026, kept with the data) came after both results and after McGuirk & Nunn's published table were known, and before any event was joined to the contact measures. It fixed one primary test (bar: p &lt; 0.025, as for each primary before), the bridge, the variations and the conditions for a 2026 statement. The detectable effect was computed from the reshuffled estimates before the real one was read: ${D.text.notes.contact_mde_pre || ""} In the unit used on this page, the final run gives about ${fmt0(C.primary.mde80_rel)}%. After an independent review, the published rows were also judged by reshuffling, the unit was changed, and a check with each cell's rain trend removed was added; none of this is in the plan.</p><p>Data: McGuirk & Nunn's replication package (Zenodo record 13308366, CC-BY 4.0), which gives each half-degree cell's own ethnic territory on Murdock's 1959 map and herding scores for its own group and its nearest neighbouring group (Ethnographic Atlas: nomadic or semi-nomadic, times the share of subsistence from herded animals). The package does not name the neighbour; it is recovered by matching each cell's neighbour-rain series (1989–2018) to the one territory whose own series is identical: no two territories share a series, and ${d3.format(",")(cov.pkg_matched)} of the package's ${d3.format(",")(cov.pkg_cells)} cells find their neighbour this way. ${d3.format(",")(cov.matched)} of the ${d3.format(",")(cov.belt_cells)} belt cells match a cell in the package, ${d3.format(",")(cov.with_score)} have a neighbour score and ${d3.format(",")(cov.contact)} a neighbour scoring above 0. Left out of this page's rows: ${cov.no_identity} cells whose neighbour could not be identified (${cov.no_identity_contact} of them next to a herding group), and ${cov.no_own_score} whose own group has no score, as in their regression. Rain for this page's rows: CHIRPS, June–September (or calendar-year) totals, averaged over each territory's cells. Greening variation: MODIS, % of each territory's own 2001–2024 trend, for the ${cov.greening_territories} territories with at least 100 vegetated pixels inside the belt box. UCDP communal events: non-state events in conflicts between informally organised groups (UCDP Non-State 25.1, organisation level 3), located within 25 km.</p><p>Calibration: their Table 2 was rerun from their data with the same fixed effects and two-way clustered standard errors; the coefficients, standard errors and their percentage effects match to the stated precision. The chart uses another unit, the year-to-year swing of rain next door where the neighbour herds and the median herding neighbour, because that is the variable being tested and the cells it matters for; and it judges every row by reshuffling whole years, the test used throughout this page, which is wider than their clustered standard errors.</p>`; })()) : "",
+    det("What this cannot show", `<ul><li>Effects of the size seen in 2026: every tested season was much milder, so a link that only appears in extreme seasons would not show up here, and none of these numbers can be stretched to 2026.</li><li>Violence that is not reported, or reported without location or actor detail; rural eastern Chad above all.</li><li>Effects through displacement, prices or herd losses that take longer than the windows tested, or play out outside Darfur (herds moving into South Sudan, the Central African Republic or Chad).</li><li>${D.text.notes.rsf} The post-2023 counts cannot test or verify anything.</li><li>Which locality an event lands in, when ACLED places it only near a town (see Seasons and windows).</li></ul>`),
+  ].join("");
+})();
+</script>
+</body>
+</html>

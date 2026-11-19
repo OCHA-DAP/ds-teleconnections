@@ -1,0 +1,636 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pacific El Niño 2026/27</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&family=Source+Serif+4:opsz,wght@8..60,600;8..60,700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one reading column for text, wider panels for charts and maps; summary first, evidence after. */
+:root {
+  color-scheme: light;
+  --bg: #f3f5f5;
+  --surface: #ffffff;
+  --ink: #142022;
+  --ink-2: #46555a;
+  --muted: #6b7a7e;
+  --rule: #d8dfe0;
+  --accent: #1d5b78;
+  --series: #2a78d6;
+  --series-soft: rgba(42, 120, 214, 0.28);
+  --typical: #c9d0d2;
+  --context: #8e9b9e;
+  --band: rgba(29, 91, 120, 0.10);
+  --dry: #a0702e;
+  --font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-body: "Source Sans 3", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --bg: #101617;
+    --surface: #172022;
+    --ink: #e7eded;
+    --ink-2: #b2bfc2;
+    --muted: #8b9a9d;
+    --rule: #2a3639;
+    --accent: #82bdd9;
+    --series: #3987e5;
+    --series-soft: rgba(57, 135, 229, 0.35);
+    --typical: #3a4649;
+    --context: #6f7e81;
+    --band: rgba(130, 189, 217, 0.12);
+    --dry: #c99a5b;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #101617;
+  --surface: #172022;
+  --ink: #e7eded;
+  --ink-2: #b2bfc2;
+  --muted: #8b9a9d;
+  --rule: #2a3639;
+  --accent: #82bdd9;
+  --series: #3987e5;
+  --series-soft: rgba(57, 135, 229, 0.35);
+  --typical: #3a4649;
+  --context: #6f7e81;
+  --band: rgba(130, 189, 217, 0.12);
+  --dry: #c99a5b;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 17px; line-height: 1.55; }
+main { max-width: 1080px; margin: 0 auto; padding: 32px 20px 64px; display: grid; gap: 40px; }
+.prose { max-width: 68ch; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; line-height: 1.2; margin: 0; }
+h1 { font-size: 2.1rem; }
+h2 { font-size: 1.45rem; }
+h3 { font-size: 1.05rem; }
+p { margin: 0; }
+section { display: grid; gap: 14px; }
+header { display: grid; gap: 10px; border-bottom: 1px solid var(--rule); padding-bottom: 20px; }
+.home-link { color: var(--accent); font-size: 0.92rem; text-decoration: none; }
+.home-link:hover { text-decoration: underline; }
+.eyebrow { color: var(--muted); font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; font-weight: 600; }
+.meta { color: var(--muted); font-size: 0.95rem; }
+a { color: var(--accent); }
+a:focus-visible, summary:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.bottomline { background: var(--surface); border: 1px solid var(--rule); border-left: 4px solid var(--accent); border-radius: 6px; padding: 22px 24px; }
+.bottomline ul, ul.plain { margin: 0; padding-left: 1.2em; display: grid; gap: 10px; }
+.bigrow { display: flex; flex-wrap: wrap; gap: 14px; }
+.big { flex: 1 1 220px; background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; display: grid; gap: 4px; align-content: start; }
+.big .num { font-family: var(--font-display); font-size: 1.8rem; font-variant-numeric: tabular-nums; }
+.big .lbl { color: var(--ink-2); font-size: 0.93rem; }
+.panel { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 18px; display: grid; gap: 10px; min-width: 0; }
+section, .bigrow, .big { min-width: 0; }
+#ranges, #scatter { overflow-x: auto; min-width: 0; }
+.scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 0.92rem; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 600; font-size: 0.85rem; }
+td.n, th.n { text-align: right; white-space: nowrap; }
+tr.em td { font-weight: 600; }
+.note { color: var(--ink-2); font-size: 0.92rem; }
+.caption { color: var(--ink-2); font-size: 0.9rem; }
+svg text { font-family: var(--font-body); }
+.tip { position: fixed; pointer-events: none; z-index: 5; background: var(--surface); color: var(--ink); border: 1px solid var(--rule); border-radius: 6px; padding: 8px 10px; font-size: 0.86rem; line-height: 1.4; box-shadow: 0 2px 10px rgba(0,0,0,0.14); max-width: 300px; display: none; }
+.legend { display: flex; flex-wrap: wrap; gap: 18px; font-size: 0.88rem; color: var(--ink-2); align-items: center; }
+.legend span { display: inline-flex; gap: 6px; align-items: center; }
+.maps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap: 16px; }
+.notecard { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; color: var(--ink-2); font-size: 0.93rem; }
+.notecard h3 { color: var(--ink); }
+.mapcard { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 14px 14px 12px; display: grid; gap: 6px; align-content: start; min-width: 0; }
+.mapcard p { color: var(--ink-2); font-size: 0.88rem; line-height: 1.4; }
+.mapcard svg.map { width: 100%; height: auto; display: block; }
+.mapcard path.dep { stroke: var(--surface); stroke-width: 0.8; cursor: default; }
+.mapcard path.dep:hover, .mapcard path.dep:focus { stroke: var(--ink); stroke-width: 2; outline: none; }
+.mapcard path.ctry { stroke: var(--ink-2); stroke-width: 1.4; pointer-events: none; }
+.mapcard path.aoi { stroke: var(--ink); stroke-width: 2.2; pointer-events: none; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 6px; }
+.seg button { font: inherit; font-size: 0.9rem; padding: 5px 12px; border: 1px solid var(--rule); border-radius: 999px; background: var(--surface); color: var(--ink); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 22px; align-items: center; font-size: 0.9rem; color: var(--ink-2); }
+.tiles { display: grid; grid-template-columns: 7.5em repeat(3, minmax(0, 1fr)); gap: 10px; align-items: stretch; }
+.tiles .rowh { font-family: var(--font-display); font-weight: 700; align-self: center; }
+.tiles .rowh small { display: block; font-family: var(--font-body); font-weight: 400; color: var(--muted); font-size: 0.8rem; }
+.tile { background: var(--surface); border: 1px solid var(--rule); border-radius: 6px; padding: 12px 14px; display: grid; gap: 3px; align-content: start; }
+.tile .num { font-family: var(--font-display); font-size: 1.45rem; font-variant-numeric: tabular-nums; }
+.tile .lbl { color: var(--ink-2); font-size: 0.86rem; line-height: 1.4; }
+.tile .hd { font-weight: 600; font-size: 0.86rem; color: var(--ink-2); }
+@media (max-width: 720px) { .tiles { grid-template-columns: 1fr; } .tiles .rowh { margin-top: 8px; } }
+.mapleg { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 0.8rem; color: var(--ink-2); align-items: center; }
+.mapleg i { display: inline-block; width: 14px; height: 12px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; border: 1px solid var(--rule); }
+.grad { display: grid; gap: 2px; width: 100%; max-width: 280px; }
+.grad .bar { height: 10px; border-radius: 2px; }
+.grad .ticks { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.grad .ends { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); }
+details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+ol.timeline { margin: 0; padding: 0; list-style: none; display: grid; }
+ol.timeline li { display: grid; grid-template-columns: 9.5em 1fr; gap: 14px; padding: 9px 0; border-bottom: 1px solid var(--rule); }
+ol.timeline .when { font-weight: 600; font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) { ol.timeline li { grid-template-columns: 1fr; gap: 2px; } h1 { font-size: 1.7rem; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+.tiles5 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr)); gap: 10px; }
+table.heat td.c { text-align: center; font-variant-numeric: tabular-nums; border: 2px solid var(--surface); padding: 8px 6px; min-width: 64px; }
+table.heat td.c small { display: block; font-size: 0.74rem; line-height: 1.2; }
+table.heat td.c.low { outline: 1px dashed var(--ink-2); outline-offset: -4px; }
+table.heat th.c { text-align: center; }
+table.heat td.u { white-space: nowrap; font-weight: 600; }
+table.heat td.u small { display: block; font-weight: 400; color: var(--muted); font-size: 0.78rem; white-space: normal; max-width: 15em; }
+.mapwrap { position: relative; width: 100%; }
+.mapwrap canvas { width: 100%; height: auto; display: block; border-radius: 4px; }
+.mapwrap svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.mapwrap svg path { fill: none; stroke: var(--ink); stroke-width: 0.9; vector-effect: non-scaling-stroke; }
+.mapwrap svg text { font-size: 13px; fill: var(--ink); paint-order: stroke; stroke: var(--surface); stroke-width: 3px; font-weight: 600; }
+.legline { display: inline-block; width: 22px; height: 0; border-top: 2px solid var(--ink); vertical-align: middle; }
+.legline.dash { border-top-style: dashed; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; vertical-align: -1px; }
+.sw { display: inline-block; width: 14px; height: 12px; border-radius: 2px; vertical-align: -1px; }
+#enstab td small { display: block; color: var(--muted); font-size: 0.8rem; }
+.rpleg { display: grid; gap: 2px; width: 100%; max-width: 420px; }
+.rpleg .row { display: grid; grid-template-columns: repeat(9, 1fr); gap: 2px; }
+.rpleg .row span { height: 10px; border-radius: 2px; }
+.rpleg .row.t span { height: auto; text-align: center; font-size: 0.74rem; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.rpleg .ends { display: flex; justify-content: space-between; font-size: 0.78rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+
+<header>
+  <a class="home-link" href="../">&larr; ENSO deep dives</a>
+  <p class="eyebrow">El Niño 2026/27 · Fiji, Solomon Islands, Tonga, Vanuatu</p>
+  <h1>El Niño and the 2026/27 wet season in Fiji, Solomon Islands, Tonga and Vanuatu</h1>
+  <p class="prose">How dry the November 2026 seasonal forecast is for the November–April wet season, how much of it comes from El Niño, and how it compares with past seasons and with CERF allocations.</p>
+  <p class="meta">OCHA Centre for Humanitarian Data · {{built}} · ECMWF SEAS5 forecast issued 1 November 2026; ERA5 rainfall to October 2026.</p>
+</header>
+
+<section aria-labelledby="now">
+  <h2 id="now">Now</h2>
+  <div class="tiles5">
+    <div class="tile"><span class="hd">Niño3.4, October 2026</span><span class="num">+{{n34_oct}} °C</span><span class="lbl">NOAA OISST; NOAA ERSST gives +{{psl_oct}} °C. Both are the highest October values since at least 1982 (OISST before: +{{n34_oct_max}} °C in {{n34_oct_max_year}}).</span></div>
+    <div class="tile"><span class="hd">Fiji</span><span class="num">1 in {{FJ_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry: the {{FJ_NA_rankw}} of {{n_fc}}, {{FJ_NA}}% of the average forecast. Jul–Oct 2026: 1 in {{FJ_JASO_rp}} years ({{FJ_JASO}}% of normal).</span></div>
+    <div class="tile"><span class="hd">Tonga</span><span class="num">1 in {{TO_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry: the {{TO_NA_rankw}} of {{n_fc}}, {{TO_NA}}%. Jul–Oct 2026: 1 in {{TO_JASO_rp}} years ({{TO_JASO}}% of normal).</span></div>
+    <div class="tile"><span class="hd">Vanuatu</span><span class="num">1 in {{VU_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry: the {{VU_NA_rankw}} of {{n_fc}}, {{VU_NA}}%. Jul–Oct 2026: 1 in {{VU_JASO_rp}} years ({{VU_JASO}}% of normal).</span></div>
+    <div class="tile"><span class="hd">Solomon Is. south-east</span><span class="num">1 in {{SB_SE_NA_rp}} years</span><span class="lbl">for a Nov–Apr forecast this dry ({{SB_SE_NA}}%). The north-west is forecast wet, 1 in {{SB_NW_NA_rpw}} years ({{SB_NW_NA}}%), with low skill.</span></div>
+  </div>
+  <p class="caption">Return periods count from the driest of the {{n_fc}} November forecasts, or July–October seasons, since 1981; + marks the driest on record, where the return period could be longer. Rain so far is from ERA5; CHIRPS also has Tonga's July–October among the driest (1 in {{TO_chirps_rp}} years, {{TO_chirps}}%). For Fiji it is uncertain: Fiji Met's rainfall watch puts the driest August–October in the south and east, ERA5 in the north and west.</p>
+  <div class="bottomline">
+    <ul>
+      <li><b>Fiji, Tonga and Vanuatu.</b> SEAS5 forecasts a much drier wet season than usual. For November–April it is the driest of {{n_fc}} November forecasts in Fiji and Tonga (1 in {{FJ_NA_rp}} years) and the {{VU_NA_rankw}} in Vanuatu (1 in {{VU_NA_rp}} years; the driest once the forecasts' upward trend is removed). November to January is the driest part. Skill is moderate to high (correlation with ERA5 of {{skill3}}).</li>
+      <li><b>Most of the forecast comes from El Niño.</b> Past November forecasts follow Niño3.4 closely (correlation {{r_fc3}}, trends removed). Against a neutral year, El Niño accounts for {{FJ_share}}% of the forecast shortfall in Fiji, {{TO_share}}% in Tonga and {{VU_share}}% in Vanuatu across six fits. Allowing for sampling error, no fit's 90% confidence interval starts below about {{FJ_share_lo}}%, {{TO_share_lo}}% and {{VU_share_lo}}%. Niño3.4 is beyond its 1982–2025 range, so these are extrapolations.</li>
+      <li><b>Observed rainfall follows El Niño less closely</b> (correlation {{r_obs3}}). Extending the past relation between forecasts and observed rainfall to this forecast gives about {{FJ_oexp}}% of average in Fiji, {{TO_oexp}}% in Tonga and {{VU_oexp}}% in Vanuatu: each among the {{oexp_n}} driest seasons since 1981 (1 in {{oexp_rp}} years or rarer), within a wide 90% range (1 in {{ohi_rp3}} years to drier than any season since 1981). Of the four strong El Niño events before this one, 1982/83 and 1997/98 brought dry seasons of 1 in {{o8297_rp}} years in Fiji and Tonga, 2015/16 a moderately dry one and 2023/24 a wet one.</li>
+      <li><b>In Solomon Islands the forecast differs by region.</b> The south-east (Temotu, Makira-Ulawa, Rennell-Bellona) is forecast dry, like Vanuatu (1 in {{SB_SE_NA_rp}} years; {{SB_SE_NA}}%). The north-west (Choiseul, Western, Isabel) is forecast wet (1 in {{SB_NW_NA_rpw}} years; {{SB_NW_NA}}%) with low skill; four strong El Niño events are too few to check this (January–March was wetter than average in {{nw_jfm_wet}}).</li>
+      <li><b>CERF's records (2006–2026) show no drought allocation to any of the four countries.</b> The {{cerf_n}} allocations to these countries, all since 2014, were for cyclones ({{cerf_storm}}), a flood, a volcanic eruption and an earthquake. CERF's only drought allocations in the Pacific went to Papua New Guinea (2016, El Niño) and the Marshall Islands (2013). In Fiji and Tonga the 2026/27 forecast is drier than any November forecast since 1981, including those made in 1982, 1997 and 2015.</li>
+    </ul>
+  </div>
+</section>
+
+<section aria-labelledby="fc">
+  <h2 id="fc">SEAS5 forecast by season</h2>
+  <div class="panel">
+    <h3>Forecast return period and % of the average November forecast (1991–2020)</h3>
+    <div class="scroll"><table class="heat" id="heat"></table></div>
+    <div class="rpleg" id="heatleg"></div>
+    <p class="caption">Return period among the {{n_fc}} November forecasts since 1981 (wet: this wet), with % of the average forecast below. Faded, dashed outline: low skill (correlation with ERA5 below 0.3). With the forecasts' upward trend removed, as in the seas5-skill viewer, {{dt_cells}} of the {{n_cells3}} cells for Fiji, Tonga and Vanuatu rank drier (hover).</p>
+  </div>
+  <div class="panel">
+    <h3 id="maptitle">November–April rainfall across the region</h3>
+    <div class="controls"><div class="seg" role="group" aria-label="Map measure" id="mapmetric"></div><div class="seg" role="group" aria-label="Map layer" id="mapbtns"></div></div>
+    <div class="mapwrap"><canvas id="mapc" width="1000" height="560" role="img" aria-label="Map of rainfall as a percentage of average across the south-west Pacific"></canvas><svg id="mapsvg" viewBox="0 0 1000 560" aria-hidden="true"></svg></div>
+    <div id="mapleg"></div>
+    <p class="caption">Return period at each grid cell: the forecast among the {{n_fc}} November forecasts, an observed season among the {{n_obs_na}} seasons 1981/82–2025/26. Band from Vanuatu to Tonga (12–22°S, 165°E–175°W): forecast 1 in {{band_rp_seas5_2026}} years ({{band_seas5_2026}}%); observed 1982/83 1 in {{band_rp_era5_1982}} ({{band_era5_1982}}%), 1997/98 1 in {{band_rp_era5_1997}} ({{band_era5_1997}}%), 2015/16 1 in {{band_rp_era5_2015}} ({{band_era5_2015}}%) and 2023/24 1 in {{band_rp_era5_2023}} ({{band_era5_2023}}%). Percentages are of each layer's own 1991–2020 average; an ensemble-average forecast varies less than a single season.</p>
+  </div>
+  <div class="panel">
+    <h3>November–April forecast by province or division</h3>
+    <div id="prov" class="scroll"></div>
+    <div class="rpleg" id="provleg"></div>
+    <p class="caption">Return period of a forecast this dry among the {{n_fc}} November forecasts (wet: this wet); bar colour by return period, bar length by % of the average forecast. Hollow bar: low skill (correlation with ERA5 below 0.3). Ha'apai (Tonga) is too small for the SEAS5 grid; Honiara has no ERA5 cell, so its skill is not computed.</p>
+  </div>
+</section>
+
+<section aria-labelledby="enso">
+  <h2 id="enso">How much of the forecast is El Niño</h2>
+  <div class="panel">
+    <div class="controls">
+      <div class="seg" role="group" aria-label="Area" id="scunits"></div>
+      <div class="seg" role="group" aria-label="Series" id="scseries"></div>
+    </div>
+    <div id="scatter" class="scroll"></div>
+    <div class="legend"><span><span class="dot" style="background:var(--series)"></span>one season, 1982–2025</span><span><span class="legline"></span>fitted line (OISST, no trend term)</span><span><span class="legline dash"></span>extended to October 2026</span><span><span class="sw" id="scbandsw"></span>90% confidence band for the line</span><span><span class="dot" style="background:var(--dry);outline:2px solid var(--ink)"></span>2026/27 forecast</span><span id="scr"></span></div>
+    <p class="caption">November–April rainfall against October Niño3.4 (NOAA OISST). The band is for the fitted line, not for a single season. Forecasts are ensemble averages and vary less than observed rainfall.</p>
+  </div>
+  <div class="panel">
+    <div class="scroll"><table id="enstab"></table></div>
+    <p class="caption">Forecast: return period, % below. Neutral year: the fits' value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term as a share of the gap from that value to the forecast, capped at 100%; range over six fits, and below it the span of their 90% confidence intervals. Correlation with October Niño3.4 (OISST), 1982–2025, trends removed; 90% confidence interval below.</p>
+  </div>
+</section>
+
+<section aria-labelledby="past">
+  <h2 id="past">Past wet seasons</h2>
+  <div class="panel">
+    <div class="controls"><div class="seg" role="group" aria-label="Area" id="hunits"></div></div>
+    <div id="hist" class="scroll"></div>
+    <div class="legend" id="histleg"></div>
+    <p class="caption">Bars: observed (ERA5), coloured by October Niño3.4. Dots: the November forecast, on its own scale (forecasts vary less). Hollow bar: observed rainfall that the past relation between forecasts and ERA5 gives for this forecast (90% range). Shaded: since CERF began (2006). Hover for return periods.</p>
+  </div>
+  <div class="panel">
+    <h3>When El Niño changes rainfall</h3>
+    <div class="scroll"><table class="heat" id="timing"></table></div>
+    <p class="caption">Correlation between three-month ERA5 rainfall and Niño3.4 over the same months, 1982–2025. Brown: drier during El Niño. In Fiji, Tonga and Vanuatu the link is strongest from October to February.</p>
+  </div>
+  <p class="note prose">{{gauge_note}}</p>
+</section>
+
+<section aria-labelledby="cerf">
+  <h2 id="cerf">CERF allocations</h2>
+  <div class="panel">
+    <div class="scroll"><table id="cerftab"></table></div>
+    <p class="caption">All CERF allocations to the four countries since CERF began in 2006 (none before 2014), and CERF's two drought allocations elsewhere in the Pacific. Source: CERF allocation records (OneGMS), with the period of drought dated from the allocation documents.</p>
+  </div>
+  <p class="note prose">{{cerf_note}}</p>
+  <div class="panel">
+    <h3>This season and 2015/16</h3>
+    <div class="scroll"><table id="cmp2015">
+      <tr><th></th><th class="n">Jul–Oct 2015</th><th class="n">Jul–Oct 2026</th><th class="n">Nov–Apr forecast 2015/16</th><th class="n">Nov–Apr forecast 2026/27</th><th class="n">Nov–Apr observed 2015/16</th><th>Response in 2015/16 (no CERF allocation)</th></tr>
+{{cmp2015_rows}}
+    </table></div>
+    <p class="caption">Return period, and below it % of the 1991–2020 average (forecasts: of the average November forecast). Forecasts are ranked among the {{n_fc}} November forecasts, observed seasons among those since 1981. Observed: ERA5 (Tonga also CHIRPS; Fiji also gauges, since ERA5 missed Fiji's dry 2015).</p>
+  </div>
+</section>
+
+<section aria-labelledby="other">
+  <h2 id="other">Other forecasts and official statements</h2>
+  <div class="panel">
+    <div class="scroll"><table id="outlooks">
+__OUTLOOKS__
+    </table></div>
+    <p class="caption">The national outlooks for Fiji, Tonga and Vanuatu agree with SEAS5. For Solomon Islands, the Island Climate Update is drier than SEAS5 in the north-west ({{SB_NW_NDJ}}% for November–January). Only Fiji's outlook covers February–April. Checked 17 November 2026.</p>
+  </div>
+</section>
+
+<details class="panel" id="method">
+  <summary>Data and method</summary>
+  <div class="prose note" style="display:grid;gap:10px;margin-top:10px">
+    <p><b>Forecast.</b> ECMWF SEAS5 ensemble-mean monthly rainfall from the November starts 1981–2026, averaged over each country, province or division (team raster statistics). Values are percentages of the 1991–2020 average November forecast for the same months, without detrending. The seas5-skill viewer removes a linear trend first and ranks November–January to February–April 2026 as the driest on record in Fiji, Tonga and Vanuatu; without detrending some of these rank 2nd to 4th, because the forecasts have risen by {{trend3}}% per decade. Rank: among the {{n_fc}} November forecasts 1981–2026. Skill: correlation between forecast and ERA5 over 1982–2025.</p>
+    <p><b>Return periods.</b> (n + 1) / rank, with the n values ranked from the driest (Weibull plotting position): forecasts among the {{n_fc}} November forecasts 1981–2026, observed November–April seasons among the {{n_obs_na}} seasons 1981/82–2025/26, July–October among 1981–2026, and grid cells on the map in the same way. Above the median the count starts from the wettest (marked wet). + marks the driest (or wettest) on record: the record only shows that the return period is at least that long. Forecasts are ranked as issued, without removing their trend. A forecast's return period says how unusual the forecast is, not the season. For the season, the observed rainfall that the past relation between forecasts and ERA5 gives for this forecast is placed among the observed seasons; a value drier than all of them is described as such.</p>
+    <p><b>Observed rainfall.</b> ERA5 monthly rainfall over the same areas, 1981–October 2026, percentages of 1991–2020. ERA5 is a reanalysis; over small islands it largely reflects the surrounding ocean (Tonga's land covers less than one ERA5 cell). Solomon Islands groups are equal-weight averages of their provinces. Rain gauges (GHCN-Daily) were usable only in Fiji; records for Vanuatu, Tonga and Solomon Islands in that archive are too broken. For Tonga, July–October CHIRPS v2 (Climate Hazards Center) over the islands' land cells serves as a second record.</p>
+    <p><b>El Niño share.</b> Straight-line fits of each area's November–April forecast (and of ERA5) on Niño3.4 known at the start of November, 1982–2025, for three series: NOAA OISST October (+{{n34_oct}} °C in 2026; 1982–2025 maximum +{{n34_oct_max}}), NOAA ERSST v6 October (+{{psl_oct}}; maximum +{{psl_oct_max}}) and the ONI for August–October (+{{oni_aso}}; maximum +{{oni_aso_max}}). Each fit is run with and without a linear trend term, since the November forecasts rise by {{trend3}}% per decade. Neutral year: the fit's value for 2026 with Niño3.4 at zero. El Niño share: the Niño3.4 term at the 2026 value as a share of the gap between the neutral year and the forecast, capped at 100%. Past forecasts scatter about the fits by {{fit_sd}} points (one standard deviation). Confidence interval of the El Niño share: each of the six fits refitted on 2,000 resamples of the 1982–2025 seasons (5th to 95th percentile); the page gives the lowest and highest ends across the six. Correlations are after removing a linear trend from both series, with 90% confidence intervals (Fisher z); ERSST and the ONI give correlations within {{r_series_diff}} of OISST. OISST and ERSST differ by {{oisst_ersst_gap}} °C for October 2026, far more than in any earlier October. Niño3, Niño4 and their difference did not explain observed rainfall better than Niño3.4 (share of variation, the squared correlation, in Fiji: {{r2_fj_idx}}), except in Vanuatu, where Niño4 does about as well ({{r2_vu_n4}}). October 2026 Niño4 (+{{n4_oct}} °C) is within its past range. Observed rainfall for this forecast: linear fit of ERA5 on the forecast, 1982–2025, extended to the 2026 forecast (below every past forecast in Fiji and Tonga), with a 90% prediction interval.</p>
+    <p><b>ENSO colours.</b> October Niño3.4 (OISST): La Niña ≤ −0.5 °C, El Niño ≥ +0.5 °C, strong El Niño ≥ +1.5 °C.</p>
+    <p><b>Code.</b> Analysis scripts in <code>deep_dives/data/pacific/analysis/</code> of the ds-teleconnections repository; this page is built by <code>pac_deep_dive.py</code>.</p>
+  </div>
+</details>
+
+</main>
+<div class="tip" id="tip" role="tooltip"></div>
+<script>
+const DATA = __DATA__;
+(function () {
+  const NS = "http://www.w3.org/2000/svg";
+  const tip = document.getElementById("tip");
+  const U = DATA.units;
+  const TRIS = ["NDJ", "DJF", "JFM", "FMA", "MAM", "NA"];
+  const TRI_LBL = { NDJ: "Nov–Jan", DJF: "Dec–Feb", JFM: "Jan–Mar", FMA: "Feb–Apr", MAM: "Mar–May", NA: "Nov–Apr" };
+  const ROWS = ["FJ", "TO", "VU", "SB_SE", "SB_C", "SB_NW"];
+  const SHORT = { FJ: "Fiji", TO: "Tonga", VU: "Vanuatu", SB: "Solomon Islands", SB_SE: "Solomon Is. south-east", SB_C: "Solomon Is. centre", SB_NW: "Solomon Is. north-west" };
+  const SUB = { SB_SE: "Temotu, Makira-Ulawa, Rennell-Bellona", SB_C: "Guadalcanal, Malaita, Central", SB_NW: "Choiseul, Western, Isabel" };
+  const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+  function el(name, attrs, parent) {
+    const e = document.createElementNS(NS, name);
+    for (const k in attrs) e.setAttribute(k, attrs[k]);
+    if (parent) parent.appendChild(e);
+    return e;
+  }
+  function showTip(html, evt) {
+    tip.innerHTML = html; tip.style.display = "block";
+    let x, y;
+    if (evt.type === "focus") { const r = evt.target.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; }
+    else { x = evt.clientX; y = evt.clientY; }
+    const w = tip.offsetWidth, h = tip.offsetHeight;
+    let left = x + 14, top = y - h - 10;
+    if (left + w > window.innerWidth - 8) left = x - w - 14;
+    if (left < 8) left = 8;
+    if (top < 8) top = y + 16;
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  function hideTip() { tip.style.display = "none"; }
+  const plain = h => h.replace(/<br>/g, ". ").replace(/<[^>]+>/g, "");
+  function bindTip(node, html) {
+    node.setAttribute("aria-label", plain(html));
+    node.addEventListener("mousemove", e => showTip(html, e));
+    node.addEventListener("focus", e => showTip(html, e));
+    node.addEventListener("mouseleave", hideTip);
+    node.addEventListener("blur", hideTip);
+  }
+  const ord = n => n + (n % 100 >= 11 && n % 100 <= 13 ? "th" : ["th", "st", "nd", "rd"][n % 10] || "th");
+  /* return periods (Weibull): rank-th driest of n -> (n + 1) / rank; above the median, counted from the wettest */
+  /* top: the driest (or wettest) on record, where the record only bounds the return period ("+") */
+  const rpOf = (rank, n) => { const d = (n + 1) / rank, w = (n + 1) / (n + 1 - rank); return d >= w ? { rp: d, wet: false, top: rank === 1 } : { rp: w, wet: true, top: rank === n }; };
+  const fmtRp = r => r >= 9.95 ? String(Math.round(r)) : r.toFixed(1);
+  const rpText = o => `1 in ${fmtRp(o.rp)}${o.top ? "+" : ""}${o.wet ? " wet" : ""}`;
+  const rpYears = o => `1 in ${fmtRp(o.rp)}${o.top ? "+" : ""} years${o.wet ? " (wet)" : ""}`;
+  const nOf = a => a.filter(v => v != null).length;
+  function rankWord(rank, n) {
+    if (rpOf(rank, n).wet) { const w = n - rank + 1; return w === 1 ? "wettest" : ord(w) + " wettest"; }
+    return rank === 1 ? "driest" : ord(rank) + " driest";
+  }
+  const season = y => y + "/" + String((y + 1) % 100).padStart(2, "0");
+
+  /* colour: % of average, brown (dry) to blue (wet), neutral grey at 100 */
+  function hex2rgb(h) { return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  function rgb2hex(c) { return "#" + c.map(v => Math.round(v).toString(16).padStart(2, "0")).join(""); }
+  function ramp(stops) {
+    return t => {
+      t = Math.max(0, Math.min(1, t));
+      const n = stops.length - 1, i = Math.min(Math.floor(t * n), n - 1), f = t * n - i;
+      const a = hex2rgb(stops[i]), b = hex2rgb(stops[i + 1]);
+      return rgb2hex([0, 1, 2].map(k => a[k] + (b[k] - a[k]) * f));
+    };
+  }
+  const dark = () => matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
+  const DIV_L = ["#6e4416", "#a0702e", "#d2ab70", "#efe4cf", "#eeeeea", "#cfe0f6", "#7fb0ec", "#3987e5", "#1c5cab"];
+  const DIV_D = ["#d89a52", "#b37a38", "#7c5a32", "#4a3f33", "#2c3436", "#2c3f5c", "#2f5f9e", "#4f93e6", "#9cc4f5"];
+  const pctCol = v => ramp(dark() ? DIV_D : DIV_L)((v - 25) / 150);   // 25% .. 175%
+  const R_L = ["#8f6127", "#c49a5a", "#e8d3ad", "#efeeea", "#b7d3f6", "#5598e7", "#1c5cab"];
+  const R_D = ["#c99a5b", "#8a6a3e", "#4f4434", "#2c3436", "#2e4566", "#3f7ac4", "#8fbaf0"];
+  const rCol = r => ramp(dark() ? R_D : R_L)((r + 0.8) / 1.6);
+  /* return-period classes on the same brown-blue scale: dry 20+, 10-20, 5-10, 3-5 | under 3 either side | wet 3-5 ... 20+ */
+  const RP_CUTS = [3, 5, 10, 20];
+  const rpCls = o => { const k = RP_CUTS.filter(c => o.rp >= c).length; return o.wet ? 4 + k : 4 - k; };
+  const rpCol = o => (dark() ? DIV_D : DIV_L)[rpCls(o)];
+  function lum(h) { return hex2rgb(h).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4; }).reduce((a, v, i) => a + v * [0.2126, 0.7152, 0.0722][i], 0); }
+  const textOn = h => { const L = lum(h); return 1.05 / (L + 0.05) >= (L + 0.05) / 0.05 ? "#ffffff" : "#000000"; };
+  const mix = (a, b, t) => rgb2hex(hex2rgb(a).map((v, i) => v + (hex2rgb(b)[i] - v) * t));
+  function rpLegend(host) {
+    const C = dark() ? DIV_D : DIV_L, lbl = ["20+", "10–20", "5–10", "3–5", "<3", "3–5", "5–10", "10–20", "20+"];
+    host.className = "rpleg";
+    host.innerHTML = `<div class="row">${C.map(c => `<span style="background:${c}"></span>`).join("")}</div><div class="row t">${lbl.map(l => `<span>${l}</span>`).join("")}</div><div class="ends"><span>drier</span><span>return period, years</span><span>wetter</span></div>`;
+  }
+  const ENSO_L = { nina: "#2f6fb0", neutral: "#c3c9cb", nino: "#d8913a", strong: "#8a4b12" };
+  const ENSO_D = { nina: "#4a8ad0", neutral: "#4f5d61", nino: "#a8692a", strong: "#e39d4a" };
+  const ensoCls = v => v == null ? "neutral" : v >= 1.5 ? "strong" : v >= 0.5 ? "nino" : v <= -0.5 ? "nina" : "neutral";
+  const ENSO_LBL = { nina: "La Niña (≤ −0.5 °C)", neutral: "neutral", nino: "El Niño (+0.5 to +1.5 °C)", strong: "strong El Niño (≥ +1.5 °C)" };
+  const n34 = {}; DATA.n34.years.forEach((y, i) => { n34[y] = DATA.n34.oct[i]; });
+
+  /* ---------- 1. heat table ---------- */
+  function drawHeat() {
+    const t = document.getElementById("heat"); t.innerHTML = "";
+    const hr = t.insertRow(); hr.innerHTML = "<th></th>" + TRIS.map(k => `<th class="c">${TRI_LBL[k]}</th>`).join("");
+    ROWS.forEach(u => {
+      const tr = t.insertRow();
+      tr.innerHTML = `<td class="u">${SHORT[u]}${SUB[u] ? `<small>${SUB[u]}</small>` : ""}</td>`;
+      TRIS.forEach(k => {
+        const d = U[u].tri[k], td = tr.insertCell(), o = rpOf(d.rank, d.n), low = d.skill < 0.3;
+        const bg = low ? mix(rpCol(o), css("--surface"), 0.6) : rpCol(o);   /* low skill: faded */
+        td.className = "c" + (low ? " low" : "");
+        td.style.background = bg; td.style.color = textOn(bg);
+        td.innerHTML = `${rpText(o)}<small>${Math.round(d.fc)}%</small>`;
+        td.tabIndex = 0;
+        bindTip(td, `<b>${SHORT[u]}, ${TRI_LBL[k]}</b><br>Forecast ${d.fc.toFixed(0)}% of the average November forecast<br>${rankWord(d.rank, d.n)} of ${d.n} November forecasts: ${rpYears(o)}` +
+          (d.rank_dt !== d.rank ? `<br>With the forecasts' trend removed: ${rankWord(d.rank_dt, d.n)}, ${rpYears(rpOf(d.rank_dt, d.n))}` : "") +
+          `<br>Skill (r with ERA5, 1982–2025): ${d.skill.toFixed(2)}${low ? " (low)" : ""}`);
+      });
+    });
+    rpLegend(document.getElementById("heatleg"));
+  }
+
+  /* ---------- 2. regional map ---------- */
+  const LAYERS = [["seas5_2026", "Forecast 2026/27 (SEAS5)"], ["era5_1982", "Observed 1982/83"], ["era5_1997", "Observed 1997/98"], ["era5_2015", "Observed 2015/16"], ["era5_2023", "Observed 2023/24"]];
+  const X0 = 145, X1 = 195, Y0 = 2, Y1 = -26, W = 1000, H = 560;
+  const px = x => (x - X0) / (X1 - X0) * W, py = y => (Y0 - y) / (Y0 - Y1) * H;
+  let mapLayer = "seas5_2026", mapMetric = "rp";
+  function drawMap() {
+    const g = DATA.regional[mapLayer], c = document.getElementById("mapc"), ctx = c.getContext("2d");
+    const off = document.createElement("canvas"); off.width = g.nx; off.height = g.ny;
+    const octx = off.getContext("2d"), img = octx.createImageData(g.nx, g.ny);
+    for (let i = 0; i < g.v.length; i++) {
+      const v = g.v[i], rk = g.rk.charCodeAt(i) - 35;
+      const col = mapMetric === "rp" ? (rk < 1 ? [128, 128, 128] : hex2rgb(rpCol(rpOf(rk, g.n)))) : (v == null ? [128, 128, 128] : hex2rgb(pctCol(v)));
+      img.data[4 * i] = col[0]; img.data[4 * i + 1] = col[1]; img.data[4 * i + 2] = col[2]; img.data[4 * i + 3] = 255;
+    }
+    octx.putImageData(img, 0, 0);
+    ctx.clearRect(0, 0, W, H); ctx.imageSmoothingEnabled = true;
+    const gx0 = px(g.x0 - g.dx / 2), gy0 = py(g.y0 + g.dy / 2), gw = px(g.x0 + g.dx * (g.nx - 0.5)) - gx0, gh = py(g.y0 - g.dy * (g.ny - 0.5)) - gy0;
+    ctx.drawImage(off, gx0, gy0, gw, gh);
+    document.querySelectorAll("#mapbtns button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === mapLayer)));
+    document.querySelectorAll("#mapmetric button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === mapMetric)));
+    c.setAttribute("aria-label", `Map of ${mapMetric === "rp" ? "return periods of" : "rainfall as a percentage of average for"} ${LAYERS.find(l => l[0] === mapLayer)[1]} across the south-west Pacific`);
+    const leg = document.getElementById("mapleg");
+    if (mapMetric === "rp") rpLegend(leg);
+    else { leg.className = "grad"; leg.innerHTML = `<div class="bar" style="background:linear-gradient(to right,${[25, 50, 75, 100, 125, 150, 175].map(v => pctCol(v)).join(",")})"></div><div class="ticks"><span>≤25%</span><span>50%</span><span>75%</span><span>100%</span><span>125%</span><span>150%</span><span>≥175%</span></div><div class="ends"><span>drier</span><span>% of average</span><span>wetter</span></div>`; }
+  }
+  function setupMap() {
+    const bb = document.getElementById("mapbtns");
+    LAYERS.forEach(([k, lbl]) => { const b = document.createElement("button"); b.textContent = lbl; b.dataset.k = k; b.onclick = () => { mapLayer = k; drawMap(); }; bb.appendChild(b); });
+    const bm = document.getElementById("mapmetric");
+    [["rp", "Return period"], ["pct", "% of average"]].forEach(([k, lbl]) => { const b = document.createElement("button"); b.textContent = lbl; b.dataset.k = k; b.onclick = () => { mapMetric = k; drawMap(); }; bm.appendChild(b); });
+    const svg = document.getElementById("mapsvg");
+    ["FJ_0", "VU_0", "TO_0", "SB_0"].forEach(k => DATA.outlines[k].forEach(f => {
+      el("path", { d: "M" + f.ring.map(p => px(p[0]).toFixed(1) + "," + py(p[1]).toFixed(1)).join("L") + "Z" }, svg);
+    }));
+    [["Solomon Islands", 160.2, -6.3], ["Vanuatu", 170.6, -15.2], ["Fiji", 180.6, -14.6], ["Tonga", 186.6, -20.4]].forEach(([t, x, y]) => {
+      const tx = el("text", { x: px(x), y: py(y) }, svg); tx.textContent = t;
+    });
+    [150, 160, 170, 180, 190].forEach(lon => { const tx = el("text", { x: px(lon), y: H - 6, "text-anchor": "middle", style: "font-weight:400;font-size:11px" }, svg); tx.textContent = lon <= 180 ? lon + "°E" : (360 - lon) + "°W"; });
+    [-5, -10, -15, -20, -25].forEach(lat => { const tx = el("text", { x: 4, y: py(lat) + 4, style: "font-weight:400;font-size:11px" }, svg); tx.textContent = -lat + "°S"; });
+    drawMap();
+  }
+
+  /* ---------- 3. provinces ---------- */
+  function drawProv() {
+    const host = document.getElementById("prov"); host.innerHTML = "";
+    const order = ["FJ", "TO", "VU", "SB"], CN = { FJ: "Fiji", TO: "Tonga", VU: "Vanuatu", SB: "Solomon Islands" };
+    const rows = [];
+    order.forEach(c => {
+      const ps = DATA.provinces.filter(p => p.c === c).sort((a, b) => (a.rank ?? 999) - (b.rank ?? 999) || (a.fc ?? 999) - (b.fc ?? 999));
+      rows.push({ head: CN[c] }); ps.forEach(p => rows.push(p));
+    });
+    /* columns: name | return period | bar (% of the average forecast); the return period stays in view on phones */
+    const rh = 22, L = 150, RPX = L + 60, LB = L + 95, Wd = 640, T0 = 22, x0 = 40, x1 = 140, sx = v => LB + (Math.max(x0, Math.min(x1, v)) - x0) / (x1 - x0) * (Wd - LB - 50);
+    const svg = el("svg", { viewBox: `0 0 ${Wd} ${rows.length * rh + T0 + 22}`, width: "100%", role: "img", "aria-label": "Forecast by province: return period and % of the average November forecast" }, host);
+    svg.style.maxWidth = Wd + "px"; svg.style.minWidth = "480px";
+    const h1 = el("text", { x: sx(90), y: 13, "text-anchor": "middle", "font-size": 11.5, fill: css("--ink-2") }, svg); h1.textContent = "% of the average November forecast";
+    const h2 = el("text", { x: RPX, y: 13, "text-anchor": "end", "font-size": 11.5, "font-weight": 600, fill: css("--ink-2") }, svg); h2.textContent = "Return period";
+    [40, 60, 80, 100, 120, 140].forEach(v => {
+      el("line", { x1: sx(v), x2: sx(v), y1: T0, y2: rows.length * rh + T0, stroke: v === 100 ? css("--ink-2") : css("--rule"), "stroke-width": v === 100 ? 1.2 : 1 }, svg);
+      const t = el("text", { x: sx(v), y: rows.length * rh + T0 + 16, "text-anchor": "middle", "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = v + "%";
+    });
+    rows.forEach((p, i) => {
+      const y = T0 + i * rh;
+      if (p.head) { const t = el("text", { x: 0, y: y + 15, "font-size": 13, "font-weight": 700, fill: css("--ink") }, svg); t.textContent = p.head; return; }
+      const t = el("text", { x: 12, y: y + 15, "font-size": 12.5, fill: css("--ink-2") }, svg); t.textContent = p.name;
+      if (p.fc == null) { const n = el("text", { x: sx(100) + 6, y: y + 15, "font-size": 11.5, fill: css("--muted") }, svg); n.textContent = "no SEAS5 cell"; return; }
+      const a = sx(Math.min(100, p.fc)), b = sx(Math.max(100, p.fc)), low = p.skill != null && p.skill < 0.3, col = rpCol(rpOf(p.rank, p.n));
+      const r = el("rect", { x: a, y: y + 4, width: Math.max(2, b - a), height: rh - 8, rx: 3, fill: low ? "none" : col, stroke: col, "stroke-width": low ? 2 : 0, tabindex: 0 }, svg);
+      const v = el("text", { x: (p.fc < 100 ? a - 4 : b + 4), y: y + 15, "font-size": 11.5, "text-anchor": p.fc < 100 ? "end" : "start", fill: css("--ink") }, svg); v.textContent = Math.round(p.fc) + "%";
+      if (p.fc < 100) v.setAttribute("x", Math.max(LB - 8, a - 4));
+      const o = rpOf(p.rank, p.n);
+      const rt = el("text", { x: RPX, y: y + 15, "text-anchor": "end", "font-size": 11.5, "font-weight": 600, fill: css("--ink") }, svg); rt.textContent = rpText(o);
+      bindTip(r, `<b>${p.name}</b><br>Nov–Apr forecast ${p.fc.toFixed(0)}% of the average November forecast<br>${rankWord(p.rank, p.n)} of ${p.n} November forecasts: ${rpYears(o)}` +
+        `<br>Skill: ${p.skill == null ? "not computed (no ERA5 cell)" : p.skill.toFixed(2)}` +
+        (p.JASO ? `<br>Jul–Oct 2026 observed: ${p.JASO.pct.toFixed(0)}% of normal, ${rpYears(rpOf(p.JASO.rank, p.JASO.n))}` : ""));
+    });
+    rpLegend(document.getElementById("provleg"));
+  }
+
+  /* ---------- 4. scatter ---------- */
+  const SC_UNITS = ["FJ", "TO", "VU", "SB_SE", "SB_NW"];
+  let scU = "FJ", scS = "fc";
+  function fit(xs, ys) {
+    const n = xs.length, mx = xs.reduce((a, b) => a + b) / n, my = ys.reduce((a, b) => a + b) / n;
+    let sxy = 0, sxx = 0; for (let i = 0; i < n; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; }
+    const b = sxy / sxx; return { a: my - b * mx, b };
+  }
+  function drawScatter() {
+    document.querySelectorAll("#scunits button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === scU)));
+    document.querySelectorAll("#scseries button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === scS)));
+    const host = document.getElementById("scatter"); host.innerHTML = "";
+    const u = U[scU], Wd = 720, Ht = 420, m = { l: 52, r: 18, t: 14, b: 44 };
+    const xs = [], ys = [], yrs = [];
+    const rks = [], rkn = nOf(u[scS]);
+    u.years.forEach((y, i) => { const v = u[scS][i]; if (y >= 1982 && y <= 2025 && v != null && n34[y] != null) { xs.push(n34[y]); ys.push(v); yrs.push(y); rks.push(u[scS + "_rank"][i]); } });
+    const sx = x => m.l + (x + 2.5) / 6.2 * (Wd - m.l - m.r), sy = v => m.t + (200 - v) / 180 * (Ht - m.t - m.b);
+    const svg = el("svg", { viewBox: `0 0 ${Wd} ${Ht}`, width: "100%", role: "img", "aria-label": `${SHORT[scU]}: November–April rainfall against October Niño3.4` }, host);
+    svg.style.maxWidth = Wd + "px"; svg.style.minWidth = "460px";
+    [40, 60, 80, 100, 120, 140, 160, 180].forEach(v => { el("line", { x1: m.l, x2: Wd - m.r, y1: sy(v), y2: sy(v), stroke: v === 100 ? css("--ink-2") : css("--rule") }, svg); const t = el("text", { x: m.l - 6, y: sy(v) + 4, "text-anchor": "end", "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = v + "%"; });
+    [-2, -1, 0, 1, 2, 3].forEach(v => { el("line", { x1: sx(v), x2: sx(v), y1: m.t, y2: Ht - m.b, stroke: css("--rule") }, svg); const t = el("text", { x: sx(v), y: Ht - m.b + 16, "text-anchor": "middle", "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v) + " °C"; });
+    const xl = el("text", { x: (m.l + Wd - m.r) / 2, y: Ht - 6, "text-anchor": "middle", "font-size": 12, fill: css("--ink-2") }, svg); xl.textContent = "October Niño3.4";
+    const f = fit(xs, ys), xmax = Math.max(...xs), xmin = Math.min(...xs), x26 = n34[2026];
+    /* 90% confidence band for the fitted line: t(0.95, n - 2) * s * sqrt(1/n + (x - mean)^2 / Sxx) */
+    const nn = xs.length, mx = xs.reduce((a, b) => a + b) / nn, sxx = xs.reduce((a, x) => a + (x - mx) ** 2, 0);
+    const s2 = ys.reduce((a, y, i) => a + (y - f.a - f.b * xs[i]) ** 2, 0) / (nn - 2), z = 1.6449, tq = z + (z ** 3 + z) / (4 * (nn - 2));
+    const half = x => tq * Math.sqrt(s2 * (1 / nn + (x - mx) ** 2 / sxx));
+    const bx = Array.from({ length: 41 }, (_, i) => xmin + (x26 - xmin) * i / 40);
+    el("path", { d: "M" + bx.map(x => sx(x).toFixed(1) + "," + sy(f.a + f.b * x + half(x)).toFixed(1)).join("L") + "L" + bx.slice().reverse().map(x => sx(x).toFixed(1) + "," + sy(f.a + f.b * x - half(x)).toFixed(1)).join("L") + "Z", fill: css("--ink"), "fill-opacity": 0.1 }, svg);
+    el("line", { x1: sx(xmin), x2: sx(xmax), y1: sy(f.a + f.b * xmin), y2: sy(f.a + f.b * xmax), stroke: css("--ink"), "stroke-width": 2 }, svg);
+    el("line", { x1: sx(xmax), x2: sx(x26), y1: sy(f.a + f.b * xmax), y2: sy(f.a + f.b * x26), stroke: css("--ink"), "stroke-width": 2, "stroke-dasharray": "5 4" }, svg);
+    el("line", { x1: sx(x26), x2: sx(x26), y1: m.t, y2: Ht - m.b, stroke: css("--muted"), "stroke-dasharray": "2 3" }, svg);
+    const lab = el("text", { x: sx(x26) - 4, y: m.t + 12, "text-anchor": "end", "font-size": 11, fill: css("--ink-2") }, svg); lab.textContent = "October 2026";
+    const sg = v => (v < 0 ? "−" : v > 0 ? "+" : "") + Math.abs(v).toFixed(2);
+    const e0 = u.enso_est.oisst_oct, rc = e0[scS === "fc" ? "r_fc_dt_ci" : "r_obs_dt_ci"];
+    document.getElementById("scr").innerHTML = `<b>r = ${sg(e0[scS === "fc" ? "r_fc" : "r_obs"])}</b> as plotted; ${sg(rc[0])} with trends removed (90% CI ${sg(rc[1])} to ${sg(rc[2])})`;
+    document.getElementById("scbandsw").style.background = css("--ink"); document.getElementById("scbandsw").style.opacity = 0.18;
+    xs.forEach((x, i) => {
+      const c = el("circle", { cx: sx(x), cy: sy(ys[i]), r: 5, fill: css("--series"), "fill-opacity": 0.75, stroke: css("--surface"), "stroke-width": 1.5, tabindex: 0 }, svg);
+      bindTip(c, `<b>${season(yrs[i])}</b><br>October Niño3.4 ${x > 0 ? "+" : ""}${x.toFixed(2)} °C<br>${scS === "fc" ? "Forecast" : "Observed"} ${ys[i].toFixed(0)}% of average, ${rpYears(rpOf(rks[i], rkn))}`);
+      if ([1982, 1997, 2015, 2023].includes(yrs[i])) { const t = el("text", { x: sx(x) + 7, y: sy(ys[i]) + 4, "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = season(yrs[i]); }
+    });
+    if (scS === "fc") {
+      const v = u.fc[u.years.indexOf(2026)];
+      const c = el("circle", { cx: sx(x26), cy: sy(v), r: 7, fill: css("--dry"), stroke: css("--ink"), "stroke-width": 2, tabindex: 0 }, svg);
+      bindTip(c, `<b>2026/27 forecast</b><br>October Niño3.4 +${x26.toFixed(2)} °C<br>Forecast ${v.toFixed(0)}% of average, ${rpYears(rpOf(u.tri.NA.rank, u.tri.NA.n))}<br>Fitted line at this Niño3.4: ${(f.a + f.b * x26).toFixed(0)}% (90% confidence ${(f.a + f.b * x26 - half(x26)).toFixed(0)}–${(f.a + f.b * x26 + half(x26)).toFixed(0)}%)`);
+      const t = el("text", { x: sx(x26), y: sy(v) + 24, "text-anchor": "middle", "font-size": 12, "font-weight": 700, fill: css("--ink") }, svg); t.textContent = "2026/27";
+    }
+  }
+  function setupScatter() {
+    const bu = document.getElementById("scunits"), bs = document.getElementById("scseries");
+    SC_UNITS.forEach(k => { const b = document.createElement("button"); b.textContent = SHORT[k]; b.dataset.k = k; b.onclick = () => { scU = k; drawScatter(); }; bu.appendChild(b); });
+    [["fc", "SEAS5 November forecasts"], ["obs", "Observed (ERA5)"]].forEach(([k, l]) => { const b = document.createElement("button"); b.textContent = l; b.dataset.k = k; b.onclick = () => { scS = k; drawScatter(); }; bs.appendChild(b); });
+    drawScatter();
+  }
+  function drawEnsTab() {
+    const t = document.getElementById("enstab");
+    const VARS = ["fc", "fc_trend"];
+    const fits = u => Object.values(U[u].enso_est).flatMap(e => VARS.map(v => ({ neutral: e[v + "_neutral"], nino: e[v + "_nino"] })));
+    const span = xs => { const lo = Math.round(Math.min(...xs)), hi = Math.round(Math.max(...xs)); return (lo === hi ? lo : lo + "–" + hi) + "%"; };
+    const share = u => { const f = U[u].tri.NA.fc; return span(fits(u).map(x => Math.min(100, -x.nino / (x.neutral - f) * 100))); };
+    const sg = v => (v < 0 ? "−" : v > 0 ? "+" : "") + Math.abs(v).toFixed(2);
+    const rc = a => `${sg(a[0])}<small>${sg(a[1])} to ${sg(a[2])}</small>`;
+    t.innerHTML = `<tr><th></th><th class="n">2026/27 forecast</th><th class="n">Neutral year</th><th class="n">El Niño share of the shortfall</th><th class="n">Correlation with Niño3.4, past forecasts</th><th class="n">Correlation with Niño3.4, observed rainfall</th></tr>` +
+      SC_UNITS.map(u => {
+        const e = U[u].enso_est.oisst_oct, d = U[u].tri.NA, dry = d.fc < 100, ci = U[u].share_ci;
+        return `<tr><td>${SHORT[u]}</td><td class="n">${rpText(rpOf(d.rank, d.n))}<small>${Math.round(d.fc)}%</small></td><td class="n">${span(fits(u).map(x => x.neutral))}</td>` +
+          `<td class="n">${dry ? share(u) + `<small>${Math.round(ci.lo)}–${Math.round(ci.hi)}%</small>` : "–"}</td><td class="n">${rc(e.r_fc_dt_ci)}</td><td class="n">${rc(e.r_obs_dt_ci)}</td></tr>`;
+      }).join("");
+  }
+
+  /* ---------- 5. history ---------- */
+  let hU = "FJ";
+  function drawHist() {
+    document.querySelectorAll("#hunits button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.k === hU)));
+    const host = document.getElementById("hist"); host.innerHTML = "";
+    const u = U[hU], E = dark() ? ENSO_D : ENSO_L, yrs = u.years, n = yrs.length;
+    const Wd = 900, Ht = 340, m = { l: 46, r: 10, t: 12, b: 40 }, bw = (Wd - m.l - m.r) / n;
+    const sx = i => m.l + i * bw, sy = v => m.t + (190 - v) / 170 * (Ht - m.t - m.b);
+    const svg = el("svg", { viewBox: `0 0 ${Wd} ${Ht}`, width: "100%", role: "img", "aria-label": `${SHORT[hU]}: November–April rainfall by season` }, host);
+    svg.style.minWidth = "640px";
+    const i06 = yrs.indexOf(2006);
+    el("rect", { x: sx(i06), y: m.t, width: Wd - m.r - sx(i06), height: Ht - m.t - m.b, fill: css("--band") }, svg);
+    const ct = el("text", { x: sx(i06) + 4, y: m.t + 12, "font-size": 11, fill: css("--ink-2") }, svg); ct.textContent = "since CERF began (2006)";
+    [40, 60, 80, 100, 120, 140, 160, 180].forEach(v => { el("line", { x1: m.l, x2: Wd - m.r, y1: sy(v), y2: sy(v), stroke: v === 100 ? css("--ink-2") : css("--rule") }, svg); const t = el("text", { x: m.l - 6, y: sy(v) + 4, "text-anchor": "end", "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = v + "%"; });
+    const nO = nOf(u.obs), nF = nOf(u.fc);
+    const rpO = i => rpYears(rpOf(u.obs_rank[i], nO)), rpF = i => rpYears(rpOf(u.fc_rank[i], nF));
+    yrs.forEach((y, i) => {
+      const o = u.obs[i], fc = u.fc[i], cls = ensoCls(n34[y]);
+      if (o != null) {
+        const top = sy(Math.max(o, 100)), bot = sy(Math.min(o, 100));
+        const r = el("rect", { x: sx(i) + 1.5, y: top, width: bw - 3, height: Math.max(1, bot - top), rx: 2, fill: E[cls], tabindex: 0 }, svg);
+        bindTip(r, `<b>${season(y)}</b><br>Observed ${o.toFixed(0)}% of average (ERA5), ${rpO(i)}` + (fc != null ? `<br>November forecast ${fc.toFixed(0)}%, ${rpF(i)} among forecasts` : "") + (n34[y] != null ? `<br>October Niño3.4 ${n34[y] > 0 ? "+" : ""}${n34[y].toFixed(2)} °C (${ENSO_LBL[cls]})` : ""));
+      }
+      if (y === 2026 && u.obs_equiv) {
+        /* rank r = 1 + observed seasons drier (n = 45). Each value is given the return period of the nearest less extreme
+           season: dry (n + 1) / r, wet (n + 1) / (n + 2 - r); beyond every season it is described as such */
+        const q = u.obs_equiv, top = sy(q.hi), bot = sy(Math.max(q.lo, 20));   /* clipped at the chart floor (20%) */
+        const rq = k => { const r = q["rank_" + k], n = q.n, d = (n + 1) / r, w = (n + 1) / (n + 2 - r);
+          if (r === 1) return "drier than any season since 1981";
+          if (r === n + 1) return "wetter than any season since 1981";
+          return rpYears(d >= w ? { rp: d, wet: false, top: false } : { rp: w, wet: true, top: false }); };
+        const r = el("rect", { x: sx(i) + 2, y: top, width: bw - 4, height: bot - top, rx: 2, fill: "none", stroke: css("--ink"), "stroke-width": 1.5, tabindex: 0 }, svg);
+        el("line", { x1: sx(i) + 1, x2: sx(i) + bw - 1, y1: sy(q.exp), y2: sy(q.exp), stroke: css("--ink"), "stroke-width": 2 }, svg);
+        bindTip(r, `<b>2026/27: observed rainfall that the past relation between forecasts and ERA5 gives for this forecast</b><br>about ${Math.round(q.exp)}% of average: ${q.rank_exp === 1 ? "drier than any season since 1981" : `${q.rank_exp - 1} of the ${q.n} seasons since 1981 drier`}<br>90% range ${Math.round(q.lo)}% (${rq("lo")}) to ${Math.round(q.hi)}% (${rq("hi")})`);
+      }
+      if (fc != null) {
+        const c = el("circle", { cx: sx(i) + bw / 2, cy: sy(fc), r: y === 2026 ? 6 : 3.2, fill: y === 2026 ? css("--dry") : css("--ink"), stroke: y === 2026 ? css("--ink") : css("--surface"), "stroke-width": y === 2026 ? 2 : 1 }, svg);
+        if (y === 2026) {
+          bindTip(c, `<b>2026/27</b><br>November forecast ${fc.toFixed(0)}% of the average forecast, ${rpF(i)} among forecasts`); c.setAttribute("tabindex", 0);
+          const t = el("text", { x: sx(i) - 2, y: sy(fc) + 4, "text-anchor": "end", "font-size": 11.5, "font-weight": 700, fill: css("--ink") }, svg); t.textContent = "2026/27 forecast";
+        }
+      }
+      if (y % 5 === 0) { const t = el("text", { x: sx(i) + bw / 2, y: Ht - m.b + 16, "text-anchor": "middle", "font-size": 11, fill: css("--ink-2") }, svg); t.textContent = season(y); }
+    });
+    document.getElementById("histleg").innerHTML = ["strong", "nino", "neutral", "nina"].map(k => `<span><span class="sw" style="background:${E[k]}"></span>${ENSO_LBL[k]}</span>`).join("") +
+      `<span><span class="dot" style="background:var(--ink)"></span>November forecast</span>`;
+  }
+  function setupHist() {
+    const bu = document.getElementById("hunits");
+    ["FJ", "TO", "VU", "SB_SE", "SB_C", "SB_NW"].forEach(k => { const b = document.createElement("button"); b.textContent = SHORT[k]; b.dataset.k = k; b.onclick = () => { hU = k; drawHist(); }; bu.appendChild(b); });
+    drawHist();
+  }
+
+  /* ---------- 6. timing ---------- */
+  function drawTiming() {
+    const t = document.getElementById("timing"), T = DATA.timing, order = T.order;
+    const LBL = { JJA: "Jun–Aug", JAS: "Jul–Sep", ASO: "Aug–Oct", SON: "Sep–Nov", OND: "Oct–Dec", NDJ: "Nov–Jan", DJF: "Dec–Feb", JFM: "Jan–Mar", FMA: "Feb–Apr", MAM: "Mar–May", AMJ: "Apr–Jun", MJJ: "May–Jul" };
+    t.innerHTML = "<tr><th></th>" + order.map(k => `<th class="c">${LBL[k]}</th>`).join("") + "</tr>";
+    ["FJ", "TO", "VU", "SB_SE", "SB_C", "SB_NW"].forEach(u => {
+      const tr = t.insertRow(); tr.innerHTML = `<td class="u">${SHORT[u]}</td>`;
+      T[u].forEach((r, i) => {
+        const td = tr.insertCell(); td.className = "c"; td.style.background = rCol(r); td.style.color = (!dark() && Math.abs(r) > 0.5) ? "#fff" : css("--ink");
+        td.textContent = (r > 0 ? "+" : r < 0 ? "−" : "") + Math.abs(r).toFixed(2); td.tabIndex = 0;
+        bindTip(td, `<b>${SHORT[u]}, ${LBL[order[i]]}</b><br>r = ${r.toFixed(2)} with Niño3.4${r < -0.3 ? "<br>drier during El Niño" : r > 0.3 ? "<br>wetter during El Niño" : ""}`);
+      });
+    });
+  }
+
+  /* ---------- 7. CERF ---------- */
+  const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const fmtYm = s => MON[+s.slice(5, 7) - 1] + " " + s.slice(0, 4);
+  function drawCerf() {
+    const t = document.getElementById("cerftab"), CN = { FJI: "Fiji", VUT: "Vanuatu", TON: "Tonga", SLB: "Solomon Islands", PNG: "Papua New Guinea", MHL: "Marshall Islands" };
+    const rows = DATA.cerf.filter(r => ["FJI", "VUT", "TON", "SLB"].includes(r.iso3) || r.type === "Drought").sort((a, b) => (["PNG", "MHL"].includes(a.iso3) - ["PNG", "MHL"].includes(b.iso3)) || a.date.localeCompare(b.date));
+    t.innerHTML = `<tr><th>Country</th><th>Approved</th><th>Emergency</th><th class="n">US$</th></tr>` + rows.map(r =>
+      `<tr${r.type === "Drought" ? ' class="em"' : ""}><td>${CN[r.iso3]}</td><td>${fmtYm(r.date)}</td><td>${r.type}${r.valid ? ` (dry period ${fmtYm(r.valid.split(" to ")[0])} to ${fmtYm(r.valid.split(" to ")[1])})` : ""}</td><td class="n">${r.amount.toLocaleString("en-US")}</td></tr>`).join("");
+  }
+
+  function drawAll() { drawHeat(); drawMap(); drawProv(); drawScatter(); drawHist(); drawTiming(); }
+  drawHeat(); setupMap(); drawProv(); setupScatter(); drawEnsTab(); setupHist(); drawTiming(); drawCerf();
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", drawAll);
+})();
+</script>
+</body>
+</html>

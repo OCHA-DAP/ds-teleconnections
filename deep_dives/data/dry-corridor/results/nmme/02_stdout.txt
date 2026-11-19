@@ -1,0 +1,99 @@
+prec_CCSM4_A.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 10 S 1982 2026
+prec_CESM1_A.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 10 S 1982 2026
+prec_CFSv2_F.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5] M 28 S 2011 2026
+prec_CFSv2_H.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5] M 24 S 1982 2010
+prec_CFSv2early_F.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5] M 32 S 2011 2026
+prec_CFSv2early_H.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5] M 24 S 1982 2010
+prec_CanESM5_F.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 20 S 2024 2026
+prec_CanESM5_H.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 20 S 1990 2023
+prec_GEM5.2-NEMO_F.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 20 S 2024 2026
+prec_GEM5.2-NEMO_H.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 20 S 1990 2023
+prec_SPEAR_F.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 30 S 2021 2025
+prec_SPEAR_H.nc mm/day X -93.0 .. -82.0 Y 12.0 .. 19.0 L [6.5, 7.5, 8.5, 9.5, 10.5, 11.5] M 15 S 1991 2020
+
+NMME 1-degree cells touched per country (eff_cells = sum of covered fractions):
+         n_cells_touched  eff_cells  country_km2  max_cell_frac
+country                                                        
+GT                    20       9.13    108226.50           1.00
+HN                    20       9.36    111462.45           1.00
+SV                     6       1.71     20422.91           0.73
+country   lon  lat  frac
+     GT -92.0 14.0 0.172
+     GT -91.0 14.0 0.566
+     GT -90.0 14.0 0.521
+     GT -89.0 14.0 0.012
+     GT -92.0 15.0 0.649
+     GT -91.0 15.0 1.000
+     GT -90.0 15.0 1.000
+     GT -89.0 15.0 0.456
+     GT -88.0 15.0 0.000
+     GT -92.0 16.0 0.230
+     GT -91.0 16.0 0.578
+     GT -90.0 16.0 0.975
+     GT -89.0 16.0 0.515
+     GT -88.0 16.0 0.055
+     GT -91.0 17.0 0.477
+     GT -90.0 17.0 1.000
+     GT -89.0 17.0 0.338
+     GT -91.0 18.0 0.155
+     GT -90.0 18.0 0.319
+     GT -89.0 18.0 0.109
+     HN -88.0 13.0 0.037
+     HN -87.0 13.0 0.295
+     HN -89.0 14.0 0.249
+     HN -88.0 14.0 0.687
+     HN -87.0 14.0 0.926
+     HN -86.0 14.0 0.568
+     HN -85.0 14.0 0.096
+     HN -89.0 15.0 0.513
+     HN -88.0 15.0 0.993
+     HN -87.0 15.0 1.000
+     HN -86.0 15.0 1.000
+     HN -85.0 15.0 0.871
+     HN -84.0 15.0 0.602
+     HN -83.0 15.0 0.051
+     HN -88.0 16.0 0.261
+     HN -87.0 16.0 0.300
+     HN -86.0 16.0 0.409
+     HN -85.0 16.0 0.388
+     HN -84.0 16.0 0.114
+     HN -86.0 17.0 0.001
+     SV -90.0 13.0 0.000
+     SV -89.0 13.0 0.150
+     SV -88.0 13.0 0.226
+     SV -90.0 14.0 0.298
+     SV -89.0 14.0 0.729
+     SV -88.0 14.0 0.304
+
+CHIRPS units mm/month {'T': 549, 'Y': 100, 'X': 187} X -92.30000305175781 -83.0 Y 12.924999237060547 17.875
+GT CHIRPS cells touched 3886 country km2 covered 108234
+HN CHIRPS cells touched 4067 country km2 covered 111470
+SV CHIRPS cells touched 773 country km2 covered 20424
+country  year  month  chirps_mm  chirps_touch_mm    era5_mm
+     GT  2026      9 266.532280       267.413204 216.043890
+     GT  2026     10        NaN              NaN 273.006987
+     HN  2026      9 195.050084       197.985267 207.981390
+     HN  2026     10        NaN              NaN 210.270102
+     SV  2026      9 318.671882       314.167713 191.117865
+     SV  2026     10        NaN              NaN 215.324884
+nino34_CCSM4_A.nc Celsius_scale {'S': 45, 'L': 12, 'M': 10} L 0.5 - 11.5 n NaN 0
+nino34_CESM1_A.nc Celsius_scale {'S': 45, 'L': 12, 'M': 10} L 0.5 - 11.5 n NaN 0
+nino34_CFSv2_F.nc Celsius_scale {'S': 1, 'L': 10, 'M': 28} L 0.5 - 9.5 n NaN 56
+nino34_CFSv2_H.nc Celsius_scale {'S': 29, 'L': 10, 'M': 24} L 0.5 - 9.5 n NaN 0
+nino34_CanESM5_F.nc Kelvin_scale {'S': 3, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+nino34_CanESM5_H.nc Kelvin_scale {'S': 34, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+nino34_GEM5.2-NEMO_F.nc Kelvin_scale {'S': 3, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+nino34_GEM5.2-NEMO_H.nc Kelvin_scale {'S': 34, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+tna_CCSM4_A.nc Celsius_scale {'S': 45, 'L': 12, 'M': 10} L 0.5 - 11.5 n NaN 0
+tna_CESM1_A.nc Celsius_scale {'S': 45, 'L': 12, 'M': 10} L 0.5 - 11.5 n NaN 0
+tna_CFSv2_F.nc Celsius_scale {'S': 1, 'L': 10, 'M': 28} L 0.5 - 9.5 n NaN 56
+tna_CFSv2_H.nc Celsius_scale {'S': 29, 'L': 10, 'M': 24} L 0.5 - 9.5 n NaN 0
+tna_CanESM5_F.nc Kelvin_scale {'S': 3, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+tna_CanESM5_H.nc Kelvin_scale {'S': 34, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+tna_GEM5.2-NEMO_F.nc Kelvin_scale {'S': 3, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+tna_GEM5.2-NEMO_H.nc Kelvin_scale {'S': 34, 'M': 20, 'L': 12} L 0.5 - 11.5 n NaN 0
+TNA grid CCSM4: 43x18 cells, NaN (land) cells 28; local unweighted mean 27.525 (min 14.15, max 29.35), cos-lat weighted 27.541; server box mean 27.525
+TNA grid CESM1: 43x18 cells, NaN (land) cells 28; local unweighted mean 27.505 (min 14.14, max 29.23), cos-lat weighted 27.521; server box mean 27.505
+TNA grid CFSv2: 43x18 cells, NaN (land) cells 19; local unweighted mean 27.938 (min 21.25, max 30.34), cos-lat weighted 27.960; server box mean 27.938
+TNA grid CanESM5: 43x18 cells, NaN (land) cells 0; local unweighted mean 301.324 (min 294.99, max 303.94), cos-lat weighted 301.346; server box mean 301.324
+TNA grid GEM5.2-NEMO: 43x18 cells, NaN (land) cells 0; local unweighted mean 301.014 (min 294.20, max 303.88), cos-lat weighted 301.036; server box mean 301.014

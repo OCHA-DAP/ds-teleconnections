@@ -1,0 +1,19 @@
+# Haiti — the spring 2027 (March–June) rains after the 2026/27 El Niño. Built by hti_deep_dive.py (builder = "hti").
+# The page text lives in deep_dives/data/hti/template.html; its numbers come from the committed analysis outputs in
+# deep_dives/data/hti/ (see analysis/README.md). The build stops when a number in the text no longer matches the data.
+iso3 = "HTI"
+name = "Haiti"
+builder = "hti"
+
+[catalogue]
+direction = "drier"
+season = "MJJ"
+evidence = "robust"
+source_html = '<a href="https://doi.org/10.1029/2006JD007541">Jury, Malmgren &amp; Winter 2007 (JGR-Atmos)</a>; FEWS NET Haiti climate analyses'
+
+[assessment]
+direction = "drier while El Niño develops; a wetter early season in the spring after a strong event"
+season = "MJJ while El Niño develops; March–June of the year after"
+evidence = "moderate"
+evidence_note = "The catalogue's drying is the developing-year effect (2015, 2026). The page reviews the spring after the peak: two peer-reviewed mechanism studies and six past strong events, none followed by a dry spring in CHIRPS."
+one_line = "The survey's robust El Niño drying comes while El Niño develops, as in 2015 and 2026. For the spring after a strong event the evidence is moderate and leans wet: March–June 2027 is expected at about 500 mm nationally against a typical 453 mm (likely 360–660 mm). The timing of the rains, not the total, is the risk to watch."
